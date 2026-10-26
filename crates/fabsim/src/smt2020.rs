@@ -283,3 +283,8 @@ pub fn load(dir: &Path) -> Result<Shop, String> {
         releases,
     })
 }
+
+/// Each tool group's area (STNGRP in tool.txt.1l), in file order, for viewers.
+pub fn areas(dir: &Path) -> Result<Vec<(String, String)>, String> {
+    Ok(rows(dir, "tool.txt.1l")?.iter().map(|r| (g(r, "STNFAM").to_string(), g(r, "STNGRP").to_string())).collect())
+}

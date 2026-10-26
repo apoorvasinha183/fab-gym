@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fab Gym Floor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="floor" aria-label="The fab floor: halls of tools around a spine belt"></canvas>
+
+<header class="card brand">
+  <div class="title">Fab Gym</div>
+  <div class="sub">A wafer fab on the SMT2020 model, simulated in your browser</div>
+  <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
+</header>
+
+<section class="card kpis" aria-label="How the fab is doing">
+  <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
+  <div class="kpi"><div class="v" id="k-wait">0</div><div class="l">lots waiting</div></div>
+  <div class="kpi"><div class="v" id="k-moves">0</div><div class="l">moves, last hour</div></div>
+  <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">tools working</div></div>
+</section>
+
+<aside class="card panel" id="panel">
+  <h2>Try a change</h2>
+  <label>Dispatch rule
+    <select id="rule">
+      <option value="0">Today's rule: hot lots first, then no setup change, then oldest</option>
+      <option value="1">First come, first served</option>
+      <option value="2">Shortest processing first</option>
+    </select>
+  </label>
+  <label>Take a tool group down
+    <select id="down-group"><option value="-1">None</option></select>
+  </label>
+  <div class="row">
+    <label>From hour <input id="down-at" type="number" min="0" max="72" value="6"></label>
+    <label>For hours <input id="down-hours" type="number" min="1" max="72" value="8"></label>
+  </div>
+  <div class="row">
+    <label>Seed <input id="seed" type="number" min="0" value="0"></label>
+    <label>Days <input id="days" type="number" min="1" max="14" value="3"></label>
+  </div>
+  <button id="run" class="primary">Simulate</button>
+  <p class="note" id="runnote">Loading the simulator…</p>
+  <h3>Machines</h3>
+  <ul class="legend">
+    <li><i class="sw s0"></i>working</li>
+    <li><i class="sw s1"></i>idle</li>
+    <li><i class="sw s4"></i>changing setup</li>
+    <li><i class="sw s2"></i>maintenance</li>
+    <li><i class="sw s3"></i>broken down</li>
+  </ul>
+  <h3>Lots</h3>
+  <ul class="legend">
+    <li><i class="dot"></i>a lot of 25 wafers</li>
+    <li><i class="dot hot"></i>a hot lot</li>
+  </ul>
+  <p class="note small">Every number comes from the simulator on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020). It is a published model, not a real fab.</p>
+</aside>
+
+<footer class="card bar">
+  <button id="play" class="icon" aria-label="Play or pause">❚❚</button>
+  <div class="speeds" role="group" aria-label="Speed">
+    <button data-speed="20">1×</button>
+    <button data-speed="60" class="on">3×</button>
+    <button data-speed="240">12×</button>
+  </div>
+  <div class="scrub">
+    <canvas id="spark" aria-hidden="true"></canvas>
+    <input id="scrub" type="range" min="0" max="4320" step="1" value="0" aria-label="Fab time">
+  </div>
+  <button id="fit" class="icon" aria-label="Fit the whole fab">⤢</button>
+</footer>
+
+<div id="tip" class="tip" hidden></div>
+<div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit</div>
+
+<script src="app.js"></script>
+</body>
+</html>

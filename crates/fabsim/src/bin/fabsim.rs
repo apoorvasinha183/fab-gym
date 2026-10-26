@@ -61,6 +61,17 @@ fn main() {
             let until = args.get(3).map(|u| u.parse().unwrap());
             print!("{}", run(&shop, &RunOptions { seed, until, record: true }, None).log_text());
         }
+        Some("web-data") => {
+            // the shop text and each group's area, for the browser page (not committed)
+            let out = PathBuf::from(args.get(1).map(|s| s.as_str()).unwrap_or("web/data"));
+            let dir = PathBuf::from(args.get(2).map(|s| s.as_str()).unwrap_or("data/smt2020/hvlm"));
+            std::fs::create_dir_all(&out).unwrap();
+            let shop = fabsim::smt2020::load(&dir).unwrap();
+            std::fs::write(out.join("shop.txt"), shop.to_text()).unwrap();
+            let areas: String = fabsim::smt2020::areas(&dir).unwrap().iter().map(|(g, a)| format!("{g}\t{a}\n")).collect();
+            std::fs::write(out.join("areas.tsv"), areas).unwrap();
+            println!("wrote {}", out.display());
+        }
         _ => eprintln!("usage: fabsim bench [DIR] [--days N] [--seeds K] | fabsim log SHOP SEED [UNTIL]"),
     }
 }

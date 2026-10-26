@@ -1,0 +1,13 @@
+[package]
+name = "fabweb"
+version = "0.0.0"
+description = "The Fab Gym simulator compiled to WebAssembly for the browser page"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fabsim = { path = "../fabsim" }

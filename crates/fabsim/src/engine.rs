@@ -135,9 +135,23 @@ pub struct LotOut {
 #[derive(Clone, Debug)]
 pub struct StateRow {
     pub tool: String,
+    /// index into `RunResult::tools`
+    pub tool_index: u32,
     pub time: f64,
     pub state: &'static str,
     pub why: &'static str,
+}
+
+/// One step of one lot, for viewers: every started step, including a released lot's first
+/// (which the reference engine's per-lot steps leave out). Indexes into `lots` and `tools`.
+#[derive(Clone, Copy, Debug)]
+pub struct Trace {
+    pub lot: u32,
+    pub step: u32,
+    pub tool: u32,
+    pub arrive: f64,
+    pub start: f64,
+    pub end: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -201,6 +215,8 @@ pub struct RunResult {
     pub until: f64,
     /// decisions handed to the chooser (or that would have been, without one)
     pub decisions: u64,
+    /// every started step, in start order (only with `record`)
+    pub trace: Vec<Trace>,
 }
 
 fn hx(x: f64) -> String {
@@ -426,6 +442,7 @@ struct Sim<'a, 'c> {
     probes: Vec<Probe>,
     chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
     decisions: u64,
+    trace: Vec<Trace>,
 }
 
 enum Pick {
@@ -484,7 +501,13 @@ impl<'a, 'c> Sim<'a, 'c> {
         tool.state = state;
         tool.since = t;
         if self.full {
-            self.states.push(StateRow { tool: tool.name.clone(), time: t, state: STATES[state as usize], why });
+            self.states.push(StateRow {
+                tool: tool.name.clone(),
+                tool_index: ti,
+                time: t,
+                state: STATES[state as usize],
+                why,
+            });
         }
     }
 
@@ -1086,6 +1109,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         probes: vec![],
         chooser,
         decisions: 0,
+        trace: vec![],
     };
 
     // downs: given windows, maintenance calendars, breakdowns
@@ -1214,6 +1238,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                         if let Some(tr) = lot.trail.as_mut() {
                             tr.push(StepOut { step, tool: name, arrive, start: t, end: t + dur });
                         }
+                        sim.trace.push(Trace { lot: l, step: step as u32, tool: ti, arrive, start: t, end: t + dur });
                     }
                 }
                 let g = sim.tools[ti as usize].group as usize;
@@ -1293,5 +1318,6 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         moves: sim.moves,
         until: end,
         decisions: sim.decisions,
+        trace: std::mem::take(&mut sim.trace),
     }
 }
