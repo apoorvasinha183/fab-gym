@@ -5,11 +5,11 @@
   --text: #dfe5ec;
   --muted: #94a0ad;
   --accent: #c9a34e;
-  --s0: #6fae7a;
-  --s1: #4f5965;
-  --s2: #6d8fc4;
-  --s3: #cf6a5f;
-  --s4: #d4a648;
+  --s0: #7fcfa8;
+  --s1: #7a8592;
+  --s2: #7a8ce6;
+  --s3: #cf4f4a;
+  --s4: #e8bb4e;
   --lot: #efe2c4;
   --hot: #e8955a;
 }
@@ -48,7 +48,7 @@ button.primary { width: 100%; background: #3b4a3d; border-color: #557a5c; font-w
 .legend { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; font-size: 12px; }
 .legend li { display: flex; align-items: center; gap: 6px; }
 .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-.sw.s0 { background: var(--s0); } .sw.s1 { background: var(--s1); } .sw.s2 { background: var(--s2); }
+.sw.s0 { background: var(--s0); } .sw.s1 { background: transparent; border: 2px solid var(--s1); } .sw.s2 { background: var(--s2); }
 .sw.s3 { background: var(--s3); } .sw.s4 { background: var(--s4); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lot); display: inline-block; }
 .dot.hot { background: var(--hot); }
@@ -75,3 +75,5 @@ button.primary { width: 100%; background: #3b4a3d; border-color: #557a5c; font-w
 }
 .hint { position: fixed; bottom: 70px; left: 24px; color: var(--muted); font-size: 11px; opacity: 0.8; pointer-events: none; }
 @media (max-width: 900px) { .hint { display: none; } }
+.sw.s3 { position: relative; }
+.sw.s3::after { content: "×"; position: absolute; inset: 0; color: #1c2127; font: 700 12px/12px sans-serif; text-align: center; }
