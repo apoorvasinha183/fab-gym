@@ -264,6 +264,13 @@ for fr in range(1, FRAMES + 1, 6):
     cam.keyframe_insert("location", frame=fr)
     target.location = (px, 0, 0)
     target.keyframe_insert("location", frame=fr)
+    # shrink a label away while the camera is close to it, so no text fills the frame
+    for ob in LABELS:
+        near = ob.data.size * 12
+        d = (ob.location - cam.location).length
+        u = min(max((d - near) / (near * 0.5), 0.0), 1.0)
+        ob.scale = (u, u, u)
+        ob.keyframe_insert("scale", frame=fr)
 
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "campus.blend"), compress=True)
 
