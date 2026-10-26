@@ -317,3 +317,51 @@ fn the_campus_drives_the_engine() {
     let r = run(&s, &RunOptions { seed: 2, until: Some(4320.0), record: false }, None);
     assert!(r.transports > 0 && r.transport_minutes > 0.0);
 }
+
+// ------------------------------------------------------------------ the export for the 3D views
+
+#[test]
+fn world_coordinates_put_phases_end_to_end() {
+    let shop = toy();
+    let mut cfg = quick(Config::gigafab());
+    cfg.phase_rules = vec![("Etch".into(), 1)];
+    let p = Problem::new(&shop, &toy_areas(), &cfg).unwrap();
+    let c = p.pack(&p.plain());
+    let off = p.offsets(&c);
+    assert_eq!(off, vec![0.0, c.lengths[0] + cfg.bridge]);
+    // north is +y past half the spine, south is -y
+    assert_eq!(p.world(&c, 1, 0, 10.0, 5.0), (off[1] + 10.0, cfg.spine / 2.0 + 5.0));
+    assert_eq!(p.world(&c, 0, 1, 10.0, 5.0), (10.0, -(cfg.spine / 2.0 + 5.0)));
+}
+
+#[test]
+fn the_trace_export_follows_the_run() {
+    let shop = toy();
+    let cfg = quick(Config::gigafab());
+    let p = Problem::new(&shop, &toy_areas(), &cfg).unwrap();
+    let c = p.pack(&p.optimise());
+    let s = with_oht(&shop, p.oht(&c));
+    let r = run(&s, &RunOptions { seed: 2, until: Some(3000.0), record: true }, None);
+    let (from, to) = (600.0, 1800.0);
+    let lots = p.trace(&c, &r, from, to);
+    let want = r.trace.iter().filter(|t| t.end >= from && t.arrive <= to).count();
+    assert_eq!(lots.iter().map(|l| l.steps.len()).sum::<usize>(), want);
+    assert!(want > 0);
+    for l in &lots {
+        assert!(l.steps.windows(2).all(|w| w[0].start <= w[1].start), "{} out of order", l.id);
+        for st in &l.steps {
+            assert!(st.arrive <= st.start && st.start <= st.end);
+            match st.tool {
+                Some(t) => assert_eq!(c.tools[t].group, st.group),
+                None => assert_eq!(p.phase_of(st.group), None),
+            }
+        }
+        if let Some((t, _)) = l.prev {
+            assert!(t <= l.steps[0].arrive);
+        }
+    }
+    let j = p.trace_json(&c, &r, from, to);
+    for k in ["\"from\":600", "\"to\":1800", "\"offsets\":", "\"lots\":", "\"states\":", "on the SMT2020 model"] {
+        assert!(j.contains(k), "{k} missing");
+    }
+}
