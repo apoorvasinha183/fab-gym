@@ -43,12 +43,15 @@ fn t1_exact_incumbent() {
 }
 
 // 2. Choices matter: two lots wait for one tool; picking the second starts it first.
+// (Changed after the first run: in the tiny shop L1 starts before L2 arrives, so the tool is
+// held down for the first 5 minutes to make both lots wait for it.)
 #[test]
 fn t2_choices_matter() {
-    let shop = toy("tiny");
+    let mut shop = toy("tiny");
+    shop.groups[0].down.push((0.0, 5.0));
     let base = run(&shop, &opts(0, None), None);
     let start = |r: &RunResult, id: &str| r.lots.iter().find(|l| l.id == id).unwrap().steps[0].start;
-    assert_eq!((start(&base, "L1"), start(&base, "L2")), (0.0, 10.0));
+    assert_eq!((start(&base, "L1"), start(&base, "L2")), (5.0, 15.0));
     let mut first = true;
     let mut pick = |d: &Decision| {
         if first {
@@ -61,7 +64,7 @@ fn t2_choices_matter() {
         }
     };
     let swapped = run(&shop, &opts(0, None), Some(&mut pick));
-    assert_eq!((start(&swapped, "L1"), start(&swapped, "L2")), (10.0, 0.0));
+    assert_eq!((start(&swapped, "L1"), start(&swapped, "L2")), (15.0, 5.0));
 }
 
 // 2b. A batch candidate starts all its lots together.
