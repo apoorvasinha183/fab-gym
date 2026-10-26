@@ -4,6 +4,7 @@
 pub mod dials;
 pub mod engine;
 pub mod hash;
+pub mod layout;
 pub mod measure;
 pub mod policy;
 pub mod pyrandom;

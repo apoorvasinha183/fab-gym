@@ -18,7 +18,7 @@ use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 use std::fmt::Write as _;
 
 use crate::pyrandom::PyRandom;
-use crate::shop::{Per, Shop};
+use crate::shop::{Oht, Per, Place, Shop};
 
 pub const STATES: [&str; 4] = ["productive", "standby", "scheduled down", "unscheduled down"];
 const PRODUCTIVE: u8 = 0;
@@ -199,6 +199,9 @@ pub struct Probe {
     pub waiting: i64,
     pub wait_lot_minutes: f64,
     pub wip_lot_minutes: f64,
+    /// moves sent between steps so far, and their minutes (counted when sent)
+    pub transports: i64,
+    pub transport_minutes: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -214,6 +217,9 @@ pub struct RunResult {
     pub waiting: i64,
     pub wait_lot_minutes: f64,
     pub moves: i64,
+    /// moves sent between steps, and their minutes (counted when sent)
+    pub transports: i64,
+    pub transport_minutes: f64,
     pub until: f64,
     /// decisions handed to the chooser (or that would have been, without one)
     pub decisions: u64,
@@ -391,6 +397,8 @@ struct Lot {
     trail: Option<Vec<StepOut>>,
     entered: bool,
     inwip: bool,
+    /// where the lot is, when the shop has a layout
+    at: Place,
 }
 
 type QKey = (F, F, u64);
@@ -411,6 +419,11 @@ struct Sim<'a, 'c> {
     full: bool,
     lo_t: f64,
     hi_t: f64,
+    oht: Option<&'a Oht>,
+    /// each group's place under the layout (`None`: a stocker)
+    place_of: Vec<Option<Place>>,
+    transports: i64,
+    transport_minutes: f64,
     routes: Vec<Vec<StepC>>,
     rem_lot: Vec<Vec<f64>>,
     rem_piece: Vec<Vec<f64>>,
@@ -947,7 +960,26 @@ impl<'a, 'c> Sim<'a, 'c> {
             }
             break;
         }
-        let delay = if self.hi_t > 0.0 { self.lots[l as usize].rng.uniform(self.lo_t, self.hi_t) } else { 0.0 };
+        let delay = match self.oht {
+            None => {
+                if self.hi_t > 0.0 {
+                    self.lots[l as usize].rng.uniform(self.lo_t, self.hi_t)
+                } else {
+                    0.0
+                }
+            }
+            Some(o) => {
+                let from = self.lots[l as usize].at;
+                let g = self.routes[self.lots[l as usize].route as usize][self.lots[l as usize].step].group as usize;
+                // a stocker holds the lot at the spine end of the bay it came from
+                let to = self.place_of[g].unwrap_or(Place { bay: usize::MAX, y: 0.0, ..from });
+                let base = o.minutes(o.distance(&from, &to));
+                self.lots[l as usize].at = to;
+                self.lots[l as usize].rng.uniform(base - o.jitter, base + o.jitter).max(0.0)
+            }
+        };
+        self.transports += 1;
+        self.transport_minutes += delay;
         self.at(t + delay, Ev::Arrive(l));
     }
 
@@ -973,6 +1005,10 @@ impl<'a, 'c> Sim<'a, 'c> {
     fn new_lot(&mut self, id: String, route: &str, size: i64, priority: f64, start: f64, step: usize, wip: bool) -> u32 {
         let r = self.shop.routes.iter().position(|x| x.name == route).unwrap_or_else(|| panic!("unknown route {route}"));
         let rng = PyRandom::from_str_seed(&format!("{}/lot/{}", self.seed, id));
+        let at = match self.oht {
+            None => Place { phase: 0, side: 0, bay: 0, x: 0.0, y: 0.0 },
+            Some(o) => self.routes[r].get(step).and_then(|st| self.place_of[st.group as usize]).unwrap_or(o.start),
+        };
         self.lots.push(Lot {
             id,
             route: r as u32,
@@ -988,6 +1024,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             trail: None,
             entered: false,
             inwip: false,
+            at,
         });
         (self.lots.len() - 1) as u32
     }
@@ -1074,12 +1111,27 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         group_tools.push(ids);
     }
     let ng = shop.groups.len();
+    let place_of: Vec<Option<Place>> = match &shop.oht {
+        None => vec![],
+        Some(o) => shop
+            .groups
+            .iter()
+            .map(|g| match o.places.iter().find(|p| p.0 == g.name) {
+                Some(p) => p.1,
+                None => panic!("the layout has no place for group {}", g.name),
+            })
+            .collect(),
+    };
     let mut sim = Sim {
         shop,
         seed: opts.seed,
         full: opts.record,
         lo_t: shop.transport.0,
         hi_t: shop.transport.1,
+        oht: shop.oht.as_ref(),
+        place_of,
+        transports: 0,
+        transport_minutes: 0.0,
         routes,
         rem_lot,
         rem_piece,
@@ -1229,6 +1281,8 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                     waiting: sim.n,
                     wait_lot_minutes: sim.area + sim.n as f64 * (t - sim.last),
                     wip_lot_minutes: sim.warea + sim.wip as f64 * (t - sim.wlast),
+                    transports: sim.transports,
+                    transport_minutes: sim.transport_minutes,
                 });
             }
             Ev::Begin(ti, batch, dur) => {
@@ -1319,6 +1373,8 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         waiting: sim.n,
         wait_lot_minutes: sim.area + sim.n as f64 * (end - sim.last),
         moves: sim.moves,
+        transports: sim.transports,
+        transport_minutes: sim.transport_minutes,
         until: end,
         decisions: sim.decisions,
         trace: std::mem::take(&mut sim.trace),

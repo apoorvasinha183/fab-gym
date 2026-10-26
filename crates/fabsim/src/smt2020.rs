@@ -288,6 +288,7 @@ fn load_with(dir: &Path, reference: bool) -> Result<Shop, String> {
     let mid = f(g(&mv, "DTIME"))?;
     let half = f(g(&mv, "DTIME2"))?;
     Ok(Shop {
+        oht: None,
         transport: (mid - half, mid + half),
         cap: None,
         probes: vec![],

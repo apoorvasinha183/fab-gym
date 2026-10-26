@@ -103,8 +103,77 @@ pub struct Release {
     pub prefix: String,
 }
 
+/// Where a tool group stands on a campus (docs/FAB-LAYOUT.md): phase, side of the spine,
+/// bay, metres along the spine and metres deep from it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Place {
+    pub phase: usize,
+    pub side: usize,
+    pub bay: usize,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Lots moved by the overhead hoist over a layout's distances, instead of the flat transport.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Oht {
+    /// minutes for every move whatever its length (vehicle called, hoist down and up)
+    pub overhead: f64,
+    /// metres per minute
+    pub speed: f64,
+    /// a move takes overhead + distance / speed, plus uniform(-jitter, +jitter) minutes
+    pub jitter: f64,
+    /// metres of bridge between one phase's east end and the next one's west end
+    pub bridge: f64,
+    /// width of the main aisle, crossed to reach the other side
+    pub spine: f64,
+    /// each phase's length along its spine, west to east
+    pub lengths: Vec<f64>,
+    /// where new lots enter
+    pub start: Place,
+    /// every group's place; `None` for a stocker (a lot sent there waits at the spine end of its bay)
+    pub places: Vec<(String, Option<Place>)>,
+}
+
+impl Oht {
+    /// Metres along the aisles between two places.
+    pub fn distance(&self, a: &Place, b: &Place) -> f64 {
+        if a.phase == b.phase {
+            if a.side == b.side && a.bay == b.bay {
+                (a.x - b.x).abs() + (a.y - b.y).abs()
+            } else {
+                a.y + (a.x - b.x).abs() + b.y + if a.side == b.side { 0.0 } else { self.spine }
+            }
+        } else {
+            let (p, q) = if a.phase < b.phase { (a, b) } else { (b, a) };
+            let between: f64 = ((p.phase + 1)..q.phase).map(|k| self.lengths[k] + self.bridge).sum();
+            p.y + (self.lengths[p.phase] - p.x) + self.bridge + between + q.x + q.y
+        }
+    }
+
+    /// Minutes for a move of `metres`, before the jitter.
+    pub fn minutes(&self, metres: f64) -> f64 {
+        self.overhead + metres / self.speed
+    }
+
+    pub fn check(&self) -> Result<(), String> {
+        let ok = self.overhead >= 0.0 && self.speed > 0.0 && self.jitter >= 0.0 && self.jitter <= self.overhead;
+        if !ok || !self.bridge.is_finite() || self.bridge < 0.0 || self.spine < 0.0 {
+            return Err("oht wants overhead >= jitter >= 0, speed > 0, bridge and spine >= 0".into());
+        }
+        let n = self.lengths.len();
+        let bad = |p: &Place| p.phase >= n || p.x < 0.0 || p.y < 0.0 || p.side > 1;
+        if bad(&self.start) || self.places.iter().any(|(_, p)| p.as_ref().is_some_and(bad)) {
+            return Err("an oht place is outside its phases".into());
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Shop {
+    /// moves by a layout instead of `transport`, when given
+    pub oht: Option<Oht>,
     pub transport: (f64, f64),
     /// a WIP cap (CONWIP): releases wait while this many lots are in the fab
     pub cap: Option<i64>,
@@ -195,6 +264,14 @@ fn pio<T: std::str::FromStr>(s: &str) -> Result<Option<T>, String> {
     } else {
         pi(s).map(Some)
     }
+}
+
+fn read_place(f: &[&str]) -> Result<Place, String> {
+    Ok(Place { phase: pi(f[0])?, side: pi(f[1])?, bay: pi(f[2])?, x: pf(f[3])?, y: pf(f[4])? })
+}
+
+fn write_place(p: &Place) -> String {
+    format!("{}\t{}\t{}\t{}\t{}", p.phase, p.side, p.bay, pyrepr(p.x), pyrepr(p.y))
 }
 
 impl Shop {
@@ -332,8 +409,47 @@ impl Shop {
                         prefix: f[7].into(),
                     });
                 }
+                "oht" => {
+                    need(6)?;
+                    s.oht = Some(Oht {
+                        overhead: pf(f[1])?,
+                        speed: pf(f[2])?,
+                        jitter: pf(f[3])?,
+                        bridge: pf(f[4])?,
+                        spine: pf(f[5])?,
+                        lengths: vec![],
+                        start: Place { phase: 0, side: 0, bay: 0, x: 0.0, y: 0.0 },
+                        places: vec![],
+                    });
+                }
+                "ohtphase" | "ohtstart" | "place" => {
+                    let o = s.oht.as_mut().ok_or_else(|| format!("line {}: {} before oht", no + 2, f[0]))?;
+                    match f[0] {
+                        "ohtphase" => {
+                            need(2)?;
+                            o.lengths.push(pf(f[1])?);
+                        }
+                        "ohtstart" => {
+                            need(6)?;
+                            o.start = read_place(&f[1..])?;
+                        }
+                        _ => {
+                            need(3)?;
+                            let p = if f[2] == "stocker" {
+                                None
+                            } else {
+                                need(7)?;
+                                Some(read_place(&f[2..])?)
+                            };
+                            o.places.push((f[1].into(), p));
+                        }
+                    }
+                }
                 other => return Err(format!("line {}: unknown record {other:?}", no + 2)),
             }
+        }
+        if let Some(o) = &s.oht {
+            o.check()?;
         }
         Ok(s)
     }
@@ -347,6 +463,31 @@ impl Shop {
         }
         for p in &self.probes {
             let _ = writeln!(o, "probe\t{}", pyrepr(*p));
+        }
+        if let Some(h) = &self.oht {
+            let _ = writeln!(
+                o,
+                "oht\t{}\t{}\t{}\t{}\t{}",
+                pyrepr(h.overhead),
+                pyrepr(h.speed),
+                pyrepr(h.jitter),
+                pyrepr(h.bridge),
+                pyrepr(h.spine)
+            );
+            for l in &h.lengths {
+                let _ = writeln!(o, "ohtphase\t{}", pyrepr(*l));
+            }
+            let _ = writeln!(o, "ohtstart\t{}", write_place(&h.start));
+            for (g, p) in &h.places {
+                match p {
+                    None => {
+                        let _ = writeln!(o, "place\t{g}\tstocker");
+                    }
+                    Some(p) => {
+                        let _ = writeln!(o, "place\t{g}\t{}", write_place(p));
+                    }
+                }
+            }
         }
         for g in &self.groups {
             let _ = writeln!(

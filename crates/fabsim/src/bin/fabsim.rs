@@ -9,6 +9,13 @@
 //!                                                (docs/LEAN-LONG.md); the overrides are for
 //!                                                smoke runs only; --reference reads the
 //!                                                files as the reference compile does
+//!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S]
+//!                                                the gigafab-style campus (docs/FAB-LAYOUT.md):
+//!                                                plain and optimised plans; layout.json and a
+//!                                                summary to O, the shops with layouts to D
+//!   fabsim layout-score [DIR] [--data D] [--out O] [--threads T] [--days N --warmup W --seeds K]
+//!                                                H2: the two plans (and SMT2020's flat transport)
+//!                                                on paired seeds
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -165,6 +172,122 @@ fn lean_long(args: &[String]) {
     println!("{md}");
 }
 
+fn flag<'a>(args: &'a [String], flag: &str, default: &'a str) -> &'a str {
+    args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(|s| s.as_str()).unwrap_or(default)
+}
+
+fn layout(args: &[String]) {
+    use fabsim::layout::{Config, Problem};
+    use std::fmt::Write as _;
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let out = PathBuf::from(flag(args, "--out", "results/layout"));
+    let data = PathBuf::from(flag(args, "--data", "data/layout"));
+    let mut cfg = Config::gigafab();
+    cfg.iters = arg(args, "--iters", cfg.iters as u64) as usize;
+    cfg.restarts = arg(args, "--restarts", cfg.restarts as u64) as usize;
+    cfg.seed = arg(args, "--seed", cfg.seed);
+    let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let areas = fabsim::smt2020::areas(&dir).expect("areas");
+    let p = Problem::new(&shop, &areas, &cfg).expect("a layout problem");
+    let t0 = Instant::now();
+    let plain = p.pack(&p.plain());
+    let best = p.pack(&p.optimise());
+    let secs = t0.elapsed().as_secs_f64();
+    std::fs::create_dir_all(&out).unwrap();
+    std::fs::create_dir_all(&data).unwrap();
+    std::fs::write(out.join("layout.json"), p.to_json(&[("plain", &plain), ("optimised", &best)])).unwrap();
+    for (name, c) in [("plain", &plain), ("optimised", &best)] {
+        let mut s = shop.clone();
+        s.oht = Some(p.oht(c));
+        std::fs::write(data.join(format!("{name}.shop.txt")), s.to_text()).unwrap();
+    }
+    let lots: f64 = p.flows().iter().map(|f| f.2).sum();
+    let mut md = String::new();
+    let _ = writeln!(md, "A gigafab-style layout of our own design on the SMT2020 model (docs/FAB-LAYOUT.md); every placement number is assumed. Not a real fab.\n");
+    let _ = writeln!(md, "Optimiser: simulated annealing, {} moves x {} restarts, seed {}, {secs:.1} s. A heuristic; the metres are exact for the stated flows.\n", cfg.iters, cfg.restarts, cfg.seed);
+    let _ = writeln!(md, "Moves a day at the release rates: {lots:.1}; crossing the bridge: {:.1} a day.\n", p.crossings());
+    let _ = writeln!(md, "| plan | OHT metres a day | metres a move | P1 length (north / south) | P2 length (north / south) |\n|---|---|---|---|---|");
+    for (name, c) in [("plain", &plain), ("optimised", &best)] {
+        let m = p.cost(c);
+        let _ = writeln!(md, "| {name} | {m:.0} | {:.1} | {:.0} ({:.0} / {:.0}) | {:.0} ({:.0} / {:.0}) |", m / lots,
+            c.lengths[0], c.sides[0][0], c.sides[0][1], c.lengths[1], c.sides[1][0], c.sides[1][1]);
+    }
+    let (a, b) = (p.cost(&plain), p.cost(&best));
+    let _ = writeln!(md, "\nThe optimised plan carries {:.1}% fewer metres a day.", 100.0 * (a - b) / a);
+    std::fs::write(out.join("summary.md"), &md).unwrap();
+    println!("{md}");
+}
+
+fn layout_score(args: &[String]) {
+    use fabsim::uq::{paired, verdict, Verdict};
+    use fabsim::window::{score, with_probes, Window};
+    use std::fmt::Write as _;
+    use std::sync::Mutex;
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let data = PathBuf::from(flag(args, "--data", "data/layout"));
+    let out = PathBuf::from(flag(args, "--out", "results/layout"));
+    let threads = arg(args, "--threads", 4) as usize;
+    let days = arg(args, "--days", 150) as f64;
+    let warmup = arg(args, "--warmup", 60) as f64;
+    let nseeds = arg(args, "--seeds", 10);
+    let preregistered = days == 150.0 && warmup == 60.0 && nseeds == 10;
+    let seeds: Vec<u64> = (3000..3000 + nseeds).collect();
+    let w = Window { from: warmup * 1440.0, to: days * 1440.0 };
+    let read = |n: &str| Shop::parse(&std::fs::read_to_string(data.join(format!("{n}.shop.txt"))).expect("run fabsim layout first")).unwrap();
+    let flat = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let arms: Vec<(&str, Shop)> = vec![("plain", read("plain")), ("optimised", read("optimised")), ("smt2020-flat", flat)];
+    let arms: Vec<(&str, Shop)> = arms.into_iter().map(|(n, s)| (n, with_probes(&s, &w))).collect();
+    let jobs: Vec<(usize, u64)> = (0..arms.len()).flat_map(|a| seeds.iter().map(move |&s| (a, s))).collect();
+    eprintln!("{} runs of {days} days (window {warmup}-{days}), {threads} threads", jobs.len());
+    let t0 = Instant::now();
+    let res: Mutex<Vec<Option<[f64; 5]>>> = Mutex::new(vec![None; jobs.len()]);
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|sc| {
+        for _ in 0..threads.max(1) {
+            sc.spawn(|| loop {
+                let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if i >= jobs.len() {
+                    break;
+                }
+                let (a, seed) = jobs[i];
+                let r = run(&arms[a].1, &RunOptions { seed, until: Some(w.to), record: false }, None);
+                let s = score(&r, &w).unwrap();
+                let pa = r.probes.iter().find(|p| p.t == w.from).unwrap();
+                let pb = r.probes.iter().find(|p| p.t == w.to).unwrap();
+                let tpm = (pb.transport_minutes - pa.transport_minutes) / (pb.transports - pa.transports) as f64;
+                let row = [tpm, s.cycle_days, s.wafers_per_day, s.mean_wip, s.hot_cycle_days.unwrap_or(f64::NAN)];
+                eprintln!("  {} seed {seed}: {:?}", arms[a].0, row);
+                res.lock().unwrap()[i] = Some(row);
+            });
+        }
+    });
+    let secs = t0.elapsed().as_secs_f64();
+    let res: Vec<[f64; 5]> = res.into_inner().unwrap().into_iter().map(|x| x.unwrap()).collect();
+    let n = seeds.len();
+    let col = |a: usize, k: usize| -> Vec<f64> { (0..n).map(|i| res[a * n + i][k]).collect() };
+    let names = [("transport minutes a move", false), ("cycle time, days", false), ("wafers out a day", true), ("mean WIP, lots", false), ("hot-lot cycle time, days", false)];
+    let alpha = 0.05 / names.len() as f64;
+    let mut md = String::new();
+    let _ = writeln!(md, "On the SMT2020 model, a gigafab-style layout of our own design. Seeds {}..{} paired, {days} days, window days {warmup} to {days}, {secs:.0} s. Optimised minus plain, paired t intervals at level {alpha:.3} each (Bonferroni over {} measures, so all cover at once with probability at least 95%). SMT2020's flat transport is for reference only. Real-fab effect: cannot say.{}\n",
+        seeds[0], seeds[n - 1], names.len(), if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
+    let _ = writeln!(md, "| measure | plain | optimised | optimised minus plain (95%) | verdict | SMT2020 flat |\n|---|---|---|---|---|---|");
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    let mut json = format!("{{\"model\":\"SMT2020\",\"preregistered\":{preregistered},\"days\":{days},\"warmup\":{warmup},\"seeds\":{seeds:?},\"alpha_each\":{alpha},\"measures\":[");
+    for (k, (name, higher)) in names.iter().enumerate() {
+        let (a, b, f) = (col(0, k), col(1, k), col(2, k));
+        let iv = paired(&a, &b, alpha);
+        let v = if iv.lo.is_nan() { Verdict::CannotSay } else { verdict(&iv, *higher) };
+        let word = match v { Verdict::Better => "better", Verdict::Worse => "worse", Verdict::CannotSay => "no clear effect" };
+        let _ = writeln!(md, "| {name} | {:.3} | {:.3} | {:+.3} ({:+.3} to {:+.3}) | {word} | {:.3} |", mean(&a), mean(&b), iv.mean, iv.lo, iv.hi, mean(&f));
+        let _ = write!(json, "{}{{\"name\":\"{name}\",\"plain\":{a:?},\"optimised\":{b:?},\"flat\":{f:?},\"mean\":{},\"lo\":{},\"hi\":{},\"verdict\":\"{word}\"}}", if k > 0 { "," } else { "" }, iv.mean, iv.lo, iv.hi);
+    }
+    json.push_str("]}");
+    std::fs::create_dir_all(&out).unwrap();
+    std::fs::write(out.join("score.md"), &md).unwrap();
+    std::fs::write(out.join("score.json"), json.replace("NaN", "null")).unwrap();
+    println!("{md}");
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
@@ -187,6 +310,8 @@ fn main() {
             println!("wrote {}", out.display());
         }
         Some("lean-long") => lean_long(&args[1..]),
+        Some("layout") => layout(&args[1..]),
+        Some("layout-score") => layout_score(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
