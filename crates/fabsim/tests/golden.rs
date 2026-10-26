@@ -38,7 +38,7 @@ fn toy_logs_match_reference() {
 #[test]
 fn smt2020_shop_matches_reference_compile() {
     let Some(dir) = common::smt2020_dir() else { return };
-    let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let shop = fabsim::smt2020::load_reference(&dir).expect("SMT2020 loads");
     let text = shop.to_text();
     let golden = common::repo().join("data/golden/smt2020.shop.txt");
     if let Ok(want) = std::fs::read_to_string(&golden) {
@@ -51,7 +51,7 @@ fn smt2020_shop_matches_reference_compile() {
 
 fn smt2020_run(seed: u64, days: u32) {
     let Some(dir) = common::smt2020_dir() else { return };
-    let shop = fabsim::smt2020::load(&dir).unwrap();
+    let shop = fabsim::smt2020::load_reference(&dir).unwrap();
     let opts = RunOptions { seed, until: Some(1440.0 * days as f64), record: true };
     let text = run(&shop, &opts, None).log_text();
     let name = format!("smt2020.seed{seed}.{days}d.log.txt");

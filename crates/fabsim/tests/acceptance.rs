@@ -33,7 +33,7 @@ fn t1_exact_incumbent() {
         common::assert_same_text(&chosen, &plain, name);
     }
     if let Some(dir) = common::smt2020_dir() {
-        let shop = fabsim::smt2020::load(&dir).unwrap();
+        let shop = fabsim::smt2020::load_reference(&dir).unwrap();
         let o = opts(0, Some(360.0));
         let plain = run(&shop, &o, None).log_text();
         let mut pick = |d: &Decision| d.default;
@@ -189,7 +189,7 @@ fn t6_no_leakage() {
 #[test]
 fn t7_faithful_world() {
     let Some(dir) = common::smt2020_dir() else { return };
-    let shop = fabsim::smt2020::load(&dir).unwrap();
+    let shop = fabsim::smt2020::load_reference(&dir).unwrap();
     let days = fabsim::measure::raw_processing_days(&shop, 20, 0);
     for (part, want) in [("part_3", 24.75), ("part_4", 14.54)] {
         let got = days[part];
