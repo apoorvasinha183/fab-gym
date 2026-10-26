@@ -156,6 +156,8 @@ pub struct Trace {
 
 #[derive(Clone, Debug)]
 pub struct Breach {
+    /// when the late step began (not in the log, which stays as the reference writes it)
+    pub t: f64,
     pub lot: String,
     pub from: usize,
     pub to: usize,
@@ -870,6 +872,7 @@ impl<'a, 'c> Sim<'a, 'c> {
                     let gap = begin - since;
                     if gap > limit {
                         self.breaches.push(Breach {
+                            t: begin,
                             lot: self.lots[l as usize].id.clone(),
                             from,
                             to,

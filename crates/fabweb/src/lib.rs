@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::fmt::Write as _;
 
 use fabsim::dials::Dials;
-use fabsim::engine::{run, Decision, RunOptions, RunResult};
+use fabsim::engine::{RunOptions, RunResult};
 use fabsim::shop::Shop;
 
 #[derive(Default)]
@@ -57,17 +57,12 @@ pub fn prepare(base: &Shop, dials: &Dials, down_group: i32, down_at: f64, down_h
 }
 
 fn run_policy(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
-    match policy {
-        Policy::Fifo => {
-            let mut pick = |d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0));
-            run(shop, opts, Some(&mut pick))
-        }
-        Policy::Spt => {
-            let mut pick = |d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes));
-            run(shop, opts, Some(&mut pick))
-        }
-        Policy::Today => run(shop, opts, None),
-    }
+    let p = match policy {
+        Policy::Fifo => fabsim::policy::Policy::Fifo,
+        Policy::Spt => fabsim::policy::Policy::Spt,
+        Policy::Today => fabsim::policy::Policy::Today,
+    };
+    fabsim::policy::run_with(shop, opts, p)
 }
 
 /// The totals of one run, for comparing paired seeds.
@@ -115,7 +110,7 @@ pub extern "C" fn fg_t(p: f64, df: f64) -> f64 {
 pub extern "C" fn fg_dials(breakdowns: f64, repair: f64, demand: f64, hot: f64, rework: f64, cap: f64) -> i32 {
     ST.with(|st| {
         let mut st = st.borrow_mut();
-        let d = Dials { breakdowns, repair, demand, hot, rework, cap: if cap > 0.0 { Some(cap as i64) } else { None }, outage: None };
+        let d = Dials { breakdowns, repair, demand, hot, rework, cap: if cap > 0.0 { Some(cap as i64) } else { None }, ..Dials::default() };
         match st.shop.as_ref().map(|s| d.apply(s)) {
             Some(Err(e)) => {
                 st.json = format!("{{\"error\":{}}}", js(&e));
@@ -264,18 +259,6 @@ pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, dow
     })
 }
 
-fn argmin(d: &Decision, key: impl Fn(&fabsim::engine::Candidate) -> (f64, f64)) -> usize {
-    let mut best = d.default;
-    let mut bk = key(&d.candidates[best]);
-    for (i, c) in d.candidates.iter().enumerate() {
-        let k = key(c);
-        if k < bk {
-            best = i;
-            bk = k;
-        }
-    }
-    best
-}
 
 fn summary(shop: &Shop, res: &RunResult) -> String {
     let mut o = String::from("{");

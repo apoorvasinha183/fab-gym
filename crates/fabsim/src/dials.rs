@@ -26,11 +26,18 @@ pub struct Dials {
     /// a WIP cap in lots; replaces the shop's own cap when given
     pub cap: Option<i64>,
     pub outage: Option<Outage>,
+    /// more tools in a group: (group, how many); existing tools keep their random draws
+    pub spare: Vec<(String, usize)>,
+    /// lots in progress made hot (priority 20), spread evenly over the lots sorted by id
+    pub make_hot: usize,
 }
+
+/// The priority a lot made hot gets.
+pub const HOT_PRIORITY: f64 = 20.0;
 
 impl Default for Dials {
     fn default() -> Dials {
-        Dials { breakdowns: 1.0, repair: 1.0, demand: 1.0, hot: 1.0, rework: 1.0, cap: None, outage: None }
+        Dials { breakdowns: 1.0, repair: 1.0, demand: 1.0, hot: 1.0, rework: 1.0, cap: None, outage: None, spare: vec![], make_hot: 0 }
     }
 }
 
@@ -88,6 +95,26 @@ impl Dials {
             nonneg(o.from, "outage start")?;
             let g = s.groups.iter_mut().find(|g| g.name == o.group).ok_or_else(|| format!("no tool group {:?}", o.group))?;
             g.down.push((o.from, o.from + o.hours * 60.0));
+        }
+        for (name, n) in &self.spare {
+            if *n == 0 {
+                return Err(format!("spare tools for {name:?} must be at least 1"));
+            }
+            let g = s.groups.iter_mut().find(|g| &g.name == name).ok_or_else(|| format!("no tool group {name:?}"))?;
+            g.count += n;
+        }
+        if self.make_hot > 0 {
+            let mut ids: Vec<(String, usize)> =
+                s.lots.iter().enumerate().filter(|(_, l)| l.priority < HOT_PRIORITY).map(|(i, l)| (l.id.clone(), i)).collect();
+            ids.sort();
+            let (m, n) = (ids.len(), self.make_hot);
+            if n > m {
+                return Err(format!("{n} hot lots asked for, {m} lots in progress are not hot"));
+            }
+            for i in 0..n {
+                let k = ((i as f64 + 0.5) * m as f64 / n as f64) as usize;
+                s.lots[ids[k.min(m - 1)].1].priority = HOT_PRIORITY;
+            }
         }
         Ok(s)
     }

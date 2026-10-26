@@ -1,0 +1,8 @@
+fabgym-scenario 1
+question	Group 79 is down tomorrow, what do we do? (hand-written example, not a model answer)
+shock	outage	Planar_FE_79	30	8	assumed
+candidate	fifo	rule	fifo
+candidate	critical-ratio	rule	cr
+candidate	spare-tool	spare	Planar_FE_79	1
+candidate	cap-2400	cap	2400
+sweep	outage	hours	4	24	4

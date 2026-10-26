@@ -2,6 +2,8 @@
 //!
 //!   fabsim bench [DIR] [--days N] [--seeds K]   time runs on the SMT2020 model
 //!   fabsim log SHOP SEED [UNTIL]                 print the canonical log of a shop file
+//!   fabsim score SCENARIO [DIR] [--seeds A..B] [--threads T]
+//!                                                score a scenario (docs/ASK.md); JSON on stdout
 //!   fabsim lean-long [DIR] [--threads T] [--out O] [--reference] [--days N --warmup W --seeds K]
 //!                                                the pre-registered long-run lean question
 //!                                                (docs/LEAN-LONG.md); the overrides are for
@@ -185,6 +187,23 @@ fn main() {
             println!("wrote {}", out.display());
         }
         Some("lean-long") => lean_long(&args[1..]),
+        Some("score") => {
+            let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
+            let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+            let mut p = fabsim::score::Protocol { threads: arg(&args, "--threads", 4) as usize, ..Default::default() };
+            if let Some(r) = args.iter().position(|a| a == "--seeds").and_then(|i| args.get(i + 1)) {
+                let (a, b) = r.split_once("..").expect("--seeds A..B");
+                p.seeds = (a.parse::<u64>().unwrap()..b.parse::<u64>().unwrap()).collect();
+            }
+            let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+            match fabsim::scenario::Scenario::parse(&text).and_then(|sc| fabsim::score::score(&shop, &sc, &p)) {
+                Ok(r) => println!("{}", r.to_json()),
+                Err(e) => {
+                    eprintln!("refused: {e}");
+                    std::process::exit(2);
+                }
+            }
+        }
         _ => eprintln!("usage: fabsim bench [DIR] [--days N] [--seeds K] | fabsim log SHOP SEED [UNTIL]"),
     }
 }

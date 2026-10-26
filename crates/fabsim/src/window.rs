@@ -31,6 +31,15 @@ pub struct WindowScore {
     /// lots released during the run above the lowest priority, finished in the window
     pub hot_lots: usize,
     pub hot_cycle_days: Option<f64>,
+    /// steps started in the window
+    pub moves: f64,
+    pub lots_finished: f64,
+    pub wait_lot_hours: f64,
+    pub wait_per_move_minutes: f64,
+    /// lots that broke a queue-time limit in the window
+    pub breaches: f64,
+    /// lots finished minus 0.01 per lot-hour waiting (docs/PROBLEM.md)
+    pub reward: f64,
 }
 
 /// A copy of the shop with probes at the window's ends (kept sorted, without repeats).
@@ -55,7 +64,16 @@ pub fn score(r: &RunResult, w: &Window) -> Result<WindowScore, String> {
     let lot_minutes = b.wip_lot_minutes - a.wip_lot_minutes;
     let lowest = r.lots.iter().map(|l| l.priority).fold(f64::INFINITY, f64::min);
     let hot: Vec<f64> = done.iter().filter(|l| !l.wip && l.priority > lowest).map(|l| (l.done.unwrap() - l.release) / 1440.0).collect();
+    let moves = (b.moves - a.moves) as f64;
+    let wait_lot_hours = (b.wait_lot_minutes - a.wait_lot_minutes) / 60.0;
+    let breaches = r.breaches.iter().filter(|x| x.t > w.from && x.t <= w.to).count() as f64;
     Ok(WindowScore {
+        moves,
+        lots_finished: lots,
+        wait_lot_hours,
+        wait_per_move_minutes: if moves > 0.0 { wait_lot_hours * 60.0 / moves } else { f64::NAN },
+        breaches,
+        reward: lots - 0.01 * wait_lot_hours,
         lots_per_day: lots / days,
         wafers_per_day: wafers / days,
         mean_wip: lot_minutes / (w.to - w.from),
