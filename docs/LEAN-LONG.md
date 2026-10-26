@@ -59,7 +59,9 @@ Seeds 0 to 29 are therefore not used below.
 ## Results
 
 Run 27 October 2026 with `fabsim lean-long --threads 4` (513 s on the M1, niced), exactly the
-design above. Every run is in `results/lean-long/runs.tsv`; the intervals in `summary.json`.
+design above. The loader then read two metrology groups' first maintenance (given in days) as
+minutes, as the reference compile does; `fabsim lean-long --reference` reproduces these results.
+A rerun with the units read correctly is reported after the tables. Every run is in `results/lean-long/runs.tsv`; the intervals in `summary.json`.
 
 **What it shows, on the SMT2020 model:**
 

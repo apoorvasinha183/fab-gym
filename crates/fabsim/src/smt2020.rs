@@ -5,8 +5,10 @@
 //! reference compile makes them (see NOTICE.md and docs/PROBLEM.md):
 //!
 //! - with one tool in a group, a maintenance calendar's first occurrence (FOA) is taken as given,
-//!   read as minutes (the reference reads it without its units; kept for the exact match);
-//!   with several tools each tool's first is drawn over one period;
+//!   in its units (days, or wafers for a calendar counted in wafers); with several tools each
+//!   tool's first is drawn over one period. The reference compile reads a first occurrence in
+//!   days as minutes (two metrology groups, DefMet_BE_42 and DefMet_FE_106); `load_reference`
+//!   keeps that reading for the tests that match the reference's logs exactly;
 //! - setups named on a route step apply from no setup (`>NAME`); `setup.txt` adds changes
 //!   between named setups to the groups (or areas) it names;
 //! - breakdowns attach to every group of the area they name.
@@ -132,6 +134,16 @@ fn set(v: &mut Vec<(String, f64)>, k: String, x: f64) {
 /// Read the testbed's files from `dir` into a shop: groups, both routes, the lots in progress
 /// (`WIP.txt`) and the lot starts (`order.txt`).
 pub fn load(dir: &Path) -> Result<Shop, String> {
+    load_with(dir, false)
+}
+
+/// As `load`, but reading a first maintenance occurrence given in days as minutes, as the
+/// reference compile does, so runs match the reference's logs exactly.
+pub fn load_reference(dir: &Path) -> Result<Shop, String> {
+    load_with(dir, true)
+}
+
+fn load_with(dir: &Path, reference: bool) -> Result<Shop, String> {
     let tools = rows(dir, "tool.txt.1l")?;
     let parts = rows(dir, "part.txt")?;
     let mut routes: Vec<(String, Vec<Row>)> = vec![];
@@ -212,14 +224,16 @@ pub fn load(dir: &Path) -> Result<Shop, String> {
             let half = if g(c, "MTTR2").is_empty() { 0.0 } else { f(g(c, "MTTR2"))? };
             let u = unit(g(c, "MTTRUNITS"))?;
             let k = idx[g(a, "RESNAME")];
+            let by_pieces = g(c, "PMCALTYPE") == "mtbpm_by_pieces";
             let first = if groups[k].count == 1 && !g(a, "FOA").is_empty() {
-                Some(f(g(a, "FOA"))?)
+                let foa = f(g(a, "FOA"))?;
+                Some(if reference || by_pieces { foa } else { foa * unit_or(g(a, "FOAUNITS"), "min")? })
             } else {
                 None
             };
             let lo = (mid - half) * u;
             let hi = (mid + half) * u;
-            if g(c, "PMCALTYPE") == "mtbpm_by_pieces" {
+            if by_pieces {
                 groups[k].pm_pieces.push(Pm { every: f(g(c, "MTBPM"))?, lo, hi, first });
             } else {
                 let every = f(g(c, "MTBPM"))? * unit(g(c, "MTBPMUNITS"))?;

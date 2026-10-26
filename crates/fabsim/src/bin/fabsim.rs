@@ -2,10 +2,11 @@
 //!
 //!   fabsim bench [DIR] [--days N] [--seeds K]   time runs on the SMT2020 model
 //!   fabsim log SHOP SEED [UNTIL]                 print the canonical log of a shop file
-//!   fabsim lean-long [DIR] [--threads T] [--out O] [--days N --warmup W --seeds K]
+//!   fabsim lean-long [DIR] [--threads T] [--out O] [--reference] [--days N --warmup W --seeds K]
 //!                                                the pre-registered long-run lean question
 //!                                                (docs/LEAN-LONG.md); the overrides are for
-//!                                                smoke runs only
+//!                                                smoke runs only; --reference reads the
+//!                                                files as the reference compile does
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -73,7 +74,8 @@ fn lean_long(args: &[String]) {
     let caps: [Option<i64>; 6] = [None, Some(1800), Some(2100), Some(2400), Some(2700), Some(3000)];
     let seeds: Vec<u64> = (1000..1000 + nseeds).collect();
     let w = Window { from: warmup * 1440.0, to: days * 1440.0 };
-    let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let reference = args.iter().any(|a| a == "--reference");
+    let shop = if reference { fabsim::smt2020::load_reference(&dir) } else { fabsim::smt2020::load(&dir) }.expect("SMT2020 loads");
     let mut configs = vec![];
     for &k in &ks {
         for &cap in &caps {
@@ -109,10 +111,12 @@ fn lean_long(args: &[String]) {
     ];
     let fmt_iv = |iv: &Interval| format!("{:+.2} ({:+.2} to {:+.2})", iv.mean, iv.lo, iv.hi);
     let mut md = String::new();
-    let _ = writeln!(md, "On the SMT2020 model. {} seeds ({}..{}), {days} days, window days {warmup} to {days}. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over {cells} cells (each at level {:.4}), so all cover at once with probability at least 95%. Real-fab effect: cannot say.{}\n",
-        seeds.len(), seeds[0], seeds[seeds.len() - 1], alpha, if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
+    let _ = writeln!(md, "On the SMT2020 model. {} seeds ({}..{}), {days} days, window days {warmup} to {days}. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over {cells} cells (each at level {:.4}), so all cover at once with probability at least 95%. Real-fab effect: cannot say. Files read {}.{}\n",
+        seeds.len(), seeds[0], seeds[seeds.len() - 1], alpha,
+        if reference { "as the reference compile reads them (first maintenance in days taken as minutes)" } else { "with their units" },
+        if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
     let mut json = String::from("{\"model\":\"SMT2020\",\"preregistered\":");
-    let _ = write!(json, "{preregistered},\"days\":{days},\"warmup\":{warmup},\"seeds\":{:?},\"alpha_each\":{alpha},\"seconds\":{secs:.1},\"cells\":[", seeds);
+    let _ = write!(json, "{preregistered},\"reference_reading\":{reference},\"days\":{days},\"warmup\":{warmup},\"seeds\":{:?},\"alpha_each\":{alpha},\"seconds\":{secs:.1},\"cells\":[", seeds);
     let mut first = true;
     for (key, name, higher, f) in metrics.iter() {
         let _ = writeln!(md, "### {name}\n\n| breakdowns | no cap (mean) | {} |\n|---|---|{}", caps[1..].iter().map(|c| format!("cap {}", c.unwrap())).collect::<Vec<_>>().join(" | "), "---|".repeat(caps.len() - 1));
