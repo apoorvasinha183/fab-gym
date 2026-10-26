@@ -1,0 +1,348 @@
+<title>Gigafab Campus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column with full-bleed plates for the film and the floor plan, a fab drawing set's sheet order. */
+:root {
+  --bg: #eef1f5;
+  --paper: #ffffff;
+  --ink: #18202c;
+  --muted: #5b6678;
+  --rule: #d5dbe4;
+  --accent: #1f6fd1;
+  --plate: #0b1220;
+  --plate-ink: #dfe7f2;
+  --good: #1d8a4e;
+  --flat: #8a5a00;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e141e; --paper: #151d2a; --ink: #e4eaf3; --muted: #9aa6b8; --rule: #273246; --accent: #6aa8ff; --plate: #070c15; --plate-ink: #dfe7f2; --good: #4cc28a; --flat: #e0a84a; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0e141e; --paper: #151d2a; --ink: #e4eaf3; --muted: #9aa6b8; --rule: #273246; --accent: #6aa8ff; --plate: #070c15; --plate-ink: #dfe7f2; --good: #4cc28a; --flat: #e0a84a; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 36px 64px; display: grid; gap: 44px; }
+header { display: grid; gap: 10px; }
+.sheet { font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 800 clamp(34px, 6vw, 60px)/1.02 var(--display); font-stretch: 78%; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font: 750 26px/1.15 var(--display); font-stretch: 85%; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 18px; color: var(--muted); }
+.disclaim { font: 13px/1.5 var(--mono); color: var(--muted); }
+section { display: grid; gap: 16px; min-width: 0; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button, .seg button { font: 500 14px var(--body); border: 1px solid var(--rule); background: var(--paper); color: var(--ink); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.tabs button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.plate { background: var(--plate); border-radius: 10px; overflow: hidden; color: var(--plate-ink); }
+video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--plate); }
+.pending { aspect-ratio: 16 / 9; display: grid; place-items: center; font: 14px var(--mono); color: #8fa0b8; padding: 16px; text-align: center; }
+.cap { font-size: 14px; color: var(--muted); }
+.controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.seg { display: flex; gap: 6px; }
+label.chk { display: flex; gap: 6px; align-items: center; font-size: 14px; }
+.planwrap { position: relative; }
+canvas { display: block; width: 100%; height: auto; touch-action: manipulation; }
+.tip { position: absolute; pointer-events: none; background: rgba(8, 12, 20, .92); color: #e8eef7; font: 13px/1.4 var(--mono); padding: 8px 10px; border-radius: 6px; max-width: 260px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 12px 16px 16px; font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.stat { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; display: grid; gap: 4px; }
+.stat b { font: 700 28px/1.1 var(--display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.stat small { color: var(--muted); font-size: 13px; }
+.tablebox { overflow-x: auto; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.pill { font: 500 12px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.better { color: var(--good); }
+.pill.none { color: var(--muted); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.two > div { min-width: 0; display: grid; gap: 8px; align-content: start; }
+code { font: 13px var(--mono); background: var(--paper); border: 1px solid var(--rule); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { font: 13px/1.5 var(--mono); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; margin: 0; overflow-x: auto; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="sheet">Fab Gym · sheet A-101 · campus layout and film</div>
+    <h1>Gigafab Campus</h1>
+    <p class="lede">A floor plan for the SMT2020 fab, optimised for the overhead hoist, then built and run in 3D. Front end in phase 1, copper back end in phase 2, a pad for phase 3.</p>
+    <p class="disclaim">A gigafab-style layout of our own design on the SMT2020 model. Not a real fab, not TSMC's, no real plant data. Every number that places a tool is assumed.</p>
+  </header>
+
+  <section aria-labelledby="film-h">
+    <h2 id="film-h">The campus running</h2>
+    <div class="tabs" role="group" aria-label="Film">
+      <button id="tab-blender" aria-pressed="true">Blender film</button>
+      <button id="tab-godot" aria-pressed="false">Godot tour, with live counts</button>
+    </div>
+    <div class="plate" id="film"></div>
+    <p class="cap">Six hours of simulated fab time (day 30, seed 3000, optimised plan) in 60 seconds. White boxes are lots, orange ones hot lots, drawn larger than life. Lots ride the hoist rails at 7 m; towers at bay mouths are lots waiting for a tool. In the Godot tour a dimmed tool is idle, an amber light means maintenance and a red light a breakdown.</p>
+  </section>
+
+  <section aria-labelledby="plan-h">
+    <h2 id="plan-h">The floor plan</h2>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Plan">
+        <button id="p-optimised" aria-pressed="true">Optimised</button>
+        <button id="p-plain" aria-pressed="false">Plain</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="flows" checked> Busiest moves between groups</label>
+    </div>
+    <div class="plate planwrap">
+      <canvas id="plan" width="1180" height="560" aria-label="Floor plan of the campus"></canvas>
+      <div class="tip" id="tip" hidden></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <p class="cap" id="plancap"></p>
+  </section>
+
+  <section aria-labelledby="num-h">
+    <h2 id="num-h">What the optimiser bought</h2>
+    <div class="stats" id="stats"></div>
+    <p>The plan moves about 22,800 lots a day between tools at the release rates. Simulated annealing reorders the area blocks along each spine, picks their side and orders the groups inside them, keeping the two sides within 40 m of each other. The metres are exact for these flows. The method is a heuristic, so a better plan may exist.</p>
+    <div class="tablebox"><table id="score"></table></div>
+    <p>In the simulator (seeds 3000 to 3009, days 60 to 150, 95% intervals over all five at once) the optimised plan saves 0.30 min on every move. Cycle time, wafers out and WIP show no clear effect. SMT2020's flat 7.5-minute moves give the same cycle time. On this model lots spend their days queueing at the slowest tool groups (the towers in the film), and minutes saved on the hoist are lost in those queues. Real-fab effect: cannot say.</p>
+  </section>
+
+  <section aria-labelledby="open-h">
+    <h2 id="open-h">Open the projects</h2>
+    <div class="two">
+      <div>
+        <strong>Godot 4.7 scene</strong>
+        <pre>cd ~/evalzero_work/fab-gym
+python3 viz/prep.py --copy viz/godot/data/scene.json
+open -a ~/Applications/Godot.app viz/godot/project.godot</pre>
+        <p class="cap">Drag to orbit, right-drag or WASD to pan, scroll to zoom, 1 to 5 for views, T for the tour, Space to pause, + and − for speed, H to hide the panel.</p>
+      </div>
+      <div>
+        <strong>Blender 5.2 scene</strong>
+        <pre>~/evalzero_work/fab-gym/data/layout/film/campus.blend
+(on the Mac mini: ~/fab-gym-3d/out/campus.blend)</pre>
+        <p class="cap">One mesh per area, 2,257 animated lots, the tour camera on a track-to target. Rebuild with <code>Blender -b -P viz/blender/build.py -- scene.json OUT</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="as-h">
+    <h2 id="as-h">Assumed numbers</h2>
+    <div class="tablebox"><table id="assumed"></table></div>
+    <p class="cap">Spec, method and pre-registration: <code>docs/FAB-LAYOUT.md</code>. Data: <code>results/layout/</code>. Tools stand along both walls of each bay with a service chase behind them; the waiting step Delay_32 is drawn as stockers on the spine.</p>
+  </section>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const FILMS = { blender: "{{BLENDER}}", godot: "{{GODOT}}" };
+const AREA = {
+  Litho: ["#f2c94c", "Lithography"], Litho_Met: ["#f2994a", "Litho metrology"], Def_Met: ["#ff8fab", "Defect metrology"],
+  TF_Met: ["#bb6bd9", "Film metrology"], Dry_Etch: ["#2d9cdb", "Dry etch"], Wet_Etch: ["#56ccf2", "Wet etch and clean"],
+  Diffusion: ["#ff7a59", "Diffusion furnaces"], Dielectric: ["#6fcf97", "Dielectric deposition"], TF: ["#9b51e0", "Thin film (metal)"],
+  Planar: ["#27ae60", "CMP"], Implant: ["#b08968", "Implant and epitaxy"]
+};
+const fmt = (x, d = 0) => x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// ---------------------------------------------------------------- films
+function showFilm(which) {
+  document.getElementById("tab-blender").setAttribute("aria-pressed", which === "blender");
+  document.getElementById("tab-godot").setAttribute("aria-pressed", which === "godot");
+  const box = document.getElementById("film");
+  box.textContent = "";
+  const url = FILMS[which];
+  if (!url || url.startsWith("{{")) {
+    const p = document.createElement("div");
+    p.className = "pending";
+    p.textContent = "This film is still rendering.";
+    box.append(p);
+    return;
+  }
+  const v = document.createElement("video");
+  v.src = url; v.controls = true; v.muted = true; v.loop = true; v.playsInline = true; v.preload = "metadata";
+  box.append(v);
+}
+document.getElementById("tab-blender").onclick = () => showFilm("blender");
+document.getElementById("tab-godot").onclick = () => showFilm("godot");
+showFilm(FILMS.blender && !FILMS.blender.startsWith("{{") ? "blender" : "godot");
+
+// ---------------------------------------------------------------- floor plan
+const cv = document.getElementById("plan");
+const tip = document.getElementById("tip");
+let planName = "optimised";
+let view = null;
+
+function world(plan) {
+  const sp = D.assumed.spine, br = D.assumed.bridge;
+  const off = []; let x = 0;
+  for (const L of plan.lengths) { off.push(x); x += L + br; }
+  return { off, W: (ph, side, px, py) => [off[ph] + px, side === 0 ? sp / 2 + py : -(sp / 2 + py)], end: x - br };
+}
+
+function draw() {
+  const plan = D.plans[planName];
+  const { off, W, end } = world(plan);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = cv.clientWidth || 1180;
+  const half = D.assumed.spine / 2 + D.assumed.bay_depth;
+  const x0 = -12, x1 = Math.max(end, 520) + 12, y0 = -half - 10, y1 = half + 26;
+  const cssH = Math.round(cssW * (y1 - y0) / (x1 - x0));
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+  cv.style.height = cssH + "px";
+  const k = cssW / (x1 - x0);
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  const X = x => (x - x0) * k, Y = y => (y1 - y) * k;
+  view = { X, Y, k, W, plan };
+  // buildings and spines
+  plan.lengths.forEach((L, ph) => {
+    ctx.fillStyle = "#141c2a"; ctx.strokeStyle = "#3a4a63"; ctx.lineWidth = 1;
+    ctx.fillRect(X(off[ph] - 3), Y(half + 3), (L + 6) * k, (2 * half + 6) * k);
+    ctx.strokeRect(X(off[ph] - 3), Y(half + 3), (L + 6) * k, (2 * half + 6) * k);
+    ctx.fillStyle = "#24314a";
+    ctx.fillRect(X(off[ph]), Y(D.assumed.spine / 2), L * k, D.assumed.spine * k);
+    ctx.fillStyle = "#c9d5e6"; ctx.font = "600 13px IBM Plex Sans, sans-serif";
+    ctx.fillText(ph === 0 ? "Phase 1 · front end" : "Phase 2 · back end (copper)", X(off[ph]), Y(half + 9));
+    if (ph + 1 < plan.lengths.length) {
+      ctx.fillStyle = "#4d86d6";
+      ctx.fillRect(X(off[ph] + L), Y(3), D.assumed.bridge * k, 6 * k);
+      ctx.fillStyle = "#9fc4f5"; ctx.font = "500 11px IBM Plex Mono, monospace";
+      ctx.fillText("OHT bridge", X(off[ph] + L + 4), Y(8));
+    }
+  });
+  // bays
+  for (const [ph, side, area, bx0, bx1] of plan.bays) {
+    const [ax, ay] = W(ph, side, bx0, 0), [bx, by] = W(ph, side, bx1, D.assumed.bay_depth);
+    ctx.fillStyle = AREA[area][0] + "26";
+    ctx.fillRect(X(ax) + 0.5, Y(Math.max(ay, by)), (bx - ax) * k - 1, Math.abs(by - ay) * k);
+  }
+  // tools
+  for (const [g, ph, side, tx0, tx1, ty0, ty1] of plan.tools) {
+    const [ax, ay] = W(ph, side, tx0, ty0), [bx, by] = W(ph, side, tx1, ty1);
+    ctx.fillStyle = AREA[D.groups[g][1]][0];
+    ctx.fillRect(X(ax), Y(Math.max(ay, by)), Math.max((bx - ax) * k - 0.4, 0.6), Math.max(Math.abs(by - ay) * k - 0.4, 0.6));
+  }
+  // flows: the busiest moves between groups, drawn as arcs
+  if (document.getElementById("flows").checked) {
+    const fl = D.flows.filter(f => f[0] >= 0 && f[0] !== f[1]).sort((a, b) => b[2] - a[2]).slice(0, 70);
+    const top = fl[0][2];
+    ctx.lineCap = "round";
+    for (const [a, b, r] of fl) {
+      const pa = plan.places[a], pb = plan.places[b];
+      if (!pa || !pb) continue;
+      const [ax, ay] = W(pa[0], pa[1], pa[2], pa[3]), [bx, by] = W(pb[0], pb[1], pb[2], pb[3]);
+      ctx.strokeStyle = `rgba(255,255,255,${0.18 + 0.5 * r / top})`;
+      ctx.lineWidth = 0.6 + 3.2 * r / top;
+      ctx.beginPath();
+      const mx = (X(ax) + X(bx)) / 2, my = (Y(ay) + Y(by)) / 2 - Math.abs(X(bx) - X(ax)) * 0.18;
+      ctx.moveTo(X(ax), Y(ay)); ctx.quadraticCurveTo(mx, my, X(bx), Y(by)); ctx.stroke();
+    }
+  }
+  // scale bar
+  ctx.fillStyle = "#c9d5e6"; ctx.fillRect(X(0), Y(-half - 6), 100 * k, 2);
+  ctx.font = "500 11px IBM Plex Mono, monospace"; ctx.fillText("100 m", X(0) + 100 * k + 6, Y(-half - 6) + 4);
+  const other = D.plans[planName === "optimised" ? "plain" : "optimised"];
+  document.getElementById("plancap").textContent =
+    `${planName === "optimised" ? "Optimised" : "Plain"} plan: ${fmt(plan.metres)} hoist metres a day ` +
+    `(${fmt(plan.metres / 22783, 1)} m a move). Phase 1 is ${fmt(plan.lengths[0])} m long, phase 2 ${fmt(plan.lengths[1])} m, each ${fmt(2 * half)} m wide. ` +
+    `${planName === "plain" ? "The plain plan puts areas in alphabetical order, each on the shorter side." : "The optimised plan pulls the busiest pairs together and puts the areas that hand lots across near the bridge."} Hover a tool for its group.`;
+}
+
+function hit(ev) {
+  if (!view) return;
+  const r = cv.getBoundingClientRect();
+  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  for (const [g, ph, side, tx0, tx1, ty0, ty1] of view.plan.tools) {
+    const [ax, ay] = view.W(ph, side, tx0, ty0), [bx, by] = view.W(ph, side, tx1, ty1);
+    const px0 = view.X(ax), px1 = view.X(bx), py0 = view.Y(Math.max(ay, by)), py1 = view.Y(Math.min(ay, by));
+    if (mx >= px0 - 1 && mx <= px1 + 1 && my >= py0 - 1 && my <= py1 + 1) {
+      const [name, area, n] = D.groups[g];
+      const out = D.flows.filter(f => f[0] === g).reduce((s, f) => s + f[2], 0);
+      tip.textContent = `${name}\n${AREA[area][1]} · ${n} tools\n${fmt(out, 1)} lots a day leave it`;
+      tip.style.whiteSpace = "pre";
+      tip.hidden = false;
+      tip.style.left = Math.min(mx + 14, r.width - 200) + "px";
+      tip.style.top = (my + 14) + "px";
+      return;
+    }
+  }
+  tip.hidden = true;
+}
+cv.addEventListener("mousemove", hit);
+cv.addEventListener("mouseleave", () => tip.hidden = true);
+cv.addEventListener("click", hit);
+
+for (const n of ["optimised", "plain"]) {
+  document.getElementById("p-" + n).onclick = () => {
+    planName = n;
+    document.getElementById("p-optimised").setAttribute("aria-pressed", n === "optimised");
+    document.getElementById("p-plain").setAttribute("aria-pressed", n === "plain");
+    draw();
+  };
+}
+document.getElementById("flows").onchange = draw;
+new ResizeObserver(() => draw()).observe(cv);
+
+const leg = document.getElementById("legend");
+for (const a of Object.keys(AREA)) {
+  const s = document.createElement("span");
+  const i = document.createElement("i"); i.style.background = AREA[a][0];
+  s.append(i, AREA[a][1]);
+  leg.append(s);
+}
+
+// ---------------------------------------------------------------- numbers
+const P = D.plans;
+const stats = [
+  [fmt((1 - P.optimised.metres / P.plain.metres) * 100, 1) + "%", "fewer hoist metres a day than the plain plan", "exact for the stated flows"],
+  [fmt(P.optimised.metres / 1000) + " km", "carried a day, against " + fmt(P.plain.metres / 1000) + " km plain", "about 22,800 moves a day"],
+  [fmt(D.crossings, 0), "moves a day cross the bridge", "front end to back end and back"],
+  ["−0.30 min", "on every move in the simulator", "95%: −0.301 to −0.300"],
+];
+const st = document.getElementById("stats");
+for (const [b, t, s] of stats) {
+  const d = document.createElement("div"); d.className = "stat";
+  const bb = document.createElement("b"); bb.textContent = b;
+  const tt = document.createElement("span"); tt.textContent = t;
+  const ss = document.createElement("small"); ss.textContent = s;
+  d.append(bb, tt, ss); st.append(d);
+}
+const sc = document.getElementById("score");
+sc.innerHTML = "<thead><tr><th>Measure</th><th>Plain</th><th>Optimised</th><th>Difference (95%)</th><th>Verdict</th><th>SMT2020 flat</th></tr></thead>";
+const tb = document.createElement("tbody");
+for (const m of D.score) {
+  const tr = document.createElement("tr");
+  const dp = m.name.includes("wafers") || m.name.includes("WIP") ? 1 : 2;
+  const cells = [m.name, fmt(m.plain, dp), fmt(m.optimised, dp),
+    `${m.mean >= 0 ? "+" : "−"}${fmt(Math.abs(m.mean), dp)} (${fmt(m.lo, dp)} to ${fmt(m.hi, dp)})`, null, fmt(m.flat, dp)];
+  cells.forEach((c, i) => {
+    const td = document.createElement("td");
+    if (i === 4) { const p = document.createElement("span"); p.className = "pill " + (m.verdict === "better" ? "better" : "none"); p.textContent = m.verdict; td.append(p); }
+    else td.textContent = c;
+    tr.append(td);
+  });
+  tb.append(tr);
+}
+sc.append(tb);
+
+const A = D.assumed;
+const rows = [
+  ["Bay depth, spine to back wall", A.bay_depth + " m"], ["Bay aisle", A.bay_aisle + " m"], ["Service chase behind each wall", A.chase + " m"],
+  ["Spine (main aisle)", A.spine + " m"], ["Bridge between phases", A.bridge + " m"], ["Sides may differ by at most", A.balance + " m"],
+  ["Hoist: fixed time a move", A.overhead_min + " min"], ["Hoist: effective speed", A.speed_m_per_min + " m/min (2.5 m/s)"], ["Hoist: jitter", "±" + A.jitter_min + " min"],
+];
+for (const a of Object.keys(AREA)) { const f = A.footprints[a]; if (f) rows.push([AREA[a][1] + " tool footprint", `${f[0]} × ${f[1]} m`]); }
+const at = document.getElementById("assumed");
+at.innerHTML = "<thead><tr><th>Assumed</th><th>Value</th></tr></thead>";
+const ab = document.createElement("tbody");
+for (const [a, b] of rows) { const tr = document.createElement("tr"); for (const c of [a, b]) { const td = document.createElement("td"); td.textContent = c; tr.append(td); } ab.append(tr); }
+at.append(ab);
+</script>
