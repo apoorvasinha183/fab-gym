@@ -7,3 +7,4 @@ pub mod measure;
 pub mod pyrandom;
 pub mod shop;
 pub mod smt2020;
+pub mod uq;
