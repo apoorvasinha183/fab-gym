@@ -16,6 +16,9 @@
 //!   fabsim layout-score [DIR] [--data D] [--out O] [--threads T] [--days N --warmup W --seeds K]
 //!                                                H2: the two plans (and SMT2020's flat transport)
 //!                                                on paired seeds
+//!   fabsim layout-trace [DIR] [--data D] [--plan P] [--seed S] [--day N] [--hours H]
+//!                                                a recorded window of the run on plan P for the
+//!                                                3D views: D/trace-P.json
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -288,6 +291,28 @@ fn layout_score(args: &[String]) {
     println!("{md}");
 }
 
+fn layout_trace(args: &[String]) {
+    use fabsim::layout::{Config, Problem};
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let data = PathBuf::from(flag(args, "--data", "data/layout"));
+    let plan = flag(args, "--plan", "optimised");
+    let seed = arg(args, "--seed", 3000);
+    let from = arg(args, "--day", 30) as f64 * 1440.0;
+    let to = from + arg(args, "--hours", 6) as f64 * 60.0;
+    let shop = Shop::parse(&std::fs::read_to_string(data.join(format!("{plan}.shop.txt"))).expect("run fabsim layout first")).unwrap();
+    // the campus is rebuilt from the same deterministic optimiser, and checked against the shop's places
+    let flat = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let areas = fabsim::smt2020::areas(&dir).expect("areas");
+    let p = Problem::new(&flat, &areas, &Config::gigafab()).unwrap();
+    let c = if plan == "plain" { p.pack(&p.plain()) } else { p.pack(&p.optimise()) };
+    assert_eq!(Some(p.oht(&c)), shop.oht, "the shop's layout is not this build's {plan} plan; rerun fabsim layout");
+    // run past the window so lots that arrive in it and start later are recorded
+    let r = run(&shop, &RunOptions { seed, until: Some(to + 5.0 * 1440.0), record: true }, None);
+    let out = data.join(format!("trace-{plan}.json"));
+    std::fs::write(&out, p.trace_json(&c, &r, from, to)).unwrap();
+    println!("wrote {}", out.display());
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
@@ -312,6 +337,7 @@ fn main() {
         Some("lean-long") => lean_long(&args[1..]),
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
+        Some("layout-trace") => layout_trace(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

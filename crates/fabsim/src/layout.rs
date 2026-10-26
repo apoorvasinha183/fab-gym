@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::fmt::Write as _;
 
+use crate::engine::RunResult;
 use crate::pyrandom::PyRandom;
 use crate::shop::{Oht, Place, Shop};
 
@@ -141,6 +142,26 @@ pub struct Campus {
     /// per phase, the north and south sides' lengths
     pub sides: Vec<[f64; 2]>,
     pub start: Place,
+}
+
+/// One step of a lot in the exported window.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TraceStep {
+    pub arrive: f64,
+    pub start: f64,
+    pub end: f64,
+    /// index into `Campus::tools`; `None` in a stocker
+    pub tool: Option<usize>,
+    pub group: usize,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct LotTrace {
+    pub id: String,
+    pub hot: bool,
+    /// the step before the window's first: when it ended and on which tool
+    pub prev: Option<(f64, Option<usize>)>,
+    pub steps: Vec<TraceStep>,
 }
 
 pub struct Problem {
@@ -561,6 +582,150 @@ impl Problem {
             }
         }
         Some(p)
+    }
+
+    /// Where each phase starts along the world's x axis (metres east).
+    pub fn offsets(&self, c: &Campus) -> Vec<f64> {
+        let mut x = 0.0;
+        c.lengths
+            .iter()
+            .map(|l| {
+                let o = x;
+                x += l + self.cfg.bridge;
+                o
+            })
+            .collect()
+    }
+
+    /// World metres (east, north) of a point given by phase, side, x along the spine and depth.
+    pub fn world(&self, c: &Campus, phase: usize, side: usize, x: f64, y: f64) -> (f64, f64) {
+        let d = self.cfg.spine / 2.0 + y;
+        (self.offsets(c)[phase] + x, if side == 0 { d } else { -d })
+    }
+
+    /// The run's steps that touch the window [from, to], per lot, for the 3D views. The run
+    /// must have been recorded (`RunOptions::record`) on a shop laid out as `c`.
+    pub fn trace(&self, c: &Campus, r: &RunResult, from: f64, to: f64) -> Vec<LotTrace> {
+        let gidx: HashMap<&str, usize> = self.names.iter().enumerate().map(|(i, n)| (n.as_str(), i)).collect();
+        let mut boxes: Vec<Vec<usize>> = vec![vec![]; self.names.len()];
+        for (i, t) in c.tools.iter().enumerate() {
+            boxes[t.group].push(i);
+        }
+        let mut seen = vec![0usize; self.names.len()];
+        let tool_of: Vec<(usize, Option<usize>)> = r
+            .tools
+            .iter()
+            .map(|t| {
+                let g = gidx[t.group.as_str()];
+                let k = seen[g];
+                seen[g] += 1;
+                (g, boxes[g].get(k).copied())
+            })
+            .collect();
+        let lowest = r.lots.iter().map(|l| l.priority).fold(f64::INFINITY, f64::min);
+        let mut per_lot: Vec<Vec<usize>> = vec![vec![]; r.lots.len()];
+        for (i, t) in r.trace.iter().enumerate() {
+            per_lot[t.lot as usize].push(i);
+        }
+        let mut out = vec![];
+        for (li, idx) in per_lot.iter().enumerate() {
+            let mut steps = vec![];
+            let mut prev = None;
+            for &i in idx {
+                let t = &r.trace[i];
+                let (g, tool) = tool_of[t.tool as usize];
+                if t.end >= from && t.arrive <= to {
+                    steps.push(TraceStep { arrive: t.arrive, start: t.start, end: t.end, tool, group: g });
+                } else if t.end < from {
+                    prev = Some((t.end, tool));
+                }
+            }
+            if !steps.is_empty() {
+                steps.sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap());
+                let l = &r.lots[li];
+                out.push(LotTrace { id: l.id.clone(), hot: l.priority > lowest, prev, steps });
+            }
+        }
+        out
+    }
+
+    /// `trace` as JSON, with each tool's state through the window (0 working, 1 idle,
+    /// 2 maintenance, 3 broken down) and the world offsets.
+    pub fn trace_json(&self, c: &Campus, r: &RunResult, from: f64, to: f64) -> String {
+        let n = |x: f64| format!("{}", (x * 100.0).round() / 100.0);
+        let lots = self.trace(c, r, from, to);
+        let gidx: HashMap<&str, usize> = self.names.iter().enumerate().map(|(i, n)| (n.as_str(), i)).collect();
+        let mut boxes: Vec<Vec<usize>> = vec![vec![]; self.names.len()];
+        for (i, t) in c.tools.iter().enumerate() {
+            boxes[t.group].push(i);
+        }
+        let mut seen = vec![0usize; self.names.len()];
+        let tool_of: Vec<Option<usize>> = r
+            .tools
+            .iter()
+            .map(|t| {
+                let g = gidx[t.group.as_str()];
+                seen[g] += 1;
+                boxes[g].get(seen[g] - 1).copied()
+            })
+            .collect();
+        let code = |s: &str| match s {
+            "productive" => 0,
+            "standby" => 1,
+            "scheduled down" => 2,
+            _ => 3,
+        };
+        let mut at_from: HashMap<usize, u8> = HashMap::new();
+        let mut changes = vec![];
+        for st in &r.states {
+            let Some(b) = tool_of[st.tool_index as usize] else { continue };
+            if st.time <= from {
+                at_from.insert(b, code(st.state));
+            } else if st.time <= to {
+                changes.push((st.time, b, code(st.state)));
+            }
+        }
+        let mut o = String::from("{\"model\":\"SMT2020\",");
+        o.push_str("\"what\":\"a simulated run on the SMT2020 model, on a gigafab-style layout of our own design; not a real fab\",");
+        let _ = write!(
+            o,
+            "\"from\":{},\"to\":{},\"spine\":{},\"bridge\":{},\"offsets\":[{}],\"lengths\":[{}],\"states\":[",
+            n(from),
+            n(to),
+            n(self.cfg.spine),
+            n(self.cfg.bridge),
+            self.offsets(c).iter().map(|x| n(*x)).collect::<Vec<_>>().join(","),
+            c.lengths.iter().map(|x| n(*x)).collect::<Vec<_>>().join(",")
+        );
+        let mut first = true;
+        let mut start: Vec<(usize, u8)> = at_from.into_iter().collect();
+        start.sort();
+        for (b, k) in start {
+            let _ = write!(o, "{}[{},{},{}]", if first { "" } else { "," }, n(from), b, k);
+            first = false;
+        }
+        for (t, b, k) in changes {
+            let _ = write!(o, "{}[{},{},{}]", if first { "" } else { "," }, n(t), b, k);
+            first = false;
+        }
+        o.push_str("],\"lots\":[");
+        let tool = |t: Option<usize>| t.map(|x| x as i64).unwrap_or(-1);
+        for (i, l) in lots.iter().enumerate() {
+            let _ = write!(o, "{}{{\"id\":\"{}\",\"hot\":{},\"prev\":", if i > 0 { "," } else { "" }, l.id, l.hot);
+            match l.prev {
+                None => o.push_str("null"),
+                Some((t, b)) => {
+                    let _ = write!(o, "[{},{}]", n(t), tool(b));
+                }
+            }
+            o.push_str(",\"steps\":[");
+            for (k, st) in l.steps.iter().enumerate() {
+                let _ = write!(o, "{}[{},{},{},{},{}]", if k > 0 { "," } else { "" }, n(st.arrive), n(st.start), n(st.end), tool(st.tool), st.group);
+            }
+            o.push_str("]}");
+        }
+        o.push_str("]}");
+        o
     }
 
     /// The campus as JSON for the viewers: the assumed numbers, groups, flows and each plan.
