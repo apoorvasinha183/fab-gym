@@ -363,90 +363,218 @@ function rr(x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawBelt(points, phase) {
+// The look, in the spirit of Factorio and drawn here: concrete floors, yellow-railed belts with
+// moving chevrons, machines as sprites with a state panel and a status light, lots as carrier boxes.
+const LOOK = {
+  ground: "#262420", hallFloor: "#3a3833", wall: "#6e695e", wallDark: "#1b1a17",
+  rail: "#d9a12b", beltTop: "#2b2926", chevron: "rgba(140, 104, 34, 0.95)",
+  body: "#5a564d", bodyEdge: "#1b1a17", plate: "rgba(22, 21, 18, 0.82)",
+  title: "#f3e4c4", sub: "#bcae92", label: "#d6cbb4", section: "#e3a83a",
+  lot: "#eadfc4", lotTop: "#b7a88a", hot: "#f08a3c", hotTop: "#b8602a",
+};
+
+function noiseTile(base, spread, lines, seed) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.fillStyle = base;
+  g.fillRect(0, 0, 64, 64);
+  let r = seed;
+  const rand = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 900; i++) {
+    const v = (rand() - 0.5) * spread;
+    g.fillStyle = v > 0 ? `rgba(255,255,255,${v})` : `rgba(0,0,0,${-v})`;
+    g.fillRect(Math.floor(rand() * 64), Math.floor(rand() * 64), 1 + Math.floor(rand() * 2), 1 + Math.floor(rand() * 2));
+  }
+  if (lines) {
+    g.strokeStyle = lines;
+    g.lineWidth = 1;
+    g.strokeRect(0.5, 0.5, 63, 63);
+    g.beginPath(); g.moveTo(32, 0); g.lineTo(32, 64); g.moveTo(0, 32); g.lineTo(64, 32); g.stroke();
+  }
+  return c;
+}
+const TILES = {};
+function pattern(name) {
+  if (!TILES[name]) {
+    const src = name === "ground" ? noiseTile(LOOK.ground, 0.10, "rgba(0,0,0,0.22)", 7) : noiseTile(LOOK.hallFloor, 0.07, "rgba(0,0,0,0.18)", 11);
+    TILES[name] = ctx.createPattern(src, "repeat");
+  }
+  // anchored to the world: one 64 px tile spans 4 floor tiles
+  const p = TILES[name];
+  p.setTransform(new DOMMatrix().translate(-view.x * view.s, -view.y * view.s).scale((view.s * 4) / 64));
+  return p;
+}
+
+// machine sprites, cached by state and pixel size
+const SPRITES = new Map();
+function sprite(st, px) {
+  const key = st * 1000 + px;
+  let c = SPRITES.get(key);
+  if (c) return c;
+  if (SPRITES.size > 400) SPRITES.clear();
+  c = document.createElement("canvas");
+  c.width = c.height = px;
+  const g = c.getContext("2d");
+  const S = px;
+  const R = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+  // body with a bevel
+  R(S * 0.03, S * 0.03, S * 0.94, S * 0.94, S * 0.12);
+  g.fillStyle = LOOK.body; g.fill();
+  g.lineWidth = Math.max(1, S * 0.06); g.strokeStyle = LOOK.bodyEdge; g.stroke();
+  g.strokeStyle = "rgba(255,255,255,0.14)"; g.lineWidth = Math.max(1, S * 0.04);
+  g.beginPath(); g.moveTo(S * 0.12, S * 0.85); g.lineTo(S * 0.12, S * 0.12); g.lineTo(S * 0.85, S * 0.12); g.stroke();
+  // the state panel
+  const a = S * 0.2, w = S * 0.6;
+  R(a, a, w, w, S * 0.08);
+  if (st === 1) {
+    g.fillStyle = "#2a2925"; g.fill();
+    g.strokeStyle = STATE_COLORS[1]; g.lineWidth = Math.max(1, S * 0.07); g.stroke();
+  } else {
+    g.fillStyle = STATE_COLORS[st]; g.fill();
+    g.strokeStyle = "rgba(0,0,0,0.45)"; g.fillStyle = "rgba(0,0,0,0.45)"; g.lineWidth = Math.max(1, S * 0.07);
+    const m = S / 2;
+    if (st === 0) { // a gear
+      g.beginPath(); g.arc(m, m, S * 0.13, 0, 2 * Math.PI); g.stroke();
+      for (let k = 0; k < 6; k++) {
+        const an = (k * Math.PI) / 3;
+        g.beginPath(); g.moveTo(m + Math.cos(an) * S * 0.16, m + Math.sin(an) * S * 0.16);
+        g.lineTo(m + Math.cos(an) * S * 0.24, m + Math.sin(an) * S * 0.24); g.stroke();
+      }
+    } else if (st === 2) { // a pause: maintenance
+      g.fillRect(m - S * 0.12, m - S * 0.14, S * 0.07, S * 0.28);
+      g.fillRect(m + S * 0.05, m - S * 0.14, S * 0.07, S * 0.28);
+    } else if (st === 3) { // a cross: broken down
+      g.lineWidth = Math.max(1.2, S * 0.09); g.strokeStyle = "rgba(20,10,10,0.75)";
+      g.beginPath(); g.moveTo(m - S * 0.15, m - S * 0.15); g.lineTo(m + S * 0.15, m + S * 0.15);
+      g.moveTo(m + S * 0.15, m - S * 0.15); g.lineTo(m - S * 0.15, m + S * 0.15); g.stroke();
+    } else if (st === 4) { // a turning arrow: changing setup
+      g.beginPath(); g.arc(m, m, S * 0.14, 0.3, 1.6 * Math.PI); g.stroke();
+      g.beginPath(); g.moveTo(m + S * 0.14, m - S * 0.02); g.lineTo(m + S * 0.2, m + S * 0.08); g.lineTo(m + S * 0.07, m + S * 0.07); g.fill();
+    }
+  }
+  // status light
+  g.beginPath(); g.arc(S * 0.84, S * 0.84, Math.max(1, S * 0.065), 0, 2 * Math.PI);
+  g.fillStyle = st === 0 ? "#d6ffe6" : st === 3 ? "#ff8a80" : st === 1 ? "#3a3833" : "#ffe7a8";
+  g.fill();
+  SPRITES.set(key, c);
+  return c;
+}
+
+function drawBelt(points, phase, chevrons = true, small = false) {
   const s = view.s;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#111417";
-  ctx.lineWidth = Math.max(9, 2.6 * s);
+  const m = small ? 0 : 1; // small belts scale with zoom only
+  const pts = points.map(([x, y]) => W(x, y));
+  const path = () => { ctx.beginPath(); pts.forEach(([X, Y], i) => (i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y))); };
+  ctx.lineCap = "butt";
+  ctx.lineJoin = "miter";
+  path();
+  ctx.strokeStyle = LOOK.wallDark; ctx.lineWidth = Math.max(10 * m, (small ? 2.0 : 2.7) * s); ctx.stroke();
+  ctx.strokeStyle = LOOK.rail; ctx.lineWidth = Math.max(8 * m, (small ? 1.7 : 2.3) * s); ctx.stroke();
+  ctx.strokeStyle = LOOK.beltTop; ctx.lineWidth = Math.max(5 * m, (small ? 1.25 : 1.7) * s); ctx.stroke();
+  if (!chevrons) return;
+  // chevrons pointing along the belt, moving with it
+  const gap = Math.max(1.6, 9 / s); // world tiles between chevrons
+  const half = Math.max(2, 0.55 * s);
+  ctx.strokeStyle = LOOK.chevron;
+  ctx.lineWidth = Math.max(1.3, 0.28 * s);
   ctx.beginPath();
-  points.forEach(([x, y], i) => { const [X, Y] = W(x, y); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+  let carried = (phase * gap) % gap;
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const dx = (x1 - x0) / len, dy = (y1 - y0) / len;
+    for (let d = carried; d < len; d += gap) {
+      const [X, Y] = W(x0 + dx * d, y0 + dy * d);
+      ctx.moveTo(X - dx * half - dy * half, Y - dy * half + dx * half);
+      ctx.lineTo(X, Y);
+      ctx.lineTo(X - dx * half + dy * half, Y - dy * half - dx * half);
+    }
+    carried = (carried - len) % gap;
+    if (carried < 0) carried += gap;
+  }
   ctx.stroke();
-  ctx.strokeStyle = "#3d454f";
-  ctx.lineWidth = Math.max(6, 1.9 * s);
+}
+
+function drawLot(X, Y, sz, hot) {
+  ctx.fillStyle = LOOK.bodyEdge;
+  ctx.fillRect(X - sz / 2 - 1, Y - sz / 2 - 1, sz + 2, sz + 2);
+  ctx.fillStyle = hot ? LOOK.hot : LOOK.lot;
+  ctx.fillRect(X - sz / 2, Y - sz / 2, sz, sz);
+  ctx.fillStyle = hot ? LOOK.hotTop : LOOK.lotTop;
+  ctx.fillRect(X - sz / 2, Y - sz / 2, sz, Math.max(1, sz * 0.3));
+}
+
+function plateText(text, X, Y, size, weight, color) {
+  ctx.font = `${weight} ${size}px -apple-system, Inter, sans-serif`;
+  const w = ctx.measureText(text).width;
+  ctx.fillStyle = LOOK.plate;
+  ctx.fillRect(X - size * 0.35, Y - size * 0.2, w + size * 0.7, size * 1.35);
+  ctx.fillStyle = color;
+  ctx.fillText(text, X, Y);
+  return w;
+}
+
+function hazard(X, Y, w, h) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(X, Y, w, h); ctx.clip();
+  ctx.fillStyle = "#d9a12b"; ctx.fillRect(X, Y, w, h);
+  ctx.strokeStyle = "#1b1a17"; ctx.lineWidth = Math.max(1.5, h * 0.35);
+  ctx.beginPath();
+  for (let x = X - h * 2; x < X + w + h; x += h * 1.4) { ctx.moveTo(x, Y + h); ctx.lineTo(x + h, Y); }
   ctx.stroke();
-  const u = Math.max(3, s);
-  ctx.setLineDash([0.9 * u, 1.1 * u]);
-  ctx.lineDashOffset = -phase * u;
-  ctx.strokeStyle = "rgba(214, 178, 96, 0.75)";
-  ctx.lineWidth = Math.max(2, 0.45 * s);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function draw() {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#1c2127";
+  ctx.fillStyle = LOOK.ground;
   ctx.fillRect(0, 0, innerWidth, innerHeight);
   if (!G || !P) return;
   const s = view.s;
-  // floor tiles
-  if (s > 3) {
-    ctx.strokeStyle = "rgba(255,255,255,0.025)";
-    ctx.lineWidth = 1;
-    const step = 8;
-    const x0 = Math.floor(view.x / step) * step, y0 = Math.floor(view.y / step) * step;
-    ctx.beginPath();
-    for (let x = x0; x < view.x + innerWidth / s; x += step) { const [X] = W(x, 0); ctx.moveTo(X, 0); ctx.lineTo(X, innerHeight); }
-    for (let y = y0; y < view.y + innerHeight / s; y += step) { const [, Y] = W(0, y); ctx.moveTo(0, Y); ctx.lineTo(innerWidth, Y); }
-    ctx.stroke();
-  }
-  // the spine
-  const phase = (t * 0.6) % 2;
-  drawBelt([[0, G.yTop], [G.L, G.yTop], [G.L, G.yBot], [0, G.yBot], [0, G.yTop]], phase);
-  // feeders from each hall's door to the spine
+  ctx.fillStyle = pattern("ground");
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+  // belts: the spine and each hall's feeder
+  const phase = (t * 0.35) % 1;
   HALLS_L.forEach((h, i) => {
     const p = G.pos[i];
     const by = p.belt === "top" ? G.yTop : G.yBot;
-    drawBelt([[p.door.x, p.door.y], [p.door.x, by]], phase);
+    drawBelt([[p.door.x, p.door.y], [p.door.x, by]], phase, false);
   });
+  drawBelt([[0, G.yTop], [G.L, G.yTop], [G.L, G.yBot], [0, G.yBot], [0, G.yTop]], phase);
   // halls
   const showLabels = s > 2.6;
   HALLS_L.forEach((h, i) => {
     const p = G.pos[i];
     const [X, Y] = W(p.x, p.y);
-    rr(X, Y, h.w * s, h.h * s, 1.2 * s);
-    ctx.fillStyle = "#252b32";
-    ctx.fill();
-    ctx.strokeStyle = "#46505b";
-    ctx.lineWidth = Math.max(1, 0.35 * s);
-    ctx.stroke();
-    // door
-    const [DX, DY] = W(p.door.x - 2, p.door.y - 0.5);
-    ctx.fillStyle = "#c9a34e";
-    ctx.fillRect(DX, DY, 4 * s, 1 * s);
-    // title
-    ctx.fillStyle = "#e3e8ee";
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(X + 0.6 * s, Y + 0.8 * s, h.w * s, h.h * s); // shadow
+    ctx.fillStyle = pattern("hall");
+    ctx.fillRect(X, Y, h.w * s, h.h * s);
+    ctx.strokeStyle = LOOK.wallDark; ctx.lineWidth = Math.max(3, 1.0 * s);
+    ctx.strokeRect(X, Y, h.w * s, h.h * s);
+    ctx.strokeStyle = LOOK.wall; ctx.lineWidth = Math.max(1.5, 0.6 * s);
+    ctx.strokeRect(X, Y, h.w * s, h.h * s);
+    // the door, hazard-striped
+    const [DX, DY] = W(p.door.x - 2.5, p.door.y - 0.6);
+    hazard(DX, DY, 5 * s, Math.max(3, 1.2 * s));
+    // title on a plate
     ctx.textBaseline = "top";
-    const toolsN = h.groups.reduce((a, g) => a + P.j.groups[g][1], 0);
     const tsz = Math.max(12, 2.6 * s);
-    ctx.font = `650 ${tsz}px -apple-system, Inter, sans-serif`;
-    const tw = ctx.measureText(h.name).width;
-    ctx.fillText(h.name, X + 1.5 * s, Y + 1.0 * s);
-    if (h.w * s > tw + 70) {
-      ctx.fillStyle = "#8d98a5";
-      ctx.font = `${Math.max(11, 1.5 * s)}px -apple-system, Inter, sans-serif`;
+    const tw = plateText(h.name, X + 1.6 * s, Y + 1.2 * s, tsz, 700, LOOK.title);
+    const toolsN = h.groups.reduce((a, g) => a + P.j.groups[g][1], 0);
+    if (h.w * s > tw + 80) {
+      const ssz = Math.max(11, 1.5 * s);
       const label = h.areas[0] === "Delay_32" ? "between steps" : `${toolsN} tools`;
-      ctx.fillText(label, X + 1.5 * s + tw + 8, Y + 1.0 * s + (tsz - Math.max(11, 1.5 * s)) * 0.8);
+      plateText(label, X + 1.6 * s + tw + tsz * 0.7 + 4, Y + 1.2 * s + (tsz - ssz) * 0.7, ssz, 500, LOOK.sub);
     }
-    // cells
     for (const c of h.cells) {
       const cx = p.x + 3 + c.x, cy = p.y + c.y;
       if (c.label) {
         if (showLabels) {
-          ctx.fillStyle = "#c9a34e";
-          ctx.font = `600 ${1.6 * s}px -apple-system, Inter, sans-serif`;
+          ctx.fillStyle = LOOK.section;
+          ctx.font = `700 ${1.6 * s}px -apple-system, Inter, sans-serif`;
           const [LX, LY] = W(cx, cy + 0.3);
           ctx.fillText(c.label.toUpperCase(), LX, LY);
         }
@@ -455,92 +583,78 @@ function draw() {
       drawGroup(c, cx, cy, showLabels);
     }
   });
-  // lots in transit
-  ctx.lineWidth = Math.max(1, 0.15 * s);
+  // lots in transit, as carrier boxes on the belts
+  const sz = Math.max(4, 1.15 * s);
   for (const tr of cur.active) {
     const [x, y] = tripPoint(tr, t);
     const [X, Y] = W(x, y);
-    ctx.beginPath();
-    ctx.arc(X, Y, Math.max(2.4, 0.8 * s), 0, 2 * Math.PI);
-    ctx.fillStyle = tr[4] ? HOT : LOT;
-    ctx.fill();
-    ctx.strokeStyle = "#14171b";
-    ctx.stroke();
+    drawLot(X, Y, sz, tr[4]);
   }
 }
 
 function drawGroup(c, cx, cy, showLabels) {
   const s = view.s;
   const g = c.gi;
-  const G0 = P.j.groups[g];
   const toolIds = P.groupTools[g];
   if (c.holding) {
     const [X, Y] = W(cx, cy + 2);
-    rr(X, Y, c.w * s, 6 * s, 0.8 * s);
-    ctx.fillStyle = "#2c333b";
-    ctx.fill();
-    ctx.fillStyle = "#e3e8ee";
-    ctx.font = `600 ${Math.max(10, 2.2 * s)}px -apple-system, Inter, sans-serif`;
-    ctx.fillText(`${cur.holdingBusy} lots`, X + 1.2 * s, Y + 1.4 * s);
+    // a row of chests
+    const n = 6;
+    for (let k = 0; k < n; k++) {
+      const [CX, CY] = W(cx + 1 + k * 4.6, cy + 2.4);
+      ctx.fillStyle = "#7a5a33"; ctx.fillRect(CX, CY, 3.6 * s, 3 * s);
+      ctx.fillStyle = "#5a4024"; ctx.fillRect(CX, CY + 1.1 * s, 3.6 * s, 0.5 * s);
+    }
+    ctx.textBaseline = "top";
+    plateText(`${cur.holdingBusy} lots`, X + 1.2 * s, Y + 4.6 * s, Math.max(11, 2 * s), 700, LOOK.title);
     return;
   }
-  // machines
+  const px = Math.round(TOOL * s * (window.devicePixelRatio || 1));
+  const big = TOOL * s >= 7;
   for (let k = 0; k < toolIds.length; k++) {
     const col = k % c.cols, row = Math.floor(k / c.cols);
     const [X, Y] = W(cx + 1 + col * PITCH, cy + 1 + row * PITCH);
     const st = cur.toolState[toolIds[k]];
-    if (st === 1) {
-      // idle: an outline
-      rr(X + 0.25 * s, Y + 0.25 * s, (TOOL - 0.5) * s, (TOOL - 0.5) * s, 0.45 * s);
-      ctx.strokeStyle = STATE_COLORS[1];
-      ctx.lineWidth = Math.max(1, 0.4 * s);
-      ctx.stroke();
-      continue;
-    }
-    rr(X, Y, TOOL * s, TOOL * s, 0.5 * s);
-    ctx.fillStyle = STATE_COLORS[st];
-    ctx.fill();
-    if (st === 3) {
-      // broken down: a cross
-      ctx.strokeStyle = "#1c2127";
-      ctx.lineWidth = Math.max(1, 0.45 * s);
-      ctx.beginPath();
-      ctx.moveTo(X + 0.8 * s, Y + 0.8 * s); ctx.lineTo(X + 2.2 * s, Y + 2.2 * s);
-      ctx.moveTo(X + 2.2 * s, Y + 0.8 * s); ctx.lineTo(X + 0.8 * s, Y + 2.2 * s);
-      ctx.stroke();
-    } else if (s > 3) {
-      ctx.fillStyle = "rgba(0,0,0,0.16)";
-      ctx.fillRect(X + 0.8 * s, Y + 0.8 * s, 1.4 * s, 1.4 * s);
+    if (big) {
+      ctx.drawImage(sprite(st, px), X, Y, TOOL * s, TOOL * s);
+    } else if (st === 1) {
+      ctx.strokeStyle = STATE_COLORS[1]; ctx.lineWidth = 1;
+      ctx.strokeRect(X + 0.5, Y + 0.5, TOOL * s - 1, TOOL * s - 1);
+    } else {
+      ctx.fillStyle = STATE_COLORS[st];
+      ctx.fillRect(X, Y, TOOL * s, TOOL * s);
+      if (st === 3) {
+        ctx.strokeStyle = LOOK.bodyEdge; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(X, Y); ctx.lineTo(X + TOOL * s, Y + TOOL * s);
+        ctx.moveTo(X + TOOL * s, Y); ctx.lineTo(X, Y + TOOL * s); ctx.stroke();
+      }
     }
   }
   const yLabel = cy + 1 + c.rows * PITCH;
   if (showLabels) {
     const [LX, LY] = W(cx + 1, yLabel + 0.2);
-    ctx.fillStyle = "#aab4bf";
-    ctx.font = `${1.5 * s}px -apple-system, Inter, sans-serif`;
+    ctx.fillStyle = LOOK.label;
+    ctx.font = `500 ${1.5 * s}px -apple-system, Inter, sans-serif`;
+    ctx.textBaseline = "top";
     ctx.fillText(P.plain[g], LX, LY);
   }
-  // queue belt with its waiting lots
+  // the group's queue belt and its waiting lots
   const qy = yLabel + 3;
-  const [BX, BY] = W(cx + 1, qy);
   const bw = c.w - 2;
-  ctx.fillStyle = "#2c3138";
-  ctx.fillRect(BX, BY - 0.9 * s, bw * s, 1.8 * s);
+  drawBelt([[cx + 1, qy], [cx + 1 + bw, qy]], 0, false, true);
   const n = cur.queue[g], hot = cur.hotQ[g];
   const fits = Math.max(0, Math.floor((bw - 0.5) / 1.6));
   const shown = Math.min(n, n > fits ? fits - 2 : fits);
+  const lsz = Math.max(3, 1.05 * s);
   for (let k = 0; k < shown; k++) {
     const [X, Y] = W(cx + 1.8 + k * 1.6, qy);
-    ctx.beginPath();
-    ctx.arc(X, Y, 0.62 * s, 0, 2 * Math.PI);
-    ctx.fillStyle = k < hot ? HOT : LOT;
-    ctx.fill();
+    drawLot(X, Y, lsz, k < hot);
   }
   if (n > shown && s > 1.2) {
-    ctx.fillStyle = "#efe2c4";
-    ctx.font = `600 ${1.4 * s}px -apple-system, Inter, sans-serif`;
     ctx.textBaseline = "middle";
     const [X, Y] = W(cx + 1.8 + shown * 1.6 - 0.4, qy);
+    ctx.font = `700 ${Math.max(9, 1.4 * s)}px -apple-system, Inter, sans-serif`;
+    ctx.fillStyle = LOOK.title;
     ctx.fillText(`+${n - shown}`, X, Y);
     ctx.textBaseline = "top";
   }
