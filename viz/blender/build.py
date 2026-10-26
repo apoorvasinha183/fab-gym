@@ -3,7 +3,7 @@ Blender from viz/prep.py's scene file, animate the lots, and render a film.
 
     Blender -b -P viz/blender/build.py -- SCENE.json OUT_DIR [--frames N] [--still F]
 
-Writes OUT_DIR/campus.blend and OUT_DIR/blender-film.mp4 (or a still PNG with --still).
+Writes OUT_DIR/campus.blend and OUT_DIR/frames/f0001.jpg ... (or a still PNG with --still).
 Tools keep their area colours here; their states are shown in the Godot view.
 """
 
@@ -273,10 +273,9 @@ if STILL is not None:
     scene.render.filepath = str(OUT / f"still-{STILL}.png")
     bpy.ops.render.render(write_still=True)
 else:
-    scene.render.image_settings.file_format = "FFMPEG"
-    scene.render.ffmpeg.format = "MPEG4"
-    scene.render.ffmpeg.codec = "H264"
-    scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
-    scene.render.filepath = str(OUT / "blender-film.mp4")
+    # frames as JPEG; encode them into a film elsewhere (ffmpeg), so this runs on any Blender
+    scene.render.image_settings.file_format = "JPEG"
+    scene.render.image_settings.quality = 90
+    scene.render.filepath = str(OUT / "frames" / "f")
     bpy.ops.render.render(animation=True)
 print("done", OUT)
