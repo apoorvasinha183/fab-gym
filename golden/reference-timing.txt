@@ -1,0 +1,5 @@
+Pre-existing Python reference engine, one core, this machine:
+seed 0, 1 day(s): 1.55 s (keep=all)
+seed 1, 1 day(s): 2.12 s (keep=all)
+seed 2, 1 day(s): 1.96 s (keep=all)
+seed 0, 3 day(s): 5.32 s (keep=all)

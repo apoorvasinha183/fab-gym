@@ -1,0 +1,7 @@
+fabgym-shop 1
+transport	0.0	0.0
+group	A	1	0.0	0.0	-	-	-
+route	r
+step	A	lot	10.0	0.0	-	-	-	-	-	-	-	-	-	-
+lot	L1	r	25	10.0	0.0	0
+lot	L2	r	25	10.0	0.0	0
