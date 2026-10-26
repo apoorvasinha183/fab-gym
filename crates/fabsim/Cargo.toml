@@ -1,0 +1,9 @@
+[package]
+name = "fabsim"
+version = "0.0.0"
+description = "Discrete-event simulator of a wafer fab on the SMT2020 model"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
