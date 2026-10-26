@@ -881,10 +881,15 @@ impl<'a, 'c> Sim<'a, 'c> {
                 let st = self.step_of(l).unwrap();
                 (st.rework, self.lots[l as usize].step)
             };
+            let has_cqt = self.routes[self.lots[l as usize].route as usize][step].cqt.is_some();
             let lot = &mut self.lots[l as usize];
-            match lot.ended.iter_mut().find(|e| e.0 == step) {
-                Some(e) => e.1 = t,
-                None => lot.ended.push((step, t)),
+            // only steps that start a queue-time limit are ever read back, so only they are kept
+            // (in first-ended order, as the reference keeps every step)
+            if has_cqt {
+                match lot.ended.iter_mut().find(|e| e.0 == step) {
+                    Some(e) => e.1 = t,
+                    None => lot.ended.push((step, t)),
+                }
             }
             match rework {
                 Some((to, p)) if lot.rng.random() < p => lot.step = to,
