@@ -111,3 +111,28 @@ SMT2020's own transport is 7.5 ± 2.5 min with no layout. Probes and the run's t
 6. A private artifact with the full-scale animation.
 
 Every view says "a gigafab-style layout of our own design on the SMT2020 model".
+
+## Results (27 Oct 2026)
+
+`fabsim layout` (200,000 moves × 4 restarts, seed 1) and `fabsim layout-score` (as pre-registered). Files: `results/layout/`.
+
+**H1 (exact for the stated flows).** About 22,800 moves a day at the release rates, 1,259 of them across the bridge (front end to back end and back).
+
+| plan | OHT metres a day | metres a move | P1 length | P2 length |
+|---|---|---|---|---|
+| plain | 3,504,614 | 153.8 | 322 m | 152 m |
+| optimised | 2,438,189 | 107.0 | 320 m | 156 m |
+
+The optimised plan carries 30.4% fewer metres a day. The method is a heuristic, so a better plan may exist.
+
+**H2 (simulator, seeds 3000 to 3009, days 60 to 150, Bonferroni over five measures).** Optimised minus plain:
+
+| measure | plain | optimised | difference (95%) | verdict |
+|---|---|---|---|---|
+| transport minutes a move | 4.987 | 4.687 | −0.300 (−0.301 to −0.300) | better |
+| cycle time, days | 50.43 | 50.21 | −0.21 (−0.81 to +0.39) | no clear effect |
+| wafers out a day | 1,304.3 | 1,305.8 | +1.5 (−10.6 to +13.7) | no clear effect |
+| mean WIP, lots | 2,630.7 | 2,622.8 | −7.9 (−26.3 to +10.6) | no clear effect |
+| hot-lot cycle time, days | 23.88 | 23.83 | −0.06 (−0.14 to +0.03) | no clear effect |
+
+As expected, transport per move falls. Unexpectedly, cycle time does not move clearly. SMT2020's own flat transport (7.5 minutes a move, half again as long) gives the same cycle time (50.40 days). On this model, lots spend their time queueing at the slowest tool groups, and minutes saved on the hoist are lost in those queues. Real-fab effect: cannot say.
