@@ -61,6 +61,8 @@ function readJson() {
 
 function simulate(opts) {
   const e = sim.e;
+  const d = opts.dials || DEFAULT_DIALS;
+  if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0) !== 0) throw new Error(readJson().error);
   const t0 = performance.now();
   const rc = e.fg_run(opts.seed, opts.days, opts.rule, opts.downGroup, opts.downAt * 60, opts.downHours);
   const secs = (performance.now() - t0) / 1000;
@@ -315,7 +317,7 @@ function resize() {
 
 function fit() {
   if (!G) return;
-  const pad = { l: 24, r: innerWidth > 900 ? 330 : 24, t: 140, b: 80 };
+  const pad = { l: innerWidth > 900 && !$("compare").hidden ? 372 : 24, r: innerWidth > 900 ? 330 : 24, t: 110, b: 80 };
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
   const s = Math.min(w / G.L, h / G.bottom);
   view.s = s;
@@ -706,6 +708,41 @@ function hud() {
   }
   $("k-busy").textContent = `${Math.round((100 * busy) / Math.max(1, all))}%`;
   $("scrub").value = t;
+  ticker();
+}
+
+// ------------------------------------------------------------------ floor log
+
+function clock(t) {
+  const m = Math.floor(t % 1440);
+  return `Day ${Math.floor(t / 1440) + 1} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+// breakdowns and repairs, in time order: [time, tool, 1 broke | 0 fixed]
+function breakdownEvents(P) {
+  const S = P.states, last = new Uint8Array(P.nT).fill(1), ev = [];
+  for (let i = 0; i < S.length / 3; i++) {
+    const k = S[i * 3], tm = S[i * 3 + 1], st = S[i * 3 + 2];
+    if (st === 3 && last[k] !== 3) ev.push([tm, k, 1]);
+    else if (st !== 3 && last[k] === 3) ev.push([tm, k, 0]);
+    last[k] = st;
+  }
+  return ev;
+}
+
+let tickShown = "";
+function ticker() {
+  const ev = P.breakdowns;
+  const n = countBelow(P.breakdownTimes, t);
+  const rows = [];
+  for (let i = n - 1; i >= 0 && rows.length < 4; i--) {
+    const [tm, k, broke] = ev[i];
+    const g = P.toolGroup[k];
+    const idx = P.groupTools[g].indexOf(k) + 1;
+    rows.push(`<li class="${broke ? "broke" : "fixed"}"><span class="tm">${clock(tm)}</span><b>${P.plain[g]}</b>&nbsp;tool ${idx} ${broke ? "broke down" : "back up"}</li>`);
+  }
+  const html = rows.join("");
+  if (html !== tickShown) { $("ticker").innerHTML = html; tickShown = html; }
 }
 
 let lastFrame = performance.now();
@@ -795,23 +832,230 @@ function setupInput() {
   });
   addEventListener("resize", () => { resize(); });
   $("run").onclick = rerun;
+  $("tab-long").onclick = () => showTab("long");
+  $("tab-change").onclick = () => showTab("change");
+  for (const k of DIAL_KEYS) $("d-" + k).oninput = showDials;
+  $("reset").onclick = () => {
+    for (const k of DIAL_KEYS) $("d-" + k).value = k === "cap" ? CAP_NONE : DEFAULT_DIALS[k];
+    showDials();
+  };
+  showDials();
 }
 
-function rerun() {
-  const opts = {
+// ------------------------------------------------------------------ dials and the comparison
+
+const DEFAULT_DIALS = { breakdowns: 1, repair: 1, demand: 1, hot: 1, rework: 1, cap: 0 };
+const DIAL_KEYS = ["breakdowns", "repair", "demand", "hot", "rework", "cap"];
+const CAP_NONE = 3600;
+const COMPARE_SEEDS = Array.from({ length: 10 }, (_, i) => 100 + i);
+
+function readDials() {
+  const d = {};
+  for (const k of DIAL_KEYS) d[k] = +$("d-" + k).value;
+  d.cap = d.cap >= CAP_NONE ? 0 : d.cap;
+  return d;
+}
+
+function showDials() {
+  const d = readDials();
+  for (const k of DIAL_KEYS) {
+    const o = $("o-" + k);
+    if (k === "cap") o.textContent = d.cap ? `${d.cap.toLocaleString()} lots` : "none";
+    else o.textContent = d[k] === 0 && (k === "breakdowns" || k === "hot" || k === "rework") ? "none" : `×${d[k]}`;
+    o.classList.toggle("moved", d[k] !== DEFAULT_DIALS[k]);
+  }
+}
+
+function readOpts() {
+  return {
     seed: +$("seed").value || 0,
     days: Math.min(14, Math.max(1, +$("days").value || 3)),
     rule: +$("rule").value,
     downGroup: +$("down-group").value,
     downAt: +$("down-at").value || 0,
     downHours: +$("down-hours").value || 0,
+    dials: readDials(),
   };
+}
+
+function isToday(o) {
+  return o.rule === 0 && (o.downGroup < 0 || o.downHours <= 0) && DIAL_KEYS.every(k => o.dials[k] === DEFAULT_DIALS[k]);
+}
+
+function describe(o) {
+  const parts = [];
+  if (o.rule !== 0) parts.push($("rule").selectedOptions[0].textContent.toLowerCase());
+  if (o.downGroup >= 0 && o.downHours > 0) parts.push(`${$("down-group").selectedOptions[0].textContent} down from hour ${o.downAt} for ${o.downHours} h`);
+  const names = { breakdowns: "breakdowns", repair: "repair time", demand: "demand", hot: "hot lots", rework: "rework" };
+  for (const k of Object.keys(names)) if (o.dials[k] !== 1) parts.push(`${names[k]} ×${o.dials[k]}`);
+  if (o.dials.cap) parts.push(`WIP cap ${o.dials.cap.toLocaleString()} lots`);
+  return parts.join(", ");
+}
+
+let pool = null;
+function workers() {
+  if (pool) return pool;
+  const n = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
+  pool = { list: Array.from({ length: n }, () => new Worker("worker.js")), next: 0, waiting: new Map() };
+  for (const w of pool.list) w.onmessage = ({ data }) => { const cb = pool.waiting.get(data.id); pool.waiting.delete(data.id); cb && cb(data); };
+  return pool;
+}
+
+let jobId = 0;
+function runJob(job) {
+  const p = workers();
+  const id = ++jobId;
+  return new Promise(res => {
+    p.waiting.set(id, res);
+    p.list[p.next++ % p.list.length].postMessage({ ...job, id });
+  });
+}
+
+const METRICS = [
+  { key: "wafers_out", name: "Wafers out", higher: true, unit: "" },
+  { key: "moves", name: "Moves (steps done)", higher: true, unit: "" },
+  { key: "breaches", name: "Spoiled lots (queue-time limit broken)", higher: false, unit: "" },
+  { key: "wait_lot_hours", name: "Waiting, lot-hours", higher: false, unit: "" },
+];
+
+function stats(d) {
+  const n = d.length;
+  const mean = d.reduce((a, b) => a + b, 0) / n;
+  if (n < 2) return { n, mean, lo: -Infinity, hi: Infinity };
+  const sd = Math.sqrt(d.reduce((a, x) => a + (x - mean) ** 2, 0) / (n - 1));
+  const h = sim.e.fg_t(0.975, n - 1) * sd / Math.sqrt(n);
+  return { n, mean, lo: mean - h, hi: mean + h };
+}
+
+function fmt(x) {
+  const a = Math.abs(x);
+  const s = a >= 100 ? Math.round(a).toLocaleString() : a >= 10 ? a.toFixed(1) : a.toFixed(2);
+  return (x < 0 ? "−" : x > 0 ? "+" : "") + s;
+}
+
+function strip(d, st) {
+  const m = Math.max(1e-9, ...d.map(Math.abs), Math.abs(st.lo), Math.abs(st.hi)) * 1.1;
+  const X = v => 150 + (v / m) * 145;
+  const dots = d.map(v => `<circle cx="${X(v).toFixed(1)}" cy="11" r="2.6" fill="#efe2c4" opacity="0.8"/>`).join("");
+  const bar = isFinite(st.lo) ? `<rect x="${X(st.lo).toFixed(1)}" y="7" width="${Math.max(1, X(st.hi) - X(st.lo)).toFixed(1)}" height="8" rx="2" fill="#f0a63c" opacity="0.35"/>
+    <line x1="${X(st.mean).toFixed(1)}" x2="${X(st.mean).toFixed(1)}" y1="4" y2="18" stroke="#f0a63c" stroke-width="2"/>` : "";
+  return `<svg viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true"><line x1="150" x2="150" y1="1" y2="21" stroke="#8a8170" stroke-dasharray="2 2"/>${bar}${dots}</svg>`;
+}
+
+function renderCompare(o, base, chg, done, total) {
+  showTab("change");
+  $("cmp-what").textContent = `${describe(o)}, over ${o.days} day${o.days > 1 ? "s" : ""}. Each dot is one seed: the change minus today on the same draws.`;
+  const seeds = COMPARE_SEEDS.filter(s => base.has(s) && chg.has(s));
+  $("cmp-rows").innerHTML = METRICS.map(m => {
+    const d = seeds.map(s => chg.get(s)[m.key] - base.get(s)[m.key]);
+    if (d.length < 2) return `<div class="metric"><div class="head"><span class="name">${m.name}</span><span class="pill wait">running</span></div></div>`;
+    const st = stats(d);
+    const v = st.lo > 0 ? (m.higher ? "better" : "worse") : st.hi < 0 ? (m.higher ? "worse" : "better") : "unclear";
+    const label = v === "unclear" ? "no clear effect" : v;
+    const baseMean = seeds.reduce((a, s) => a + base.get(s)[m.key], 0) / seeds.length;
+    return `<div class="metric"><div class="head"><span class="name">${m.name}</span><span class="pill ${v}">${label}</span></div>
+      <div class="head"><span class="val">${fmt(st.mean)}</span><span class="iv">95%: ${fmt(st.lo)} to ${fmt(st.hi)} · today ${Math.round(baseMean).toLocaleString()}</span></div>${strip(d, st)}</div>`;
+  }).join("");
+  $("cmp-note").textContent = done < total
+    ? `${done} of ${total} runs done…`
+    : `On the SMT2020 model, seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}, paired. 95% t intervals, each on its own. A first look: a claim is checked once on held-out seeds. Real-fab effect: cannot say.`;
+}
+
+let compareToken = 0;
+async function compare(o) {
+  const token = ++compareToken;
+  if (isToday(o)) {
+    $("cmp-what").textContent = "This is today's fab. Set a rule, an outage or the dials, then Simulate and compare.";
+    $("cmp-rows").innerHTML = "";
+    $("cmp-note").textContent = "";
+    showTab("change");
+    return;
+  }
+  const today = { ...o, rule: 0, downGroup: -1, downAt: 0, downHours: 0, dials: { ...DEFAULT_DIALS } };
+  const base = new Map(), chg = new Map();
+  const total = COMPARE_SEEDS.length * 2;
+  let done = 0;
+  renderCompare(o, base, chg, 0, total);
+  const jobs = [];
+  for (const seed of COMPARE_SEEDS) {
+    for (const [cfg, into] of [[today, base], [o, chg]]) {
+      jobs.push(runJob({ ...cfg, seed }).then(r => {
+        if (token !== compareToken) return;
+        if (r.error) throw new Error(r.error);
+        into.set(seed, r.q);
+        done++;
+        renderCompare(o, base, chg, done, total);
+      }));
+    }
+  }
+  try { await Promise.all(jobs); } catch (err) { if (token === compareToken) $("cmp-note").textContent = "Could not compare: " + err.message; }
+}
+
+// ------------------------------------------------------------------ tabs and the 300-day runs
+
+function showTab(which) {
+  $("compare").hidden = false;
+  for (const [tab, pane, key] of [["tab-long", "pane-long", "long"], ["tab-change", "pane-change", "change"]]) {
+    const on = key === which;
+    $(tab).classList.toggle("on", on);
+    $(tab).setAttribute("aria-selected", on);
+    $(pane).hidden = !on;
+  }
+}
+
+function signed(x, d = 1) {
+  const a = Math.abs(x).toFixed(d);
+  if (+a === 0) return a;
+  return (x < 0 ? "−" : "+") + a;
+}
+
+async function loadLong() {
+  let L;
+  try { L = await fetch("data/lean-long.json").then(r => (r.ok ? r.json() : null)); } catch { L = null; }
+  if (!L) { $("tab-long").hidden = true; showTab("change"); return; }
+  const cell = (metric, k, cap) => L.cells.find(c => c.metric === metric && c.k === k && c.cap === cap);
+  const ks = [...new Set(L.cells.map(c => c.k))];
+  const caps = [...new Set(L.cells.map(c => c.cap))];
+  const verdict = c => (/better/.test(c.verdict) ? "better" : /worse/.test(c.verdict) ? "worse" : "unclear");
+  $("long-lead").textContent = `Wafers out a day with a WIP cap, against no cap, over days ${L.warmup} to ${L.days} of ${L.days}-day runs. ${L.seeds.length} paired seeds per cell.`;
+  let g = `<div class="h">break­downs</div>` + caps.map(c => `<div class="h">cap ${c.toLocaleString()}</div>`).join("");
+  for (const k of ks) {
+    g += `<div class="r">×${k}</div>`;
+    for (const cap of caps) {
+      const w = cell("wafers_per_day", k, cap), ct = cell("cycle_days", k, cap);
+      const v = verdict(w);
+      const title = `Breakdowns ×${k}, cap ${cap}: wafers out ${signed(w.mean)} a day (${signed(w.lo)} to ${signed(w.hi)}), ${v === "unclear" ? "no clear effect" : v}; cycle time ${signed(ct.mean)} days (${signed(ct.lo)} to ${signed(ct.hi)})`;
+      g += `<div class="c ${v}" title="${title}"><b>${signed(w.mean, 0)}</b><span>${signed(ct.mean, 0)} d</span></div>`;
+    }
+  }
+  $("long-grid").innerHTML = g;
+  // the flip: a cap free at the calmest rate and costing wafers at a harsher one
+  const lines = [];
+  for (const cap of caps) {
+    const calm = cell("wafers_per_day", ks[0], cap);
+    const worst = ks.map(k => cell("wafers_per_day", k, cap)).find(c => verdict(c) === "worse");
+    if (verdict(calm) !== "worse" && worst) {
+      const ctc = cell("cycle_days", ks[0], cap);
+      lines.push(`A cap of <b>${cap.toLocaleString()} lots</b> costs no wafers on today's fab (${signed(calm.mean)} a day, 95% ${signed(calm.lo)} to ${signed(calm.hi)}) and cuts cycle time by ${Math.abs(ctc.mean).toFixed(0)} days. With breakdowns ×${worst.k} it costs <b>${Math.abs(worst.mean).toFixed(0)} wafers a day</b> (${Math.abs(worst.hi).toFixed(0)} to ${Math.abs(worst.lo).toFixed(0)}).`);
+    }
+  }
+  const gains = caps.filter(cap => verdict(cell("wafers_per_day", ks[0], cap)) === "better");
+  if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model; why is not traced yet.`);
+  $("long-finding").innerHTML = lines.join("<br><br>");
+  $("long-note").textContent = `Each cell: wafers out a day (cycle time in days below), cap minus no cap. Green better, red worse, grey no clear effect: 95% intervals for all ${L.cells.length / 3} cells at once (Bonferroni). Precomputed natively in ${Math.round(L.seconds)} s; the page's own runs go up to 14 days, too short for wafers to cross the fab. On the SMT2020 model. Real-fab effect: cannot say.`;
+  showTab("long");
+}
+
+function rerun() {
+  const opts = readOpts();
   $("runnote").textContent = "Simulating…";
   setTimeout(() => {
-    const run = simulate(opts);
+    let run;
+    try { run = simulate(opts); } catch (err) { $("runnote").textContent = "Could not run: " + err.message; return; }
     load(run);
     const moves = run.j.moves.toLocaleString();
-    $("runnote").textContent = `Simulated ${opts.days} day${opts.days > 1 ? "s" : ""} (${moves} moves, ${run.j.decisions.toLocaleString()} dispatch decisions) in ${run.secs.toFixed(2)} s, here in your browser.`;
+    $("runnote").textContent = `Seed ${opts.seed}: ${opts.days} day${opts.days > 1 ? "s" : ""}, ${moves} moves, ${run.j.decisions.toLocaleString()} dispatch decisions, simulated in ${run.secs.toFixed(2)} s here in your browser.`;
+    compare(opts);
   }, 20);
 }
 
@@ -822,6 +1066,8 @@ function load(run) {
   P.toolGroup.forEach((g, k) => P.groupTools[g].push(k));
   P.plain = P.j.groups.map(g => plainGroup(g[0], sim.area[g[0]]));
   P.holdingGroup = P.j.groups.findIndex(g => sim.area[g[0]] === "Delay_32");
+  P.breakdowns = breakdownEvents(P);
+  P.breakdownTimes = P.breakdowns.map(e => e[0]);
   cur = makeCursor(P);
   t = 0;
   playing = true;
@@ -845,8 +1091,8 @@ async function main() {
   HALLS_L = buildLayout(groups);
   const flows = hallFlows(HALLS_L, first.j.routes);
   HALLS_L.hallOfGroup = flows.hallOfGroup;
-  const padR = innerWidth > 900 ? 330 : 24;
-  TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - padR - 24) / (innerHeight - 220)));
+  const padR = innerWidth > 900 ? 330 : 24, padL = innerWidth > 900 ? 372 : 24;
+  TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - padR - padL) / (innerHeight - 220)));
   G = placeHalls(HALLS_L, flows);
   const sel = $("down-group");
   groups
@@ -855,6 +1101,7 @@ async function main() {
     .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
     .forEach(([name, i]) => { const o = document.createElement("option"); o.value = i; o.textContent = name; sel.appendChild(o); });
   load(first);
+  await loadLong();
   fit();
   $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, here in your browser.`;
 }

@@ -9,16 +9,152 @@
 use std::cell::RefCell;
 use std::fmt::Write as _;
 
+use fabsim::dials::Dials;
 use fabsim::engine::{run, Decision, RunOptions, RunResult};
 use fabsim::shop::Shop;
 
 #[derive(Default)]
 struct State {
     shop: Option<Shop>,
+    dials: Dials,
     res: Option<RunResult>,
     json: String,
+    quick: String,
     trace: Vec<f64>,
     states: Vec<f64>,
+}
+
+/// A dispatch rule the page offers.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Policy {
+    /// today's rule: hot lots first, then no setup change, then oldest
+    Today,
+    /// first come, first served
+    Fifo,
+    /// shortest processing first
+    Spt,
+}
+
+impl Policy {
+    pub fn from_code(c: i32) -> Policy {
+        match c {
+            1 => Policy::Fifo,
+            2 => Policy::Spt,
+            _ => Policy::Today,
+        }
+    }
+}
+
+/// The base shop with the dials applied, then one group (by index) down from `down_at` minutes
+/// for `down_hours` (none when `down_group` < 0 or `down_hours` <= 0).
+pub fn prepare(base: &Shop, dials: &Dials, down_group: i32, down_at: f64, down_hours: f64) -> Result<Shop, String> {
+    let mut shop = dials.apply(base)?;
+    if down_group >= 0 && down_hours > 0.0 {
+        let g = shop.groups.get_mut(down_group as usize).ok_or_else(|| format!("no tool group {down_group}"))?;
+        g.down.push((down_at, down_at + down_hours * 60.0));
+    }
+    Ok(shop)
+}
+
+fn run_policy(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
+    match policy {
+        Policy::Fifo => {
+            let mut pick = |d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0));
+            run(shop, opts, Some(&mut pick))
+        }
+        Policy::Spt => {
+            let mut pick = |d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes));
+            run(shop, opts, Some(&mut pick))
+        }
+        Policy::Today => run(shop, opts, None),
+    }
+}
+
+/// The totals of one run, for comparing paired seeds.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Quick {
+    pub moves: i64,
+    pub finished: i64,
+    pub wafers_out: i64,
+    /// lots that broke a queue-time limit
+    pub breaches: usize,
+    pub wait_lot_hours: f64,
+    /// lots waiting at the end
+    pub waiting: i64,
+}
+
+/// Run `days` days without recording and keep the totals.
+pub fn quick(shop: &Shop, seed: u64, days: f64, policy: Policy) -> Quick {
+    let r = run_policy(shop, &RunOptions { seed, until: Some(days * 1440.0), record: false }, policy);
+    Quick {
+        moves: r.moves,
+        finished: r.finished,
+        wafers_out: r.lots.iter().filter(|l| l.done.is_some()).map(|l| l.size).sum(),
+        breaches: r.breaches.len(),
+        wait_lot_hours: r.wait_lot_minutes / 60.0,
+        waiting: r.waiting,
+    }
+}
+
+pub fn quick_json(q: &Quick) -> String {
+    format!(
+        "{{\"moves\":{},\"finished\":{},\"wafers_out\":{},\"breaches\":{},\"wait_lot_hours\":{},\"waiting\":{}}}",
+        q.moves, q.finished, q.wafers_out, q.breaches, num(q.wait_lot_hours), q.waiting
+    )
+}
+
+/// The Student t quantile, for the page's intervals.
+#[no_mangle]
+pub extern "C" fn fg_t(p: f64, df: f64) -> f64 {
+    fabsim::uq::t_quantile(p, df)
+}
+
+/// Set the dials for later runs; 0 on success, else the error is in the JSON buffer.
+/// `cap` <= 0 means no cap of the page's own (the shop's own cap stays).
+#[no_mangle]
+pub extern "C" fn fg_dials(breakdowns: f64, repair: f64, demand: f64, hot: f64, rework: f64, cap: f64) -> i32 {
+    ST.with(|st| {
+        let mut st = st.borrow_mut();
+        let d = Dials { breakdowns, repair, demand, hot, rework, cap: if cap > 0.0 { Some(cap as i64) } else { None }, outage: None };
+        match st.shop.as_ref().map(|s| d.apply(s)) {
+            Some(Err(e)) => {
+                st.json = format!("{{\"error\":{}}}", js(&e));
+                1
+            }
+            _ => {
+                st.dials = d;
+                0
+            }
+        }
+    })
+}
+
+/// A quick run with the current dials; the totals go to the quick buffer. 0 on success.
+#[no_mangle]
+pub extern "C" fn fg_quick(seed: f64, days: f64, policy: i32, down_group: i32, down_at: f64, down_hours: f64) -> i32 {
+    ST.with(|st| {
+        let mut st = st.borrow_mut();
+        let Some(base) = st.shop.as_ref() else { return 1 };
+        match prepare(base, &st.dials, down_group, down_at, down_hours) {
+            Ok(shop) => {
+                st.quick = quick_json(&quick(&shop, seed as u64, days, Policy::from_code(policy)));
+                0
+            }
+            Err(e) => {
+                st.quick = format!("{{\"error\":{}}}", js(&e));
+                1
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn fg_quick_ptr() -> *const u8 {
+    ST.with(|st| st.borrow().quick.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn fg_quick_len() -> usize {
+    ST.with(|st| st.borrow().quick.len())
 }
 
 thread_local! {
@@ -94,22 +230,15 @@ pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, dow
     ST.with(|st| {
         let mut st = st.borrow_mut();
         let Some(base) = st.shop.as_ref() else { return 1 };
-        let mut shop = base.clone();
-        if down_group >= 0 && (down_group as usize) < shop.groups.len() && down_hours > 0.0 {
-            shop.groups[down_group as usize].down.push((down_at, down_at + down_hours * 60.0));
-        }
-        let opts = RunOptions { seed: seed as u64, until: Some(days * 1440.0), record: true };
-        let res = match policy {
-            1 => {
-                let mut pick = |d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0));
-                run(&shop, &opts, Some(&mut pick))
+        let shop = match prepare(base, &st.dials, down_group, down_at, down_hours) {
+            Ok(s) => s,
+            Err(e) => {
+                st.json = format!("{{\"error\":{}}}", js(&e));
+                return 1;
             }
-            2 => {
-                let mut pick = |d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes));
-                run(&shop, &opts, Some(&mut pick))
-            }
-            _ => run(&shop, &opts, None),
         };
+        let opts = RunOptions { seed: seed as u64, until: Some(days * 1440.0), record: true };
+        let res = run_policy(&shop, &opts, Policy::from_code(policy));
         st.trace = res
             .trace
             .iter()
@@ -150,7 +279,7 @@ fn argmin(d: &Decision, key: impl Fn(&fabsim::engine::Candidate) -> (f64, f64)) 
 
 fn summary(shop: &Shop, res: &RunResult) -> String {
     let mut o = String::from("{");
-    let _ = write!(o, "\"until\":{},\"finished\":{},\"moves\":{},\"decisions\":{},", num(res.until), res.finished, res.moves, res.decisions);
+    let _ = write!(o, "\"until\":{},\"finished\":{},\"moves\":{},\"decisions\":{},\"breaches\":{},", num(res.until), res.finished, res.moves, res.decisions, res.breaches.len());
     o.push_str("\"groups\":[");
     for (i, g) in res.groups.iter().enumerate() {
         if i > 0 {

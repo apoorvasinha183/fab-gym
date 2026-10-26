@@ -38,11 +38,21 @@
     <label>From hour <input id="down-at" type="number" min="0" max="72" value="6"></label>
     <label>For hours <input id="down-hours" type="number" min="1" max="72" value="8"></label>
   </div>
+  <h3>Dials</h3>
+  <div class="dials">
+    <label>Breakdowns <output id="o-breakdowns">×1</output><input id="d-breakdowns" type="range" min="0" max="3" step="0.25" value="1"></label>
+    <label>Repair time <output id="o-repair">×1</output><input id="d-repair" type="range" min="0.5" max="3" step="0.25" value="1"></label>
+    <label>Demand <output id="o-demand">×1</output><input id="d-demand" type="range" min="0.5" max="1.5" step="0.05" value="1"></label>
+    <label>Hot lots <output id="o-hot">×1</output><input id="d-hot" type="range" min="0" max="5" step="0.5" value="1"></label>
+    <label>Rework <output id="o-rework">×1</output><input id="d-rework" type="range" min="0" max="5" step="0.5" value="1"></label>
+    <label>WIP cap <output id="o-cap">none</output><input id="d-cap" type="range" min="1500" max="3600" step="100" value="3600"></label>
+    <button id="reset" class="link" type="button">Reset dials</button>
+  </div>
   <div class="row">
-    <label>Seed <input id="seed" type="number" min="0" value="0"></label>
+    <label>Seed shown <input id="seed" type="number" min="0" value="0"></label>
     <label>Days <input id="days" type="number" min="1" max="14" value="3"></label>
   </div>
-  <button id="run" class="primary">Simulate</button>
+  <button id="run" class="primary">Simulate and compare</button>
   <p class="note" id="runnote">Loading the simulator…</p>
   <h3>Machines</h3>
   <ul class="legend">
@@ -59,6 +69,27 @@
   </ul>
   <p class="note small">Every number comes from the simulator on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020). It is a published model, not a real fab.</p>
 </aside>
+
+<section class="card compare" id="compare" hidden>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-long" aria-selected="true" class="on" type="button">300-day runs</button>
+    <button role="tab" id="tab-change" aria-selected="false" type="button">Your change</button>
+  </div>
+  <div id="pane-long" role="tabpanel">
+    <h3 class="q">Is a WIP cap free?</h3>
+    <p class="what" id="long-lead"></p>
+    <div id="long-grid" class="grid"></div>
+    <p class="finding" id="long-finding"></p>
+    <p class="note small" id="long-note"></p>
+  </div>
+  <div id="pane-change" role="tabpanel" hidden aria-live="polite">
+    <p class="what" id="cmp-what">Set a rule, an outage or the dials, then Simulate and compare.</p>
+    <div id="cmp-rows"></div>
+    <p class="note small" id="cmp-note"></p>
+  </div>
+</section>
+
+<section class="card ticker" aria-label="Floor log"><ol id="ticker"></ol></section>
 
 <footer class="card bar">
   <button id="play" class="icon" aria-label="Play or pause">❚❚</button>

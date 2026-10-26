@@ -5,4 +5,5 @@ cd "$(dirname "$0")/.."
 cargo build --release --target wasm32-unknown-unknown -p fabweb
 cp target/wasm32-unknown-unknown/release/fabweb.wasm web/
 cargo run --release -q --bin fabsim -- web-data web/data "${1:-data/smt2020/hvlm}"
+cp results/lean-long/summary.json web/data/lean-long.json
 echo "serve with: python3 -m http.server 8765 --bind 127.0.0.1 --directory web"
