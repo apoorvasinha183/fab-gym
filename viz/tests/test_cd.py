@@ -30,7 +30,10 @@ DD_SHEETS = ["G-001", "G-002", "G-003", "G-101", "G-102", "C-101", "C-201", "S-0
              "A-201", "A-301", "A-402", "A-501", "A-602", "S-301", "S-601", "M-201", "M-602", "PP-201", "P-201", "FP-201",
              "FA-201", "E-101", "E-602"]
 CD_SHEETS = ["A-110", "A-130", "A-610", "S-110", "S-510", "M-110", "PP-110", "E-110", "FP-110", "FA-110"]
-SHEETS = DD_SHEETS + CD_SHEETS
+ARCH_SHEETS = ["A-001", "A-100", "A-111", "A-112", "A-121", "A-122", "A-131", "A-132", "A-141", "A-142", "A-202", "A-311",
+               "A-411", "A-412", "A-413", "A-414", "A-521", "A-531", "A-541", "A-551", "A-611", "A-612", "A-613", "A-614",
+               "A-701", "A-702"]   # docs/ARCH-DOCS.md
+SHEETS = DD_SHEETS + CD_SHEETS + ARCH_SHEETS
 NFPA_RULES = {"NFPA 13": ("sprinklers.spacing", "sprinklers.branch_sizing"), "NFPA 72": ("alarm.detector_spacing",),
               "NFPA 70": ("elec.conductors",)}
 
