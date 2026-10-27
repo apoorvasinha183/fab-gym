@@ -198,8 +198,8 @@ class Plan(unittest.TestCase):
         self.assertEqual(len(f), 1, fid)
         return f[0]
 
-    def innermost(self, x, y, z):
-        rs = [r for r in P["rooms"] if r["kind"] != "walkway" and in_room(r, x, y, z)]
+    def innermost(self, x, y, z, skip=("walkway",)):
+        rs = [r for r in P["rooms"] if r["kind"] not in skip and in_room(r, x, y, z)]
         return min(rs, key=lambda r: (r["x1"] - r["x0"]) * (r["y1"] - r["y0"])) if rs else None
 
     # the way in
@@ -351,10 +351,11 @@ class Plan(unittest.TestCase):
             d = math.hypot(b[1] - a[1], b[2] - a[2])
             dg = b[7] - a[7]
             dyaw = angle(b[4], a[4])
-            self.assertGreaterEqual(dg, d - 1e-6, f"gait behind the feet at {a[0]:.2f} s")
-            self.assertLessEqual(dg, d + 0.35 * dyaw + 1e-6, f"steps in place at {a[0]:.2f} s")
+            # 1e-4: the plan's numbers are rounded to 6 places
+            self.assertGreaterEqual(dg, d - 1e-4, f"gait behind the feet at {a[0]:.2f} s")
+            self.assertLessEqual(dg, d + 0.35 * dyaw + 1e-4, f"steps in place at {a[0]:.2f} s")
             if d / DT < 0.3 and dyaw / DT > 0.5:
-                self.assertGreaterEqual(dg, 0.25 * dyaw - 1e-6, f"he turns without stepping at {a[0]:.2f} s")
+                self.assertGreaterEqual(dg, 0.25 * dyaw - 1e-4, f"he turns without stepping at {a[0]:.2f} s")
         for a, b in zip(self.path, self.path[1:]):
             self.assertGreaterEqual(b[7], a[7] - 1e-9)
 
@@ -580,7 +581,8 @@ class Plan(unittest.TestCase):
             for f in self.furniture():
                 self.assertFalse(inside(f, x, y, pad=0.15) and f["z0"] - 0.15 <= z <= f["z1"] + 0.15, f"camera in the {f['id']} at {c[0]:.2f} s")
             if st in WAY_IN and st != "outside":
-                r = self.innermost(p[1], p[2], p[3])
+                # the air shower is a cabinet with glass in its doors: it is filmed from the room around it
+                r = self.innermost(p[1], p[2], p[3], skip=("walkway", "cabinet"))
                 self.assertTrue(r["x0"] + 0.2 <= x <= r["x1"] - 0.2 and r["y0"] + 0.2 <= y <= r["y1"] - 0.2
                                 and r["z0"] + 0.3 <= z <= r["z1"] - 0.2, f"camera outside the {r['name']} at {c[0]:.2f} s")
             if st == "outside":
