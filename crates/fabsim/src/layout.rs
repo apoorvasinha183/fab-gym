@@ -507,11 +507,12 @@ impl Problem {
                                 None => by_bay[g].push((id, 1)),
                             }
                             if boxes {
-                                // wall 0 against the bay's west chase, wall 1 against its east one
+                                // fronts on the aisle line, under the hoist rail; the chase
+                                // behind the deepest tool, more floor behind shallower ones
                                 let tx0 = if wall == 0 {
-                                    bx0 + cfg.chase
+                                    bx0 + bw / 2.0 - cfg.bay_aisle / 2.0 - d
                                 } else {
-                                    bx0 + bw - cfg.chase - d
+                                    bx0 + bw / 2.0 + cfg.bay_aisle / 2.0
                                 };
                                 c.tools.push(ToolBox {
                                     group: g,
