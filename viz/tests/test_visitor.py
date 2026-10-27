@@ -252,12 +252,12 @@ class Plan(unittest.TestCase):
             nov = (1.0 / (1 + k)) * (0.3 if x["group"] is not None and x["group"] in seen_groups else 1.0) \
                 * (0.5 if x["place"] in seen_places else 1.0)
             self.assertAlmostEqual(x["novelty"], nov, places=6, msg=x["key"])
-            self.assertAlmostEqual(x["score"], x["severity"] * x["novelty"] / (1 + x["walk_s"] / 30.0), places=6)
+            self.assertAlmostEqual(x["score"], x["severity"] * x["novelty"] / (1 + x["walk_s"] / 15.0), places=6)
             c = x["candidates"]
             self.assertGreaterEqual(len(c), 2, "he had a choice")
             self.assertEqual(c[0]["key"], x["key"])
             for o in c:
-                self.assertAlmostEqual(o["score"], o["severity"] * o["novelty"] / (1 + o["walk_s"] / 30.0), places=6)
+                self.assertAlmostEqual(o["score"], o["severity"] * o["novelty"] / (1 + o["walk_s"] / 15.0), places=6)
                 self.assertLessEqual(o["score"], x["score"] + 1e-9, (o["key"], x["key"]))
             seen_kinds.append(x["kind"])
             seen_places.add(x["place"])
