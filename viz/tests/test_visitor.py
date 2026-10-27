@@ -242,10 +242,15 @@ class Plan(unittest.TestCase):
         self.assertGreaterEqual(len({x["kind"] for x in sights}), 3)
         self.assertLessEqual({x["kind"] for x in sights}, KINDS)
         self.assertEqual(len({x["key"] for x in sights}), len(sights), "never the same sight twice")
-        seen_kinds, seen_groups = [], set()
+        seen_kinds, seen_groups, seen_places = [], set(), set()
         for x in sights:
+            if x["tool"] is not None:
+                self.assertEqual(x["place"], f"bay:{self.s['tools'][x['tool']]['bay']}")
+            else:
+                self.assertTrue(x["place"].startswith("spine:"), x["place"])
             k = seen_kinds.count(x["kind"])
-            nov = (1.0 / (1 + k)) * (0.3 if x["group"] is not None and x["group"] in seen_groups else 1.0)
+            nov = (1.0 / (1 + k)) * (0.3 if x["group"] is not None and x["group"] in seen_groups else 1.0) \
+                * (0.5 if x["place"] in seen_places else 1.0)
             self.assertAlmostEqual(x["novelty"], nov, places=6, msg=x["key"])
             self.assertAlmostEqual(x["score"], x["severity"] * x["novelty"] / (1 + x["walk_s"] / 30.0), places=6)
             c = x["candidates"]
@@ -255,8 +260,10 @@ class Plan(unittest.TestCase):
                 self.assertAlmostEqual(o["score"], o["severity"] * o["novelty"] / (1 + o["walk_s"] / 30.0), places=6)
                 self.assertLessEqual(o["score"], x["score"] + 1e-9, (o["key"], x["key"]))
             seen_kinds.append(x["kind"])
+            seen_places.add(x["place"])
             if x["group"] is not None:
                 seen_groups.add(x["group"])
+        self.assertGreaterEqual(len(seen_places), 4, "he moves on through the fab")
 
     def test_every_sight_is_in_the_run_when_he_gets_there(self):
         for x in P["sights"]:
