@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://bim/panel.gdshader" id="1"]
+
+[resource]
+resource_name = "bim_covering_flooring"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/base_color = Color(0.8745, 0.8902, 0.9059, 1)
+shader_parameter/line_color = Color(0.6627, 0.6902, 0.7176, 1)
+shader_parameter/cell = Vector3(0.6, 0.6, 0.6)
+shader_parameter/line_frac = 0.02
+shader_parameter/rough = 0.35
+shader_parameter/metal = 0.1
+shader_parameter/emit = 0.0

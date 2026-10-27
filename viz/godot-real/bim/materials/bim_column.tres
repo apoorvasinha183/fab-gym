@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://bim/panel.gdshader" id="1"]
+
+[resource]
+resource_name = "bim_column"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/base_color = Color(0.7098, 0.6980, 0.6667, 1)
+shader_parameter/line_color = Color(0.6157, 0.6039, 0.5765, 1)
+shader_parameter/cell = Vector3(6, 6, 6)
+shader_parameter/line_frac = 0.012
+shader_parameter/rough = 0.9
+shader_parameter/metal = 0.0
+shader_parameter/emit = 0.0

@@ -15,6 +15,7 @@ extends Node3D
 ## set_time() and pose(). `scene_path` names the scene to draw.
 
 const MODELS := "res://data/models.json"
+const FILTER := 0.35           # filter ceiling depth, assumed (viz/blueprint/model.py, the IFC's ceiling)
 const FILM := "res://data/film.json"
 const BADGE := "Fab Gym · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab"
 const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse\nV visitor: A Walk Through the Fab (V again to leave · Left/Right seek · R restart)"
@@ -76,6 +77,8 @@ var hot_mm: MultiMesh
 # the cut away
 var cut := false
 var cut_nodes: Array = []
+var bim: Node3D                # the structure from the IFC model (bim/building.tscn, docs/BIM-3D.md)
+var bim_cut_z := 1000000.0     # walls are hidden above this height; the cleanroom's top when cut away
 
 # player and camera
 var player: CharacterBody3D
@@ -758,6 +761,11 @@ func _cuttable(mi: MeshInstance3D) -> void:
 
 
 func _fabs() -> void:
+	# The structure (walls, columns, slabs, raised floor, filter ceiling) and its colliders come from the IFC
+	# model; this adds the dressing BIM does not hold, placed to fit it.
+	bim = load("res://bim/building.tscn").instantiate()
+	add_child(bim)
+	cut_nodes.append_array(bim.cut_away())
 	var walls := StaticBody3D.new()
 	walls.name = "walls"
 	add_child(walls)
@@ -776,15 +784,9 @@ func _fabs() -> void:
 		var ix0 := ox
 		var ix1 := ox + L
 		var pre: String = c["name"]
-		# support floor
+		# support floor: the ground under it, and the sub-fab's pumps, scrubbers, pipes and ducts
 		var sb := Batch.new()
 		sb.box(M_CONC, X0, Y0, -0.05, X1, Y1, 0.0)
-		for gx in int((X1 - X0) / 12) + 1:
-			for gy in int((Y1 - Y0) / 12) + 1:
-				var x := X0 + 3 + gx * 12
-				var y := Y0 + 3 + gy * 12
-				if x < X1 - 1 and y < Y1 - 1 and absf(y) > SP / 2 + 0.5:
-					sb.box(M_SLAB, x - 0.4, y - 0.4, 0, x + 0.4, y + 0.4, SUPPORT_TOP)
 		for tl in S["tools"]:
 			if S["bays"][tl["bay"]]["phase"] != ph:
 				continue
@@ -807,15 +809,11 @@ func _fabs() -> void:
 			var y := Y0 + 4 + gy * 8
 			sb.box(M_STRIP, X0 + 1, y - 0.06, SUPPORT_TOP - 0.12, X1 - 1, y + 0.06, SUPPORT_TOP - 0.05)
 		make(sb, pre + " support floor")
-		# waffle slab, plenum and tiles
+		# the spine's yellow lines on the raised floor (the slab and the floor are the IFC's)
 		var wb := Batch.new()
-		wb.box(M_SLAB, X0, Y0, SUPPORT_TOP, X1, Y1, WAFFLE_TOP)
-		wb.box(M_PLENUM, X0, Y0, WAFFLE_TOP, X1, Y1, CZ - 0.04)
-		wb.box(M_TILE, X0, Y0, CZ - 0.04, X1, Y1, CZ)
 		for y in [-SP / 2 - 0.08, SP / 2]:
 			wb.box(M_YELLOW, ix0, y, CZ, ix1, y + 0.08, CZ + 0.005)
-		make(wb, pre + " floors")
-		_solid(walls, X0, Y0, SUPPORT_TOP, X1, Y1, CZ)
+		make(wb, pre + " floor lines")
 		# bay walls between bays, from the spine to the back wall
 		var bw := Batch.new()
 		for side in [0, 1]:
@@ -849,51 +847,49 @@ func _fabs() -> void:
 			bw.box(M_WALL, ix0, ye - 0.06, CZ, ix1, ye + 0.06, CEIL)
 			_solid(walls, ix0, ye - 0.06, CZ, ix1, ye + 0.06, CEIL)
 		make(bw, pre + " bay walls")
-		# the filter ceiling: yellow over lithography, white elsewhere
+		# the filter faces under the IFC's ceiling: yellow over lithography, white elsewhere
 		var ce := Batch.new()
 		for bay in S["bays"]:
 			if bay["phase"] != ph:
 				continue
-			ce.box(M_FFU_Y if bay["light"] == "yellow" else M_FFU, bay["x0"], bay["y0"], CEIL, bay["x1"], bay["y1"], CEIL + 0.12)
-		ce.box(M_FFU, ix0, -SP / 2, CEIL, ix1, SP / 2, CEIL + 0.12)
-		ce.box(M_FFU_TOP, X0, Y0, CEIL + 0.12, X1, Y1, CEIL + 0.14)
-		_cuttable(make(ce, pre + " ceiling"))
-		# the air space
+			ce.box(M_FFU_Y if bay["light"] == "yellow" else M_FFU, bay["x0"], bay["y0"], CEIL - 0.03, bay["x1"], bay["y1"], CEIL)
+		ce.box(M_FFU, ix0, -SP / 2, CEIL - 0.03, ix1, SP / 2, CEIL)
+		_cuttable(make(ce, pre + " ceiling faces"))
+		# the air space: trusses and posts over the columns of the 12 m grid
 		var ab := Batch.new()
-		for gx in int((X1 - X0) / 12) + 1:
-			var x := X0 + 3 + gx * 12
-			if x < X1:
-				ab.box(M_STEEL, x - 0.2, Y0, AIR_TOP - 0.9, x + 0.2, Y1, AIR_TOP - 0.1)
-				for gy in int((Y1 - Y0) / 12) + 1:
-					var y := Y0 + 3 + gy * 12
-					if y < Y1:
-						ab.box(M_STEEL, x - 0.15, y - 0.15, CEIL + 0.14, x + 0.15, y + 0.15, AIR_TOP - 0.9)
+		var ftop := CEIL + FILTER
+		var gx := X0 + 12.0
+		while gx < X1 - 0.5:
+			ab.box(M_STEEL, gx - 0.2, Y0, AIR_TOP - 0.9, gx + 0.2, Y1, AIR_TOP - 0.1)
+			var gy := SP / 2
+			while gy <= SP / 2 + DEPTH + 1e-6:
+				for y in [gy, -gy]:
+					ab.box(M_STEEL, gx - 0.15, y - 0.15, ftop, gx + 0.15, y + 0.15, AIR_TOP - 0.9)
+				gy += 12.0
+			gx += 12.0
 		for y in [-48, -20, 20, 48]:
 			ab.cyl(M_DUCT, [X0 + 1, y - 0.9, CEIL + 1.4], [X1 - 1, y + 0.9, CEIL + 3.2], "x", 20)
 		_cuttable(make(ab, pre + " air space"))
-		# roof and rooftop plant
+		# rooftop plant (the roof slab is the IFC's)
 		var rb := Batch.new()
-		rb.box(M_ROOF, X0, Y0, AIR_TOP, X1, Y1, ROOF_TOP)
 		for i in int((X1 - X0) / 24):
 			var x := X0 + 12 + i * 24
 			for y in [Y0 + 18, Y1 - 30]:
 				rb.box(M_DUCT, x - 5, y, ROOF_TOP, x + 5, y + 12, ROOF_TOP + 3.5)
 				rb.cyl(M_FAN, [x - 1.8, y + 3, ROOF_TOP + 3.5], [x + 1.8, y + 6.6, ROOF_TOP + 4.6], "z", 20)
-		_cuttable(make(rb, pre + " roof"))
-		# the facade in bands; the upper two go with the roof when cut away
-		var T := 0.4
+		_cuttable(make(rb, pre + " roof plant"))
+		# trims on the IFC's walls: louvres over the support floor, a band at the cleanroom, a parapet band;
+		# the parapet goes with the roof when cut away
+		var T := 0.03
 		var low := Batch.new()
 		var high := Batch.new()
-		for f in [[X0, Y0, X1, Y0 + T], [X0, Y1 - T, X1, Y1], [X0, Y0, X0 + T, Y1], [X1 - T, Y0, X1, Y1]]:
+		for f in [[X0 - T, Y0 - T, X1 + T, Y0], [X0 - T, Y1, X1 + T, Y1 + T], [X0 - T, Y0, X0, Y1], [X1, Y0, X1 + T, Y1]]:
 			low.box(M_LOUVRE, f[0], f[1], 0.0, f[2], f[3], WAFFLE_TOP)
-			low.box(M_FACADE, f[0], f[1], WAFFLE_TOP, f[2], f[3], CEIL + 0.14)
 			var zz := (WAFFLE_TOP + CEIL) / 2
 			low.box(M_BAND, f[0] - 0.02, f[1] - 0.02, zz - 0.4, f[2] + 0.02, f[3] + 0.02, zz + 0.4)
-			high.box(M_FACADE, f[0], f[1], CEIL + 0.14, f[2], f[3], AIR_TOP)
-			high.box(M_BAND, f[0], f[1], AIR_TOP, f[2], f[3], ROOF_TOP + 0.8)
-			_solid(walls, f[0], f[1], CZ, f[2], f[3], CEIL)
-		make(low, pre + " facade")
-		_cuttable(make(high, pre + " facade top"))
+			high.box(M_BAND, f[0] - 0.02, f[1] - 0.02, AIR_TOP, f[2] + 0.02, f[3] + 0.02, ROOF_TOP + 0.8)
+		make(low, pre + " facade trims")
+		_cuttable(make(high, pre + " parapet"))
 		_label("Phase %d fab" % (ph + 1), w((X0 + X1) / 2, (Y0 + Y1) / 2, ROOF_TOP + 14), 44, true)
 		# inside lights: down each bay's aisle and along the spine
 		for bay in S["bays"]:
@@ -1284,6 +1280,8 @@ func _set_cut(on: bool) -> void:
 	cut = on
 	for n in cut_nodes:
 		n.visible = not on
+	bim_cut_z = CEIL if on else 1000000.0
+	RenderingServer.global_shader_parameter_set("bim_cut_z", bim_cut_z)
 
 
 func _inside() -> bool:
@@ -1620,6 +1618,12 @@ func _check_start() -> void:
 				break
 	check["lot_samples"] = samples
 	check["badge"] = BADGE
+	var br: Dictionary = bim.report()
+	_set_cut(true)
+	var on := bim_cut_z
+	_set_cut(false)
+	br["cut"] = {"on": on, "off": bim_cut_z}
+	check["bim"] = br
 	# walk at the front of the first tool of the first bay, toward it
 	var i0 := 0
 	var tl: Dictionary = S["tools"][i0]

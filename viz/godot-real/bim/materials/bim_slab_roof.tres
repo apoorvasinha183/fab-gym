@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://bim/panel.gdshader" id="1"]
+
+[resource]
+resource_name = "bim_slab_roof"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/base_color = Color(0.6039, 0.6314, 0.6588, 1)
+shader_parameter/line_color = Color(0.4902, 0.5176, 0.5451, 1)
+shader_parameter/cell = Vector3(3, 3, 3)
+shader_parameter/line_frac = 0.03
+shader_parameter/rough = 0.8
+shader_parameter/metal = 0.1
+shader_parameter/emit = 0.0

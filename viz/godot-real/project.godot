@@ -29,6 +29,13 @@ window/stretch/mode="canvas_items"
 
 enabled=PackedStringArray("res://addons/godot_mcp_toolkit/plugin.cfg")
 
+[shader_globals]
+
+bim_cut_z={
+"type": "float",
+"value": 1000000.0
+}
+
 [mcp_toolkit]
 
 updates/check_for_updates=false

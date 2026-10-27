@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://bim/wall_cut.gdshader" id="1"]
+
+[resource]
+resource_name = "bim_wall"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/base_color = Color(0.8392, 0.8549, 0.8667, 1)
+shader_parameter/line_color = Color(0.6824, 0.7059, 0.7294, 1)
+shader_parameter/cell = Vector3(1.2, 2.75, 1.2)
+shader_parameter/line_frac = 0.015
+shader_parameter/rough = 0.5
+shader_parameter/metal = 0.1
+shader_parameter/emit = 0.0
