@@ -14,7 +14,8 @@ render, so each number is re-measured from that run and the lot is re-chosen
 by the same rule: a back-end lot whose clip includes lithography, metrology,
 etch and a wait of over an hour.
 
-**Today's lot.** `wip.977.Init_Lot_3_954` (shown as "Lot 954"):
+**The lot when the script was approved** (before the re-pack; the film as
+rendered follows Lot 971, below). `wip.977.Init_Lot_3_954` (shown as "Lot 954"):
 
 | step | group | moved | waited | on the tool |
 |---|---|---|---|---|
@@ -137,3 +138,47 @@ Mönch, 2020); the CC0 sources by name.
   Phase 2, so the re-chosen lot may not cross the bridge; shot 6 follows the
   lot's real ride, whichever building it is in.
 - Captions now; a voice later, reading the same captions.
+
+## As rendered (27 Oct)
+
+The re-pack at true size moved `LithoTrack_FE_95` to Phase 2, and the rule
+re-chose the lot: `wip.994.Init_Lot_3_971` ("Lot 971"). The words of each
+caption follow the script; the numbers are Lot 971's, written by
+`viz/film/film.py` into `data/layout-real/film.json`.
+
+| step | group | moved | waited | on the tool |
+|---|---|---|---|---|
+| coat and develop | LithoTrack_FE_95 (Phase 2) | 4.7 min | 15.0 min | 50.9 min |
+| exposure | Litho_BE_110 (Phase 2) | 4.9 | 0.0 | 72.2 |
+| litho metrology | LithoMet_BE_18 | 4.5 | 2.5 | 19.8 |
+| registration check | Litho_REG_BE_63 | 4.2 | 0.0 | 23.9 |
+| dry etch | DE_BE_65 | 4.9 | 0.0 | 92.3 |
+| wet etch | WE_BE_9 | 4.0 | 162.1 | 22.0 |
+| **total** | | **27.3 min** | **3 h (179.5 min)** | **4 h 41** |
+
+Across all lots in the clip's hours: 50.8% of lot time waiting for a tool,
+45.9% on tools or timed holds, 3.3% moving. The layout cut hoist travel by 29%
+(3,054,667 to 2,180,617 m a day); cycle time showed no clear effect (mean
+−0.39 days, 95% −1.30 to +0.51, 10 paired seeds).
+
+Captions as rendered, where they differ from the script:
+
+- 5: "Lot 971 leaves wet etch."
+- 6: "Along Phase 2's spine to the track for coat and develop. 5 minutes on
+  the hoist." (the lot no longer crosses the bridge)
+- 8: "Next, exposure: straight onto the scanner for 72 minutes."
+- 9: "Measured, checked, etched: 2 hours 16 minutes on three tools."
+- 10: "Then it waits. 2 hours 42 minutes in the queue for wet etch."
+- 11: "Moving: 27 minutes. Waiting: three hours."
+- 12: "… Our layout cut hoist travel by 29%. Cycle time did not clearly change."
+
+Changes to the camera, made while checking stills:
+
+- Shot 3 cuts Phase 2's south face, which shows the bays end on; the west
+  face showed only the end bay's wall.
+- Shot 5 runs at ×4 so the pick-up (car arrives, gripper lowers, carrier
+  rises) fits its ten seconds, and is framed wider than 1.5 m so the car is in
+  the shot.
+- Shot 6 stays inside Phase 2, following the lot's real ride.
+- Shot 9's speed-ups are ×668, ×718 and ×2,768 (one beat each); shot 7 is
+  ×395 and shot 10 ×906.
