@@ -121,7 +121,8 @@ class Report(unittest.TestCase):
         self.assertGreaterEqual(len(R["visor"]), 5)
         for fr, i, dot, z in R["visor"]:
             self.assertGreaterEqual(dot, 0.8, f"worker {i} at frame {fr} looks away from his way")
-            self.assertTrue(1.3 < z < 1.75, f"worker {i}'s visor is {z} m up")
+            # the hazmat helmet is a third of the figure (1.75 m): its visor sits at 0.6 to 0.9 of the height
+            self.assertTrue(1.05 < z < 1.6, f"worker {i}'s visor is {z} m up")
 
     def test_workers_are_seen(self):
         # frames of the film in which a worker stands in front of the camera, within 40 m
