@@ -59,13 +59,23 @@ Found in reading:
 - Incompatible materials may not share a hazardous exhaust system (IMC 509.4). The stricter IBC 415.11.12 duct
   sprinklers stay, although IMC 509.7 exempts metallic ducts in fabs.
 
-## DD2 The 1.6 m chase layout
+## DD2 The 1.6 m chase layout, with cross aisles
 
-Under the stricter reading the chases need 5 ft (1.524 m), so the 1.5 m layout fails. `fabsim layout-trace` reads
-`--chase` like `fabsim layout` does. The run window is recorded on the 1.6 m layout D10 rescored
-(`data/layout-real-permit/trace-optimised.json`, seed 3000, day 30, 10 hours). The scene is built from it by
-`viz/prep.py --real` (`data/layout-real-permit/scene-optimised.json`). D4 to D8 rerun on that scene. Every tool keeps
-the full chase clear at both ends of its bay.
+- **Why the layout changes.** On the stricter reading the chases need 5 ft (1.524 m), so the 1.5 m layout fails;
+  D10's 1.6 m chase layout meets the width.
+- **What the 1.6 m layout still fails.** On it, the tools of many bays line a 60 m chase end to end. The middle of
+  such a chase is then 30 m, about 98 ft, from either open end, and there is no gap for a door into the fab area.
+  That fails the 75 ft of IBC 415.11.3.3.
+- **The change.** `fabsim layout` gains `--cross`: a cross aisle of that width at mid-depth on every wall of tools,
+  with no tool across it. Without the option the layout is unchanged byte for byte.
+- **The layout used.** Design development runs on `fabsim layout --real --chase 1.6 --cross 1.6`
+  (`results/layout-real-dd`). Its run window is recorded the same way, and `fabsim layout-trace` reads `--chase` and
+  `--cross` like `fabsim layout` does. The scene is `data/layout-real-dd/scene-optimised.json`.
+- **Back into Fab Gym.** `viz/permit/rescore_dd.py` scores the 1.6 m chase layout against the same with cross aisles,
+  on 10 paired seeds (`results/layout-real-dd/rescore.json`).
+- **Checks.** D4 to D8 rerun on this scene. Every tool keeps the full chase clear and stays out of the cross aisle.
+- **Combined footings.** Where two column pads overlap (columns close together at a building end), they become one
+  combined footing sized for their total load. D5 changes nothing where pads do not overlap.
 
 ## DD3 The stricter readings
 
@@ -179,10 +189,12 @@ the full chase clear at both ends of its bay.
 - Every element the design development passes add or confirm carries LOD 300 in `FabGym_Permit`, except
   equipment whose numbers rest on assumed cards (plant, fans, scrubbers, make-up air units, gas cabinets), which
   stays 200.
-- The same clash check as D8, with the known joints it already has, plus three new ones:
-  - a tool through a chase partition (bulkhead);
-  - a lift through the slabs it serves;
-  - a fixture inside its toilet room.
+- The same clash check as D8, with the known joints it already has (a lift spans the slabs it passes; fixtures stand
+  in a room), plus four new ones:
+  - a tool through a chase partition (a bulkhead);
+  - a pipe through a rated wall at a firestopped penetration.
+  - sprinkler piping among its heads (the head arrays are drawn as boxes).
+  - a lift's hoistway, which the sprinkler head arrays leave out.
 - The gate is zero hard clashes. The IFC passes IfcOpenShell's validation and is the same bytes every run.
 
 ## DD11 The document set
@@ -216,3 +228,9 @@ the full chase clear at both ends of its bay.
   - 37 sheets, each with the truth line and NOT FOR CONSTRUCTION;
   - the specifications' divisions, a ledger with nothing missing, the PDF's page count;
   - no "TSMC" anywhere.
+
+## Changes
+
+- 27 Oct, while building DD3 (before any design development code was committed): the 1.6 m layout cannot give
+  every chase a door within 75 ft, so DD2 adds the cross aisles, the rescore and combined footings. The tests read
+  the new layout and scene and check the rescore. The clash joints are listed as built.

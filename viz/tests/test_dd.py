@@ -3,8 +3,8 @@ on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_dd      (from the repo root)
 
-The data checks need nothing; the rest needs the 1.6 m chase scene (DD2) and IfcOpenShell in the repo's .venv, and
-skips without them.
+The data checks need nothing; the rest needs the scene of the layout with 1.6 m chases and cross aisles (DD2) and
+IfcOpenShell in the repo's .venv, and skips without them. DD2's rescore is read from results/layout-real-dd.
 """
 
 import json
@@ -18,8 +18,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCENE = ROOT / "data/layout-real-permit/scene-optimised.json"
-LAYOUT = ROOT / "results/layout-real-permit/layout.json"
+SCENE = ROOT / "data/layout-real-dd/scene-optimised.json"
+LAYOUT = ROOT / "results/layout-real-dd/layout.json"
+RESCORE = ROOT / "results/layout-real-dd/rescore.json"
 RUN = ROOT / "viz/permit/run.py"
 PERMIT = ROOT / "viz/permit"
 FT = 0.3048
@@ -139,13 +140,19 @@ class Data(unittest.TestCase):
             self.assertIn(s, {i["sheet"] for i in self.items}, s)
 
 
-@unittest.skipUnless(SCENE.exists(), "needs the 1.6 m chase scene (DD2)")
+@unittest.skipUnless(SCENE.exists(), "needs the scene of the cross aisle layout (DD2)")
 class Scene(unittest.TestCase):
-    """DD2: the scene is the layout D10 rescored, and every chase is clear."""
+    """DD2: the layout D10 rescored with a cross aisle on every wall of tools; every chase is clear."""
 
     def test_scene_is_the_wider_chase(self):
         L = load(LAYOUT)
         self.assertAlmostEqual(L["assumed"]["chase"], 1.6)
+        self.assertAlmostEqual(L["assumed"]["cross"], 1.6)
+        depth = L["assumed"]["bay_depth"]
+        g0, g1 = (depth - 1.6) / 2, (depth + 1.6) / 2
+        for t in L["plans"]["optimised"]["tools"]:
+            y0, y1 = t[6], t[7]
+            self.assertFalse(y0 < g1 - 1e-6 and y1 > g0 + 1e-6, t)
         S = load(SCENE)
         self.assertIn("SMT2020", S["what"])
         chase = L["assumed"]["chase"]
@@ -413,6 +420,17 @@ class DesignDevelopment(unittest.TestCase):
                 t = p.read_text()
                 self.assertNotIn("TSMC", t, p.name)
                 self.assertTrue(t.isascii() or p.suffix in (".svg", ".html", ".md"), p.name)
+
+    def test_rescore(self):
+        R = load(RESCORE)
+        self.assertIn("SMT2020 model", R["truth"])
+        self.assertEqual(R["cross_before_m"], 0.0)
+        self.assertEqual(R["cross_after_m"], 1.6)
+        self.assertEqual(R["chase_m"], 1.6)
+        self.assertGreaterEqual(R["seeds"], 5)
+        for m in R["measures"]:
+            self.assertLessEqual(m["lo"], m["diff"])
+            self.assertLessEqual(m["diff"], m["hi"])
 
     def test_pdf(self):
         if not Path("/Applications/Google Chrome.app").exists():
