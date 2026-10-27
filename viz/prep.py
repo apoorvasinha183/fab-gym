@@ -8,6 +8,7 @@ assumed places. Lots are drawn larger than life so they show at campus scale.
 World axes: x east, y north, z up, in metres. Times stay in fab minutes.
 
     python3 viz/prep.py [--plan optimised] [--out data/layout/scene-optimised.json]
+    python3 viz/prep.py --real     the realistic campus at true size (viz/look/scene.py)
 """
 
 import argparse
@@ -60,7 +61,10 @@ def main():
     ap.add_argument("--trace", default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--copy", default=None, help="also write the scene here (the Godot project's data folder)")
+    ap.add_argument("--real", action="store_true", help="the realistic campus at true size (docs/FAB-LOOK.md)")
     a = ap.parse_args()
+    if a.real:
+        return real(a)
     lay = json.load(open(a.layout))
     tr = json.load(open(a.trace or f"data/layout/trace-{a.plan}.json"))
     plan = lay["plans"][a.plan]
@@ -322,6 +326,24 @@ def main():
         Path(a.copy).write_text(out.read_text())
     nk = sum(len(l["k"]) for l in out_lots)
     print(f"wrote {out}: {len(tools)} tools, {len(bays)} bays, {len(out_lots)} lots, {nk} keys, {out.stat().st_size // 1024} KB")
+
+
+def real(a):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "look"))
+    import scene as real_scene
+
+    lay = a.layout if a.layout != "results/layout/layout.json" else "results/layout-real/layout.json"
+    tr = a.trace or f"data/layout-real/trace-{a.plan}.json"
+    s = real_scene.build(lay, tr, a.plan)
+    out = Path(a.out or f"data/layout-real/scene-{a.plan}.json")
+    out.write_text(json.dumps(s, separators=(",", ":")))
+    if a.copy:
+        Path(a.copy).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.copy).write_text(out.read_text())
+    nk = sum(len(l["k"]) for l in s["lots"])
+    print(f"wrote {out}: {len(s['tools'])} tools, {len(s['bays'])} bays, {len(s['lots'])} lots, {nk} keys, {out.stat().st_size // 1024} KB")
 
 
 if __name__ == "__main__":
