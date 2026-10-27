@@ -15,7 +15,7 @@ const SCENE := "res://data/scene.json"
 const MODELS := "res://data/models.json"
 const FILM := "res://data/film.json"
 const BADGE := "Fab Gym · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab"
-const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse"
+const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse\nV visitor: A Walk Through the Fab (V again to leave · Left/Right seek · R restart)"
 const STATE_WORDS := ["working", "idle", "maintenance (scheduled)", "broken down"]
 const KIND_WORDS := {
 	"scanner": "lithography scanner", "track": "coat and develop track", "metrology": "metrology tool",
@@ -101,6 +101,7 @@ var check := {}
 var script_dir := Vector3.ZERO
 var shot := ""
 var shot_at := -1.0
+var visitor = null              # A Walk Through the Fab (res://visitor.gd), when its plan is synced
 
 
 static func w(x: float, y: float, z: float) -> Vector3:
@@ -387,6 +388,11 @@ func _ready() -> void:
 	_lots()
 	_player()
 	_hud()
+	if FileAccess.file_exists("res://data/visitor.json"):
+		visitor = load("res://visitor.gd").new()
+		add_child(visitor)
+		if not visitor.setup(self):
+			visitor = null
 	_apply_states_until(t)
 	_place_lots()
 	view(1)
@@ -394,6 +400,17 @@ func _ready() -> void:
 		shot = args[si + 1]
 		view(int(args[si + 2]))
 		shot_at = float(args[si + 3])
+	var vc := args.find("--visitor-check")
+	if vc >= 0 and visitor != null:
+		visitor.run_check(args[vc + 1])
+		get_tree().quit()
+		return
+	var va := args.find("--visitor-at")
+	if va >= 0 and visitor != null:
+		visitor.start(float(args[va + 1]))
+		visitor.paused = true
+	elif args.has("--visitor") and visitor != null:
+		visitor.start()
 	if check_out != "":
 		t = float(S["from"]) + 120.0
 		_apply_states_until(t)
@@ -590,10 +607,17 @@ func _campus() -> void:
 				var rng := RandomNumberGenerator.new()
 				rng.seed = 11
 				var cb := Batch.new()
+				var clear := _visitor_clear()
 				for i in int((X1 - X0) / 2.6):
 					for j in int((Y1 - Y0) / 5.2):
-						if rng.randf() < 0.55:
-							_car(cb, X0 + (i + 0.5) * 2.6, Y0 + (j + 0.5) * 5.2, false, M_CAR[rng.randi() % M_CAR.size()])
+						var cx := X0 + (i + 0.5) * 2.6
+						var cy := Y0 + (j + 0.5) * 5.2
+						var free := true
+						for z in clear:
+							if cx > z[0] and cx < z[2] and cy > z[1] and cy < z[3]:
+								free = false
+						if rng.randf() < 0.55 and free:
+							_car(cb, cx, cy, false, M_CAR[rng.randi() % M_CAR.size()])
 				make(cb, "parked cars")
 			"pad":
 				b.box(M_CONC, X0, Y0, 0.0, X1, Y1, 0.3)
@@ -697,6 +721,16 @@ func _campus() -> void:
 
 
 # ---------------------------------------------------------------------------- the fab buildings
+
+func _visitor_clear() -> Array:
+	## the visitor's own car and the way he walks out of the car park stay free of parked cars
+	if not FileAccess.file_exists("res://data/visitor.json"):
+		return []
+	var v: Dictionary = JSON.parse_string(FileAccess.open("res://data/visitor.json", FileAccess.READ).get_as_text())
+	var c: Dictionary = v["car"]
+	var p: Array = v["path"][0]
+	return [[c["x"] - 2.0, c["y"] - 3.0, c["x"] + 2.0, c["y"] + 3.0], [p[1] - 1.6, p[2] - 4.0, p[1] + 1.6, p[2] + 4.0]]
+
 
 func _solid(body: StaticBody3D, x0: float, y0: float, z0: float, x1: float, y1: float, z1: float, meta := -1) -> void:
 	var cs := CollisionShape3D.new()
@@ -1258,6 +1292,8 @@ func _physics_process(delta: float) -> void:
 	if check_out != "":
 		_check_step(delta)
 		return
+	if visitor != null and visitor.active:
+		return
 	var fwd := -player.global_transform.basis.z
 	var right := player.global_transform.basis.x
 	var move := Vector3.ZERO
@@ -1323,14 +1359,18 @@ func _process(delta: float) -> void:
 			get_viewport().get_texture().get_image().save_png(shot)
 			get_tree().quit()
 			return
-	if not paused:
+	var touring: bool = visitor != null and visitor.active
+	if touring:
+		visitor.step(delta)
+	elif not paused:
 		t += delta * speed
 		if t > float(S["to"]):
 			t = float(S["from"])
 			_reset_states()
-	_apply_states_until(t)
-	_place_lots()
-	if following and hero >= 0:
+	if not touring:
+		_apply_states_until(t)
+		_place_lots()
+	if following and hero >= 0 and not touring:
 		var p = lot_at(hero, t)
 		if p != null:
 			var target := w(p[0], p[1], p[2] + 0.2)
@@ -1360,6 +1400,8 @@ func _process(delta: float) -> void:
 	for s in tool_state:
 		if s >= 0:
 			counts[s] += 1
+	if touring:
+		return
 	var mode := "Walking" if walking else ("Following the film's lot" if following else "Flying")
 	hud.text = "%s · simulated day %d, %02d:%02d  ×%d%s\nTools working %d · idle %d · maintenance %d · broken down %d" % [
 		mode, day + 1, hm / 60, hm % 60, int(round(speed * 60.0)), "  (paused)" if paused else "",
@@ -1377,6 +1419,24 @@ func _unhandled_input(e: InputEvent) -> void:
 			fly_speed = minf(fly_speed * 1.25, 400.0)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and not walking:
 			fly_speed = maxf(fly_speed / 1.25, 1.0)
+	elif e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_V and visitor != null:
+		if visitor.active:
+			visitor.stop()
+			view(1)
+		else:
+			visitor.start()
+	elif visitor != null and visitor.active and e is InputEventKey and e.pressed:
+		match e.keycode:
+			KEY_SPACE:
+				visitor.paused = not visitor.paused
+			KEY_LEFT:
+				visitor.seek(-5.0)
+			KEY_RIGHT:
+				visitor.seek(5.0)
+			KEY_R:
+				visitor.start()
+			KEY_H:
+				help.visible = not help.visible
 	elif e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		following = false
 		yaw -= e.relative.x * 0.0025

@@ -50,6 +50,8 @@ WALK_SCALE = 15.0  # seconds of walking that halve a sight's score
 CLOSE = 6.0
 WIDE_Z = 4.5
 FOV_V = 42.0
+CAM_H = 1.7  # the walking camera above his feet
+AIM_H = 1.25  # where it aims, 6 m past him
 IN_FRAME = 18.0  # degrees from the view's centre, kept under the tests' 20
 BADGE = ("A gigafab-style layout of our own design on the SMT2020 model, not a real fab. "
          "The visitor is drawn only; he is not in the model. Every number is the run's.")
@@ -87,7 +89,7 @@ def inside(box, x, y, pad=0.0):
 
 def fmt(t):
     d, m = divmod(t, 1440)
-    return f"day {int(d)}, {int(m // 60):02d}:{int(m % 60):02d}"
+    return f"day {int(d) + 1}, {int(m // 60):02d}:{int(m % 60):02d}"
 
 
 # ---------------------------------------------------------------- the run
@@ -494,6 +496,7 @@ class Planner:
         self.begin_stage("outside")
         self.outfit.append([self.now, "street"])
         self.pos = (dx, park["y0"] + 2.5, 0.0)
+        self.wides_in = [(0.0, 4.0, (dx + 2.2, office["y1"] + 2.5, 2.4))]  # from the door, as he gets out
         self.stand(1.5, body=south, head=south)
         self.straight((dx, self.pos[1]), (dx, office["y1"]), q((self.pos[1] - office["y1"]) / SPEED))
 
@@ -523,6 +526,7 @@ class Planner:
         self.begin_stage("gowning")
         bench = gown_y1 - 3.0
         self.straight((bx, gown_y1), (bx, bench), q(3.0 / SPEED))
+        self.wides_in.append((self.now, self.now + 4.0, (bx + 1.2, bench - 2.6, cz + 2.0)))
         self.stand(2.0, body=south, head=wrap(south + 0.6), pitch=-0.4)
         self.outfit.append([self.now, "suit"])
         self.stand(2.0, body=south, head=south, pitch=0.0)
@@ -532,6 +536,7 @@ class Planner:
         self.begin_stage("air shower")
         mid = (shower_x0 + ox) / 2
         self.straight((shower_x0, 0.0), (mid, 0.0), q((mid - shower_x0) / SPEED))
+        self.wides_in.append((self.now, self.now + 2.5, (ox + 2.6, 0.7, cz + 1.9)))
         self.stand(2.5, body=east, head=east, pitch=0.2)
         self.straight((mid, 0.0), (ox, 0.0), q((ox - mid) / SPEED))
 
@@ -577,11 +582,11 @@ class Planner:
             away = 1 if look[0] < ax else -1
             for a in (2.4, -2.4, 2.8, -2.8, 2.0, -2.0, 3.2, -3.2):
                 for b in (0.9, 1.1, 0.6, 1.3):
-                    for c in (0.35, 0.1, 0.6, -0.2):
+                    for h in (1.7, 1.55, 1.85, 1.45, 2.0):
                         x = view[0] + away * b
                         if abs(x - ax) > hw - 0.35:
                             continue
-                        tries.append((x, view[1] + a, cz + EYE + c))
+                        tries.append((x, view[1] + a, cz + h))
         for cam in tries:
             if fl.hits_tool(cam[0], cam[1], cam[2], 0.3) or not fl.in_hall(*cam):
                 continue
@@ -607,8 +612,11 @@ class Planner:
             if abs(ax - view[0]) < 1e-6:
                 b = self.s["bays"][bi]
                 if b["x0"] <= view[0] <= b["x1"] and min(b["y0"], b["y1"]) <= view[1] <= max(b["y0"], b["y1"]):
-                    for y in (sg * (fl.sp / 2 + 0.6), sg * (fl.sp / 2 + fl.depth - 1.0)):
-                        if abs(y - view[1]) >= 15:
+                    lo, hi = sg * (fl.sp / 2 + 0.6), sg * (fl.sp / 2 + fl.depth - 1.0)
+                    lo, hi = min(lo, hi), max(lo, hi)
+                    for d in (18, -18, 22, -22, 14, -14, 26, -26):
+                        y = view[1] + d
+                        if lo <= y <= hi:
                             cands.append((ax, y, z))
         if not cands:  # on the spine
             for dx in (-22, 22, -30, 30, -16, 16):
@@ -761,12 +769,15 @@ class Planner:
             title = f"A {kind} tool is down: group {g}"
             lines = [f"{n['up']} of {n['tools']} tools in the group are up",
                      f"{n['waiting']} lots wait for this group",
-                     f"Down since {fmt(n['since'])}" + (f"; back at {fmt(n['until'])}" if n["until"] else "")]
+                     (f"Down since {fmt(n['since'])}" if n["since"] > s["from"] else "Down since before this stretch of the run")
+                     + (f"; back at {fmt(n['until'])}" if n["until"] else "")]
         elif c["kind"] == "maintenance":
             title = f"Planned maintenance: group {g}"
             lines = [f"{n['up']} of {n['tools']} tools in the group are up",
                      f"{n['waiting']} lots wait for this group",
-                     f"In maintenance since {fmt(n['since'])}" + (f"; back at {fmt(n['until'])}" if n["until"] else "")]
+                     (f"In maintenance since {fmt(n['since'])}" if n["since"] > s["from"]
+                      else "In maintenance since before this stretch of the run")
+                     + (f"; back at {fmt(n['until'])}" if n["until"] else "")]
         elif c["kind"] == "queue":
             title = f"{n['waiting']} lots wait for group {g}"
             lines = [f"A {kind} group of {n['tools']} tools, {n['up']} up now"]
@@ -860,8 +871,8 @@ class Planner:
         dd = math.hypot(dx, dy)
         f = (dx / dd, dy / dd) if dd > 1e-6 else (math.cos(hb), math.sin(hb))
         right = (f[1], -f[0])
-        cam = (pos[0] + 0.5 * right[0], pos[1] + 0.5 * right[1], me[3] + EYE + 0.35)
-        look = (me[1] + 6 * f[0], me[2] + 6 * f[1], me[3] + EYE)
+        cam = (pos[0] + 0.5 * right[0], pos[1] + 0.5 * right[1], me[3] + CAM_H)
+        look = (me[1] + 6 * f[0], me[2] + 6 * f[1], me[3] + AIM_H)
         return cam, look
 
     def aim(self, i, cam):
@@ -893,11 +904,15 @@ class Planner:
             if lift["s0"] <= s < lift["s1"]:
                 want.append(((self.ax + 3.0, lobby["y0"] + 4.7, 1.7), (self.ax, lobby["y0"] - 0.3, 1.4), "fixed", "lift"))
                 continue
+            fixed_in = [w for w in self.wides_in if w[0] <= s < w[1]]
+            if fixed_in:
+                want.append((fixed_in[0][2], (p[1], p[2], p[3] + 1.0), "wide", ("wide", fixed_in[0][0])))
+                continue
             win = [w for w in windows if w[0] <= s < w[1]]
             if win:
                 w = win[0]
                 if w[2] is None:
-                    want.append((reveal_cam, head, "wide", ("wide", w[0])))
+                    want.append((reveal_cam, (p[1], p[2], p[3] + 1.0), "wide", ("wide", w[0])))
                     continue
                 c = self.sights[w[2]]
                 look = tuple(head[k] + (c["look"][k] - head[k]) * 0.5 for k in range(3)) if s < c["leave_s"] else head
