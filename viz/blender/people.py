@@ -106,6 +106,40 @@ def face(p, lo, hi, half):
     return p.y < HEAD_CY - 0.03 and EYE_Z + lo <= p.z <= EYE_Z + hi and abs(p.x) <= half
 
 
+# The kit's only male body is a superhero's. An ordinary build: each part drawn in toward its bone, the
+# arms and chest most, so a coverall over him hangs like cloth and does not show muscles.
+SLIM = {"upperarm_l": 0.80, "upperarm_r": 0.80, "lowerarm_l": 0.86, "lowerarm_r": 0.86, "clavicle_l": 0.84,
+        "clavicle_r": 0.84, "spine_03": 0.87, "spine_02": 0.91, "spine_01": 0.95, "pelvis": 0.97,
+        "thigh_l": 0.90, "thigh_r": 0.90, "calf_l": 0.93, "calf_r": 0.93, "neck_01": 0.92}
+
+
+def slim_body():
+    from mathutils.geometry import intersect_point_line
+
+    rw = rig.matrix_world
+    seg = {b.name: (rw @ b.head_local, rw @ b.tail_local) for b in rig.data.bones if b.name in SLIM}
+    inv = bw.inverted()
+    moved = 0
+    for v in body.data.vertices:
+        p = bw @ v.co
+        d = p * 0.0
+        for g in v.groups:
+            name = groups.get(g.group)
+            if name not in SLIM or g.weight <= 0:
+                continue
+            a, b = seg[name]
+            q, u = intersect_point_line(p, a, b)
+            q = a if u < 0 else (b if u > 1 else q)
+            d += (q - p) * (1 - SLIM[name]) * g.weight
+        if d.length > 1e-6:
+            v.co = inv @ (p + d)
+            moved += 1
+    body.data.update()
+    print("slimmed", moved, "vertices")
+
+
+slim_body()
+
 TRUNK = {"pelvis", "spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r"}
 ARMS = {"upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r"}
 LEGS = {"thigh_l", "thigh_r", "calf_l", "calf_r"}
@@ -119,10 +153,10 @@ WRIST = 0.64  # |x| in the rest pose past which a forearm is the wrist, under a 
 # settings). Smoothing takes the body's muscle out of the cloth; the push puts the cloth back outside him.
 # Edges overlap (the hood over the collar, the booties and gloves over the cuffs), so no skin shows between.
 GARMENTS = {
-    "shirt": ("street", lambda b, p: b in (TRUNK - {"pelvis"}) | ARMS or (b == "neck_01" and p.z < 1.50), 0.016, 12, "#7d8ea3", 0.8, {"sheen": 0.3}),
-    "trousers": ("street", lambda b, p: (b in LEGS or b == "pelvis") and p.z > 0.09, 0.02, 12, "#3a3f47", 0.75, {"sheen": 0.2}),
+    "shirt": ("street", lambda b, p: b in (TRUNK - {"pelvis"}) | ARMS or (b == "neck_01" and p.z < 1.50), 0.03, 20, "#7d8ea3", 0.8, {"sheen": 0.3}),
+    "trousers": ("street", lambda b, p: (b in LEGS or b == "pelvis") and p.z > 0.09, 0.035, 18, "#3a3f47", 0.75, {"sheen": 0.2}),
     "shoes": ("street", lambda b, p: b in FEET or (b in LEGS and p.z <= 0.13), 0.028, 16, "#2f2823", 0.4, {"coat": 0.3}),
-    "coverall": ("suit", lambda b, p: (b in TRUNK | ARMS | LEGS or b == "neck_01") and p.z > 0.16 and abs(p.x) < WRIST + 0.02, 0.03, 14, "#eef1f4", 0.85, {"sheen": 0.4}),
+    "coverall": ("suit", lambda b, p: (b in TRUNK | ARMS | LEGS or b == "neck_01") and p.z > 0.16 and abs(p.x) < WRIST + 0.02, 0.06, 40, "#eef1f4", 0.85, {"sheen": 0.4}),
     "hood": ("suit", lambda b, p: (b == "Head" or (b == "neck_01" and p.z >= 1.42) or (b == "spine_03" and p.z >= 1.40 and abs(p.x) < 0.14))
              and not face(p, *OPENING), 0.036, 10, "#f3f5f7", 0.85, {"sheen": 0.4}),
     "mask": ("suit", lambda b, p: b in ("Head", "neck_01") and face(p, OPENING[0], -0.028, OPENING[2] + 0.01), 0.026, 6, "#d9e7f0", 0.9, {}),

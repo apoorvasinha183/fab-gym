@@ -19,7 +19,8 @@ def rgba(h, a=1.0):
 MATS = {}
 
 
-def principled(name, colour, metal=0.0, rough=0.5, emit=0.0, alpha=1.0, emit_colour=None, coat=0.0, sheen=0.0, trans=0.0):
+def principled(name, colour, metal=0.0, rough=0.5, emit=0.0, alpha=1.0, emit_colour=None, coat=0.0, sheen=0.0, trans=0.0,
+               smooth_alpha=False):
     """A Principled material, made once per name. `colour` is #rrggbb as seen (sRGB)."""
     if name in MATS:
         return MATS[name]
@@ -37,7 +38,9 @@ def principled(name, colour, metal=0.0, rough=0.5, emit=0.0, alpha=1.0, emit_col
         b.inputs["Emission Strength"].default_value = emit
     if alpha < 1:
         b.inputs["Alpha"].default_value = alpha
-        for attr, val in (("surface_render_method", "DITHERED"), ("blend_method", "HASHED")):
+        # smooth (blended) for flat glass, where dithering shows as grain at few samples
+        method = ("BLENDED", "BLEND") if smooth_alpha else ("DITHERED", "HASHED")
+        for attr, val in (("surface_render_method", method[0]), ("blend_method", method[1])):
             try:
                 setattr(m, attr, val)
             except (AttributeError, TypeError):

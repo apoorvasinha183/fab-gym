@@ -196,7 +196,7 @@ M = {
     "lobby floor": principled("v lobby stone", "#cbc6bd", rough=0.22, coat=0.2),
     "lobby wall": principled("v plaster", "#ebe9e4", rough=0.85),
     "ceiling": principled("v ceiling", "#f2f2f0", rough=0.9),
-    "glass": principled("v glazing", "#d4e4ea", rough=0.02, alpha=0.16, trans=0.9),
+    "glass": principled("v glazing", "#d4e4ea", rough=0.02, alpha=0.16, trans=0.9, smooth_alpha=True),
     "mullion": principled("v mullion", "#3b3e42", metal=0.7, rough=0.35),
     "steel": principled("v lift steel", "#b4b9bf", metal=0.9, rough=0.28),
     "granite": principled("v granite", "#3b3b3e", rough=0.3, coat=0.3),
@@ -266,7 +266,10 @@ def build_room(r):
         t0, t1 = (c - 0.012, c) if side in ("n", "e") else (c, c + 0.012)
         if not on_parent:
             t0, t1 = (c, c + T) if side in ("n", "e") else (c - T, c)
-        glazed = r["name"] == "bridge" and side in ("e", "w") or (r["name"] == "lobby" and side == "n")
+        # glazed: the bridge's sides, the lobby's front, and the air shower's long sides (it has windows, so
+        # the room around it can see in)
+        glazed = (r["name"] == "bridge" and side in ("e", "w") or (r["name"] == "lobby" and side == "n")
+                  or (r["kind"] == "cabinet" and side in ("n", "s")))
         for lo, hi, za, zb in wall_runs(r, side):
             if on_parent:
                 lo, hi = max(lo, (x0 if side in ("n", "s") else y0)), min(hi, (x1 if side in ("n", "s") else y1))
@@ -1018,7 +1021,7 @@ scene.camera = cam
 cam.data.sensor_fit = "VERTICAL"
 cam.data.angle_y = math.radians(P["fov_v"])
 cam.data.clip_start, cam.data.clip_end = 0.05, 5000
-cam.data.dof.use_dof = True
+cam.data.dof.use_dof = "--nodof" not in argv
 cam.data.dof.aperture_fstop = 5.6
 cam.rotation_mode = "QUATERNION"
 crow = P["camera"]
@@ -1046,6 +1049,17 @@ for f, d_ in zip(cfr, focus):
 scene.render.engine = "BLENDER_EEVEE"
 scene.render.resolution_x, scene.render.resolution_y = RES
 scene.render.resolution_percentage = 100
+# the way in adds its own lights to the fab's: a bigger shadow pool, or shadows go missing and grain shows
+for k, v in (("use_shadows", True), ("use_raytracing", True), ("use_gtao", True), ("shadow_pool_size", "1024")):
+    try:
+        setattr(scene.eevee, k, v)
+    except (AttributeError, TypeError):
+        pass
+try:  # reflections denoised, so dark metal and glass do not sparkle
+    scene.eevee.ray_tracing_options.use_denoise = True
+    scene.eevee.ray_tracing_options.resolution_scale = "1"
+except (AttributeError, TypeError):
+    pass
 try:
     scene.eevee.taa_render_samples = SAMPLES
     scene.render.use_motion_blur = True
