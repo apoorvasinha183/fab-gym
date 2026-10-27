@@ -121,6 +121,9 @@ fn check_true_size(shop: &Shop, p: &Problem, c: &Campus, cfg: &Config) {
         assert_eq!(b.area, p.area_of(t.group));
         assert!(t.x0 >= b.x0 + cfg.chase - 1e-9 && t.x1 <= b.x1 - cfg.chase + 1e-9, "tool outside its walls");
         assert!(t.y0 >= -1e-9 && t.y1 <= cfg.bay_depth + 1e-9, "tool beyond the bay's depth");
+        // every tool's front lines the aisle, under the hoist rail, with the chase behind it
+        let (a0, a1) = ((b.x0 + b.x1 - cfg.bay_aisle) / 2.0, (b.x0 + b.x1 + cfg.bay_aisle) / 2.0);
+        assert!((t.x1 - a0).abs() < 1e-9 || (t.x0 - a1).abs() < 1e-9, "{} front off the aisle line", shop.groups[t.group].name);
     }
     // each bay is wide enough for its deepest tool on both walls, with the aisle between
     for (bi, b) in c.bays.iter().enumerate() {
