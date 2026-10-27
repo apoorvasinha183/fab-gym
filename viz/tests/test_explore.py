@@ -23,6 +23,9 @@ PROJ = ROOT / "viz/godot-real"
 SCENE = ROOT / "data/layout-real/scene-optimised.json"
 MODELS = ROOT / "data/layout-real/models.json"
 REPORT = ROOT / "data/layout-real/explore-check.json"
+GLB = ROOT / "data/layout-real/bim/fab-building.glb"
+BIM_MATERIALS = ["bim_wall", "bim_column", "bim_slab_floor", "bim_slab_roof", "bim_covering_flooring",
+                 "bim_covering_ceiling"]
 
 BRANDS = ["ASML", "TSMC", "Tokyo Electron", "Applied Materials", "Lam Research", "KLA", "Daifuku", "Murata",
           "Samsung", "Intel", "TWINSCAN"]
@@ -60,6 +63,31 @@ class Project(unittest.TestCase):
             self.assertNotIn(b, s, b)
 
 
+class Building(unittest.TestCase):
+    """The structure comes from the IFC model (docs/BIM-3D.md)."""
+
+    def test_the_building_scene_and_its_assets(self):
+        tscn = (PROJ / "bim/building.tscn").read_text()
+        self.assertIn("res://bim/building.gd", tscn)
+        self.assertIn("res://data/fab-building.glb", tscn + (PROJ / "bim/building.gd").read_text())
+        for m in BIM_MATERIALS:
+            self.assertTrue((PROJ / f"bim/materials/{m}.tres").exists(), m)
+        wall = (PROJ / "bim/materials/bim_wall.tres").read_text()
+        self.assertIn("ShaderMaterial", wall)
+        self.assertIn("res://bim/wall_cut.gdshader", wall)
+        shader = (PROJ / "bim/wall_cut.gdshader").read_text()
+        self.assertIn("bim_cut_z", shader)
+        self.assertIn("bim_cut_z", (PROJ / "project.godot").read_text(), "the cut height is a global shader uniform")
+        self.assertIn("fab-building.glb", (PROJ / "sync.sh").read_text())
+
+    def test_main_no_longer_types_the_structure_in(self):
+        s = source()
+        self.assertIn("res://bim/building.tscn", s)
+        for gone in ("sb.box(M_SLAB, x - 0.4", "wb.box(M_SLAB, X0, Y0, SUPPORT_TOP", "wb.box(M_TILE",
+                     "rb.box(M_ROOF, X0, Y0, AIR_TOP", "low.box(M_FACADE", "ce.box(M_FFU_TOP"):
+            self.assertNotIn(gone, s, gone)
+
+
 def report():
     g = os.environ.get("GODOT")
     if g and SCENE.exists() and MODELS.exists():
@@ -67,6 +95,9 @@ def report():
         data.mkdir(exist_ok=True)
         (data / "scene.json").write_bytes(SCENE.read_bytes())
         (data / "models.json").write_bytes(MODELS.read_bytes())
+        if GLB.exists():
+            (data / "fab-building.glb").write_bytes(GLB.read_bytes())
+        subprocess.run([g, "--headless", "--path", str(PROJ), "--import"], timeout=600)
         out = ROOT / "data/layout-real/explore-check.json"
         subprocess.run([g, "--headless", "--path", str(PROJ), "--", "--check", str(out)], check=True, timeout=600)
         return json.loads(out.read_text())
@@ -142,6 +173,28 @@ class Headless(unittest.TestCase):
         t = self.s["tools"][R["walk"]["tool"]]
         lo, hi = sorted((f["start"][0], f["end"][0]))
         self.assertTrue(lo < t["x0"] and hi > t["x1"], "the flyer crossed the tool")
+
+    def test_the_structure_is_the_ifc_models(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "viz/blueprint"))
+        import model
+        m = model.build(self.s)
+        want, boxes = {}, {}
+        for e in m["elements"]:
+            if e["cls"] in ("IfcWall", "IfcColumn", "IfcSlab", "IfcCovering"):
+                want[e["cls"]] = want.get(e["cls"], 0) + 1
+                boxes[e["name"]] = e["box"]
+        b = R["bim"]
+        self.assertEqual(b["nodes"], want)
+        self.assertEqual(b["colliders"], sum(want.values()))
+        self.assertGreaterEqual(len(b["samples"]), 20)
+        for name, lo, hi in b["samples"]:
+            x0, y0, z0, x1, y1, z1 = boxes[name]
+            for a, c in zip(lo + hi, [x0, z0, -y1, x1, z1, -y0]):
+                self.assertAlmostEqual(a, c, delta=1e-3, msg=name)
+        fl = {f["name"]: f for f in self.s["floors"]}
+        self.assertAlmostEqual(b["cut"]["on"], fl["cleanroom"]["z1"], delta=0.01)
+        self.assertGreater(b["cut"]["off"], fl["roof"]["z1"])
 
     def test_the_badge(self):
         self.assertIn("on the SMT2020 model", R["badge"])
