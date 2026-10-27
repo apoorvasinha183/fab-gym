@@ -2,6 +2,12 @@
 //!               [--threads N] [--cache DIR]
 //!
 //! Prints one JSON object: the report (docs/AGENT.md), or {"ok": false, "stage": ..., "error": ...}.
+//!
+//! fabrule trace RULE.rs [--real] [--data D] [--plan P] [--seed S] [--day N] [--hours H] [--smt2020 DIR]
+//!               --out FILE
+//!
+//! Runs the campus's shop (D/P.shop.txt) under the rule and writes the trace `fabsim layout-trace` writes,
+//! with the same defaults (docs/REPLAY.md).
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -38,11 +44,84 @@ fn fail(stage: &str, error: &str) -> ExitCode {
 
 fn usage() -> ExitCode {
     eprintln!("usage: fabrule score RULE.rs (--shop FILE | --smt2020 DIR) [--scenario FILE] (--train A..B | --held-out) [--threads N] [--cache DIR]");
+    eprintln!("       fabrule trace RULE.rs [--real] [--data D] [--plan P] [--seed S] [--day N] [--hours H] --out FILE");
     ExitCode::from(64)
+}
+
+fn flag(args: &[String], name: &str) -> Option<String> {
+    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
+}
+
+fn trace(args: &[String]) -> ExitCode {
+    use fabsim::engine::RunOptions;
+    use fabsim::layout::{Config, Problem};
+    if args.len() < 2 {
+        return usage();
+    }
+    let real = args.iter().any(|a| a == "--real");
+    let cfg = if real { Config::realistic() } else { Config::gigafab() };
+    let data = PathBuf::from(flag(args, "--data").unwrap_or_else(|| (if real { "data/layout-real" } else { "data/layout" }).into()));
+    let dir = PathBuf::from(flag(args, "--smt2020").unwrap_or_else(|| "data/smt2020/hvlm".into()));
+    let plan = flag(args, "--plan").unwrap_or_else(|| "optimised".into());
+    let num = |name: &str, d: u64| -> Result<u64, String> {
+        flag(args, name).map(|v| v.parse::<u64>().map_err(|_| format!("{name} takes a whole number"))).unwrap_or(Ok(d))
+    };
+    let (seed, day, hours) = match (num("--seed", 3000), num("--day", 30), num("--hours", 6)) {
+        (Ok(a), Ok(b), Ok(c)) => (a, b, c),
+        (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => return fail("args", &e),
+    };
+    let Some(out) = flag(args, "--out").map(PathBuf::from) else { return fail("args", "--out FILE is needed") };
+    let cache = PathBuf::from(flag(args, "--cache").unwrap_or_else(|| "target/fabrule-cache".into()));
+    let src = match std::fs::read_to_string(&args[1]) {
+        Ok(s) => s,
+        Err(e) => return fail("args", &format!("{}: {e}", args[1])),
+    };
+    let wasm = match compile(&src, &cache) {
+        Ok(w) => w,
+        Err(e) => return fail(if e.starts_with("refused") { "check" } else { "compile" }, &e),
+    };
+    let mut rule = match fabrule::Rule::load(&wasm) {
+        Ok(r) => r,
+        Err(e) => return fail("load", &e),
+    };
+    let shop_file = data.join(format!("{plan}.shop.txt"));
+    let shop = match std::fs::read_to_string(&shop_file).map_err(|e| e.to_string()).and_then(|t| Shop::parse(&t)) {
+        Ok(s) => s,
+        Err(e) => return fail("shop", &format!("{}: {e} (run fabsim layout first)", shop_file.display())),
+    };
+    // the campus is rebuilt by the same deterministic optimiser fabsim uses, and checked against the shop
+    let (flat, areas) = match (fabsim::smt2020::load(&dir), fabsim::smt2020::areas(&dir)) {
+        (Ok(f), Ok(a)) => (f, a),
+        (Err(e), _) | (_, Err(e)) => return fail("shop", &e),
+    };
+    let p = match Problem::new(&flat, &areas, &cfg) {
+        Ok(p) => p,
+        Err(e) => return fail("shop", &e),
+    };
+    let c = if plan == "plain" { p.pack(&p.plain()) } else { p.pack(&p.optimise()) };
+    if Some(p.oht(&c)) != shop.oht {
+        return fail("shop", &format!("the shop's layout is not this build's {plan} plan; rerun fabsim layout"));
+    }
+    let from = day as f64 * 1440.0;
+    let to = from + hours as f64 * 60.0;
+    let rr = rule.run(&shop, &RunOptions { seed, until: Some(to + 5.0 * 1440.0), record: true });
+    if let Err(e) = std::fs::write(&out, p.trace_json(&c, &rr.result, from, to)) {
+        return fail("write", &format!("{}: {e}", out.display()));
+    }
+    println!(
+        "{{\"ok\": true, \"out\": {}, \"decisions\": {}, \"faults\": {}}}",
+        quote(&out.display().to_string()),
+        rr.decisions,
+        rr.faults
+    );
+    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(|s| s.as_str()) == Some("trace") {
+        return trace(&args);
+    }
     if args.first().map(|s| s.as_str()) != Some("score") || args.len() < 2 {
         return usage();
     }

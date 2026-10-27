@@ -64,7 +64,7 @@ pub const FUEL_PER_CANDIDATE: u64 = 2_000;
 /// How long rustc may take on one rule.
 pub const COMPILE_SECONDS: u64 = 120;
 /// Changes when the harness changes, so cached modules from an older harness are not reused.
-const HARNESS_VERSION: &str = "fabrule-harness-1";
+const HARNESS_VERSION: &str = "fabrule-harness-2";
 
 // ------------------------------------------------------------------ the source
 
@@ -189,8 +189,8 @@ fn harness(src: &str) -> String {
 #[repr(C)]\n#[derive(Clone, Copy)]\npub struct Ctx {{\n{ctx}}}\n\
 static mut CTX: [f64; {nx}] = [0.0; {nx}];\n\
 static mut CANDS: [f64; {max}] = [0.0; {max}];\n\
-#[no_mangle]\npub extern \"C\" fn ctx_ptr() -> i32 {{ unsafe {{ core::ptr::addr_of_mut!(CTX) as i32 }} }}\n\
-#[no_mangle]\npub extern \"C\" fn cands_ptr() -> i32 {{ unsafe {{ core::ptr::addr_of_mut!(CANDS) as i32 }} }}\n\
+#[no_mangle]\n#[allow(unused_unsafe)]\npub extern \"C\" fn ctx_ptr() -> i32 {{ unsafe {{ core::ptr::addr_of_mut!(CTX) as i32 }} }}\n\
+#[no_mangle]\n#[allow(unused_unsafe)]\npub extern \"C\" fn cands_ptr() -> i32 {{ unsafe {{ core::ptr::addr_of_mut!(CANDS) as i32 }} }}\n\
 fn sane(k: f64) -> f64 {{ if k.is_nan() {{ f64::INFINITY }} else {{ k }} }}\n\
 #[no_mangle]\npub extern \"C\" fn choose(n: i32, default: i32) -> i32 {{\n\
     let x: Ctx = unsafe {{ *(core::ptr::addr_of!(CTX) as *const Ctx) }};\n\
@@ -218,12 +218,25 @@ fn rule_lines(msg: &str) -> String {
             if let Ok(n) = digits.parse::<i64>() {
                 l = format!("{}rule:{}{}", &l[..i], n - 1, &rest[digits.len()..]);
             }
+        } else if let Some(bar) = l.find(" |") {
+            // the excerpt's gutter: "2 | ..." is the rule's line 1
+            let head = &l[..bar];
+            let digits = head.trim_start();
+            if !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(n) = digits.parse::<i64>() {
+                    l = format!("{:>w$}{}", n - 1, &l[bar..], w = head.len());
+                }
+            }
         }
         out.push_str(&l);
         out.push('\n');
     }
     if out.len() > 4000 {
-        out.truncate(4000);
+        let mut cut = 4000;
+        while !out.is_char_boundary(cut) {
+            cut -= 1;
+        }
+        out.truncate(cut);
         out.push_str("\n[cut]");
     }
     out

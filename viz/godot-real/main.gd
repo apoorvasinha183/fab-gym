@@ -10,8 +10,10 @@ extends Node3D
 ##
 ## Check:  godot --headless --path viz/godot-real -- --check OUT.json
 ## Still:  godot --path viz/godot-real -- --shot OUT.png VIEW SECONDS
+##
+## Embedded (compare.tscn): `embedded` drops the HUD, the input and the clock; the parent calls
+## set_time() and pose(). `scene_path` names the scene to draw.
 
-const SCENE := "res://data/scene.json"
 const MODELS := "res://data/models.json"
 const FILM := "res://data/film.json"
 const BADGE := "Fab Gym · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab"
@@ -24,6 +26,9 @@ const KIND_WORDS := {
 	"polisher": "polisher (CMP)", "wet_bench": "wet bench", "stocker": "timed hold (stocker)",
 }
 const LAMP_CHANNEL := {"led_green": 0.0, "led_amber": 1.0, "led_blue": 2.0, "led_red": 3.0}
+
+@export var scene_path := "res://data/scene.json"
+@export var embedded := false
 
 var S: Dictionary
 var M: Dictionary
@@ -350,7 +355,7 @@ func make(b: Batch, name: String, shadows := true) -> MeshInstance3D:
 # ---------------------------------------------------------------------------- start
 
 func _ready() -> void:
-	var f := FileAccess.open(SCENE, FileAccess.READ)
+	var f := FileAccess.open(scene_path, FileAccess.READ)
 	var g := FileAccess.open(MODELS, FileAccess.READ)
 	if f == null or g == null:
 		push_error("no data: run viz/godot-real/sync.sh from the repo root")
@@ -373,7 +378,7 @@ func _ready() -> void:
 	RAIL_Z = S["rail_z"]
 	SP = S["spine"]
 	DEPTH = S["depth"]
-	var args := OS.get_cmdline_user_args()
+	var args: PackedStringArray = [] if embedded else OS.get_cmdline_user_args()
 	var ci := args.find("--check")
 	if ci >= 0:
 		check_out = args[ci + 1]
@@ -387,6 +392,11 @@ func _ready() -> void:
 	_tools()
 	_lots()
 	_player()
+	if embedded:
+		_apply_states_until(t)
+		_place_lots()
+		view(1)
+		return
 	_hud()
 	if FileAccess.file_exists("res://data/visitor.json"):
 		visitor = load("res://visitor.gd").new()
@@ -1287,7 +1297,7 @@ func _inside() -> bool:
 
 
 func _physics_process(delta: float) -> void:
-	if S.is_empty():
+	if S.is_empty() or embedded:
 		return
 	if check_out != "":
 		_check_step(delta)
@@ -1350,8 +1360,48 @@ func _fly(v: Vector3, delta: float) -> void:
 
 # ---------------------------------------------------------------------------- each frame
 
+## The compare scene's clock: show the run at fab minute `now` (going back replays from the start).
+func set_time(now: float) -> void:
+	if now < t:
+		t = now
+		_reset_states()
+	t = now
+	_apply_states_until(t)
+	_place_lots()
+
+
+## The compare scene's camera: stand at `at` and look at `target` (both in world space).
+func pose(at: Vector3, target: Vector3, fov := 50.0) -> void:
+	walking = false
+	following = false
+	player.global_position = at - Vector3(0, 1.6, 0)
+	_look(target)
+	_aim()
+	cam.fov = fov
+
+
+func _light() -> void:
+	var inside := _inside()
+	sun.visible = not inside
+	if inside:
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color("eef2f6")
+		env.ambient_light_energy = 0.45
+		env.fog_density = 0.0
+	else:
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_energy = 1.0
+		env.fog_density = 0.00006
+	var high := cam.global_position.y > 35.0
+	for l in far_labels:
+		l.visible = high
+
+
 func _process(delta: float) -> void:
 	if S.is_empty() or check_out != "":
+		return
+	if embedded:
+		_light()
 		return
 	if shot != "":
 		shot_at -= delta
@@ -1380,20 +1430,7 @@ func _process(delta: float) -> void:
 			yaw = atan2(-d.x, -d.z)
 			pitch = atan2(d.y, Vector2(d.x, d.z).length())
 			_aim()
-	var inside := _inside()
-	sun.visible = not inside
-	if inside:
-		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		env.ambient_light_color = Color("eef2f6")
-		env.ambient_light_energy = 0.45
-		env.fog_density = 0.0
-	else:
-		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-		env.ambient_light_energy = 1.0
-		env.fog_density = 0.00006
-	var high := cam.global_position.y > 35.0
-	for l in far_labels:
-		l.visible = high
+	_light()
 	var day := int(t / 1440.0)
 	var hm := int(t) % 1440
 	var counts := [0, 0, 0, 0]
@@ -1409,6 +1446,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if embedded:
+		return
 	if e is InputEventMouseButton and e.pressed:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:

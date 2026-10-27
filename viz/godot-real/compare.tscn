@@ -1,0 +1,116 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://compare.gd" id="1_cmp"]
+[ext_resource type="PackedScene" path="res://main.tscn" id="2_main"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_head"]
+font_size = 22
+font_color = Color(0.93, 0.95, 0.98, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_small"]
+font_size = 16
+font_color = Color(0.78, 0.82, 0.88, 1)
+
+[node name="Compare" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_cmp")
+
+[node name="Back" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.07, 0.08, 0.1, 1)
+
+[node name="Rows" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 10.0
+offset_right = -12.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Rows"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_head")
+horizontal_alignment = 1
+
+[node name="Sides" type="HBoxContainer" parent="Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Left" type="VBoxContainer" parent="Rows/Sides"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Head" type="Label" parent="Rows/Sides/Left"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_head")
+horizontal_alignment = 1
+
+[node name="View" type="SubViewportContainer" parent="Rows/Sides/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+stretch = true
+
+[node name="Port" type="SubViewport" parent="Rows/Sides/Left/View"]
+own_world_3d = true
+handle_input_locally = false
+msaa_3d = 2
+size = Vector2i(942, 760)
+render_target_update_mode = 4
+
+[node name="Fab" parent="Rows/Sides/Left/View/Port" instance=ExtResource("2_main")]
+scene_path = "res://data/replay/scene-today.json"
+embedded = true
+
+[node name="Panel" type="Label" parent="Rows/Sides/Left"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_head")
+
+[node name="Right" type="VBoxContainer" parent="Rows/Sides"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Head" type="Label" parent="Rows/Sides/Right"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_head")
+horizontal_alignment = 1
+
+[node name="View" type="SubViewportContainer" parent="Rows/Sides/Right"]
+layout_mode = 2
+size_flags_vertical = 3
+stretch = true
+
+[node name="Port" type="SubViewport" parent="Rows/Sides/Right/View"]
+own_world_3d = true
+handle_input_locally = false
+msaa_3d = 2
+size = Vector2i(942, 760)
+render_target_update_mode = 4
+
+[node name="Fab" parent="Rows/Sides/Right/View/Port" instance=ExtResource("2_main")]
+scene_path = "res://data/replay/scene-rule.json"
+embedded = true
+
+[node name="Panel" type="Label" parent="Rows/Sides/Right"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_head")
+
+[node name="Foot" type="Label" parent="Rows"]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_small")
+autowrap_mode = 3

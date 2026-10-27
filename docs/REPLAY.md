@@ -25,7 +25,7 @@ so.
    - `rule`: name, source, its sha256, whether it is hand-written, and the card's held-out reward line
      when a card is given (else null);
    - `watch`: the tool group whose mean queue differs most between the two sides over the window, with
-     its name, area and the plan position the camera looks at;
+     its name, area, the plan position the camera looks at and the box its tools fill (drawn as an outline);
    - `series`: every 10 fab minutes, for each side, moves so far, lot-hours waited so far and the watched
      group's queue, all counted from the window's start. They are counted from the traces alone:
      a move is a step that ends in the window; waiting is the part of each step's arrive-to-start
