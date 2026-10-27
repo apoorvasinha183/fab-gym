@@ -127,3 +127,54 @@ button.link:hover { background: none; color: var(--accent); }
 .ticker li.fixed b::before { content: "✓ "; color: var(--s0); }
 .ticker:empty, .ticker ol:empty { display: none; }
 @media (max-width: 900px) { .compare { top: auto; bottom: calc(40vh + 90px); left: 16px; right: 16px; width: auto; max-height: 30vh; } .ticker { display: none; } }
+/* how a chip is made (docs/STAGES.md) */
+.brand .stages-open { display: block; margin-top: 6px; color: var(--accent); text-decoration: none; font-weight: 600; font-size: 12.5px; }
+.brand .stages-open::before { content: "◎ "; }
+.brand .stages-open:hover { text-decoration: underline; }
+.stages { top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(1060px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px); overflow: auto; z-index: 20; padding: 0 20px 16px;
+  background: #2d2a26; box-shadow: 0 0 0 100vmax rgba(10, 9, 8, 0.62), 0 12px 40px rgba(0,0,0,0.6); }
+.stages-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  margin: 0 -20px 10px; padding: 9px 12px 9px 20px; background: #2a2723; border-bottom: 1px solid var(--line); }
+.stages-head h2 { margin: 0; font-size: 17px; color: var(--accent); }
+.stages-head .icon { width: 30px; height: 28px; padding: 0; }
+.stages-lead { margin: 0 0 10px; color: var(--muted); max-width: 70ch; }
+.stages-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+#stages-loop { width: 100%; height: auto; display: block; max-height: calc(100vh - 290px); }
+#stages-loop .node { cursor: pointer; }
+#stages-loop .node rect.frame { fill: #23211d; stroke-width: 2; }
+#stages-loop .node:hover rect.frame, #stages-loop .node:focus-visible rect.frame { stroke-width: 3.5; }
+#stages-loop .node.on rect.frame { fill: #3a352d; stroke-width: 4; }
+#stages-loop .node:focus { outline: none; }
+#stages-loop .node text { font-size: 15px; font-weight: 600; fill: var(--text); }
+.stages-detail { display: grid; gap: 10px; }
+#stages-info { display: grid; gap: 10px; }
+#stages-info h3 { margin: 0; font-size: 20px; }
+#stages-info .code { color: var(--muted); font-size: 11.5px; }
+#stages-info .xs svg { width: 100%; max-height: 300px; height: auto; display: block; background: #1d1c19; border-radius: 3px; border: 1px solid var(--line); }
+#stages-info .nopic { padding: 18px; background: #1d1c19; border-radius: 3px; color: var(--muted); text-align: center; }
+.mats { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); }
+.mats span { display: inline-flex; align-items: center; gap: 5px; }
+.mats i { width: 11px; height: 11px; border-radius: 2px; border: 1px solid #0006; display: inline-block; }
+.qa { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 4px 10px; font-size: 13px; }
+.qa b { color: var(--accent); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 2px; }
+.qa p { margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.fact { background: #262420; border: 1px solid var(--line); border-radius: 3px; padding: 6px 8px; }
+.fact .v { font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.fact .l { font-size: 10.5px; color: var(--muted); line-height: 1.25; }
+#stages-hall { width: auto; justify-self: start; padding: 7px 14px; }
+.stages-route { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; }
+.stages-route-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.stages-route-head h3 { margin: 0; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.seg { display: inline-flex; gap: 2px; }
+.seg button { padding: 4px 10px; font-size: 12px; }
+.seg button.on { background: linear-gradient(#f3b64e, #d9922a); }
+.stages-strip { display: grid; grid-template-columns: repeat(auto-fill, 9px); gap: 2px; }
+.stages-strip i { width: 9px; height: 15px; border-radius: 1px; display: block; cursor: pointer; }
+.stages-strip i.dim { opacity: 0.16; }
+.hall-flash { pointer-events: none; }
+.tip .xs { width: 200px; margin: 6px 0 4px; }
+.tip .xs svg { width: 100%; height: auto; display: block; background: #1d1c19; border-radius: 3px; }
+.tip .st { color: var(--muted); max-width: 200px; display: block; line-height: 1.35; }
+@media (max-width: 860px) { .stages-body { grid-template-columns: minmax(0, 1fr); } #stages-loop { max-height: 60vh; } }

@@ -13,6 +13,7 @@
   <div class="title">Fab Gym</div>
   <div class="sub">A wafer fab on the SMT2020 model, simulated in your browser</div>
   <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
+  <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
 </header>
 
 <section class="card kpis" aria-label="How the fab is doing">
@@ -89,6 +90,33 @@
   </div>
 </section>
 
+<section id="stages" class="card stages" role="dialog" aria-modal="true" aria-labelledby="stages-title" hidden>
+  <div class="stages-head">
+    <h2 id="stages-title">How a chip is made</h2>
+    <button id="stages-close" class="icon" type="button" aria-label="Close">✕</button>
+  </div>
+  <p class="stages-lead">A wafer goes round the same loop again and again, once for every layer of the chip. Pick a stage to see what it does to the silicon, then go to its hall.</p>
+  <div class="stages-body">
+    <svg id="stages-loop" viewBox="0 0 540 540" role="group" aria-label="The loop of stages around a wafer"></svg>
+    <div id="stages-detail" class="stages-detail">
+      <div id="stages-info" aria-live="polite"></div>
+      <button id="stages-hall" class="primary" type="button">Show its hall</button>
+    </div>
+  </div>
+  <div class="stages-route">
+    <div class="stages-route-head">
+      <h3>The route a lot takes, one square per step</h3>
+      <div class="seg" role="group" aria-label="Product">
+        <button type="button" data-route="0" class="on">Product 3</button>
+        <button type="button" data-route="1">Product 4</button>
+      </div>
+    </div>
+    <div id="stages-strip" class="stages-strip" aria-label="Route steps"></div>
+    <div id="stages-readout" class="note">Hover a step.</div>
+  </div>
+  <p class="note small">Illustration, not to scale: the drawings are generic steps of our own. The model holds steps, tools and times, not chemistry. Every count here is on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published model, not a real fab.</p>
+</section>
+
 <section class="card ticker" aria-label="Floor log"><ol id="ticker"></ol></section>
 
 <footer class="card bar">
@@ -108,6 +136,7 @@
 <div id="tip" class="tip" hidden></div>
 <div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit</div>
 
+<script src="stages.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

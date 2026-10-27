@@ -592,6 +592,7 @@ function draw() {
     const [X, Y] = W(x, y);
     drawLot(X, Y, sz, tr[4]);
   }
+  drawFlash();
 }
 
 function drawGroup(c, cx, cy, showLabels) {
@@ -749,6 +750,7 @@ let lastFrame = performance.now();
 function frame(now) {
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
+  stepFly(now);
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -789,10 +791,17 @@ function showTip(h) {
   const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">■</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
   tip.innerHTML = `<b>${P.plain[g]}</b> <span class="m">(${G0[0]})</span><br>${parts.join("<br>")}<br>` +
     `<span class="m">waiting now:</span> ${cur.queue[g]} lots<br>` +
-    `<span class="m">mean wait over the run:</span> ${avgWait.toFixed(0)} min`;
+    `<span class="m">mean wait over the run:</span> ${avgWait.toFixed(0)} min` +
+    (tipCards[g] || (tipCards[g] = (() => {
+      // the stage this group belongs to: what it does to the silicon (an illustration, not to scale)
+      const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
+      if (!st) return "";
+      const pic = FabStages.crossSection(st.key, "tip-" + st.key);
+      return (pic ? `<div class="xs">${pic}</div>` : "<br>") + `<span class="st"><b style="color:${st.color}">${st.name}:</b> ${st.what}</span>`;
+    })()));
   tip.hidden = false;
-  tip.style.left = Math.min(innerWidth - 230, h.mx + 14) + "px";
-  tip.style.top = Math.min(innerHeight - 140, h.my + 14) + "px";
+  tip.style.left = Math.min(innerWidth - 240, h.mx + 14) + "px";
+  tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, h.my + 14)) + "px";
 }
 
 function setupInput() {
@@ -826,7 +835,9 @@ function setupInput() {
   $("scrub").oninput = e => { t = +e.target.value; };
   $("fit").onclick = fit;
   addEventListener("keydown", e => {
+    if (e.key === "Escape" && !$("stages").hidden) { stagesClose(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (!$("stages").hidden && $("stages").contains(e.target)) return;
     if (e.key === " ") { e.preventDefault(); $("play").click(); }
     if (e.key === "f" || e.key === "F") fit();
   });
@@ -1076,9 +1087,167 @@ function load(run) {
   drawSpark();
 }
 
+// ------------------------------------------------------------------ how a chip is made (docs/STAGES.md)
+// The loop of stages around a wafer, a cross-section for each (our own drawings, not to scale), the counts
+// from the routes the simulator returned, and a way to the stage's hall on the floor.
+
+const ST = { key: "litho", route: 0, routes: null, flash: null, fly: null, opener: null };
+const tipCards = {};
+
+function stagesOpen() {
+  $("stages").hidden = false;
+  ST.opener = document.activeElement;
+  stagesDraw();
+  $("stages-close").focus();
+}
+
+function stagesClose() {
+  $("stages").hidden = true;
+  if (ST.opener && ST.opener.focus) ST.opener.focus();
+}
+
+function stagesDraw() {
+  const svg = $("stages-loop");
+  const cx = 270, cy = 270, rr0 = 196, nw = 112, nh = 70;
+  let s = `<circle cx="${cx}" cy="${cy}" r="78" fill="#2f3a44" stroke="#8893a1" stroke-width="2"/>`;
+  for (let x = cx - 72; x < cx + 72; x += 12)
+    for (let y = cy - 72; y < cy + 72; y += 12)
+      if (Math.hypot(x + 5 - cx, y + 5 - cy) < 70) s += `<rect x="${x}" y="${y}" width="10" height="10" fill="#3f4d5a" stroke="#56677a" stroke-width=".6"/>`;
+  s += `<text x="${cx}" y="${cy + 104}" text-anchor="middle" fill="#6fd1c0" font-size="13">checked between steps</text>`;
+  s += `<text x="${cx}" y="${cy + 121}" text-anchor="middle" fill="#b6a98f" font-size="12">cleaned between steps</text>`;
+  s += `<defs><marker id="loop-ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b6a98f"/></marker></defs>`;
+  const ang = i => ((-90 + i * 45) * Math.PI) / 180;
+  const pt = a => [cx + rr0 * Math.cos(a), cy + rr0 * Math.sin(a)];
+  FabStages.LOOP.forEach((k, i) => {
+    const [x1, y1] = pt(ang(i) + 0.33), [x2, y2] = pt(ang(i + 1) - 0.33);
+    s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} A${rr0} ${rr0} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="#b6a98f" stroke-width="2" marker-end="url(#loop-ah)"/>`;
+  });
+  FabStages.LOOP.forEach((k, i) => {
+    const st = FabStages.byKey(k);
+    const x = cx + rr0 * Math.cos(ang(i)) - nw / 2, y = cy + rr0 * Math.sin(ang(i)) - nh / 2;
+    const pic = FabStages.crossSection(k, "loop-" + k).replace(/<text[^>]*>[^<]*<\/text>/g, "").replace("<svg ", `<svg x="${x + 6}" y="${y}" width="${nw - 12}" height="${((nw - 12) * 150) / 240}" `);
+    s += `<g class="node${k === ST.key ? " on" : ""}" data-k="${k}" tabindex="0" role="button" aria-label="${st.name}">` +
+      `<rect class="frame" x="${x}" y="${y - 6}" width="${nw}" height="${nh + 18}" rx="4" stroke="${st.color}"/>${pic}` +
+      `<text x="${x + nw / 2}" y="${y + nh + 7}" text-anchor="middle">${st.short}</text></g>`;
+  });
+  svg.innerHTML = s;
+  stagesSelect(ST.key);
+  stagesStrip();
+}
+
+function stagesSelect(k) {
+  ST.key = k;
+  const st = FabStages.byKey(k);
+  document.querySelectorAll("#stages-loop .node").forEach(n => n.classList.toggle("on", n.dataset.k === k));
+  const pic = FabStages.crossSection(k, "detail-" + k);
+  const mats = st.mats.map(m => `<span><i style="background:${FabStages.MATERIALS[m][0]}"></i>${FabStages.MATERIALS[m][1]}</span>`).join("");
+  let facts = "";
+  if (ST.routes) {
+    const cells = ST.routes.map(([name, steps]) => {
+      const v = FabStages.visits(steps, sim.area)[k];
+      return `<div class="fact"><div class="v">${v}</div><div class="l">steps on ${productName(name)} (of ${steps.length})</div></div>`;
+    });
+    const g = FabStages.groupsPerStage(sim.area)[k];
+    facts = `<div class="facts">${cells.join("")}<div class="fact"><div class="v">${g}</div><div class="l">${k === "hold" ? "holding group" : "tool groups"}</div></div></div>`;
+  }
+  $("stages-info").innerHTML =
+    `<div><h3 style="color:${st.color}">${st.name}</h3><div class="code">SMT2020 area${st.areas.length > 1 ? "s" : ""}: ${st.areas.join(", ")}</div></div>` +
+    (pic ? `<div class="xs">${pic}</div><div class="mats">${mats}</div>` : `<div class="nopic">Nothing happens to the wafer here.</div>`) +
+    `<div class="qa"><b>What</b><p>${st.what}</p><b>Why</b><p>${st.why}</p></div>` + facts +
+    `<p class="note">${st.note}</p>`;
+  $("stages-hall").textContent = `Show the ${st.hall} hall`;
+  stagesPaint();
+}
+
+function productName(name) {
+  const m = /(\d+)$/.exec(name);
+  return m ? "product " + m[1] : name;
+}
+
+function stagesStrip() {
+  const el = $("stages-strip");
+  if (!ST.routes) { el.innerHTML = ""; $("stages-readout").textContent = "The route appears once the simulator has loaded."; return; }
+  const [, steps] = ST.routes[ST.route];
+  el.innerHTML = FabStages.strip(steps, sim.area)
+    .map(c => `<i data-i="${c.i}" data-k="${c.stage}" style="background:${FabStages.byKey(c.stage).color}"></i>`).join("");
+  document.querySelectorAll(".stages-route .seg button").forEach(b => b.classList.toggle("on", +b.dataset.route === ST.route));
+  stagesPaint();
+}
+
+function stagesPaint() {
+  document.querySelectorAll("#stages-strip i").forEach(c => c.classList.toggle("dim", c.dataset.k !== ST.key));
+}
+
+function stagesSetup() {
+  $("stages-open").onclick = stagesOpen;
+  $("stages-close").onclick = stagesClose;
+  $("stages-hall").onclick = () => {
+    const i = HALLS_L ? HALLS_L.findIndex(h => h.name === FabStages.byKey(ST.key).hall) : -1;
+    stagesClose();
+    if (i >= 0) flyToHall(i);
+  };
+  const loop = $("stages-loop");
+  loop.addEventListener("click", e => { const n = e.target.closest(".node"); if (n) stagesSelect(n.dataset.k); });
+  loop.addEventListener("keydown", e => {
+    const n = e.target.closest(".node");
+    if (n && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); stagesSelect(n.dataset.k); }
+  });
+  const strip = $("stages-strip");
+  strip.addEventListener("mouseover", e => {
+    const c = e.target.closest("i");
+    if (!c || !ST.routes) return;
+    const [name, steps] = ST.routes[ST.route];
+    const i = +c.dataset.i, g = steps[i];
+    $("stages-readout").textContent = `Step ${i + 1} of ${steps.length} on ${productName(name)}: ${FabStages.byKey(c.dataset.k).name} (${sim.area[g]}, ${g})`;
+  });
+  strip.addEventListener("click", e => { const c = e.target.closest("i"); if (c) stagesSelect(c.dataset.k); });
+  document.querySelectorAll(".stages-route .seg button").forEach(b => (b.onclick = () => { ST.route = +b.dataset.route; stagesStrip(); }));
+}
+
+// move the view so hall i fills the middle of the floor, and outline it for a few seconds
+function flyToHall(i) {
+  if (!G || !HALLS_L[i]) return;
+  const H = HALLS_L[i], p = G.pos[i];
+  const pad = { l: innerWidth > 900 && !$("compare").hidden ? 372 : 24, r: innerWidth > 900 ? 330 : 24, t: 110, b: 90 };
+  const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
+  const sx = pad.l + w / 2, sy = pad.t + h / 2;
+  const to = { cx: p.x + H.w / 2, cy: p.y + H.h / 2, s: Math.min(40, Math.max(0.5, Math.min(w / (H.w + 16), h / (H.h + 16)))) };
+  const from = { cx: view.x + sx / view.s, cy: view.y + sy / view.s, s: view.s };
+  ST.fly = { from, to, sx, sy, t0: performance.now(), ms: 900 };
+  ST.flash = { i, until: performance.now() + 4500 };
+}
+
+function stepFly(now) {
+  const f = ST.fly;
+  if (!f) return;
+  const u = Math.min(1, (now - f.t0) / f.ms);
+  const e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+  const s = Math.exp(Math.log(f.from.s) + (Math.log(f.to.s) - Math.log(f.from.s)) * e);
+  view.s = s;
+  view.x = f.from.cx + (f.to.cx - f.from.cx) * e - f.sx / s;
+  view.y = f.from.cy + (f.to.cy - f.from.cy) * e - f.sy / s;
+  if (u >= 1) ST.fly = null;
+}
+
+function drawFlash() {
+  const f = ST.flash;
+  if (!f) return;
+  const now = performance.now();
+  if (now > f.until) { ST.flash = null; return; }
+  const H = HALLS_L[f.i], p = G.pos[f.i], s = view.s;
+  const [X, Y] = W(p.x, p.y);
+  const a = 0.55 + 0.45 * Math.sin(now / 180);
+  ctx.save();
+  ctx.strokeStyle = `rgba(240,166,60,${a.toFixed(3)})`;
+  ctx.lineWidth = Math.max(3, 0.9 * s);
+  ctx.strokeRect(X - 1.2 * s, Y - 1.2 * s, (H.w + 2.4) * s, (H.h + 2.4) * s);
+  ctx.restore();
+}
+
 async function main() {
   resize();
   setupInput();
+  stagesSetup();
   requestAnimationFrame(frame);
   try {
     await loadSim();
@@ -1101,6 +1270,8 @@ async function main() {
     .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
     .forEach(([name, i]) => { const o = document.createElement("option"); o.value = i; o.textContent = name; sel.appendChild(o); });
   load(first);
+  ST.routes = first.j.routes.map(([name, steps]) => [name, steps.map(gi => first.j.groups[gi][0])]);
+  if (!$("stages").hidden) stagesDraw();
   await loadLong();
   fit();
   $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, here in your browser.`;
