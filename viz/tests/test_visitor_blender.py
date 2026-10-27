@@ -143,9 +143,13 @@ class Visitor(unittest.TestCase):
         self.assertLessEqual(len(slips), 0.02 * len(self.frames), f"feet skate: {slips[:10]}")
 
     def test_his_feet_rest_when_he_stands(self):
+        """Once he has stood for 0.8 s his feet are still. Before that he may take a settling step with each
+        foot, as people do when they stop (amended 27 Oct: the rule had no settling time)."""
         for a, b in zip(self.frames, self.frames[1:]):
             s = self.s_of(a[0])
             if act_at(s)["act"] not in STILL or act_at(self.s_of(b[0]))["act"] not in STILL:
+                continue
+            if s - act_at(s)["s0"] < 0.8:
                 continue
             if any(s < c <= self.s_of(b[0]) + 1e-9 for c in P["cuts"]):
                 continue
