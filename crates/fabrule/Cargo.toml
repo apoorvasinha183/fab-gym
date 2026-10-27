@@ -1,0 +1,11 @@
+[package]
+name = "fabrule"
+version = "0.0.0"
+description = "Dispatch rules written as Rust functions, compiled to WebAssembly and run in a sandbox inside the fab simulator"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+fabsim = { path = "../fabsim" }
+wasmtime = { version = "=36.0.19", default-features = false, features = ["cranelift", "runtime", "std", "wat"] }
