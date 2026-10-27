@@ -90,14 +90,14 @@ class Data(unittest.TestCase):
         cd = load(ROOT / "viz/blueprint/places/us.json")["permit"]["cd"]
         self.assertEqual(cd["bay"], 8)
         self.assertEqual(cd["site"], "viz/permit/codes/us-site-willamette.json")
-        rules = load(PERMIT / cd["rules"])
+        rules = load(ROOT / cd["rules"])
         ids = {r["id"] for r in rules}
         for want in ("site.seismic_values", "cd.base_plates", "cd.footing_mats", "cd.tiles", "cd.ffu_coverage",
                      "cd.drops", "cd.hangers", "cd.gas_lines", "cd.clearances", "sprinklers.spacing",
                      "sprinklers.branch_sizing", "alarm.detector_spacing", "elec.conductors"):
             self.assertIn(want, ids)
         base = {i["id"] for i in load(PERMIT / "items.json") + load(PERMIT / "items-dd.json")}
-        items = load(PERMIT / cd["items"])
+        items = load(ROOT / cd["items"])
         self.assertGreaterEqual(len(items), 15)
         for i in items:
             self.assertNotIn(i["id"], base)

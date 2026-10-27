@@ -1,0 +1,66 @@
+{
+ "place": "us",
+ "stage": "construction documents",
+ "extends": "viz/permit/codes/us-2024-dd.json",
+ "read_in": "ICC's free reader, codes.iccsafe.org, on 28 Oct 2026; no copy of the code text is kept",
+ "sections": {
+  "IBC 107.2.1": {
+   "code": "IBC 2024",
+   "title": "Information on construction documents",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-1-scope-and-administration",
+   "opened": "2026-10-28",
+   "chars": 505,
+   "sha256": "5f9f64c706a6c7e5c2c8199220ed04fefb5de029b0f98a53ef908aca46cb6c49",
+   "facts": {
+    "what": "dimensioned, of sufficient clarity to show the location, nature and extent of the work and that it conforms"
+   }
+  },
+  "IBC 107.2.2": {
+   "code": "IBC 2024",
+   "title": "Fire protection system shop drawings",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-1-scope-and-administration",
+   "opened": "2026-10-28",
+   "chars": 355,
+   "sha256": "6a14cf78b13da4949d996c2bd5bf1c0c307b6f9d4ec3b4030c00463aac2ba811",
+   "facts": {
+    "what": "shop drawings with the information the installation standards of chapter 9 ask, approved before installation"
+   }
+  },
+  "IBC 1603.1": {
+   "code": "IBC 2024",
+   "title": "Structural design data on construction documents",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-28",
+   "chars": 1019,
+   "sha256": "e30c2e2319340562557e2848602f232062c67cd6630078832f98f7c688df2512",
+   "facts": {
+    "what": "member material, size, section and location; column centres; design loads and data of 1603.1.1 to 1603.1.9"
+   }
+  },
+  "IBC 1603.1.5": {
+   "code": "IBC 2024",
+   "title": "Earthquake design data",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-28",
+   "chars": 613,
+   "sha256": "28a87b863229d50994ce8cd04dee2917f8432f54d049832ce1a251409a8cf0c1",
+   "facts": {
+    "items_from_values": [
+     "risk category",
+     "importance factor",
+     "SS and S1",
+     "site class",
+     "SDS and SD1",
+     "seismic design category"
+    ],
+    "items_from_asce7": [
+     "force-resisting system",
+     "base shear",
+     "Cs",
+     "R",
+     "analysis procedure"
+    ]
+   }
+  }
+ }
+}

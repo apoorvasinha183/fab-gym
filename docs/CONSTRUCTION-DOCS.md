@@ -123,3 +123,10 @@ rules (`viz/permit/rules/us-cd.json`) and the items (`viz/permit/items-cd.json`)
   - zero clashes, a valid IFC, the same bytes twice;
   - 47 sheets with the truth line and NOT FOR CONSTRUCTION;
   - three-part specifications, a ledger with nothing missing, the PDF's pages.
+
+## Changes
+
+- 28 Oct, before any construction documents code: the data test read the profile's paths from `viz/permit` instead
+  of the repo root (fixed). Two more sections were read for the detail checks to cite: IBC 107.2.1 and 107.2.2
+  (what construction documents and fire protection shop drawings show), and IBC 1603.1 and 1603.1.5 (structural
+  and earthquake design data on the documents), in `viz/permit/codes/us-2024-cd.json`.
