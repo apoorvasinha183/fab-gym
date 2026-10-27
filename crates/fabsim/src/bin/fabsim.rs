@@ -19,6 +19,9 @@
 //!   fabsim layout-trace [DIR] [--data D] [--plan P] [--seed S] [--day N] [--hours H]
 //!                                                a recorded window of the run on plan P for the
 //!                                                3D views: D/trace-P.json
+//!   each layout command takes --real: tools at true size by kind and each group in the phase
+//!   that sends it most lots (docs/FAB-LOOK.md); defaults then go to results/layout-real and
+//!   data/layout-real
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -179,13 +182,23 @@ fn flag<'a>(args: &'a [String], flag: &str, default: &'a str) -> &'a str {
     args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(|s| s.as_str()).unwrap_or(default)
 }
 
+/// `--real`: the realistic campus (docs/FAB-LOOK.md) and its default folders.
+fn layout_kind(args: &[String]) -> (fabsim::layout::Config, &'static str, &'static str) {
+    use fabsim::layout::Config;
+    if args.iter().any(|a| a == "--real") {
+        (Config::realistic(), "results/layout-real", "data/layout-real")
+    } else {
+        (Config::gigafab(), "results/layout", "data/layout")
+    }
+}
+
 fn layout(args: &[String]) {
-    use fabsim::layout::{Config, Problem};
+    use fabsim::layout::Problem;
     use std::fmt::Write as _;
     let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
-    let out = PathBuf::from(flag(args, "--out", "results/layout"));
-    let data = PathBuf::from(flag(args, "--data", "data/layout"));
-    let mut cfg = Config::gigafab();
+    let (mut cfg, out0, data0) = layout_kind(args);
+    let out = PathBuf::from(flag(args, "--out", out0));
+    let data = PathBuf::from(flag(args, "--data", data0));
     cfg.iters = arg(args, "--iters", cfg.iters as u64) as usize;
     cfg.restarts = arg(args, "--restarts", cfg.restarts as u64) as usize;
     cfg.seed = arg(args, "--seed", cfg.seed);
@@ -207,6 +220,9 @@ fn layout(args: &[String]) {
     let lots: f64 = p.flows().iter().map(|f| f.2).sum();
     let mut md = String::new();
     let _ = writeln!(md, "A gigafab-style layout of our own design on the SMT2020 model (docs/FAB-LAYOUT.md); every placement number is assumed. Not a real fab.\n");
+    if cfg.phase_by_flow || !cfg.kinds.is_empty() {
+        let _ = writeln!(md, "Realistic campus (docs/FAB-LOOK.md): tools at true size by kind from the size book, each tool group in the phase that sends it most of its lots.\n");
+    }
     let _ = writeln!(md, "Optimiser: simulated annealing, {} moves x {} restarts, seed {}, {secs:.1} s. A heuristic; the metres are exact for the stated flows.\n", cfg.iters, cfg.restarts, cfg.seed);
     let _ = writeln!(md, "Moves a day at the release rates: {lots:.1}; crossing the bridge: {:.1} a day.\n", p.crossings());
     let _ = writeln!(md, "| plan | OHT metres a day | metres a move | P1 length (north / south) | P2 length (north / south) |\n|---|---|---|---|---|");
@@ -227,8 +243,9 @@ fn layout_score(args: &[String]) {
     use std::fmt::Write as _;
     use std::sync::Mutex;
     let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
-    let data = PathBuf::from(flag(args, "--data", "data/layout"));
-    let out = PathBuf::from(flag(args, "--out", "results/layout"));
+    let (_, out0, data0) = layout_kind(args);
+    let data = PathBuf::from(flag(args, "--data", data0));
+    let out = PathBuf::from(flag(args, "--out", out0));
     let threads = arg(args, "--threads", 4) as usize;
     let days = arg(args, "--days", 150) as f64;
     let warmup = arg(args, "--warmup", 60) as f64;
@@ -292,9 +309,10 @@ fn layout_score(args: &[String]) {
 }
 
 fn layout_trace(args: &[String]) {
-    use fabsim::layout::{Config, Problem};
+    use fabsim::layout::Problem;
     let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
-    let data = PathBuf::from(flag(args, "--data", "data/layout"));
+    let (cfg, _, data0) = layout_kind(args);
+    let data = PathBuf::from(flag(args, "--data", data0));
     let plan = flag(args, "--plan", "optimised");
     let seed = arg(args, "--seed", 3000);
     let from = arg(args, "--day", 30) as f64 * 1440.0;
@@ -303,7 +321,7 @@ fn layout_trace(args: &[String]) {
     // the campus is rebuilt from the same deterministic optimiser, and checked against the shop's places
     let flat = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
     let areas = fabsim::smt2020::areas(&dir).expect("areas");
-    let p = Problem::new(&flat, &areas, &Config::gigafab()).unwrap();
+    let p = Problem::new(&flat, &areas, &cfg).unwrap();
     let c = if plan == "plain" { p.pack(&p.plain()) } else { p.pack(&p.optimise()) };
     assert_eq!(Some(p.oht(&c)), shop.oht, "the shop's layout is not this build's {plan} plan; rerun fabsim layout");
     // run past the window so lots that arrive in it and start later are recorded

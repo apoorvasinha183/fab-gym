@@ -14,6 +14,19 @@ use crate::shop::{Oht, Place, Shop};
 /// The node new lots come from, in `Problem::flows`.
 pub const START: usize = usize::MAX;
 
+/// A kind of tool at its true size (docs/FAB-LOOK.md): the groups whose names start with one of
+/// `prefixes`, `w` metres along the wall and `d` metres into the bay.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Kind {
+    pub name: String,
+    pub prefixes: Vec<String>,
+    pub w: f64,
+    pub d: f64,
+}
+
+/// One tool in a block packed by kind: (group, bay, wall, y0, w, d).
+type Slot = (usize, usize, usize, f64, f64, f64);
+
 #[derive(Clone, Debug)]
 pub struct Config {
     /// metres from the spine to a bay's back wall
@@ -33,6 +46,10 @@ pub struct Config {
     /// a group whose name contains the text goes to that phase (first match wins)
     pub phase_rules: Vec<(String, usize)>,
     pub default_phase: usize,
+    /// tools by kind at true size; when empty, by area (`footprints`)
+    pub kinds: Vec<Kind>,
+    /// move each group to the phase that sends it most of its lots (by the name rule's phases)
+    pub phase_by_flow: bool,
     /// the OHT: minutes per move, metres per minute, minutes of jitter
     pub overhead: f64,
     pub speed: f64,
@@ -71,6 +88,8 @@ impl Config {
             stocker_areas: vec!["Delay_32".into()],
             phase_rules: vec![("_BE_".into(), 1)],
             default_phase: 0,
+            kinds: vec![],
+            phase_by_flow: false,
             overhead: 4.0,
             speed: 150.0,
             jitter: 1.0,
@@ -78,6 +97,43 @@ impl Config {
             restarts: 4,
             seed: 1,
         }
+    }
+
+    /// The size book of docs/FAB-LOOK.md (viz/look/sizes.json): tools at true size by kind, and
+    /// each group in the phase that sends it most of its lots. All sizes assumed unless the book
+    /// cites them.
+    pub fn realistic() -> Config {
+        let k = |name: &str, prefixes: &[&str], w: f64, d: f64| Kind {
+            name: name.into(),
+            prefixes: prefixes.iter().map(|p| p.to_string()).collect(),
+            w,
+            d,
+        };
+        Config {
+            kinds: vec![
+                k("metrology", &["LithoMet_", "Litho_REG_", "TF_Met_"], 1.8, 2.8),
+                k("track", &["LithoTrack_"], 3.5, 7.0),
+                k("scanner", &["Litho_"], 4.5, 11.0),
+                k("inspection", &["DefMet_", "DefMEt_"], 2.2, 3.4),
+                k("etch", &["DE_"], 3.5, 5.5),
+                k("deposition", &["Dielectric_", "TF_"], 3.5, 5.5),
+                k("epitaxy", &["EPI_"], 4.0, 6.0),
+                k("furnace", &["Diffusion_"], 1.5, 2.0),
+                k("implanter", &["Implant_"], 3.6, 8.1),
+                k("polisher", &["Planar_"], 3.0, 6.0),
+                k("wet_bench", &["WE_"], 2.5, 10.0),
+                k("stocker", &["Delay_"], 3.0, 12.0),
+            ],
+            phase_by_flow: true,
+            ..Config::gigafab()
+        }
+    }
+
+    /// The first kind with a prefix the group's name starts with.
+    pub fn kind_of(&self, group: &str) -> Option<&Kind> {
+        self.kinds
+            .iter()
+            .find(|k| k.prefixes.iter().any(|p| group.starts_with(p.as_str())))
     }
 
     fn footprint(&self, area: &str) -> (f64, f64) {
@@ -172,6 +228,8 @@ pub struct Problem {
     phase: Vec<Option<usize>>,
     nphases: usize,
     flows: Vec<(usize, usize, f64)>,
+    /// per group with tool kinds: (along the wall, into the bay); `None` by area
+    size: Vec<Option<(f64, f64)>>,
 }
 
 impl Problem {
@@ -245,6 +303,50 @@ impl Problem {
         let mut flows: Vec<(usize, usize, f64)> =
             acc.into_iter().map(|((a, b), r)| (a, b, r)).collect();
         flows.sort_by(|x, y| (x.0, x.1).cmp(&(y.0, y.1)));
+        if cfg.phase_by_flow {
+            // each group goes to the phase that sends it most of its lots, counting each sender
+            // where it sits now (new lots come from phase 1); ties stay; group by group until no
+            // group moves (docs/FAB-LOOK.md)
+            for _sweep in 0..100 {
+                let mut moved = false;
+                for g in 0..phase.len() {
+                    let Some(own) = phase[g] else { continue };
+                    let mut inflow = vec![0.0; nphases];
+                    for f in flows.iter().filter(|f| f.1 == g) {
+                        let from = if f.0 == START {
+                            0
+                        } else {
+                            phase[f.0].unwrap_or(0)
+                        };
+                        inflow[from] += f.2;
+                    }
+                    let mut best = own;
+                    for (ph, &w) in inflow.iter().enumerate() {
+                        if w > inflow[best] {
+                            best = ph;
+                        }
+                    }
+                    if best != own {
+                        phase[g] = Some(best);
+                        moved = true;
+                    }
+                }
+                if !moved {
+                    break;
+                }
+            }
+        }
+        let mut size = vec![None; shop.groups.len()];
+        if !cfg.kinds.is_empty() {
+            for (g, gr) in shop.groups.iter().enumerate() {
+                if phase[g].is_some() {
+                    let k = cfg
+                        .kind_of(&gr.name)
+                        .ok_or_else(|| format!("no tool kind for group {:?}", gr.name))?;
+                    size[g] = Some((k.w, k.d));
+                }
+            }
+        }
         Ok(Problem {
             cfg: cfg.clone(),
             names: shop.groups.iter().map(|g| g.name.clone()).collect(),
@@ -253,6 +355,7 @@ impl Problem {
             phase,
             nphases,
             flows,
+            size,
         })
     }
 
@@ -315,7 +418,50 @@ impl Problem {
         Plan { phases }
     }
 
+    /// With tool kinds: a block's bay width, its bays, and each tool as (group, bay, wall, y0,
+    /// w, d). Wall 0 fills from the spine outward, wall 1 from the bay's end back; a bay is as
+    /// wide as its block's deepest tool on both walls plus the aisle.
+    fn pack_block(&self, b: &Block) -> (f64, usize, Vec<Slot>) {
+        let cfg = &self.cfg;
+        let deepest = b
+            .groups
+            .iter()
+            .filter_map(|&g| self.size[g])
+            .map(|s| s.1)
+            .fold(0.0, f64::max);
+        let bw = 2.0 * (deepest + cfg.chase) + cfg.bay_aisle;
+        let mut out = vec![];
+        let (mut bay, mut wall, mut used) = (0usize, 0usize, 0.0f64);
+        for &g in &b.groups {
+            let (w, d) = self.size[g].expect("a tool kind");
+            for _ in 0..self.counts[g] {
+                if used > 0.0 && used + w > cfg.bay_depth + 1e-9 {
+                    if wall == 0 {
+                        wall = 1;
+                    } else {
+                        wall = 0;
+                        bay += 1;
+                    }
+                    used = 0.0;
+                }
+                let y0 = if wall == 0 {
+                    used
+                } else {
+                    cfg.bay_depth - used - w
+                };
+                out.push((g, bay, wall, y0, w, d));
+                used += w;
+            }
+        }
+        let n = if out.is_empty() { 0 } else { bay + 1 };
+        (bw, n, out)
+    }
+
     fn block_length(&self, b: &Block) -> f64 {
+        if !self.cfg.kinds.is_empty() {
+            let (bw, n, _) = self.pack_block(b);
+            return n as f64 * bw;
+        }
         let tools: usize = b.groups.iter().map(|&g| self.counts[g]).sum();
         let per_bay = 2 * self.cfg.per_wall(&b.area);
         tools.div_ceil(per_bay) as f64 * self.cfg.bay_width(&b.area)
@@ -348,6 +494,52 @@ impl Problem {
             for (side, blocks) in sides.iter().enumerate() {
                 let mut x = 0.0;
                 for b in blocks {
+                    if !cfg.kinds.is_empty() {
+                        let (bw, n, tools) = self.pack_block(b);
+                        let first_bay = nbays;
+                        for &(g, bay, wall, y0, w, d) in &tools {
+                            let bx0 = x + bay as f64 * bw;
+                            sx[g] += bx0 + bw / 2.0;
+                            sy[g] += y0 + w / 2.0;
+                            let id = first_bay + bay;
+                            match by_bay[g].iter_mut().find(|e| e.0 == id) {
+                                Some(e) => e.1 += 1,
+                                None => by_bay[g].push((id, 1)),
+                            }
+                            if boxes {
+                                // wall 0 against the bay's west chase, wall 1 against its east one
+                                let tx0 = if wall == 0 {
+                                    bx0 + cfg.chase
+                                } else {
+                                    bx0 + bw - cfg.chase - d
+                                };
+                                c.tools.push(ToolBox {
+                                    group: g,
+                                    phase: ph,
+                                    side,
+                                    bay: id,
+                                    x0: tx0,
+                                    x1: tx0 + d,
+                                    y0,
+                                    y1: y0 + w,
+                                });
+                            }
+                        }
+                        if boxes {
+                            for i in 0..n {
+                                c.bays.push(Bay {
+                                    phase: ph,
+                                    side,
+                                    area: b.area.clone(),
+                                    x0: x + i as f64 * bw,
+                                    x1: x + (i + 1) as f64 * bw,
+                                });
+                            }
+                        }
+                        nbays += n;
+                        x += n as f64 * bw;
+                        continue;
+                    }
                     let (w, d) = cfg.footprint(&b.area);
                     let m = cfg.per_wall(&b.area);
                     let bw = cfg.bay_width(&b.area);
@@ -767,7 +959,35 @@ impl Problem {
                 n(d)
             );
         }
-        o.push_str("}},\"groups\":[");
+        o.push('}');
+        if cfg.phase_by_flow || !cfg.kinds.is_empty() {
+            let _ = write!(
+                o,
+                ",\"phase_rule\":\"{}\",\"kinds\":{{",
+                if cfg.phase_by_flow {
+                    "where its lots come from"
+                } else {
+                    "by name"
+                }
+            );
+            for (i, k) in cfg.kinds.iter().enumerate() {
+                let _ = write!(
+                    o,
+                    "{}\"{}\":{{\"w\":{},\"d\":{},\"prefixes\":[{}]}}",
+                    if i > 0 { "," } else { "" },
+                    k.name,
+                    n(k.w),
+                    n(k.d),
+                    k.prefixes
+                        .iter()
+                        .map(|p| format!("\"{p}\""))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                );
+            }
+            o.push('}');
+        }
+        o.push_str("},\"groups\":[");
         for g in 0..self.names.len() {
             let _ = write!(
                 o,
