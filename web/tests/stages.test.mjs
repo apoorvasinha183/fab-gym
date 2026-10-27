@@ -1,7 +1,7 @@
 // Tests for the stage explainer (docs/STAGES.md). Written before the code.
 // On the SMT2020 model, a published model of a fab; not a real fab.
 //
-//     node --test web/tests/          (from the repo root)
+//     node --test web/tests/stages.test.mjs          (from the repo root)
 //
 // The cross-check against the raw SMT2020 route files skips when data/smt2020/hvlm is absent.
 
@@ -77,7 +77,9 @@ test("tool groups per stage", () => {
   const g = S.groupsPerStage(areaOf);
   assert.deepEqual(g, { diff: 10, diel: 10, litho: 11, dry: 21, imp: 9, wet: 14, tf: 11, cmp: 6, chk: 13, hold: 1 });
   assert.equal(Object.values(g).reduce((a, b) => a + b, 0), Object.keys(areaOf).length);
-  assert.equal(Object.keys(areaOf).length, 105);
+  // 105 tool groups and the holding group (spec change, 27 Oct)
+  assert.equal(Object.keys(areaOf).length, 106);
+  assert.equal(Object.values(g).reduce((a, b) => a + b, 0) - g.hold, 105);
 });
 
 test("the strip has one cell per step, in route order", () => {

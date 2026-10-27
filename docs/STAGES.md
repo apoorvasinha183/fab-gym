@@ -61,8 +61,15 @@ since they come between most steps. The loop is simplified; the strip shows the 
 
 - Every area in `areas.tsv` belongs to exactly one stage, and the stages' halls are the floor's halls.
 - Steps per stage on each route, counted from the page's data, equal the counts from the SMT2020 route
-  files (product 3: 583 steps, product 4: 343), and tool groups per stage add up to 105.
+  files (product 3: 583 steps, product 4: 343), and tool groups per stage add up to 106: the model's 105
+  tool groups and the holding group.
 - Each of the nine drawings is one SVG whose every `url(#…)` points to an id defined inside it.
 - No stage text names a company; every stage has a what and a why.
 - The page wiring is in place (static checks of `index.html` and `app.js`); the look is checked by eye in a
   browser, in the floor page at 127.0.0.1:8765.
+
+## Changes
+
+- 27 Oct, before the code passed: the tool-group total is 106 (105 tool groups and the holding group); the
+  test had asked for 105 against its own per-stage table, which sums to 106. The run command names the test
+  file, since Node 22 does not take a folder.
