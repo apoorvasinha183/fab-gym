@@ -105,7 +105,7 @@ def frame_of(t):
 def increasing(frames):
     out, last = [], -1e18
     for f in frames:
-        f = max(f, last + 1e-3)
+        f = max(f, last + 0.02)  # Blender merges keys closer than 0.01 of a frame
         out.append(f)
         last = f
     return out
@@ -1245,7 +1245,7 @@ for L_ in S["lots"]:
     ob = obj("lot " + L_["id"], me, keys[0][1:4], 0, col("lots"))
     frames, pos = lot_track(keys)
     fill(ob, "location", frames, pos)
-    vis = [(frames[0] - 0.01, 0.0), (frames[0], 1.0), (frames[-1], 1.0), (frames[-1] + 0.01, 0.0)]
+    vis = [(frames[0] - 0.05, 0.0), (frames[0], 1.0), (frames[-1], 1.0), (frames[-1] + 0.05, 0.0)]
     fill(ob, "scale", [v[0] for v in vis], [(v[1],) * 3 for v in vis], constant=True)
     # waiting on a shelf: the red channel, for the glow in shot 12
     wf, wv = [frames[0] - 0.02], [(0, 0, 0, 1)]
@@ -1263,7 +1263,7 @@ for L_ in S["lots"]:
         for k in inside:
             cf.append(frame_of(k[0]))
             cv.append((k[1], k[2], RAIL_Z))
-        sf += [frame_of(m0) - 0.01, frame_of(m0), frame_of(m1), frame_of(m1) + 0.01]
+        sf += [frame_of(m0) - 0.05, frame_of(m0), frame_of(m1), frame_of(m1) + 0.05]
         sv += [(0,) * 3, (1,) * 3, (1,) * 3, (0,) * 3]
     if cf:
         car = obj("car " + L_["id"], ME_CAR, cv[0], 0, col("cars"))

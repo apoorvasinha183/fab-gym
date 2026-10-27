@@ -18,6 +18,17 @@ for c in sedan suv hatchback-sports van taxi delivery; do cp "$K/$c.glb" "$S/car
 cp "$K/Textures/colormap.png" "$S/cars/Textures/"
 Q="$A/quaternius/universal-base-characters-standard/Universal Base Characters[Standard]/Base Characters/Godot - UE"
 for p in Superhero_Male_FullBody Superhero_Female_FullBody; do cp "$Q/$p.gltf" "$Q/$p.bin" "$S/people/"; done
+# the body's own textures (skin, eyes, brows), and one hairstyle rigged to the head bone, for the visitor
+T="$A/quaternius/universal-base-characters-standard/Universal Base Characters[Standard]/Base Characters/Godot - UE"
+for t in T_Superhero_Male_Dark T_Superhero_Male_Normal T_Superhero_Male_Roughness T_Eye_Brown T_Hair_1_BaseColor; do
+  cp "$T/$t.png" "$S/people/"
+done
+cp "$T/T_Eye_Normal.png" "$S/people/T_Eye_Normal_png.png"  # the names the .gltf asks for
+cp "$T/T_Hair_1_Normal.png" "$S/people/T_Hair_1_Normal_png.png"
+cp "$T/T_Hair_1_Normal.png" "$S/people/T_Hair_1_Normal.png"
+H="$A/quaternius/universal-base-characters-standard/Universal Base Characters[Standard]/Hairstyles"
+cp "$H/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.gltf" "$H/Rigged to Head Bone/glTF (Godot -Unreal)/Hair_SimpleParted.bin" "$S/people/"
+
 cp "$A/quaternius/universal-animation-library-standard/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb" "$S/people/ual.glb"
 cp "$A/polypizza-hazmat/character-hazmat.glb" "$S/people/hazmat.glb"
 du -sh "$S"
