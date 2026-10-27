@@ -109,8 +109,10 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     if stage in ("dd", "cd"):
         design_development(C)
     if stage == "cd":
+        import arch_cd
         import cd
         cd.run(C)
+        arch_cd.run(C)
     coord.run(C)
     V = R.run_all(rules, C.cases, reg)
     C.made.add("verdicts")

@@ -147,8 +147,9 @@ def write(model, name="fab-model.ifc"):
             eid = F.add(f"IFCMECHANICALFASTENER({g},$,{nm},$,{ot},{pl},{shape},$,{r(dia)},{r(length)},.ANCHORBOLT.)")
             contained.setdefault(holder, []).append(eid)
         elif e.get("door"):
-            hgt, wid, op = e["door"]
-            eid = F.add(f"IFCDOOR({g},$,{nm},$,{ot},{pl},{shape},$,{r(hgt)},{r(wid)},.DOOR.,.{op}.,$)")
+            hgt, wid, op = e["door"][:3]
+            kind = e["door"][3] if len(e["door"]) > 3 else "DOOR"
+            eid = F.add(f"IFCDOOR({g},$,{nm},$,{ot},{pl},{shape},$,{r(hgt)},{r(wid)},.{kind}.,.{op}.,$)")
             contained.setdefault(holder, []).append(eid)
         else:
             eid = F.add(f"{e['cls'].upper()}({g},$,{nm},$,{ot},{pl},{shape},$,{pre})")

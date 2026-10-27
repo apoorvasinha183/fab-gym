@@ -839,8 +839,10 @@ def write(C, V, out, layout):
     if C.P.get("stage") == "cd":
         import cd_sheets
         SUBTITLE, REV = "Construction documents, lithography bay 09, for review", "CD1 construction documents for review"
-        CURRENT = CURRENT + cd_sheets.SHEETS
+        import arch_sheets
+        CURRENT = CURRENT + cd_sheets.SHEETS + arch_sheets.SHEETS
         bodies.update(cd_sheets.BODIES)
+        bodies.update(arch_sheets.BODIES)
     (out / "sheets").mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(Path(layout).read_bytes()).hexdigest()[:12]
     C.sha = sha

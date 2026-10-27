@@ -58,6 +58,8 @@ def joint(a, b):
             return "a drop through a cut floor tile"
         if so.startswith("truss member") and oo.startswith("truss member") and so == oo:
             return "members of one truss meeting"
+        if so == "equipment curb" and o["cls"] == "IfcUnitaryEquipment":
+            return "equipment on its curb"
         if s["cls"] in ("IfcSlab", "IfcCovering") and not s["key"].startswith("permit/"):
             if o["box"][2] <= s["box"][2] + 1e-6 and o["box"][5] >= s["box"][5] - 1e-6:
                 return "through an opening in a slab"
