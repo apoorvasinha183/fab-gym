@@ -201,9 +201,27 @@ class ConstructionDocuments(unittest.TestCase):
             for rule in rules:
                 if doc in read:
                     for v in self.verdicts(rule):
+                        if rule == "sprinklers.branch_sizing" and v["verdict"] == "cannot say":
+                            # a system this size needs the site's water supply to be sized (19.2.2.3, 19.2.3)
+                            self.assertIn("water supply", v["why"])
+                            continue
                         self.assertIn(v["verdict"], ("met", "not met"), (rule, v["why"]))
                 else:
                     self.all_are(rule, "cannot say")
+        F = self.D["fire"]
+        if "NFPA 13" in read:
+            self.assertLessEqual(F["max_spacing_ft"], 15 + 1e-6)
+            self.assertLessEqual(F["max_area_per_head_sqft"], 130 + 1e-6)
+            self.assertLessEqual(F["max_wall_distance_ft"], 7.5 + 1e-6)
+            self.assertGreaterEqual(F["min_between_ft"], 6 - 1e-6)
+            self.assertGreater(F["chase_heads"], 0)
+        if "NFPA 72" in read:
+            self.assertLessEqual(F["max_port_spacing_ft"], 30 + 1e-6)
+            self.assertLessEqual(F["max_port_wall_ft"], 15 + 1e-6)
+            self.assertGreater(F["chase_ports"], 0)
+        if "NFPA 70" in read:
+            for i, fd in self.D["services"]["feeders"].items():
+                self.assertGreaterEqual(fd["ampacity_A"], fd["amps_125pct"] - 1e-6, i)
 
     def test_lod_and_ifc(self):
         self.assertEqual(self.P["clashes"], [])

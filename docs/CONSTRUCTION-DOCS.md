@@ -142,3 +142,15 @@ rules (`viz/permit/rules/us-cd.json`) and the items (`viz/permit/items-cd.json`)
   - the spine's signs and lights run 2.6 m from the spine's centre line.
   The schematic stage is unchanged byte for byte. Two more clash joints, as built: members of one truss meeting, and
   a drop through a cut floor tile.
+- 28 Oct, before the NFPA code: NFPA 13-2022, 72-2022 and 70-2023 (the editions the 2024 IBC references in its
+  chapter 35) read in NFPA's free reader in the founder's session, after the founder accepted NFPA's terms for each.
+  The pages are images that cannot be hashed from the page, so the register (`viz/permit/codes/us-nfpa.json`) keeps
+  the edition and printed page with the numbers in our own words, and no text. What the reading changes:
+  - **Heads:** at most 15 ft apart and 130 sq ft each, at most half the spacing from a wall, at least 6 ft apart.
+    The chase partitions reach within the top 15% of the ceiling height, so they count as walls, and each chase
+    gets its own heads and sampling ports.
+  - **Sampling ports:** spaced as spot detectors, at most 30 ft apart and half that from a wall.
+  - **Feeders:** conductors from the 75 C copper column of Table 310.16, at 125% of a continuous load.
+  - **Branch sizing:** for a new system over 5,000 sq ft, the pipe schedule needs the site's flows at 50 psi
+    (19.2.2.3), and the hydraulic method needs a water supply test. So branch sizing says cannot say, naming the
+    water supply, and the test accepts that.

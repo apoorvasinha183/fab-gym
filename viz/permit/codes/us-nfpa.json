@@ -1,0 +1,249 @@
+{
+ "place": "us",
+ "stage": "construction documents",
+ "editions": {
+  "NFPA 13": {
+   "edition": 2022,
+   "why": "the edition the 2024 IBC references (chapter 35)"
+  },
+  "NFPA 72": {
+   "edition": 2022,
+   "why": "the edition the 2024 IBC references (chapter 35)"
+  },
+  "NFPA 70": {
+   "edition": 2023,
+   "why": "the edition the 2024 IBC references (chapter 35)"
+  }
+ },
+ "ibc_chapter_35": {
+  "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-35-referenced-standards",
+  "opened": "2026-10-28",
+  "sha256": {
+   "NFPA 13-22": "fcd60e58895c9bb77eb9c3b9474422f1ee42db449dcd1fcbcd3579d2238180b7",
+   "NFPA 72-22": "5e292913975c95e2d2b7083a7b570e693032d0a864a18949a73ec33fe672918f",
+   "NFPA 70-23": "7b3ba96953e3263c2dafd9f9ac8a6e38f53eb5fd10e18259ece57826e468c3e5"
+  }
+ },
+ "sections": {
+  "NFPA 13 T10.2.4.2.1(b)": {
+   "code": "NFPA 13 2022",
+   "title": "Protection area and spacing, standard spray sprinklers, ordinary hazard",
+   "url": "https://link.nfpa.org/free-access/publications/13/2022",
+   "opened": "2026-10-28",
+   "page": "13-81",
+   "viewer_page": 84,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "area_sqft": 130,
+    "spacing_ft": 15
+   }
+  },
+  "NFPA 13 10.2.5": {
+   "code": "NFPA 13 2022",
+   "title": "Sprinkler spacing: from walls and between sprinklers",
+   "url": "https://link.nfpa.org/free-access/publications/13/2022",
+   "opened": "2026-10-28",
+   "page": "13-81",
+   "viewer_page": 84,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "wall_max_fraction_of_spacing": 0.5,
+    "wall_min_in": 4,
+    "between_min_ft": 6
+   }
+  },
+  "NFPA 13 19.2.2.3": {
+   "code": "NFPA 13 2022",
+   "title": "Where the pipe schedule method is permitted",
+   "url": "https://link.nfpa.org/free-access/publications/13/2022",
+   "opened": "2026-10-28",
+   "page": "13-175",
+   "viewer_page": 178,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "new_system_max_sqft": 5000,
+    "above_that_if_flows_at_residual_psi": 50,
+    "ordinary_flow_gpm": [
+     850,
+     1500
+    ],
+    "ordinary_residual_psi": 20,
+    "duration_min": [
+     60,
+     90
+    ]
+   }
+  },
+  "NFPA 13 T19.2.3.1.1": {
+   "code": "NFPA 13 2022",
+   "title": "Density and area for the hydraulic method",
+   "url": "https://link.nfpa.org/free-access/publications/13/2022",
+   "opened": "2026-10-28",
+   "page": "13-175",
+   "viewer_page": 178,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "OH2_gpm_sqft": 0.2,
+    "OH2_area_sqft": 1500
+   }
+  },
+  "NFPA 72 17.7.4.2.3.1": {
+   "code": "NFPA 72 2022",
+   "title": "Spot smoke detectors on smooth ceilings: spacing",
+   "url": "https://link.nfpa.org/free-access/publications/72/2022",
+   "opened": "2026-10-28",
+   "page": "72-107",
+   "viewer_page": 110,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "nominal_spacing_ft": 30,
+    "wall_max_fraction": 0.5,
+    "any_point_max_fraction": 0.7,
+    "partitions_count_if_within_top_fraction_of_ceiling": 0.15
+   }
+  },
+  "NFPA 72 17.7.1.8": {
+   "code": "NFPA 72 2022",
+   "title": "Ambient conditions for smoke detectors",
+   "url": "https://link.nfpa.org/free-access/publications/72/2022",
+   "opened": "2026-10-28",
+   "page": "72-107",
+   "viewer_page": 110,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "max_air_velocity_m_s": 1.5
+   }
+  },
+  "NFPA 72 17.7.4.6": {
+   "code": "NFPA 72 2022",
+   "title": "Air sampling-type smoke detectors: ports spaced as spot detectors, transport time",
+   "url": "https://link.nfpa.org/free-access/publications/72/2022",
+   "opened": "2026-10-28",
+   "page": "72-109",
+   "viewer_page": 112,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "port_as_spot_detector": true,
+    "max_transport_s": 120
+   }
+  },
+  "NFPA 70 T310.16": {
+   "code": "NFPA 70 2023",
+   "title": "Ampacities of insulated conductors, not more than three current-carrying, 30 C",
+   "url": "https://link.nfpa.org/free-access/publications/70/2023",
+   "opened": "2026-10-28",
+   "page": "70-187",
+   "viewer_page": 190,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "copper_75C_A": [
+     [
+      "14 AWG",
+      20
+     ],
+     [
+      "12 AWG",
+      25
+     ],
+     [
+      "10 AWG",
+      35
+     ],
+     [
+      "8 AWG",
+      50
+     ],
+     [
+      "6 AWG",
+      65
+     ],
+     [
+      "4 AWG",
+      85
+     ],
+     [
+      "3 AWG",
+      100
+     ],
+     [
+      "2 AWG",
+      115
+     ],
+     [
+      "1 AWG",
+      130
+     ],
+     [
+      "1/0",
+      150
+     ],
+     [
+      "2/0",
+      175
+     ],
+     [
+      "3/0",
+      200
+     ],
+     [
+      "4/0",
+      230
+     ],
+     [
+      "250 kcmil",
+      255
+     ],
+     [
+      "300 kcmil",
+      285
+     ],
+     [
+      "350 kcmil",
+      310
+     ],
+     [
+      "400 kcmil",
+      335
+     ],
+     [
+      "500 kcmil",
+      380
+     ],
+     [
+      "600 kcmil",
+      420
+     ],
+     [
+      "700 kcmil",
+      460
+     ],
+     [
+      "750 kcmil",
+      475
+     ]
+    ]
+   }
+  },
+  "NFPA 70 215.2(A)(1)": {
+   "code": "NFPA 70 2023",
+   "title": "Feeder conductor size for continuous loads",
+   "url": "https://link.nfpa.org/free-access/publications/70/2023",
+   "opened": "2026-10-28",
+   "page": "70-90",
+   "viewer_page": 93,
+   "sha256": null,
+   "provenance": "read in NFPA's free reader (link.nfpa.org free access) in the founder's browser session on 28 Oct 2026, after the founder accepted NFPA's terms for this edition; pages are images that cannot be hashed from the page (cross-origin), so the edition and the printed page identify the copy read; no text is kept, only the numbers below in our own words",
+   "facts": {
+    "continuous_factor": 1.25
+   }
+  }
+ }
+}
