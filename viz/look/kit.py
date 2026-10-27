@@ -129,12 +129,12 @@ def screen(p, x, h, y=0.45):
 
 
 def light(p, x, y, h):
-    """The status light tower: a pole and three lamps, 0.6 m tall."""
+    """The status light tower, 0.6 m tall: a pole and four lamps, green (productive), amber
+    (standby), blue (scheduled down) and red (unscheduled down)."""
     L = SIZES["status_light"]
-    p.cyl("light pole", x, y, h, 0.018, L * 0.35, "steel", role="light")
-    p.cyl("light green", x, y, h + L * 0.35, 0.035, L * 0.2, "led_green", role="light")
-    p.cyl("light amber", x, y, h + L * 0.55, 0.035, L * 0.2, "led_amber", role="light")
-    p.cyl("light red", x, y, h + L * 0.75, 0.035, L * 0.25, "led_red", role="light")
+    p.cyl("light pole", x, y, h, 0.018, L * 0.3, "steel", role="light")
+    for i, c in enumerate(("green", "amber", "blue", "red")):
+        p.cyl(f"light {c}", x, y, h + L * (0.3 + 0.175 * i), 0.035, L * 0.175, f"led_{c}", role="light")
 
 
 def back_services(p, W, D, h, n=4):

@@ -27,6 +27,8 @@ SHELF_STEP = 0.45  # vertical pitch of the shelves beside a rail
 SHELF_OUT = 0.6   # a shelf's offset from its rail, toward the aisle's middle
 INTERBAY_Y = 2.2  # the interbay rails run at y = +-2.2 along the spine
 STOCKER_EVERY = 60.0
+CROSS_EVERY = 20.0
+SHELF_PITCH = 0.5  # along the rail
 
 AREA_NAMES = {
     "Litho": "Lithography", "Litho_Met": "Litho metrology", "Def_Met": "Defect inspection",
@@ -89,7 +91,7 @@ def build(layout_path, trace_path, plan_name):
     # a wall's rail runs over its ports: wall 0 faces east (+x) onto the aisle, wall 1 west
     for b in bays:
         cx = (b["x0"] + b["x1"]) / 2
-        b["rails_x"] = [cx - aisle / 2 + port_v, cx + aisle / 2 - port_v]
+        b["rails_x"] = [cx - aisle / 2 - port_v, cx + aisle / 2 + port_v]
 
     labels = []
     run = None
@@ -135,8 +137,12 @@ def build(layout_path, trace_path, plan_name):
             # long side along the spine, its front facing north
             stockers.append({"x0": cxs - k["d"] / 2, "x1": cxs + k["d"] / 2, "y0": -k["w"] / 2, "y1": k["w"] / 2,
                              "o": [round(cxs - k["d"] / 2, 3), round(k["w"] / 2, 3), CZ], "yaw": -90.0, "x": cxs})
-        cross += [offsets[ph] + 1.0, offsets[ph] + L - 1.0]
-        cross += [offsets[ph] + (i + 1) * L / n for i in range(n - 1)]
+        # crossovers every 20 m or so, clear of the stockers
+        m = max(2, int(L // CROSS_EVERY))
+        for i in range(m + 1):
+            x = offsets[ph] + 1.0 + i * (L - 2.0) / m
+            if all(abs(x - (offsets[ph] + (j + 0.5) * L / n)) > 7.5 for j in range(n)):
+                cross.append(x)
     cross.sort()
     xa, xb = offsets[0], offsets[-1] + lengths[-1]
     rails = [[[xa, INTERBAY_Y, RAIL_Z], [xb, INTERBAY_Y, RAIL_Z]], [[xa, -INTERBAY_Y, RAIL_Z], [xb, -INTERBAY_Y, RAIL_Z]]]
@@ -182,7 +188,7 @@ def build(layout_path, trace_path, plan_name):
         else:
             pts = [(ax, ay), (ax, ya)]
             if sa != sb:
-                xc = min(cross, key=lambda x: abs(x - bx) + abs(x - ax) * 0.25)
+                xc = min(cross, key=lambda x: (abs(x - ax) + abs(x - bx), abs(x - ax)))
                 pts += [(xc, ya), (xc, yb)]
             pts += [(bx, yb), (bx, by)]
         out = []
@@ -220,19 +226,16 @@ def build(layout_path, trace_path, plan_name):
         pt = t["ports"][i % len(t["ports"])]
         return (pt[0], pt[1], PORT_Z, ("port", t["bay"], t["wall"]))
 
-    by_group = {}
-    for ti, t in enumerate(tools):
-        by_group.setdefault(t["g"], []).append(ti)
-
-    def shelf_point(g, s):
-        """Shelf s of group g: beside the rail over one of the group's ports, layers going down."""
-        spots = [(ti, j) for ti in by_group[g] for j in range(len(tools[ti]["ports"]))]
-        ti, j = spots[s % len(spots)]
-        layer = (s // len(spots)) % (int((RIDE_Z - PORT_Z) / SHELF_STEP) + 1)
+    def shelf_point(ti, s):
+        """Shelf s by tool ti: beside the rail along the tool's front, layers going down."""
         t = tools[ti]
-        x, y = t["ports"][j]
-        out = SHELF_OUT if t["wall"] == 0 else -SHELF_OUT
-        return (x + out, y, RIDE_Z - layer * SHELF_STEP, ("shelf", t["bay"], t["wall"]))
+        w = t["y1"] - t["y0"]
+        n_along = max(1, int(w / SHELF_PITCH))
+        layers = int((RIDE_Z - PORT_Z) / SHELF_STEP) + 1
+        i, layer = s % n_along, (s // n_along) % layers
+        y = t["y0"] + (i + 0.5) * w / n_along
+        x = bays[t["bay"]]["rails_x"][t["wall"]] + (SHELF_OUT if t["wall"] == 0 else -SHELF_OUT)
+        return (x, y, RIDE_Z - layer * SHELF_STEP, ("shelf", t["bay"], t["wall"]))
 
     def stocker_point(si, s):
         st = stockers[si]
@@ -258,7 +261,7 @@ def build(layout_path, trace_path, plan_name):
                 x = (tools[src]["x0"] + tools[src]["x1"]) / 2 if src is not None and src >= 0 else offsets[0]
                 waits.append((arrive, end, ("stk", nearest_stocker(x)), li, si))
             elif start - arrive >= DIRECT_MIN:
-                waits.append((arrive, start, ("q", g), li, si))
+                waits.append((arrive, start, ("q", tool), li, si))
     waits.sort()
     busy, slot_of, active = {}, {}, []
     for arrive, leave, key, li, si in waits:
@@ -299,7 +302,7 @@ def build(layout_path, trace_path, plan_name):
                 if slot is None:
                     travel(keys, moves, t_prev, arrive, here, port)
                 else:
-                    shelf = shelf_point(g, slot[1])
+                    shelf = shelf_point(tool, slot[1])
                     travel(keys, moves, t_prev, arrive, here, shelf)
                     hop = min(SLIDE_MIN + HOIST_MIN, (start - arrive) / 2)
                     keys.append([start - hop, shelf[0], shelf[1], shelf[2]])
