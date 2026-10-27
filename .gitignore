@@ -1,5 +1,6 @@
 /target/
-/data/
+/data/*
+!/data/smt2020/
 .venv/
 __pycache__/
 *.log
@@ -8,3 +9,5 @@ __pycache__/
 .env
 /web/data/
 /web/fabweb.wasm
+/.tools/
+/viz/godot-real/addons/godot_mcp_toolkit/

@@ -1,4 +1,10 @@
 ; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -9,19 +15,27 @@ config/description="A gigafab-style layout of our own design on the SMT2020 mode
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
+[autoload]
+
+MCPRuntimeServer="*res://addons/godot_mcp_toolkit/runtime/mcp_runtime_server.gd"
+
 [display]
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 
-[physics]
+[editor_plugins]
 
-common/physics_ticks_per_second=60
+enabled=PackedStringArray("res://addons/godot_mcp_toolkit/plugin.cfg")
+
+[mcp_toolkit]
+
+updates/check_for_updates=false
 
 [rendering]
 
-anti_aliasing/quality/msaa_3d=2
-anti_aliasing/quality/screen_space_aa=1
 lights_and_shadows/directional_shadow/size=8192
+anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.62, 0.72, 0.84, 1)
+anti_aliasing/quality/screen_space_aa=1
