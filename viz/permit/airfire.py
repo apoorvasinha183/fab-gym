@@ -222,8 +222,10 @@ def fire(C):
         elif x["kind"] == "facade stair":
             s = x["side"]
             yy = (69.6, 69.68) if s > 0 else (-69.68, -69.6)
+            # beside the stair door, on the side away from an end wall
+            px = x["x"] + 1.0 if x["x"] + 1.15 <= b["x1"] - 0.6 else x["x"] - 1.15
             for z, st in ((cz, "cleanroom"), (0.0, "support floor")):
-                boxes.append(((x["x"] + 1.0, yy[0], z + 1.1, x["x"] + 1.15, yy[1], z + 1.3), st))
+                boxes.append(((px, yy[0], z + 1.1, px + 0.15, yy[1], z + 1.3), st))
         elif x["kind"] == "exit passageway":
             m, s = x["x"] - 3.0, x["side"]
             yy = (69.2, 69.3) if s > 0 else (-69.3, -69.2)

@@ -25,6 +25,7 @@ SHEETS = [
 ]
 DATE = "27 Oct 2026"
 REV = "S1 schematic for review"
+SUBTITLE = "Schematic permit set, all trades, for review"
 PROJECT = "Fab Gym campus"
 GREEN, AMBER, BLUE = "#2e7d32", "#b26a00", "#1f5fa8"
 VCOL = {"met": GREEN, "not met": RED, "cannot say": AMBER}
@@ -43,7 +44,7 @@ def frame(sid, title, body, sha):
     for c in cols[1:-1]:
         o.append(line(c, y0, c, FY1, INK, 0.35))
     o.append(text(cols[0] + 5, y0 + 10, PROJECT, 6, weight="bold"))
-    o.append(text(cols[0] + 5, y0 + 18, "Schematic permit set, all trades, for review", 3.2))
+    o.append(text(cols[0] + 5, y0 + 18, SUBTITLE, 3.2))
     o.append(text(cols[0] + 5, y0 + 27, TRUTH, 2.8))
     o.append(text(cols[0] + 5, y0 + 33, "Codes: 2024 IBC and IFC as published, for a hypothetical jurisdiction that adopts them unamended.", 2.3, fill=GREY))
     o.append(text(cols[0] + 5, y0 + 39, bp.PR.units_line() + " Assumed numbers are marked; see G-002 and G-003.", 2.3, fill=GREY))
@@ -66,6 +67,7 @@ def frame(sid, title, body, sha):
 
 
 SCALES = {}
+CURRENT = SHEETS      # the stage's sheets; design development appends its own (dd_sheets)
 
 
 def scale_label(ratio):
@@ -147,10 +149,11 @@ def of(C, cls, pred=lambda e: True):
 # ------------------------------------------------------------------ the sheets
 
 def g001(C, V, L):
-    o = [text(bp.AX0 + 10, bp.AY0 + 20, PROJECT + ": schematic permit set", 14, weight="bold"),
+    dd = C.P.get("stage") == "dd"
+    o = [text(bp.AX0 + 10, bp.AY0 + 20, PROJECT + (": design development set" if dd else ": schematic permit set"), 14, weight="bold"),
          text(bp.AX0 + 10, bp.AY0 + 31, TRUTH + " Every sheet is NOT FOR CONSTRUCTION.", 4.2, fill=GREY)]
-    rows = [[sid, t] for sid, t in SHEETS]
-    t, yb = table(bp.AX0 + 10, bp.AY0 + 42, [("Sheet", 22), ("Title", 120)], rows, 2.8)
+    rows = [[sid, t] for sid, t in CURRENT]
+    t, yb = table(bp.AX0 + 10, bp.AY0 + 42, [("Sheet", 22), ("Title", 120)], rows, 2.8 if len(rows) <= 22 else 2.4)
     o.append(t)
     t, _ = table(bp.AX0 + 10, yb + 6, [("File", 40), ("What", 102)], [["specs.md", "Specifications outline by MasterFormat division"],
                  ["fab-permit.ifc", "IFC4 model: every element, FabGym_Basis and FabGym_Permit"], ["permit.json", "Every number on these sheets"],
@@ -172,6 +175,13 @@ def g001(C, V, L):
         "A permit needs a real site and the seals of an architect and engineers licensed where the fab is built. No pipeline gives either. "
         "This set is schematic design across every trade: what a design team would carry into design development.",
     ]
+    if dd:
+        lines_[-1] = ("A permit needs a real site and the seals of an architect and engineers licensed where the fab is built. No pipeline "
+                      "gives either. This set is design development across every trade, at LOD 300: what a design team would carry "
+                      "into construction documents.")
+        lines_.insert(-1, "Design development, on the stricter reading of two judgements (assumed, for the authority to confirm): the "
+                          "chases are service corridors (IBC 415.11.3) and the risk category is IV (Table 1604.5). The layout has a "
+                          "1.6 m chase and a 1.6 m cross aisle on every wall of tools; see results/layout-real-dd/rescore.md.")
     t, y = notes(bp.AX0 + 170, bp.AY0 + 46, lines_, 2.9, 120, "PROJECT DATA")
     o.append(t)
     y += 8
@@ -198,8 +208,9 @@ def g002(C, V, L):
         summary = f"{worst}" + (f" ({cnt['met']} met, {cnt['not met']} not met, {cnt['cannot say']} cannot say)" if len(vs) > 1 else "")
         rows.append([ru["id"], ru["topic"], ", ".join(ru["cite"]), f"{len(vs)}: {', '.join(sorted({v['scope'] for v in vs}))}", summary, ex["why"]])
         colors[(r, 4)] = VCOL[worst]
+    rh = min(4.95, (bp.AY1 - bp.AY0 - 22) / max(1, len(rows) + 1))
     t, _ = table(bp.AX0 + 5, bp.AY0 + 19, [("Rule", 52), ("Topic", 34), ("Cites", 80), ("Binds", 100), ("Verdict", 88), ("Why (first case)", 664)],
-                 rows, 2.15, rh=4.95, colors=colors)
+                 rows, 2.15 if rh >= 4.9 else 1.95, rh=rh, colors=colors)
     o.append(t)
     return "".join(o)
 
@@ -212,8 +223,9 @@ def g003(C, L):
     for r, i in enumerate(L["items"]):
         rows.append([i["id"], i["discipline"], i["item"], i["sheet"], i["stage"], i["status"], i["why"]])
         colors[(r, 5)] = SCOL[i["status"]]
+    rh = min(6.6, (bp.AY1 - bp.AY0 - 22) / max(1, len(rows) + 1))
     t, _ = table(bp.AX0 + 5, bp.AY0 + 19, [("Item", 40), ("Disc.", 12), ("What", 150), ("Sheet", 26), ("Stage", 12), ("Status", 28), ("Why", 750)],
-                 rows, 2.1, rh=6.6, colors=colors)
+                 rows, 2.1 if rh >= 5.5 else 1.9, rh=rh, colors=colors)
     o.append(t)
     return "".join(o)
 
@@ -791,6 +803,9 @@ def specs(C):
         "28": ("Electronic safety and security", ["Gas detection at every HPM gas tool and room (415.11.8); manual fire alarm with a pull station at every "
                                                   "exit (907.2.5); emergency control station in the office (415.11.10)."]),
     }
+    if C.P.get("stage") == "dd":
+        import dd_sheets
+        sec = dd_sheets.specs_dd(C, sec)
     for d, (name, items) in sec.items():
         md.append(f"## Division {d} {name}\n")
         md += [f"- {x}" for x in items]
@@ -806,36 +821,44 @@ BODIES = {"G-001": None, "G-002": None, "G-003": None, "G-101": lambda C: life_s
 
 def write(C, V, out, layout):
     """Every sheet but G-003 (it needs the ledger, which needs the rest) and the specifications. Returns every sheet id."""
+    global SUBTITLE, REV, CURRENT
     bp.use(C.profile)
     C.V = V
     out = Path(out)
+    bodies = dict(BODIES)
+    if C.P.get("stage") == "dd":
+        import dd_sheets
+        SUBTITLE, REV = "Design development set, all trades, for review", "DD1 design development for review"
+        CURRENT = SHEETS + dd_sheets.SHEETS
+        bodies.update(dd_sheets.BODIES)
     (out / "sheets").mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(Path(layout).read_bytes()).hexdigest()[:12]
     C.sha = sha
-    titles = dict(SHEETS)
-    for sid, fn in BODIES.items():
+    titles = dict(CURRENT)
+    for sid, fn in bodies.items():
         if sid in ("G-001", "G-002", "G-003"):
             continue
         (out / "sheets" / f"{sid}.svg").write_text(frame(sid, titles[sid], fn(C), sha))
     (out / "sheets" / "G-002.svg").write_text(frame("G-002", titles["G-002"], g002(C, V, None), sha))
     (out / "specs.md").write_text(specs(C))
-    return [s for s, _ in SHEETS]
+    return [s for s, _ in CURRENT]
 
 
 def write_ledger_sheet(C, L, out, layout):
     out = Path(out)
-    titles = dict(SHEETS)
+    titles = dict(CURRENT)
     (out / "sheets" / "G-003.svg").write_text(frame("G-003", titles["G-003"], g003(C, L), C.sha))
     (out / "sheets" / "G-001.svg").write_text(frame("G-001", titles["G-001"], g001(C, C.V, L), C.sha))
     import json
-    (out / "index.json").write_text(json.dumps([{"id": s, "title": t, "file": f"sheets/{s}.svg"} for s, t in SHEETS], indent=1) + "\n")
+    (out / "index.json").write_text(json.dumps([{"id": s, "title": t, "file": f"sheets/{s}.svg"} for s, t in CURRENT], indent=1) + "\n")
     W, H = bp.W, bp.H
-    html = ["<!doctype html><html><head><meta charset=\"utf-8\"><title>Fab Gym campus: schematic permit set</title><style>",
+    html = ["<!doctype html><html><head><meta charset=\"utf-8\"><title>Fab Gym campus: " +
+            ("design development set" if C.P.get("stage") == "dd" else "schematic permit set") + "</title><style>",
             f"@page{{size:{f(W)}mm {f(H)}mm;margin:0}}html,body{{margin:0;padding:0;background:#fff}}",
             f".s{{width:{f(W)}mm;height:{f(H)}mm;break-after:page;page-break-after:always;overflow:hidden}}",
             f".s:last-child{{break-after:auto;page-break-after:auto}}.s svg{{display:block;width:{f(W)}mm;height:{f(H)}mm}}",
             "</style></head><body>"]
-    for sid, _ in SHEETS:
+    for sid, _ in CURRENT:
         html.append(f'<section class="s" data-sheet="{sid}">{(out / "sheets" / f"{sid}.svg").read_text()}</section>')
     html.append("</body></html>\n")
     (out / "permit-set.html").write_text("".join(html))

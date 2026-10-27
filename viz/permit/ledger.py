@@ -15,8 +15,8 @@ HERE = Path(__file__).resolve().parent
 ORDER = ["missing", "open", "licensed review", "assumed", "checked", "drawn"]
 
 
-def build(C, V):
-    items = json.loads((HERE / "items.json").read_text())
+def build(C, V, items=None):
+    items = items if items is not None else json.loads((HERE / "items.json").read_text())
     by_rule = {}
     for v in V:
         by_rule.setdefault(v["rule"], []).append(v)

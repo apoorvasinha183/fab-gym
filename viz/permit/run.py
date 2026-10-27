@@ -2,9 +2,11 @@
 analysis, the readiness ledger, an IFC model and a PDF. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python viz/permit/run.py --place us [--scene data/layout-real/scene-optimised.json]
-        [--layout results/layout-real/layout.json] [--out data/layout-real/permit/us] [--stage concept|full] [--no-pdf]
+        [--layout results/layout-real/layout.json] [--out data/layout-real/permit/us] [--stage concept|full|dd] [--no-pdf]
 
 --stage concept runs only the code analysis on the concept model (no passes): its exit rules fail, as they should.
+--stage dd is design development (docs/DESIGN-DEV.md): the place profile's permit.dd block names its scene, layout,
+second register, rules, items and judgements; its defaults are the 1.6 m chase layout and data/layout-real-permit.
 A place whose profile has no codes read stops. The same input gives the same files byte for byte (not the PDF).
 A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
 """
@@ -42,8 +44,22 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     prof = profiles.load(place)
     reg = json.loads((ROOT / pdata["permit"]["register"]).read_text())
     rules = json.loads((ROOT / pdata["permit"]["rules"]).read_text())
+    items = None
+    if stage == "dd":
+        dd = pdata["permit"].get("dd")
+        if not dd:
+            raise SystemExit(f"place {place!r}: no design development block in its profile")
+        reg2 = json.loads((ROOT / dd["register"]).read_text())
+        reg = {**reg, "sections": {**reg["sections"], **reg2["sections"]}, "not_read": reg2["not_read"],
+               "sources": {**reg["sources"], **reg2["sources"]}}
+        more = json.loads((ROOT / dd["rules"]).read_text())
+        by_id = {r["id"]: r for r in more}
+        base_ids = {r["id"] for r in rules}
+        rules = [by_id.get(r["id"], r) for r in rules] + [r for r in more if r["id"] not in base_ids]
+        items = json.loads((HERE / "items.json").read_text()) + json.loads((ROOT / dd["items"]).read_text())
     S = json.loads(Path(scene).read_text())
     C = Ctx(S, reg, rules, pdata, prof)
+    C.dd = {}
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     import arch
@@ -55,7 +71,11 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     C.P["fab_digest"] = fab_digest(C.M)
     C.P["layout_sha256"] = hashlib.sha256(Path(layout).read_bytes()).hexdigest()
     C.made.update({"register", "design_data", "lot"})
-    arch.run(C, stage)
+    arch.run(C, "full" if stage == "dd" else stage)
+    if stage == "dd":
+        import dd_arch
+        C.made.add("dd:register")
+        dd_arch.pre(C, json.loads(Path(layout).read_text())["assumed"]["chase"])
     if stage == "concept":
         V = R.run_all(rules, C.cases, reg)
         dump(out / "verdicts.json", V)
@@ -71,6 +91,8 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     frame.run(C)
     utilities.run(C)
     airfire.run(C)
+    if stage == "dd":
+        design_development(C)
     coord.run(C)
     V = R.run_all(rules, C.cases, reg)
     C.made.add("verdicts")
@@ -84,7 +106,7 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     sheets_written = sheets.write(C, V, out, layout)
     C.made.update("sheet:" + s for s in sheets_written)
     C.made.add("specs")
-    L = ledger.build(C, V)
+    L = ledger.build(C, V, items)
     sheets.write_ledger_sheet(C, L, out, layout)
     dump(out / "verdicts.json", V)
     dump(out / "ledger.json", L)
@@ -96,17 +118,47 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     return "\n".join(msg)
 
 
+def design_development(C):
+    """DD3 to DD10 (docs/DESIGN-DEV.md), in an order where each pass places its elements around the ones before."""
+    import dd_arch
+    import dd_systems
+    from dd_place import Index
+    X = Index(C)
+    dd_arch.chases(C, X)
+    dd_arch.judge(C)
+    dd_systems.sprinklers(C, X)
+    dd_arch.toilets(C, X)
+    dd_arch.lifts(C, X)
+    dd_systems.gas(C, X)
+    dd_systems.exhaust(C, X)
+    dd_systems.makeup(C, X)
+    dd_systems.showers(C, X)
+    dd_systems.electrical(C, X)
+    dd_arch.signs_and_lighting(C, X)
+    dd_systems.alarms(C, X)
+    dd_systems.members(C)
+    dd_systems.drains(C)
+    dd_arch.walls_and_doors(C)
+    dd_arch.firestops(C)
+    dd_systems.lod(C)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--place", default="us")
-    ap.add_argument("--scene", default=str(ROOT / "data/layout-real/scene-optimised.json"))
-    ap.add_argument("--layout", default=str(ROOT / "results/layout-real/layout.json"))
-    ap.add_argument("--out", default=None, help="default data/layout-real/permit/<place>")
-    ap.add_argument("--stage", default="full", choices=["concept", "full"])
+    ap.add_argument("--scene", default=None, help="default data/layout-real/scene-optimised.json (dd: the profile's)")
+    ap.add_argument("--layout", default=None, help="default results/layout-real/layout.json (dd: the profile's)")
+    ap.add_argument("--out", default=None, help="default data/layout-real/permit/<place> (dd: the profile's)")
+    ap.add_argument("--stage", default="full", choices=["concept", "full", "dd"])
     ap.add_argument("--no-pdf", action="store_true")
     a = ap.parse_args()
-    out = a.out or str(ROOT / "data/layout-real/permit" / a.place)
-    print(build(a.scene, a.layout, out, a.place, a.stage, pdf=not a.no_pdf))
+    dd = {}
+    if a.stage == "dd":
+        dd = json.loads((ROOT / "viz/blueprint/places" / f"{a.place}.json").read_text()).get("permit", {}).get("dd", {})
+    scene = a.scene or str(ROOT / dd.get("scene", "data/layout-real/scene-optimised.json"))
+    layout = a.layout or str(ROOT / dd.get("layout", "results/layout-real/layout.json"))
+    out = a.out or str(ROOT / dd.get("out", f"data/layout-real/permit/{a.place}"))
+    print(build(scene, layout, out, a.place, a.stage, pdf=not a.no_pdf))
 
 
 if __name__ == "__main__":

@@ -101,9 +101,10 @@ def run(C):
     connections = {str(i): [u for u in ORDER if val(i, u) > 0] for i in range(len(tools))}
     demand = {}
     for u in ORDER:
-        tot = sum(val(i, u) for i in range(len(tools)))
-        lo = sum(C.cards[t["kind"]]["utilities"][u]["lo"] for t in tools)
-        hi = sum(C.cards[t["kind"]]["utilities"][u]["hi"] for t in tools)
+        add = sum(f.get(u, 0.0) for f in getattr(C, "extra_flows", {}).values())
+        tot = sum(val(i, u) for i in range(len(tools))) + add
+        lo = sum(C.cards[t["kind"]]["utilities"][u]["lo"] for t in tools) + add
+        hi = sum(C.cards[t["kind"]]["utilities"][u]["hi"] for t in tools) + add
         demand[u] = {"connected": round(tot, 1), "connected_range": [round(lo, 1), round(hi, 1)], "diversity": DIVERSITY[u],
                      "diversified": round(tot * DIVERSITY[u], 1), "basis": "assumed: tool cards by kind, diversity assumed"}
     plant = {}
@@ -126,6 +127,8 @@ def run(C):
                     for i in idx:
                         for u in ORDER:
                             flows[u] += val(i, u)
+            for u, f in getattr(C, "extra_flows", {}).get((k, side), {}).items():
+                flows[u] += f
             cursor = {"duct": BAND[0], "pipe": BAND[0]}     # ducts on the lower level, pipes and trays above them
             for u in ORDER:
                 lvl = "duct" if KIND[u][0] == "duct" else "pipe"

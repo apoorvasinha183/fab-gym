@@ -9,14 +9,14 @@
 //!                                                (docs/LEAN-LONG.md); the overrides are for
 //!                                                smoke runs only; --reference reads the
 //!                                                files as the reference compile does
-//!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S] [--chase M]
+//!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S] [--chase M] [--cross M]
 //!                                                the gigafab-style campus (docs/FAB-LAYOUT.md):
 //!                                                plain and optimised plans; layout.json and a
 //!                                                summary to O, the shops with layouts to D
 //!   fabsim layout-score [DIR] [--data D] [--out O] [--threads T] [--days N --warmup W --seeds K]
 //!                                                H2: the two plans (and SMT2020's flat transport)
 //!                                                on paired seeds
-//!   fabsim layout-trace [DIR] [--data D] [--plan P] [--seed S] [--day N] [--hours H]
+//!   fabsim layout-trace [DIR] [--data D] [--plan P] [--seed S] [--day N] [--hours H] [--chase M] [--cross M]
 //!                                                a recorded window of the run on plan P for the
 //!                                                3D views: D/trace-P.json
 //!   each layout command takes --real: tools at true size by kind and each group in the phase
@@ -204,6 +204,8 @@ fn layout(args: &[String]) {
     cfg.seed = arg(args, "--seed", cfg.seed);
     // a wider service chase (docs/PERMIT.md, D10): metres, assumed 1.5
     cfg.chase = flag(args, "--chase", "").parse().unwrap_or(cfg.chase);
+    // a cross aisle at mid-depth on every wall (docs/DESIGN-DEV.md): metres, none by default
+    cfg.cross = flag(args, "--cross", "").parse().unwrap_or(cfg.cross);
     let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
     let areas = fabsim::smt2020::areas(&dir).expect("areas");
     let p = Problem::new(&shop, &areas, &cfg).expect("a layout problem");
@@ -313,7 +315,10 @@ fn layout_score(args: &[String]) {
 fn layout_trace(args: &[String]) {
     use fabsim::layout::Problem;
     let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
-    let (cfg, _, data0) = layout_kind(args);
+    let (mut cfg, _, data0) = layout_kind(args);
+    // the same chase the layout was built with (docs/DESIGN-DEV.md, DD2)
+    cfg.chase = flag(args, "--chase", "").parse().unwrap_or(cfg.chase);
+    cfg.cross = flag(args, "--cross", "").parse().unwrap_or(cfg.cross);
     let data = PathBuf::from(flag(args, "--data", data0));
     let plan = flag(args, "--plan", "optimised");
     let seed = arg(args, "--seed", 3000);

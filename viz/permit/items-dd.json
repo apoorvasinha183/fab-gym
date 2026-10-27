@@ -1,0 +1,505 @@
+[
+ {
+  "id": "DD.judgements",
+  "discipline": "G",
+  "item": "The two judgements taken on the stricter reading (chases as service corridors, risk category IV), for the authority to confirm",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:judgements",
+  "rules": [
+   "service.corridor_width"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "DD.register",
+  "discipline": "G",
+  "item": "The free code sections read for design development (IPC, IMC, IBC chapters 7, 9, 10, 11, IFC chapter 60)",
+  "sheet": "G-001",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:register",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.chases",
+  "discipline": "A",
+  "item": "Chases as service corridors: partitions, doors into the fab area, travel and dead ends",
+  "sheet": "M-201",
+  "ifc": "IfcWall",
+  "stage": "DD",
+  "made": "dd:chases",
+  "rules": [
+   "service.corridor_width",
+   "service.corridor_travel",
+   "service.dead_end"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.elevations",
+  "discipline": "A",
+  "item": "Exterior elevations of both buildings",
+  "sheet": "A-201",
+  "ifc": null,
+  "stage": "DD",
+  "made": "sheet:A-201",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.sections",
+  "discipline": "A",
+  "item": "Building sections through the fab",
+  "sheet": "A-301",
+  "ifc": null,
+  "stage": "DD",
+  "made": "sheet:A-301",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.wall_types",
+  "discipline": "A",
+  "item": "Wall types: rated assemblies from IBC Table 721.1(2), unrated partitions",
+  "sheet": "A-501",
+  "ifc": "IfcWall",
+  "stage": "DD",
+  "made": "dd:walls",
+  "rules": [
+   "walls.types"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.door_ratings",
+  "discipline": "A",
+  "item": "Door ratings by the wall they are in",
+  "sheet": "A-602",
+  "ifc": "IfcDoor",
+  "stage": "DD",
+  "made": "dd:doors",
+  "rules": [
+   "doors.rating"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.firestops",
+  "discipline": "A",
+  "item": "Firestops at every penetration of a rated wall",
+  "sheet": "A-602",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:firestops",
+  "rules": [
+   "penetrations.firestop"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "A.details",
+  "discipline": "A",
+  "item": "Details: wall types, chase bulkhead, firestop, stair lid",
+  "sheet": "A-501",
+  "ifc": null,
+  "stage": "DD",
+  "made": "sheet:A-501",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "A.toilets",
+  "discipline": "A",
+  "item": "Toilet cores, men's and women's rooms, on the support floor",
+  "sheet": "A-402",
+  "ifc": "IfcSpace",
+  "stage": "DD",
+  "made": "dd:toilets",
+  "rules": [
+   "plumbing.separate",
+   "plumbing.toilet_travel"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.lifts",
+  "discipline": "A",
+  "item": "A lift in each building between the support floor and the clean floor",
+  "sheet": "A-402",
+  "ifc": "IfcTransportElement",
+  "stage": "DD",
+  "made": "dd:lifts",
+  "rules": [
+   "access.levels"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.accessible_route",
+  "discipline": "A",
+  "item": "Accessible routes and toilet rooms in detail (ICC A117.1)",
+  "sheet": "A-402",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:lifts",
+  "rules": [
+   "access.route",
+   "access.stairs"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "A.exit_signs",
+  "discipline": "A",
+  "item": "Exit signs along the exit access and passageways",
+  "sheet": "E-101",
+  "ifc": "IfcLightFixture",
+  "stage": "DD",
+  "made": "dd:signs",
+  "rules": [
+   "egress.exit_signs"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.emergency_lighting",
+  "discipline": "E",
+  "item": "Emergency lighting along the paths of egress, 90 minutes",
+  "sheet": "E-101",
+  "ifc": "IfcLightFixture",
+  "stage": "DD",
+  "made": "dd:emlight",
+  "rules": [
+   "egress.emergency_lighting",
+   "egress.emergency_lighting_min",
+   "egress.emergency_duration"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "S.members",
+  "discipline": "S",
+  "item": "Member schedule: columns, trusses and beams by required properties, footings",
+  "sheet": "S-601",
+  "ifc": "IfcColumn",
+  "stage": "DD",
+  "made": "dd:members",
+  "rules": [
+   "structure.risk_category"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.sections",
+  "discipline": "S",
+  "item": "Sections through the frame",
+  "sheet": "S-301",
+  "ifc": "IfcBeam",
+  "stage": "DD",
+  "made": "sheet:S-301",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "M.chase_exhaust",
+  "discipline": "M",
+  "item": "Chase exhaust at 6 air changes an hour or more",
+  "sheet": "M-201",
+  "ifc": "IfcAirTerminal",
+  "stage": "DD",
+  "made": "dd:chases",
+  "rules": [
+   "service.corridor_ventilation"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.exhaust_systems",
+  "discipline": "M",
+  "item": "Hazardous exhaust kept apart by kind, no dampers, point-of-use abatement at the tools",
+  "sheet": "M-201",
+  "ifc": "IfcDuctSegment",
+  "stage": "DD",
+  "made": "dd:exhaust",
+  "rules": [
+   "exhaust.incompatible",
+   "exhaust.no_dampers"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.fans",
+  "discipline": "M",
+  "item": "Exhaust fans and scrubbers by kind, N+1",
+  "sheet": "M-602",
+  "ifc": "IfcFan",
+  "stage": "DD",
+  "made": "dd:exhaust",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.makeup",
+  "discipline": "M",
+  "item": "Make-up air units balanced to the exhaust",
+  "sheet": "M-602",
+  "ifc": "IfcUnitaryEquipment",
+  "stage": "DD",
+  "made": "dd:makeup",
+  "rules": [
+   "exhaust.makeup"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.duct_construction",
+  "discipline": "M",
+  "item": "Duct construction, insulation, supports, balancing",
+  "sheet": "M-602",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:exhaust",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "PP.gas_cabinets",
+  "discipline": "PP",
+  "item": "Gas cabinets for highly toxic and toxic gases in the gas rooms",
+  "sheet": "PP-201",
+  "ifc": "IfcUnitaryEquipment",
+  "stage": "DD",
+  "made": "dd:cabinets",
+  "rules": [
+   "gas.cabinets",
+   "gas.cabinet_room_exhaust"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.valve_boxes",
+  "discipline": "PP",
+  "item": "Valve manifold boxes, one per bay per hazardous gas",
+  "sheet": "PP-201",
+  "ifc": "IfcValve",
+  "stage": "DD",
+  "made": "dd:vmb",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.hpm_piping",
+  "discipline": "PP",
+  "item": "Double-contained hazardous gas piping from the gas rooms to the valve boxes",
+  "sheet": "PP-201",
+  "ifc": "IfcPipeSegment",
+  "stage": "DD",
+  "made": "dd:vmb",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "P.fixture_counts",
+  "discipline": "P",
+  "item": "Fixtures counted for the occupants (factory row, assumed for H)",
+  "sheet": "P-201",
+  "ifc": "IfcSanitaryTerminal",
+  "stage": "DD",
+  "made": "dd:toilets",
+  "rules": [
+   "plumbing.fixtures"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "P.drains",
+  "discipline": "P",
+  "item": "Sanitary branches and building drains sized by fixture units",
+  "sheet": "P-201",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:drains",
+  "rules": [
+   "plumbing.drains"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "P.showers",
+  "discipline": "P",
+  "item": "Emergency showers and eyewashes at the chemical rooms and wet benches",
+  "sheet": "P-201",
+  "ifc": "IfcSanitaryTerminal",
+  "stage": "DD",
+  "made": "dd:showers",
+  "rules": [
+   "plumbing.showers"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "P.domestic_water",
+  "discipline": "P",
+  "item": "Domestic water sizing and the site services",
+  "sheet": "P-201",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:drains",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "FP.mains",
+  "discipline": "FP",
+  "item": "Sprinkler risers, cross mains and branch lines",
+  "sheet": "FP-201",
+  "ifc": "IfcPipeSegment",
+  "stage": "DD",
+  "made": "dd:sprinkler_mains",
+  "rules": [
+   "sprinklers.density"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FP.standpipe_check",
+  "discipline": "FP",
+  "item": "Standpipes determined not required",
+  "sheet": "FP-201",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:standpipes",
+  "rules": [
+   "fire.standpipes"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.boxes",
+  "discipline": "FA",
+  "item": "Alarm boxes at every exit, within 5 ft, at 42 to 48 in",
+  "sheet": "FA-201",
+  "ifc": "IfcAlarm",
+  "stage": "DD",
+  "made": "dd:boxes",
+  "rules": [
+   "alarm.box_location",
+   "alarm.box_height"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.notification_layout",
+  "discipline": "FA",
+  "item": "Horns and strobes with spare capacity",
+  "sheet": "FA-201",
+  "ifc": "IfcAlarm",
+  "stage": "DD",
+  "made": "dd:notification",
+  "rules": [
+   "alarm.notification"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.ht_detection",
+  "discipline": "FA",
+  "item": "Detection where highly toxic gas is stored or used",
+  "sheet": "FA-201",
+  "ifc": "IfcSensor",
+  "stage": "DD",
+  "made": "dd:ht_detection",
+  "rules": [
+   "alarm.smoke_detection"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "E.panels",
+  "discipline": "E",
+  "item": "Panelboards for every bay and the support floor, emergency panels on the generators",
+  "sheet": "E-602",
+  "ifc": "IfcElectricDistributionBoard",
+  "stage": "DD",
+  "made": "dd:panels",
+  "rules": [
+   "elec.emergency_panels"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.general_lighting",
+  "discipline": "E",
+  "item": "General lighting on the support floor",
+  "sheet": "E-101",
+  "ifc": "IfcLightFixture",
+  "stage": "DD",
+  "made": "dd:lighting",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.wiring",
+  "discipline": "E",
+  "item": "Wiring, fault currents and hazardous locations (NFPA 70)",
+  "sheet": "E-602",
+  "ifc": null,
+  "stage": "DD",
+  "made": "dd:panels",
+  "rules": [
+   "elec.wiring"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "spec.dd",
+  "discipline": "spec",
+  "item": "Specifications grown for design development, divisions 10 and 14 added",
+  "sheet": "specs.md",
+  "ifc": null,
+  "stage": "DD",
+  "made": "specs",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ }
+]

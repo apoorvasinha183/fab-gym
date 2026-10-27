@@ -116,6 +116,7 @@ def write(model, name="fab-model.ifc"):
     basis = {}         # numbers-from -> element ids
     tool_psets = []
     permit_psets = []  # the permit set's elements (viz/permit): stage, level of development, review, numbers
+    rating_psets = []  # design development: a wall's type and fire-resistance rating
     for e in model["elements"]:
         if e["bld"] is None:
             rel_pl, z_ref, holder = site_pl, 0.0, site
@@ -149,6 +150,8 @@ def write(model, name="fab-model.ifc"):
             tool_psets.append((e["key"], eid, e["tool"]))
         if e.get("permit"):
             permit_psets.append((e["key"], eid, e["permit"]))
+        if e.get("rating"):
+            rating_psets.append((e["key"], eid, e["rating"]))
     for n, (holder, ids) in enumerate(contained.items()):
         F.add(f"IFCRELCONTAINEDINSPATIALSTRUCTURE({s(guid(f'rel/contains/{n}'))},$,$,$,({','.join(ids)}),{holder})")
     for n, (holder, ids) in enumerate(spaces.items()):
@@ -178,4 +181,11 @@ def write(model, name="fab-model.ifc"):
             props.append(F.add(f"IFCPROPERTYSINGLEVALUE('{k}',$,{typ}({str(int(v)) if typ == 'IFCINTEGER' else s(v)}),$)"))
         ps = F.add(f"IFCPROPERTYSET({s(guid('pset/permit/' + key))},$,'FabGym_Permit',$,({','.join(props)}))")
         F.add(f"IFCRELDEFINESBYPROPERTIES({s(guid('rel/permit/' + key))},$,$,$,({eid}),{ps})")
+    for key, eid, rt in rating_psets:
+        props = [F.add(f"IFCPROPERTYSINGLEVALUE('Rating_h',$,IFCREAL({r(rt['Rating_h'])}),$)"),
+                 F.add(f"IFCPROPERTYSINGLEVALUE('WallType',$,IFCLABEL({s(rt['WallType'])}),$)"),
+                 F.add(f"IFCPROPERTYSINGLEVALUE('Assembly',$,IFCTEXT({s(rt['Assembly'])}),$)"),
+                 F.add(f"IFCPROPERTYSINGLEVALUE('Cite',$,IFCLABEL({s(rt['Cite'])}),$)")]
+        ps = F.add(f"IFCPROPERTYSET({s(guid('pset/rating/' + key))},$,'FabGym_Rating',$,({','.join(props)}))")
+        F.add(f"IFCRELDEFINESBYPROPERTIES({s(guid('rel/rating/' + key))},$,$,$,({eid}),{ps})")
     return F.text(name)

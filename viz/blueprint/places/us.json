@@ -193,6 +193,24 @@
   "sheets": {
    "paper": "ARCH E1",
    "naming": "discipline letter, a hyphen and a three-digit number (US practice, assumed)"
+  },
+  "dd": {
+   "register": "viz/permit/codes/us-2024-dd.json",
+   "rules": "viz/permit/rules/us-dd.json",
+   "items": "viz/permit/items-dd.json",
+   "scene": "data/layout-real-dd/scene-optimised.json",
+   "layout": "results/layout-real-dd/layout.json",
+   "out": "data/layout-real-dd/permit/us",
+   "judgements": {
+    "chase_is_service_corridor": {
+     "value": true,
+     "basis": "assumed: the stricter reading, decided by quiz 27 Oct; the authority confirms"
+    },
+    "risk_category": {
+     "value": 4,
+     "basis": "assumed: the stricter reading (Table 1604.5 IV), decided by quiz 27 Oct; the authority confirms"
+    }
+   }
   }
  }
 }

@@ -1,0 +1,93 @@
+{
+ "truth": "On the SMT2020 model. A layout of our own design. Not a real fab. Effect in a real fab: cannot say.",
+ "question": "Taken as service corridors, the chases need a door into the fab area within 75 ft of every point (IBC 415.11.3.3); where tools line a chase end to end, a cross aisle at mid-depth makes room for it. What do the cross aisles cost the fab?",
+ "cites": [
+  "IBC 415.11.3.3"
+ ],
+ "chase_m": 1.6,
+ "cross_before_m": 0.0,
+ "cross_after_m": 1.6,
+ "bays": {
+  "before": 39,
+  "after": 42
+ },
+ "lengths_m": {
+  "before": [
+   232.5,
+   157.1
+  ],
+  "after": [
+   255.8,
+   182.4
+  ]
+ },
+ "hoist_m_per_day": {
+  "before": 2183034.77,
+  "after": 2260195.557
+ },
+ "seeds": 10,
+ "seed_list": [
+  3000,
+  3001,
+  3002,
+  3003,
+  3004,
+  3005,
+  3006,
+  3007,
+  3008,
+  3009
+ ],
+ "days": 150,
+ "warmup": 60,
+ "alpha_each": 0.01,
+ "preregistered_design": true,
+ "how": "fabsim layout-score on the same seeds: the optimised plan with 1.6 m chases against the same with a cross aisle on every wall; paired t intervals, each at the stated level, Bonferroni over five measures.",
+ "measures": [
+  {
+   "name": "transport minutes a move",
+   "before": 4.613414623325776,
+   "after": 4.635312647628677,
+   "diff": 0.021898024302901397,
+   "lo": 0.021504644906656982,
+   "hi": 0.022291403699145812,
+   "verdict": "worse"
+  },
+  {
+   "name": "cycle time, days",
+   "before": 50.125893035830686,
+   "after": 49.823479371184185,
+   "diff": -0.3024136646464989,
+   "lo": -0.7751340339744512,
+   "hi": 0.17030670468145354,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "wafers out a day",
+   "before": 1307.111111111111,
+   "after": 1309.888888888889,
+   "diff": 2.7777777777777373,
+   "lo": -6.084540384965301,
+   "hi": 11.640095940520776,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "mean WIP, lots",
+   "before": 2620.7776081143816,
+   "after": 2610.4806443520174,
+   "diff": -10.296963762364248,
+   "lo": -30.690490969686856,
+   "hi": 10.096563444958361,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "hot-lot cycle time, days",
+   "before": 23.801750715120736,
+   "after": 23.818729916113092,
+   "diff": 0.0169792009923583,
+   "lo": -0.06897994188843981,
+   "hi": 0.10293834387315642,
+   "verdict": "no clear effect"
+  }
+ ]
+}

@@ -34,6 +34,9 @@ pub struct Config {
     pub bay_aisle: f64,
     /// service chase behind each wall of tools
     pub chase: f64,
+    /// a cross aisle this wide at mid-depth on every wall of tools, so a chase has a door into the fab area
+    /// half way along (docs/DESIGN-DEV.md); 0 for none
+    pub cross: f64,
     pub spine: f64,
     pub bridge: f64,
     /// the most the two sides of a phase may differ in length (the optimiser's plans)
@@ -68,6 +71,7 @@ impl Config {
             bay_depth: 60.0,
             bay_aisle: 3.5,
             chase: 1.5,
+            cross: 0.0,
             spine: 8.0,
             bridge: 60.0,
             balance: 40.0,
@@ -435,14 +439,24 @@ impl Problem {
         for &g in &b.groups {
             let (w, d) = self.size[g].expect("a tool kind");
             for _ in 0..self.counts[g] {
-                if used > 0.0 && used + w > cfg.bay_depth + 1e-9 {
-                    if wall == 0 {
-                        wall = 1;
-                    } else {
-                        wall = 0;
-                        bay += 1;
+                loop {
+                    if used > 0.0 && used + w > cfg.bay_depth + 1e-9 {
+                        if wall == 0 {
+                            wall = 1;
+                        } else {
+                            wall = 0;
+                            bay += 1;
+                        }
+                        used = 0.0;
+                        continue;
                     }
-                    used = 0.0;
+                    // the cross aisle: no tool across it, the wall carries on beyond it
+                    let g0 = (cfg.bay_depth - cfg.cross) / 2.0;
+                    if cfg.cross > 0.0 && used < g0 + cfg.cross - 1e-9 && used + w > g0 + 1e-9 {
+                        used = g0 + cfg.cross;
+                        continue;
+                    }
+                    break;
                 }
                 let y0 = if wall == 0 {
                     used
@@ -935,7 +949,7 @@ impl Problem {
         o.push_str("\"what\":\"a gigafab-style layout of our own design on the SMT2020 model; not a real fab; every placement number is assumed\",");
         let _ = write!(
             o,
-            "\"assumed\":{{\"bay_depth\":{},\"bay_aisle\":{},\"chase\":{},\"spine\":{},\"bridge\":{},\"balance\":{},\"overhead_min\":{},\"speed_m_per_min\":{},\"jitter_min\":{},\"footprints\":{{",
+            "\"assumed\":{{\"bay_depth\":{},\"bay_aisle\":{},\"chase\":{},\"spine\":{},\"bridge\":{},\"balance\":{},\"overhead_min\":{},\"speed_m_per_min\":{},\"jitter_min\":{},",
             n(cfg.bay_depth),
             n(cfg.bay_aisle),
             n(cfg.chase),
@@ -946,6 +960,11 @@ impl Problem {
             n(cfg.speed),
             n(cfg.jitter)
         );
+        if cfg.cross > 0.0 {
+            // only when used, so the layouts written before it stay byte for byte the same
+            let _ = write!(o, "\"cross\":{},", n(cfg.cross));
+        }
+        o.push_str("\"footprints\":{");
         let mut areas: Vec<&str> = self.areas.iter().map(|s| s.as_str()).collect();
         areas.sort();
         areas.dedup();

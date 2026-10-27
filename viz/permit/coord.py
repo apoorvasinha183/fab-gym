@@ -5,7 +5,9 @@ A hard clash is two elements overlapping by more than 0.0001 m3 that are not a k
   - a door in a wall; walls meeting walls; a column in a wall;
   - an element passing through a slab or a covering (an opening: its height spans the slab's);
   - fan filter units in the filter ceiling;
-  - anything inside a support building drawn as one block (the central utility building, the office).
+  - anything inside a support building drawn as one block (the central utility building, the office);
+  - design development: a tool through a chase partition (a bulkhead); a pipe through a rated wall at a firestopped
+    penetration; sprinkler piping among its heads.
 The hoist vehicles' path (each rail grown by half a vehicle) counts as an element: nothing new may enter it.
 """
 
@@ -28,6 +30,15 @@ def joint(a, b):
     if pair == {"IfcColumn", "IfcWall"}:
         return "column in a wall"
     for s, o in ((a, b), (b, a)):
+        if s["cls"] == "IfcWall" and s["name"].startswith("Chase partition") and o["cls"] == "IfcBuildingElementProxy" \
+                and (o["key"] or "").startswith("tool/"):
+            return "tool through a chase partition (bulkhead)"
+        if s["cls"] == "IfcWall" and o["cls"] in ("IfcPipeSegment", "IfcDuctSegment") and "firestopped" in (o["otype"] or ""):
+            return "through a firestopped penetration"
+        if s["cls"] == "IfcFireSuppressionTerminal" and o["cls"] == "IfcPipeSegment" and (o["otype"] or "").startswith("sprinkler"):
+            return "sprinkler piping among its heads"
+        if s["cls"] == "IfcFireSuppressionTerminal" and o["cls"] == "IfcTransportElement":
+            return "a hoistway the sprinkler heads leave out"
         if s["cls"] in ("IfcSlab", "IfcCovering") and not s["key"].startswith("permit/"):
             if o["box"][2] <= s["box"][2] + 1e-6 and o["box"][5] >= s["box"][5] - 1e-6:
                 return "through an opening in a slab"

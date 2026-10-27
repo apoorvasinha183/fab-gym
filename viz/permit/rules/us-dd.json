@@ -1,0 +1,411 @@
+[
+ {
+  "id": "service.dead_end",
+  "topic": "service corridors",
+  "cite": [
+   "IBC 415.11.3.3"
+  ],
+  "binds": "building",
+  "test": "If the chases are service corridors, no dead end longer than 4 ft",
+  "input": "chase_dead_end_ft",
+  "op": "le",
+  "limit": {
+   "section": "IBC 415.11.3.3",
+   "fact": "dead_end_ft"
+  },
+  "fix": "open the chase at both ends",
+  "when": "chase_is_service_corridor"
+ },
+ {
+  "id": "walls.types",
+  "topic": "construction type",
+  "cite": [
+   "IBC T721.1(2) item 13",
+   "IBC T601"
+  ],
+  "binds": "building",
+  "test": "Every rated wall built as a listed assembly of at least its rating",
+  "input": "rated_walls_typed",
+  "op": "true",
+  "limit": null,
+  "fix": "assign a wall type"
+ },
+ {
+  "id": "doors.rating",
+  "topic": "construction type",
+  "cite": [
+   "IBC T716.1(2)"
+  ],
+  "binds": "building",
+  "test": "Every door in a rated wall rated as Table 716.1(2) asks for that wall",
+  "input": "doors_rated",
+  "op": "true",
+  "limit": null,
+  "fix": "raise the door's rating"
+ },
+ {
+  "id": "penetrations.firestop",
+  "topic": "construction type",
+  "cite": [
+   "IBC 714.4.1.2"
+  ],
+  "binds": "building",
+  "test": "Every pipe, duct or tray through a rated wall firestopped with an F rating of at least the wall's",
+  "input": "firestops_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add a listed firestop"
+ },
+ {
+  "id": "plumbing.fixtures",
+  "topic": "plumbing",
+  "cite": [
+   "IPC 403.1"
+  ],
+  "binds": "building",
+  "test": "Water closets, lavatories, drinking fountains and a service sink for the occupants (factory and industrial row, assumed for H)",
+  "input": "fixtures_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add fixtures"
+ },
+ {
+  "id": "plumbing.separate",
+  "topic": "plumbing",
+  "cite": [
+   "IPC 403.2"
+  ],
+  "binds": "building",
+  "test": "Separate toilet rooms for each sex",
+  "input": "separate_rooms",
+  "op": "true",
+  "limit": null,
+  "fix": "split the rooms"
+ },
+ {
+  "id": "plumbing.toilet_travel",
+  "topic": "plumbing",
+  "cite": [
+   "IPC 403.3.3"
+  ],
+  "binds": "story",
+  "test": "A toilet within 500 ft of walking, on the same story or one story away",
+  "input": "toilet_travel_ft",
+  "op": "le",
+  "limit": {
+   "section": "IPC 403.3.3",
+   "fact": "max_travel_ft"
+  },
+  "fix": "add a toilet core"
+ },
+ {
+  "id": "plumbing.drains",
+  "topic": "plumbing",
+  "cite": [
+   "IPC T709.1",
+   "IPC T710.1(1)",
+   "IPC T710.1(2)"
+  ],
+  "binds": "building",
+  "test": "Branches and building drains sized for their drainage fixture units",
+  "input": "drains_sized",
+  "op": "true",
+  "limit": null,
+  "fix": "enlarge the drain"
+ },
+ {
+  "id": "plumbing.showers",
+  "topic": "plumbing",
+  "cite": [
+   "IPC 411.1"
+  ],
+  "binds": "building",
+  "test": "Emergency showers and eyewash stations as ISEA Z358.1 asks",
+  "input": "showers_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read ISEA Z358.1",
+  "rests_on": [
+   "ISEA Z358.1"
+  ]
+ },
+ {
+  "id": "access.levels",
+  "topic": "accessibility",
+  "cite": [
+   "IBC 1104.4",
+   "IBC 1103.2.2",
+   "IBC 1104.3.1"
+  ],
+  "binds": "building",
+  "test": "An accessible route between the support floor and the clean floor (employee work areas are reached)",
+  "input": "route_between_stories",
+  "op": "true",
+  "limit": null,
+  "fix": "add a lift"
+ },
+ {
+  "id": "access.route",
+  "topic": "accessibility",
+  "cite": [
+   "IBC 1104.3.1",
+   "IBC 1009.1",
+   "IBC 1011.2"
+  ],
+  "binds": "building",
+  "test": "Accessible routes and accessible means of egress built as ICC A117.1 asks",
+  "input": "accessible",
+  "op": "true",
+  "limit": null,
+  "fix": "read ICC A117.1",
+  "rests_on": [
+   "ICC A117.1"
+  ]
+ },
+ {
+  "id": "access.stairs",
+  "topic": "accessibility",
+  "cite": [
+   "IBC 1009.3.2",
+   "IBC 1009.3.3",
+   "IBC 1009.2.1"
+  ],
+  "binds": "building",
+  "test": "Exit stairs serve as accessible means of egress (sprinklered: no 48 in rule, no refuge areas; no lift needed below four stories)",
+  "input": "stairs_accessible_egress",
+  "op": "true",
+  "limit": null,
+  "fix": "widen the stairs or add refuge areas"
+ },
+ {
+  "id": "egress.exit_signs",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1013.1"
+  ],
+  "binds": "building",
+  "test": "Every point of the exit access corridors and passageways within 100 ft of a visible exit sign",
+  "input": "max_to_sign_ft",
+  "op": "le",
+  "limit": {
+   "section": "IBC 1013.1",
+   "fact": "max_to_visible_sign_ft"
+  },
+  "fix": "add exit signs"
+ },
+ {
+  "id": "egress.emergency_lighting",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1008.3.2"
+  ],
+  "binds": "building",
+  "test": "Emergency lighting along the paths of egress at an average of at least 1 footcandle",
+  "input": "avg_fc",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1008.3.2",
+   "fact": "avg_fc"
+  },
+  "fix": "add emergency luminaires"
+ },
+ {
+  "id": "egress.emergency_lighting_min",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1008.3.2"
+  ],
+  "binds": "building",
+  "test": "Emergency lighting at least 0.1 footcandle at every point along the paths",
+  "input": "min_fc",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1008.3.2",
+   "fact": "min_fc"
+  },
+  "fix": "close the gaps between luminaires"
+ },
+ {
+  "id": "egress.emergency_duration",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1008.3.1"
+  ],
+  "binds": "building",
+  "test": "Emergency power for the lighting for at least 90 minutes",
+  "input": "duration_min",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1008.3.1",
+   "fact": "min_minutes"
+  },
+  "fix": "larger batteries"
+ },
+ {
+  "id": "fire.standpipes",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 905.3.1"
+  ],
+  "binds": "building",
+  "test": "Standpipes where four or more stories or a floor more than 30 ft above fire department access",
+  "input": "standpipes_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add Class I standpipes"
+ },
+ {
+  "id": "alarm.box_location",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.4.2.1"
+  ],
+  "binds": "building",
+  "test": "A manual alarm box within 5 ft of the entrance to each exit",
+  "input": "max_box_to_exit_ft",
+  "op": "le",
+  "limit": {
+   "section": "IBC 907.4.2.1",
+   "fact": "max_from_exit_entrance_ft"
+  },
+  "fix": "move the box"
+ },
+ {
+  "id": "alarm.box_height",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.4.2.2"
+  ],
+  "binds": "building",
+  "test": "Alarm box handles 42 to 48 in above the floor",
+  "input": "boxes_in_height_range",
+  "op": "true",
+  "limit": null,
+  "fix": "remount the box"
+ },
+ {
+  "id": "alarm.smoke_detection",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.2.5",
+   "IFC 6004.2.2.9"
+  ],
+  "binds": "building",
+  "test": "Automatic fire detection in every room or area where highly toxic compressed gas is stored or used",
+  "input": "smoke_detection",
+  "op": "true",
+  "limit": null,
+  "fix": "add detectors"
+ },
+ {
+  "id": "alarm.notification",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.5.2.1.1",
+   "IBC 907.5.2.3.1"
+  ],
+  "binds": "building",
+  "test": "Audible and visible notification laid out as NFPA 72 asks (15 dBA over ambient; spare capacity in work areas)",
+  "input": "notification",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 72",
+  "rests_on": [
+   "NFPA 72"
+  ]
+ },
+ {
+  "id": "gas.cabinets",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IFC 6004.1.2"
+  ],
+  "binds": "room",
+  "test": "Highly toxic and toxic gases in exhausted, sprinklered gas cabinets of at most 3 cylinders, 200 fpm at the access port",
+  "input": "cabinets_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add or rebalance cabinets"
+ },
+ {
+  "id": "gas.cabinet_room_exhaust",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IFC 6004.2.2.2"
+  ],
+  "binds": "room",
+  "test": "The room around the gas cabinets has its own exhaust",
+  "input": "room_exhausted",
+  "op": "true",
+  "limit": null,
+  "fix": "exhaust the room"
+ },
+ {
+  "id": "exhaust.incompatible",
+  "topic": "ventilation",
+  "cite": [
+   "IMC 509.4"
+  ],
+  "binds": "building",
+  "test": "Incompatible materials never share a hazardous exhaust system",
+  "input": "separate_systems",
+  "op": "true",
+  "limit": null,
+  "fix": "split the system"
+ },
+ {
+  "id": "exhaust.no_dampers",
+  "topic": "ventilation",
+  "cite": [
+   "IMC 509.6.1"
+  ],
+  "binds": "building",
+  "test": "No fire or smoke dampers in hazardous exhaust ducts",
+  "input": "no_dampers",
+  "op": "true",
+  "limit": null,
+  "fix": "remove the damper"
+ },
+ {
+  "id": "exhaust.makeup",
+  "topic": "ventilation",
+  "cite": [
+   "IMC 509.5.5"
+  ],
+  "binds": "building",
+  "test": "Make-up air about equal to the hazardous exhaust (within 10%, assumed)",
+  "input": "makeup_balanced",
+  "op": "true",
+  "limit": null,
+  "fix": "resize the make-up air units"
+ },
+ {
+  "id": "elec.emergency_panels",
+  "topic": "emergency power",
+  "cite": [
+   "IBC 415.11.11"
+  ],
+  "binds": "building",
+  "test": "The loads of 415.11.11 fed from generator-backed panels",
+  "input": "emergency_on_generator",
+  "op": "true",
+  "limit": null,
+  "fix": "move the loads"
+ },
+ {
+  "id": "elec.wiring",
+  "topic": "emergency power",
+  "cite": [
+   "IBC 415.11.1.8"
+  ],
+  "binds": "building",
+  "test": "Wiring, fault currents and protection as NFPA 70 asks",
+  "input": "wiring_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 70",
+  "rests_on": [
+   "NFPA 70"
+  ]
+ }
+]

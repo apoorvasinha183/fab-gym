@@ -108,14 +108,26 @@ def run(C):
         side = math.sqrt(c["load_kN"] / soil)
         footings.append({"id": "footing/" + c["id"], "column": c["id"], "load_kN": c["load_kN"], "side_m": round(side, 3),
                          "bearing_kpa": soil})
-    # footing elements
+    # footing elements: pads whose plans overlap become one combined footing sized for their total load
     pos = {c["id"]: (c["x"], c["y"], c["p"]) for c in columns}
-    for f in footings:
-        x, y, bi = pos[f["column"]]
-        s = f["side_m"] / 2
-        C.add(f["id"].replace("permit/", ""), "IfcFooting", f"Footing under {f['column'].replace('permit/', '')}", (x - s, y - s, -1.2, x + s, y + s, 0.0),
-              bi, "support floor", "PAD_FOOTING", stage="D5", lod=100, review="preliminary, licensed review",
-              numbers=f"{f['load_kN']:.0f} kN on {f['bearing_kpa']} kPa soil (assumed)")
+    for grp in combine(footings, pos, soil):
+        if len(grp["members"]) == 1:
+            f = grp["members"][0]
+            x, y, bi = pos[f["column"]]
+            s = f["side_m"] / 2
+            C.add(f["id"].replace("permit/", ""), "IfcFooting", f"Footing under {f['column'].replace('permit/', '')}",
+                  (x - s, y - s, -1.2, x + s, y + s, 0.0), bi, "support floor", "PAD_FOOTING", stage="D5", lod=100,
+                  review="preliminary, licensed review", numbers=f"{f['load_kN']:.0f} kN on {f['bearing_kpa']} kPa soil (assumed)")
+            continue
+        x0, y0, x1, y1 = grp["box"]
+        first = grp["members"][0]
+        key = first["id"].replace("permit/", "").replace("footing/", "footing/combined/")
+        load = sum(f["load_kN"] for f in grp["members"])
+        for f in grp["members"]:
+            f["combined"] = "permit/" + key
+        C.add(key, "IfcFooting", f"Combined footing under {len(grp['members'])} columns", (x0, y0, -1.2, x1, y1, 0.0),
+              pos[first["column"]][2], "support floor", "PAD_FOOTING", stage="D5", lod=100, review="preliminary, licensed review",
+              numbers=f"{load:.0f} kN on {first['bearing_kpa']} kPa soil (assumed), columns too close for separate pads")
     total = sum(f["load_kN"] for f in footings)
     P["frame"] = {"columns": columns, "footings": footings, "bays": bays, "total_load_kN": round(total, 2),
                   "total_load_check_kN": round(total_expect, 2),
@@ -133,3 +145,42 @@ def run(C):
         rc = C.permit["design_data"]["risk_category"]
         C.case("structure.risk_category", k, risk_category_settled=q(None, why="risk category III or IV turns on whether the "
                                                                               "toxic quantities threaten the public: a judgement (assumed 3, range 2 to 4)"))
+
+def combine(footings, pos, soil):
+    """Group pads whose plans overlap; a group becomes one rectangle covering its pads, grown across its long side
+    until its area carries the group's load on the assumed soil. Repeats until no two groups overlap."""
+    groups = []
+    for f in footings:
+        x, y, _ = pos[f["column"]]
+        s = f["side_m"] / 2
+        groups.append({"members": [f], "box": (x - s, y - s, x + s, y + s)})
+
+    def hit(a, b):
+        return min(a[2], b[2]) - max(a[0], b[0]) > 1e-6 and min(a[3], b[3]) - max(a[1], b[1]) > 1e-6
+
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(groups)):
+            for j in range(i + 1, len(groups)):
+                a, b = groups[i], groups[j]
+                if hit(a["box"], b["box"]):
+                    m = a["members"] + b["members"]
+                    x0, y0 = min(a["box"][0], b["box"][0]), min(a["box"][1], b["box"][1])
+                    x1, y1 = max(a["box"][2], b["box"][2]), max(a["box"][3], b["box"][3])
+                    need = sum(f["load_kN"] for f in m) / soil
+                    w, h = x1 - x0, y1 - y0
+                    if w * h < need:
+                        if w >= h:
+                            g = (need / w - h) / 2
+                            y0, y1 = y0 - g, y1 + g
+                        else:
+                            g = (need / h - w) / 2
+                            x0, x1 = x0 - g, x1 + g
+                    groups[i] = {"members": m, "box": tuple(round(v, 4) for v in (x0, y0, x1, y1))}
+                    del groups[j]
+                    changed = True
+                    break
+            if changed:
+                break
+    return groups
