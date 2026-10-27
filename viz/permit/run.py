@@ -113,12 +113,23 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
         import cd
         cd.run(C)
         arch_cd.run(C)
+        import bim_shapes
+        bim_shapes.pre(C)
     coord.run(C)
     V = R.run_all(rules, C.cases, reg)
     C.made.add("verdicts")
+    if stage == "cd":
+        bim_shapes.post(C)
     M = C.model()
+    if stage == "cd":           # the faithful BIM (docs/BIM-FAITHFUL.md): stair parts and pedestals, repeats and materials
+        M["elements"] = M["elements"] + C.bim_extra
+        M.update(C.bim)
     ifc_text = ifc.write(M, "fab-permit.ifc")
     (out / "fab-permit.ifc").write_text(ifc_text)
+    if stage == "cd":
+        import ifc as _ifc
+        dump(out / "boxes.json", {_ifc.guid(e["key"]): {"key": e["key"], "cls": e["cls"], "box": list(e["box"])}
+                                  for e in M["elements"] if e["box"] is not None})
     C.made.add("ifc")
     for e in C.new:
         C.made.add("ifc:" + e["cls"])

@@ -124,7 +124,9 @@ class GlbAll(unittest.TestCase):
             if e.is_a("IfcSpace"):
                 continue
             m = uel.get_material(e)
-            if m is not None:
+            if m is not None and m.is_a("IfcMaterialConstituentSet"):
+                used |= {c.Material.Name for c in m.MaterialConstituents}
+            elif m is not None:
                 used.add(m.Name)
         self.assertEqual(used - names, set())
 

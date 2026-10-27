@@ -601,6 +601,8 @@ def elements(C):
             C.add(f"wall/{r['id']}/{n}", "IfcWall", f"Rated wall, {r['id']}", w, bi, storey, "SOLIDWALL",
                   numbers=f"fire barrier {r['rating_h']} h" if r["rating_h"] else "partition")
     cs = {p: cells(C, p) for p in (0, 1)}
+    # construction documents (docs/BIM-FAITHFUL.md): a two-flight stair lands at its east end, so its doors move there
+    landed = C.P.get("stage") == "cd"
     for x in C.P["exits"]:
         p = C.keys.index(x["building"])
         b = C.blds[p]
@@ -615,10 +617,11 @@ def elements(C):
                 C.add(f"wall/{x['id']}/{n}", "IfcWall", f"Stair enclosure {x['id']}", w, p, "support floor", "SOLIDWALL", numbers="2 h")
             C.add(f"lid/{x['id']}", "IfcSlab", f"Stair lid {x['id']}", (x0 + t, y0 + t, CORE_TOP - t, x1 - t, y1 - t, CORE_TOP), p,
                   "support floor", "ROOF", numbers=f"top {CORE_TOP} m, under the hoist vehicles")
+            dx = 3.1 if landed else -2.5
             for s in (1, -1):
                 yw = (y1 - t, y1) if s > 0 else (y0, y0 + t)
                 C.add(f"door/{x['id']}/{'N' if s > 0 else 'S'}", "IfcDoor", f"Stair door {x['id']}",
-                      (m - 2.5 - DOOR_W / 2, yw[0], cz, m - 2.5 + DOOR_W / 2, yw[1], cz + 2.1), p, "cleanroom", "DOOR",
+                      (m + dx - DOOR_W / 2, yw[0], cz, m + dx + DOOR_W / 2, yw[1], cz + 2.1), p, "cleanroom", "DOOR",
                       numbers="1.2 m leaf, 90 min (assumed)", door=(2.1, DOOR_W, "SINGLE_SWING_LEFT"))
         elif x["kind"] == "exit passageway":
             m = x["x"] - (PASS_X0 + PASS_X1) / 2
@@ -656,11 +659,18 @@ def elements(C):
             C.add(f"lid/{x['id']}", "IfcSlab", f"Stair roof {x['id']}", (x0 + t, y0 + t, TOWER_TOP - t, x1 - t, y1 - t, TOWER_TOP), p,
                   "support floor", "ROOF")
             yw = (69.7, 70.0) if s > 0 else (-70.0, -69.7)
+            # the landing end: east, unless the fab's facade ends before the clean floor door (then west, mirrored).
+            # The support floor door keeps its place: at that level the facade-side lane runs free under the upper flight.
+            def clear(c):
+                return b["x0"] + 0.5 <= c - DOOR_W / 2 and c + DOOR_W / 2 <= b["x1"] - 0.5
+            dx = (3.1 if clear(m + 3.1) else -3.1) if landed else 0.0
             for z, nm, st in ((cz, "clean", "cleanroom"), (0.0, "support", "support floor")):
-                C.add(f"door/{x['id']}/{nm}", "IfcDoor", f"Stair door {x['id']}", (m - DOOR_W / 2, yw[0], z, m + DOOR_W / 2, yw[1], z + 2.1),
+                c = m + dx if nm == "clean" else m
+                C.add(f"door/{x['id']}/{nm}", "IfcDoor", f"Stair door {x['id']}", (c - DOOR_W / 2, yw[0], z, c + DOOR_W / 2, yw[1], z + 2.1),
                       p, st, "DOOR", numbers="1.2 m leaf, 90 min (assumed)", door=(2.1, DOOR_W, "SINGLE_SWING_LEFT"))
             yo = (y1 - t, y1) if s > 0 else (y0, y0 + t)
-            C.add(f"door/{x['id']}/out", "IfcDoor", f"Exit discharge door {x['id']}", (m + 2.0, yo[0], 0, m + 2.0 + DOOR_W, yo[1], 2.4),
+            ox = m + dx - DOOR_W / 2 if landed else m + 2.0
+            C.add(f"door/{x['id']}/out", "IfcDoor", f"Exit discharge door {x['id']}", (ox, yo[0], 0, ox + DOOR_W, yo[1], 2.4),
                   p, "support floor", "DOOR", door=(2.4, DOOR_W, "SINGLE_SWING_LEFT"))
         elif x["kind"] == "exterior door":
             if x["wall"] == "F":

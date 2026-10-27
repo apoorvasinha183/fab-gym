@@ -126,7 +126,7 @@ class Faithful(unittest.TestCase):
         hatches = self.of("IfcDoor", pre="TRAPDOOR")
         ladders = self.of("IfcStair", otype="fixed ladder")
         self.assertEqual(len(ladders), len(hatches))
-        ceil_top = [fl for fl in self.S["floors"] if fl["name"] == "air space"][0]["z0"]
+        ceil_top = [fl for fl in self.S["floors"] if fl["name"] == "air space"][0]["z0"] + 0.35   # on the filter ceiling
         roof0 = [fl for fl in self.S["floors"] if fl["name"] == "roof"][0]["z0"]
         for h in hatches:
             hb = self.box(h)
@@ -176,18 +176,34 @@ class Faithful(unittest.TestCase):
                 top = zm + 0.02 / math.cos(math.atan(r / 0.28))   # the top of a 40 mm rail over its axis
                 self.assertGreaterEqual(top - nosing, 0.864 - 0.01, (s.Name, rl.Name))
                 self.assertLessEqual(top - nosing, 0.965 + 0.01, (s.Name, rl.Name))
-            doors = [d for d in self.f.by_type("IfcDoor") if s.Name.split()[-1] in (d.Name or "")]
+            # the clean floor door opens onto the top landing; a support floor door onto the floor landing, or anywhere
+            # along the lane that runs free under the upper flight
+            doors = [d for d in self.f.by_type("IfcDoor") if (d.Name or "").endswith(" " + s.Name.split()[-1])]
             self.assertGreaterEqual(len(doors), 2, s.Name)
+            top = [ld for ld in landings if abs(self.bounds[ld.GlobalId][1][2] - self.cz) < TOL]
+            self.assertEqual(len(top), 1, s.Name)
+            tlo, thi = self.bounds[top[0].GlobalId]
+            low = min(flights, key=lambda f_: self.bounds[f_.GlobalId][0][2])
+            high = max(flights, key=lambda f_: self.bounds[f_.GlobalId][0][2])
+
+            def yc(gid):
+                return (self.bounds[gid][0][1] + self.bounds[gid][1][1]) / 2
             for d in doors:
                 db = self.box(d)
-                self.assertGreaterEqual(db[0], sb[3] - FLOOR_LANDING - TOL, (s.Name, d.Name))
-                self.assertLessEqual(db[3], sb[3] + 0.21, (s.Name, d.Name))
                 self.assertTrue(min(abs(db[2]), abs(db[2] - self.cz)) < 0.01, (s.Name, d.Name))
+                dy = (db[1] + db[4]) / 2
+                on_low_lane = abs(dy - yc(low.GlobalId)) < abs(dy - yc(high.GlobalId))
+                if abs(db[2] - self.cz) < 0.01 or on_low_lane:
+                    self.assertGreaterEqual(db[0], tlo[0] - TOL, (s.Name, d.Name))
+                    self.assertLessEqual(db[3], thi[0] + TOL, (s.Name, d.Name))
+                else:
+                    self.assertGreaterEqual(db[0], sb[0] - TOL, (s.Name, d.Name))
+                    self.assertLessEqual(db[3], sb[3] + TOL, (s.Name, d.Name))
 
     def test_cores_open_slabs(self):
-        for s in [s for s in self.f.by_type("IfcStair") if s.ObjectType != "fixed ladder"] + self.f.by_type("IfcTransportElement"):
+        for s in [s for s in self.f.by_type("IfcStair") if s.ObjectType != "fixed ladder"] + list(self.f.by_type("IfcTransportElement")):
             sb = self.box(s)
-            for slab in self.f.by_type("IfcSlab") + self.f.by_type("IfcCovering"):
+            for slab in list(self.f.by_type("IfcSlab")) + list(self.f.by_type("IfcCovering")):
                 if slab.PredefinedType not in ("FLOOR", "FLOORING") or slab.ObjectType is not None or slab.GlobalId not in self.B:
                     continue
                 bb = self.box(slab)
@@ -243,10 +259,13 @@ class Faithful(unittest.TestCase):
                                        ("IfcAirTerminal", "fan filter unit array", "units", 38546)):
             counted = 0
             for e in self.of(cls, otype):
+                m = re.match(rf"(\d+) {word}", uel.get_psets(e)["FabGym_Permit"]["Numbers"])
+                if m and int(m.group(1)) == 0:       # a strip too narrow for a unit: a blank panel
+                    self.assertFalse(G.is_mapped(e), e.Name)
+                    continue
                 self.assertTrue(G.is_mapped(e), e.Name)
                 ib = G.instance_boxes(e)
                 self.assertGreater(len(ib), 0, e.Name)
-                m = re.match(rf"(\d+) {word}", uel.get_psets(e)["FabGym_Permit"]["Numbers"])
                 if m:
                     self.assertEqual(len(ib), int(m.group(1)), e.Name)
                     counted += len(ib)

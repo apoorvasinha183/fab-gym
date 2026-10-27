@@ -135,14 +135,15 @@ from the construction documents on, every stair is laid out the same way:
   3.55 m of headroom);
 - the top landing covers both lanes.
 
-**The doors move to fit:**
+**The doors move to fit** (as built; see Changes):
 
 | Stair | Door | Moves to |
 |---|---|---|
 | Spine | Clean floor doors | x + 3.1 m |
 | Spine | Passageway door | stays at x + 3.0 m, opening into flight B's lane |
-| Facade | Both inner doors | x + 3.1 m |
-| Facade | Discharge door | x + 3.1 m (was x + 2.6 m) |
+| Facade | Clean floor door | x + 3.1 m, or x - 3.1 m where the facade ends first (the stair mirrored) |
+| Facade | Support floor door | stays at x: at that level the facade-side lane runs free under flight B |
+| Facade | Discharge door | to the landing end, like the clean floor door |
 
 Each door's near edge is then 2.5 m from the core's east end, inside the 2.10 m landing with 5 cm to spare.
 
@@ -232,4 +233,32 @@ belongs to the detail.
 
 ## Changes
 
-(None yet.)
+Made while building, 28 Oct 2026, before the code was committed:
+
+1. **Stairs.** A stair's landings sit at the east end unless the fab's facade ends before the clean floor door. Then
+   they sit at the west end, mirrored; P1-FS22S and P2-FS16S straddle the end of their building.
+   - The facade stairs' support floor doors keep their places. Moving them put P2-FS16S's door on top of exit
+     passageway P2-XP15S's outside door. At the support floor the lane under the upper flight is free (at least 3.55 m
+     of headroom), so the door needs no landing.
+   - The test now asks this: the clean floor doors, and any door on the lower flight's lane, open onto the top
+     landing's span. A support floor door on the other lane may sit anywhere along the stair.
+2. **Hatch ladders** stand on the filter ceiling (the air space's floor plus 0.35 m). The test had used the air
+   space's floor.
+3. **Fan filter units.** Design development shared a space's units among its carved pieces by area, and gave the
+   remainder to the last piece. So some pieces held units they cannot fit: 29 units on a 0.8 x 2.8 m piece, and one
+   on 0.2 m strips.
+   - Each space keeps its total, 38,546 in all, shared by what each piece holds in rows. Every space fits.
+   - A piece too narrow for a unit becomes a blank panel in the grid ("0 units"). The test accepts those.
+4. **Bay 09's trusses.** The construction documents had replaced the three trusses over bay 09 with chords and
+   verticals, leaving no truss element. Each comes back as a truss that holds its members, with the diagonals the
+   truss detail (S-510) gives added inside it.
+5. **A door across two panels** (bay 09's chase partition is in 1.2 m panels) cuts an opening in each panel, clipped
+   to it. The door fills the opening in the panel that holds most of it.
+6. **The glTF test** compares a material set (a door's frame and leaf) by the materials in it.
+
+Found and left for the founder (not changed here):
+
+- **Exit passageway P2-XP15S** discharges through its outside door into facade stair P2-FS16S's tower: the tower
+  stands across that part of the facade. An exit passageway should discharge outdoors.
+- **The gowning rooms** have one door, to the fab. The clean floor's stairs and lifts open straight onto the spine,
+  so nobody passes a gowning room on the way in.

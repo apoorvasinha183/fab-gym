@@ -84,6 +84,8 @@ def write(model, name="fab-model.ifc"):
             ax = F.add(f"IFCAXIS2PLACEMENT3D({pt},{Z},{rd})")
         return F.add(f"IFCLOCALPLACEMENT({rel if rel else '$'},{ax})")
 
+    last_solid = [None]
+
     def solid(xdim, ydim, depth, centre=None):
         if centre is None:
             pos = A2
@@ -91,8 +93,84 @@ def write(model, name="fab-model.ifc"):
             pos = F.once(f"IFCAXIS2PLACEMENT2D({F.once(f'IFCCARTESIANPOINT(({r(centre[0])},{r(centre[1])}))')},$)")
         prof = F.once(f"IFCRECTANGLEPROFILEDEF(.AREA.,$,{pos},{r(xdim)},{r(ydim)})")
         sol = F.add(f"IFCEXTRUDEDAREASOLID({prof},{A3},{Z},{r(depth)})")
+        last_solid[0] = sol
         rep = F.add(f"IFCSHAPEREPRESENTATION({body},'Body','SweptSolid',({sol}))")
         return F.add(f"IFCPRODUCTDEFINITIONSHAPE($,$,({rep}))")
+
+    def direction(v):
+        return F.once(f"IFCDIRECTION(({r(v[0])},{r(v[1])},{r(v[2])}))")
+
+    def profile(pr):
+        kind = pr[0]
+        if kind == "rect":
+            return F.once(f"IFCRECTANGLEPROFILEDEF(.AREA.,$,{A2},{r(pr[1])},{r(pr[2])})")
+        if kind == "circle":
+            return F.once(f"IFCCIRCLEPROFILEDEF(.AREA.,$,{A2},{r(pr[1])})")
+        if kind == "I":     # overall width, overall depth, web, flange
+            return F.once(f"IFCISHAPEPROFILEDEF(.AREA.,$,{A2},{r(pr[1])},{r(pr[2])},{r(pr[3])},{r(pr[4])},$,$,$)")
+        if kind == "U":     # depth (along the profile's y), flange width (along its x), thickness
+            return F.once(f"IFCUSHAPEPROFILEDEF(.AREA.,$,{A2},{r(pr[1])},{r(pr[2])},{r(pr[3])},{r(pr[3])},$,$,$)")
+        if kind == "poly":
+            pts = [F.once(f"IFCCARTESIANPOINT(({r(u)},{r(v)}))") for u, v in pr[1]]
+            line = F.add(f"IFCPOLYLINE(({','.join(pts + pts[:1])}))")
+            return F.add(f"IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,{line})")
+        raise ValueError(f"unknown profile {kind}")
+
+    styles = {}
+
+    def style(name):
+        if name not in styles:
+            rgb = model["materials"][name]["rgb"]
+            col = F.add(f"IFCCOLOURRGB($,{r(rgb[0])},{r(rgb[1])},{r(rgb[2])})")
+            sh = F.add(f"IFCSURFACESTYLESHADING({col},0.)")
+            styles[name] = F.add(f"IFCSURFACESTYLE({s(name)},.BOTH.,({sh}))")
+        return styles[name]
+
+    def part_solids(parts, origin):
+        """Solids for parts given in world coordinates, made local to a placement at origin, each styled by its
+        material."""
+        out = []
+        for pt in parts:
+            o = [pt["o"][k] - origin[k] for k in range(3)]
+            loc = F.add(f"IFCCARTESIANPOINT(({r(o[0])},{r(o[1])},{r(o[2])}))")
+            ax = F.add(f"IFCAXIS2PLACEMENT3D({loc},{direction(pt['z'])},{direction(pt['x'])})")
+            sol = F.add(f"IFCEXTRUDEDAREASOLID({profile(pt['p'])},{ax},{Z},{r(pt['d'])})")
+            F.add(f"IFCSTYLEDITEM({sol},({style(pt['m'])}),$)")
+            out.append(sol)
+        return out
+
+    maps = {}
+
+    def rep_map(name):
+        if name not in maps:
+            m = model["maps"][name]
+            sols = part_solids(m["parts"], (0.0, 0.0, 0.0))
+            rp = F.add(f"IFCSHAPEREPRESENTATION({body},'Body','SweptSolid',({','.join(sols)}))")
+            maps[name] = F.add(f"IFCREPRESENTATIONMAP({A3},{rp})")
+        return maps[name]
+
+    def mapped_shape(mp, origin):
+        rm = rep_map(mp["map"])
+        its = []
+        for x, y, z, yaw in mp["at"]:
+            pt = F.add(f"IFCCARTESIANPOINT(({r(x - origin[0])},{r(y - origin[1])},{r(z - origin[2])}))")
+            if yaw % 360 == 0:
+                op = F.add(f"IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,{pt},$,$)")
+            else:
+                c, sn = round(math.cos(math.radians(yaw)), 9), round(math.sin(math.radians(yaw)), 9)
+                op = F.add(f"IFCCARTESIANTRANSFORMATIONOPERATOR3D({direction((c, sn, 0.0))},{direction((-sn, c, 0.0))},{pt},$,{Z})")
+            its.append(F.add(f"IFCMAPPEDITEM({rm},{op})"))
+        rp = F.add(f"IFCSHAPEREPRESENTATION({body},'Body','MappedRepresentation',({','.join(its)}))")
+        return F.add(f"IFCPRODUCTDEFINITIONSHAPE($,$,({rp}))")
+
+    def faithful_shape(e, origin):
+        if e.get("nobody"):
+            return "$"
+        if e.get("mapped"):
+            return mapped_shape(e["mapped"], origin)
+        sols = part_solids(e["parts"], origin)
+        rp = F.add(f"IFCSHAPEREPRESENTATION({body},'Body','SweptSolid',({','.join(sols)}))")
+        return F.add(f"IFCPRODUCTDEFINITIONSHAPE($,$,({rp}))")
 
     site_pl = placement(None)
     site = F.add(f"IFCSITE({s(guid('site'))},$,'Fab Gym site',{s('Site drawn only outside the fab buildings')},$,{site_pl},$,$,.ELEMENT.,$,$,$,$,$)")
@@ -111,6 +189,7 @@ def write(model, name="fab-model.ifc"):
         F.add(f"IFCRELAGGREGATES({s(guid('rel/bld-storeys/' + b['key']))},$,$,$,{bid},({','.join(sts)}))")
     F.add(f"IFCRELAGGREGATES({s(guid('rel/site-blds'))},$,$,$,{site},({','.join(bld_ids)}))")
 
+    ids, holders = {}, {}  # element key -> its entity, and the placement it hangs from
     contained = {}     # storey or site -> element ids
     spaces = {}        # storey -> space ids
     basis = {}         # numbers-from -> element ids
@@ -122,7 +201,13 @@ def write(model, name="fab-model.ifc"):
             rel_pl, z_ref, holder = site_pl, 0.0, site
         else:
             holder, rel_pl, z_ref = storeys[(e["bld"], e["storey"])]
-        if e["rail"] is not None:
+        faithful = "parts" in e or "mapped" in e or e.get("nobody")
+        if faithful:
+            x0, y0, z0, x1, y1, z1 = e["box"]
+            origin = ((x0 + x1) / 2, (y0 + y1) / 2, z0)
+            pl = placement(rel_pl, origin[0], origin[1], z0 - z_ref)
+            shape = faithful_shape(e, origin)
+        elif e["rail"] is not None:
             (ax, ay, az), (cx, cy, _) = e["rail"]
             L = math.hypot(cx - ax, cy - ay)
             pl = placement(rel_pl, ax, ay, az - z_ref, ((cx - ax) / L, (cy - ay) / L))
@@ -131,6 +216,8 @@ def write(model, name="fab-model.ifc"):
             x0, y0, z0, x1, y1, z1 = e["box"]
             pl = placement(rel_pl, (x0 + x1) / 2, (y0 + y1) / 2, z0 - z_ref)
             shape = solid(x1 - x0, y1 - y0, z1 - z0)
+            if e.get("mats"):
+                F.add(f"IFCSTYLEDITEM({last_solid[0]},({style(e['mats'][0])}),$)")
         g = s(guid(e["key"]))
         nm = s(e["name"])
         ot = s(e["otype"]) if e["otype"] else "$"
@@ -146,6 +233,9 @@ def write(model, name="fab-model.ifc"):
             dia, length = e["fastener"]
             eid = F.add(f"IFCMECHANICALFASTENER({g},$,{nm},$,{ot},{pl},{shape},$,{r(dia)},{r(length)},.ANCHORBOLT.)")
             contained.setdefault(holder, []).append(eid)
+        elif e.get("flight"):
+            nr, nt, rh, tl = e["flight"]
+            eid = F.add(f"IFCSTAIRFLIGHT({g},$,{nm},$,{ot},{pl},{shape},$,{nr},{nt},{r(rh)},{r(tl)},{pre})")
         elif e.get("door"):
             hgt, wid, op = e["door"][:3]
             kind = e["door"][3] if len(e["door"]) > 3 else "DOOR"
@@ -153,7 +243,10 @@ def write(model, name="fab-model.ifc"):
             contained.setdefault(holder, []).append(eid)
         else:
             eid = F.add(f"{e['cls'].upper()}({g},$,{nm},$,{ot},{pl},{shape},$,{pre})")
-            contained.setdefault(holder, []).append(eid)
+            if not e.get("parent"):
+                contained.setdefault(holder, []).append(eid)
+        ids[e["key"]] = eid
+        holders[e["key"]] = (rel_pl, z_ref)
         basis.setdefault(e["from"], []).append(eid)
         if e["tool"]:
             tool_psets.append((e["key"], eid, e["tool"]))
@@ -161,10 +254,48 @@ def write(model, name="fab-model.ifc"):
             permit_psets.append((e["key"], eid, e["permit"]))
         if e.get("rating"):
             rating_psets.append((e["key"], eid, e["rating"]))
-    for n, (holder, ids) in enumerate(contained.items()):
-        F.add(f"IFCRELCONTAINEDINSPATIALSTRUCTURE({s(guid(f'rel/contains/{n}'))},$,$,$,({','.join(ids)}),{holder})")
-    for n, (holder, ids) in enumerate(spaces.items()):
-        F.add(f"IFCRELAGGREGATES({s(guid(f'rel/spaces/{n}'))},$,$,$,{holder},({','.join(ids)}))")
+    for n, (holder, els) in enumerate(contained.items()):
+        F.add(f"IFCRELCONTAINEDINSPATIALSTRUCTURE({s(guid(f'rel/contains/{n}'))},$,$,$,({','.join(els)}),{holder})")
+    for n, (holder, els) in enumerate(spaces.items()):
+        F.add(f"IFCRELAGGREGATES({s(guid(f'rel/spaces/{n}'))},$,$,$,{holder},({','.join(els)}))")
+    # the faithful model (docs/BIM-FAITHFUL.md): aggregates, openings and what fills them, materials, door data
+    parts_of = {}
+    for e in model["elements"]:
+        if e.get("parent"):
+            parts_of.setdefault(e["parent"], []).append(ids[e["key"]])
+    for pk, els in parts_of.items():
+        F.add(f"IFCRELAGGREGATES({s(guid('rel/agg/' + pk))},$,$,$,{ids[pk]},({','.join(els)}))")
+    for e in model["elements"]:
+        for v in e.get("voids", ()):
+            rel_pl, z_ref = holders[e["key"]]
+            x0, y0, z0, x1, y1, z1 = v["box"]
+            opl = placement(rel_pl, (x0 + x1) / 2, (y0 + y1) / 2, z0 - z_ref)
+            op = F.add(f"IFCOPENINGELEMENT({s(guid('opening/' + v['key']))},$,'Opening',$,$,{opl},{solid(x1 - x0, y1 - y0, z1 - z0)},$,.OPENING.)")
+            F.add(f"IFCRELVOIDSELEMENT({s(guid('rel/voids/' + v['key']))},$,$,$,{ids[e['key']]},{op})")
+            if v.get("fill"):
+                F.add(f"IFCRELFILLSELEMENT({s(guid('rel/fills/' + v['key']))},$,$,$,{op},{ids[v['fill']]})")
+    mats, by_set = {}, {}
+    for e in model["elements"]:
+        if e.get("mats"):
+            by_set.setdefault(tuple(e["mats"]), []).append(ids[e["key"]])
+    for name in sorted({m for k in by_set for m in k}):
+        mid = F.add(f"IFCMATERIAL({s(name)},{s(model['materials'][name]['what'])},{s(model['materials'][name]['category'])})")
+        si = F.add(f"IFCSTYLEDITEM($,({style(name)}),$)")
+        sr = F.add(f"IFCSTYLEDREPRESENTATION({ctx},'Style','Material',({si}))")
+        F.add(f"IFCMATERIALDEFINITIONREPRESENTATION($,$,({sr}),{mid})")
+        mats[name] = mid
+    for n, (key, els) in enumerate(sorted(by_set.items())):
+        if len(key) == 1:
+            m = mats[key[0]]
+        else:
+            cons = [F.add(f"IFCMATERIALCONSTITUENT({s(k)},$,{mats[k]},$,$)") for k in key]
+            m = F.add(f"IFCMATERIALCONSTITUENTSET({s(' + '.join(key))},$,({','.join(cons)}))")
+        F.add(f"IFCRELASSOCIATESMATERIAL({s(guid(f'rel/material/{n}'))},$,$,$,({','.join(els)}),{m})")
+    for e in model["elements"]:
+        if e.get("door_clear") is not None:
+            pv = F.add(f"IFCPROPERTYSINGLEVALUE('ClearWidth',$,IFCPOSITIVELENGTHMEASURE({r(e['door_clear'])}),$)")
+            ps = F.add(f"IFCPROPERTYSET({s(guid('pset/door/' + e['key']))},$,'FabGym_Door',$,({pv}))")
+            F.add(f"IFCRELDEFINESBYPROPERTIES({s(guid('rel/door/' + e['key']))},$,$,$,({ids[e['key']]}),{ps})")
     for n, (frm, ids) in enumerate(basis.items()):
         props = [F.add(f"IFCPROPERTYSINGLEVALUE('Basis',$,IFCTEXT({s(model['truth'])}),$)"),
                  F.add(f"IFCPROPERTYSINGLEVALUE('Status',$,IFCTEXT({s(model['status'])}),$)"),
