@@ -194,6 +194,39 @@ def beats(trace, scene, lot):
     return out
 
 
+def timemap(trace, scene, lot):
+    """Film seconds to fab minutes, shot by shot: segments (film from, film to, fab from, fab to).
+    Between segments the clock jumps (the hard cuts of shot 9)."""
+    sh = {x["id"]: x for x in SHOTS["shots"]}
+    st = shape(trace, scene, lot)
+    leave = lot["prev"][0]
+    trk, scn, *mid, last = st
+    lift = 0.4  # viz/look/scene.py HOIST_MIN
+    seg = []
+
+    def add(shot_from, shot_to, a, b):
+        seg.append([shot_from, shot_to, a, b])
+
+    s5 = sh["5"]["start"]
+    add(0, s5, leave - 0.3 - s5 / 60.0, leave - 0.3)  # x1 up to the pick-up
+    add(s5, sh["5"]["end"], leave - 0.3, leave + lift)
+    add(sh["6"]["start"], sh["6"]["end"], leave + lift, trk[0])
+    add(sh["7"]["start"], sh["7"]["end"], trk[0], trk[2])
+    s8, e8 = sh["8"]["start"], sh["8"]["end"]
+    add(s8, s8 + 3, trk[2], scn[0])
+    add(s8 + 3, e8, scn[0], scn[2])
+    s9, e9 = sh["9"]["start"], sh["9"]["end"]
+    beats = mid
+    for i, x in enumerate(beats):
+        a = s9 + i * (e9 - s9) / len(beats)
+        b = s9 + (i + 1) * (e9 - s9) / len(beats)
+        add(a, b, x[0], x[2])
+    add(sh["10"]["start"], sh["10"]["end"], beats[-1][2], last[1])
+    add(sh["11"]["start"], sh["11"]["end"], last[1], last[2])
+    add(sh["12"]["start"], sh["end"]["end"], last[2], last[2] + (sh["end"]["end"] - sh["12"]["start"]))  # x60
+    return [[round(v, 4) for v in x] for x in seg]
+
+
 def main():
     tp = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "data/layout-real/trace-optimised.json"
     sp = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "data/layout-real/scene-optimised.json"
@@ -203,7 +236,7 @@ def main():
     caps = captions(tr, sc, lot)
     out = {"what": "The film's lot and captions, on the SMT2020 model; a gigafab-style layout of our own design.",
            "lot": lot["id"], "name": lot_name(lot), "beats": beats(tr, sc, lot), "captions": caps,
-           "shares": fab_shares(tr)}
+           "shares": fab_shares(tr), "timemap": timemap(tr, sc, lot), "shots": SHOTS["shots"]}
     op.write_text(json.dumps(out, indent=1))
     print(f"{lot['id']} ({lot_name(lot)})")
     for s in SHOTS["shots"]:
