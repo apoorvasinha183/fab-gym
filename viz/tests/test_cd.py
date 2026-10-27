@@ -185,7 +185,7 @@ class ConstructionDocuments(unittest.TestCase):
             need = {u for u, v in card["utilities"].items() if v["value"] > 0}
             got = Sv["tools"][str(i)]
             self.assertEqual(set(got["drops"]), need - {"power_kva"}, i)
-            self.assertEqual(set(got["valves"]), need - {"power_kva"}, i)
+            self.assertEqual(set(got["valves"]), {u for u in need if u != "power_kva" and not u.startswith("exhaust")}, i)
             self.assertEqual(got["feeder"], "power_kva" in need, i)
             haz = {c["material"] for c in card["chemistry"] if c["hazard"].endswith("gas")}
             self.assertEqual(set(got["gas_lines"]), haz, i)
