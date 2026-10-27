@@ -550,8 +550,9 @@ def wall_mat(dx, dy, mx, my):
 # ------------------------------------------------------------------------- the ground and campus
 G = S["ground"]
 gb = Batch()
-gb.box(M_GRASS, G["x0"] - 150000, G["y0"] - 150000, -0.4, G["x1"] + 150000, G["y1"] + 150000, -0.05)
-gb.make("ground")
+fb_ = Batch()
+fb_.box(M_GRASS, G["x0"] - 150000, G["y0"] - 150000, -60.0, G["x1"] + 150000, G["y1"] + 150000, -40.5)
+fb_.make("far ground")
 
 fabs = [c for c in S["campus"] if c["kind"] == "fab"]
 site = Batch()
@@ -561,6 +562,14 @@ y0 = min(c["y0"] for c in S["campus"] if c["kind"] != "road") - 20
 y1 = max(c["y1"] for c in S["campus"] if c["kind"] in ("fab", "office", "gas")) + 15
 site.box(M_CONC, x0, y0, -0.05, x1, y1, 0.0)
 site.make("site apron")
+# On the GPU a grass slab under the paving wins some hits from far away and hides it: the near
+# grass is a ring around the site, never under it; the far field to the horizon sits 40 m lower.
+R_ = 3000
+gb.box(M_GRASS, x0 - R_, y0 - R_, -40.0, x1 + R_, y0, -0.05)
+gb.box(M_GRASS, x0 - R_, y1, -40.0, x1 + R_, y1 + R_, -0.05)
+gb.box(M_GRASS, x0 - R_, y0, -40.0, x0, y1, -0.05)
+gb.box(M_GRASS, x1, y0, -40.0, x1 + R_, y1, -0.05)
+gb.make("ground")
 
 LABEL_ANCHORS = []  # (text, x, y, z, shots)
 
