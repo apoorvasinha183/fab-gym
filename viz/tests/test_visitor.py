@@ -145,8 +145,10 @@ class Plan(unittest.TestCase):
         self.stage = {st["name"]: st for st in P["stages"]}
 
     def samples(self, name):
+        # stages are half-open, the last one closed
         st = self.stage[name]
-        return [p for p in self.path if st["s0"] <= p[0] <= st["s1"]]
+        last = name == STAGES[-1]
+        return [p for p in self.path if st["s0"] <= p[0] < st["s1"] or (last and p[0] == st["s1"])]
 
     # the way in
 
@@ -182,10 +184,19 @@ class Plan(unittest.TestCase):
         self.assertLessEqual(link["y0"], self.s["spine"] / 2 + self.s["depth"] + 6.01)
         self.assertGreaterEqual(link["y1"], office["y0"] - 0.01)
 
+    def test_the_film_cuts_only_on_the_way_in(self):
+        # the office hall and the bridge are long; the film cuts between rooms, never on the clean floor
+        allowed = {self.stage[n]["s0"] for n in ("lobby", "link")}
+        for c in P["cuts"]:
+            self.assertIn(c, allowed)
+
     def test_the_lift_lifts_and_the_rest_is_walked(self):
+        cuts = set(P["cuts"])
         for a, b in zip(self.path, self.path[1:]):
             dt = b[0] - a[0]
             self.assertGreater(dt, 0)
+            if b[0] in cuts:
+                continue
             v = math.hypot(b[1] - a[1], b[2] - a[2]) / dt
             self.assertLessEqual(v, 1.5 + 1e-6, f"too fast at {a[0]:.2f} s: {v:.2f} m/s")
             dz = abs(b[3] - a[3])
@@ -297,8 +308,10 @@ class Plan(unittest.TestCase):
             at = min(self.path, key=lambda p: abs(p[0] - x["arrive_s"]))
             self.assertGreaterEqual(angle(at[4], want), math.radians(30), f"{x['key']}: he turns to face it")
             win = [p for p in self.path if max(prev, x["arrive_s"] - 3) < p[0] <= x["leave_s"]]
-            th = next(p[0] for p in win if angle(p[5], want) < math.radians(10))
-            tb = next(p[0] for p in win if angle(p[4], want) < math.radians(10))
+            tb = next(p[0] for p in win if p[0] >= x["arrive_s"] and angle(p[4], want) < math.radians(10))
+            # the head reaches the sight and stays on it before the body gets there
+            off = [p[0] for p in win if p[0] <= tb and angle(p[5], want) >= math.radians(10)]
+            th = min(p[0] for p in win if p[0] > (off[-1] if off else -1))
             self.assertLess(th, tb, x["key"])
             if x["kind"] == "hoist":
                 mid = [p for p in win if p[0] >= x["arrive_s"] + 2]
