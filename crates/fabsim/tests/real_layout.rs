@@ -78,22 +78,27 @@ fn every_smt2020_group_has_a_kind() {
 
 #[test]
 fn groups_go_where_their_lots_come_from() {
+    // a fixed point: every group sits in the phase that sends it most of its lots, given where
+    // every other group sits (docs/FAB-LOOK.md, "Changes")
     let Some((shop, areas)) = smt() else { return };
     let p = Problem::new(&shop, &areas, &Config::realistic()).unwrap();
     let idx = |n: &str| shop.groups.iter().position(|g| g.name == n).unwrap();
     assert_eq!(p.phase_of(idx("LithoTrack_FE_95")), Some(1), "78% of its lots are back-end");
+    assert_eq!(p.phase_of(idx("Litho_BE_110")), Some(1), "the scanners it feeds stay in phase 2");
     assert_eq!(p.phase_of(idx("Delay_32")), None);
     for (gi, g) in shop.groups.iter().enumerate() {
         let Some(ph) = p.phase_of(gi) else { continue };
         let mut inflow = [0.0f64; 2];
         for f in p.flows().iter().filter(|f| f.1 == gi) {
-            let from = if f.0 == START { 0 } else { name_phase(&shop.groups[f.0].name) };
+            let from = if f.0 == START { 0 } else { p.phase_of(f.0).unwrap() };
             inflow[from] += f.2;
         }
-        let own = name_phase(&g.name);
-        let want = if inflow[1 - own] > inflow[own] { 1 - own } else { own };
-        assert_eq!(ph, want, "{}: lots in from phase 1 {:.1}, phase 2 {:.1}", g.name, inflow[0], inflow[1]);
+        assert!(inflow[ph] >= inflow[1 - ph], "{}: lots in from phase 1 {:.1}, phase 2 {:.1}", g.name, inflow[0], inflow[1]);
     }
+    let by_name = Problem::new(&shop, &areas, &Config::gigafab()).unwrap();
+    assert!(p.crossings() < by_name.crossings(), "fewer lots cross the bridge: {} against {}", p.crossings(), by_name.crossings());
+    let moved: Vec<&str> = shop.groups.iter().enumerate().filter(|(i, g)| p.phase_of(*i).is_some() && p.phase_of(*i) != Some(name_phase(&g.name))).map(|(_, g)| g.name.as_str()).collect();
+    assert!(moved.len() <= 10, "only a few groups move: {moved:?}");
 }
 
 fn check_true_size(shop: &Shop, p: &Problem, c: &Campus, cfg: &Config) {

@@ -70,9 +70,22 @@ in the bay + 1.5 m chase) + 3.5 m aisle (FAB-LAYOUT.md).
 
 Each tool group goes in the phase that sends it most of its lots (by the
 flows of FAB-LAYOUT.md), instead of by its name. Phase 1 starts as the front
-end and Phase 2 as the back end by name; a group moves when the other phase
-sends it more lots. `LithoTrack_FE_95` (78% of its lots from back-end groups)
-is the case that raised it.
+end and Phase 2 as the back end by name. The rule is applied group by group,
+in the model's group order, counting each sender where it sits now, and repeated until no
+group moves: a fixed point, where every group is in the phase that sends it
+most lots given where the others are. `LithoTrack_FE_95` (78% of its lots
+from back-end groups) is the case that raised it.
+
+## Changes
+
+- 27 Oct, before any result was reported: the tests first applied the rule in
+  one pass, counting senders by their names' phases. On the SMT2020 model that
+  moved `LithoTrack_FE_95` to Phase 2 and, in the same pass, the scanners it
+  feeds (`Litho_BE_110`, `Litho_BE_93`, `Litho_BE_99`) and three more groups
+  to Phase 1, so the track and its scanners stayed apart and bridge crossings
+  rose from 1,259 to 2,059 lots a day. Repeating the rule to its fixed point
+  moves two groups (`LithoTrack_FE_95`, `DE_FE_70`) and crossings fall to 629
+  a day. The test now checks the fixed point.
 
 ## Sources opened
 
