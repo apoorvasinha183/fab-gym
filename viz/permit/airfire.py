@@ -199,6 +199,15 @@ def fire(C):
             C.add(f"sensor/tool/{i}", "IfcSensor", f"Gas detector at tool {i}", (cx - 0.075, cy - 0.075, top, cx + 0.075, cy + 0.075, top + 0.12),
                   p, "cleanroom", "GASSENSOR", stage="D7", lod=200, numbers="in the tool's exhausted enclosure; reports to the ECS")
             sensors_by_bay[bk] = sensors_by_bay.get(bk, 0) + 1
+    # one air-sampling smoke detector per bay, on the perimeter wall side at the bay's outer end, its pipes in the return air
+    smoke = 0
+    for bk, bay in enumerate(S["bays"]):
+        cx = (bay["x0"] + bay["x1"]) / 2 + 1.5
+        outer = 1 if (bay["y0"] + bay["y1"]) > 0 else -1
+        y0 = 67.6 if outer > 0 else -67.9
+        C.add(f"sensor/smoke/{bk}", "IfcSensor", f"Air-sampling smoke detector, bay {bk + 1:02d}", (cx - 0.2, y0, cz + 3.4, cx + 0.2, y0 + 0.3, cz + 3.8),
+              bay["phase"], "cleanroom", "SMOKESENSOR", stage="D7", lod=100, numbers="air-sampling; sampling pipes in the return air (assumed)")
+        smoke += 1
     # a pull station at every exit
     pulls = 0
     for x in P["exits"]:
@@ -241,7 +250,8 @@ def fire(C):
     P["fire"] = {"sprinkler_heads": heads, "head_area_sqft": HEAD_FT2, "hazard": C.fact("IBC 903.2.5.2", "hazard"),
                  "hpm_gas_tools_by_bay": by_bay, "gas_sensors_by_bay": sensors_by_bay, "gas_rooms": gas_rooms,
                  "covered_fab_areas": [a["id"] for a in P["fab_areas"]], "pull_stations": pulls, "duct_heads": duct_heads,
-                 "smoke_detection": "air-sampling smoke detection per bay is drawn as a note; what chapter 60 asks is not read",
+                 "smoke_detectors": smoke,
+                 "smoke_detection": "one air-sampling smoke detector per bay, drawn; what the fire code's chapter 60 asks is not read",
                  "note": "Head counts assume 130 sq ft a head; the design density and area wait for NFPA 13 (not read)."}
     C.made.add("fire")
     for k in C.keys:

@@ -697,6 +697,7 @@ def fa101(C):
         "Gas detection (415.11.8.1): at every tool that draws hazardous gas, in every gas room and gas cabinet; flammable gas alarms at a quarter of "
         "the lower flammable limit (415.11.8.2).",
         f"Manual fire alarm (907.2.5): {F['pull_stations']} pull stations, one at every exit on every floor it serves.",
+        f"Smoke detection: {F['smoke_detectors']} air-sampling detectors, one per bay, sampling the return air (assumed).",
         "Alarms, detection and emergency power report to the emergency control station in the office (415.11.10).",
         "Smoke detection where highly toxic gas is used follows the fire code's chapter 60, and occupant notification 907.4.2, 907.5 and NFPA 72: not read, "
         "cannot say.",
