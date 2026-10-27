@@ -66,3 +66,9 @@ The script uses the standard library only. The output is the same byte for byte 
   numbered questions.
 - The PDF, when made, has seven A1 pages.
 - Two runs give identical files.
+
+## Changes
+
+- 27 Oct, after the first build: the set grows to eight sheets (A-500, an exploded axonometric of phase 1), is
+  drawn for a country profile (`--place intl|us`, default `intl`, output in `data/layout-real/blueprint/<place>/`),
+  and gains `fab-model.ifc` and a building-codes section in the brief. See `docs/BIM.md`.
