@@ -1,11 +1,12 @@
-"""The campus as a drawing set for an architect (docs/BLUEPRINT.md): A1 sheets as SVG, the set as one HTML page
-printed to PDF by headless Chrome, a DXF of the plan in metres, and the brief.
+"""The campus as a drawing set for an architect (docs/BLUEPRINT.md, docs/BIM.md): sheets as SVG, the set as one HTML
+page printed to PDF by headless Chrome, a DXF of the plans, the IFC model and the brief, all drawn from one building
+model (model.py) for a country profile (profiles.py, places/<id>.json).
 
 A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Every placement number is assumed
 unless the brief cites a source. A concept for review, NOT FOR CONSTRUCTION.
 
-    python3 viz/blueprint/blueprint.py [--scene data/layout-real/scene-optimised.json]
-        [--layout results/layout-real/layout.json] [--out data/layout-real/blueprint] [--no-pdf]
+    python3 viz/blueprint/blueprint.py [--place intl|us] [--scene data/layout-real/scene-optimised.json]
+        [--layout results/layout-real/layout.json] [--out data/layout-real/blueprint/<place>] [--no-pdf]
 
 Standard library only; the same input gives the same files byte for byte (the PDF carries Chrome's date).
 """
@@ -13,36 +14,50 @@ Standard library only; the same input gives the same files byte for byte (the PD
 import argparse
 import hashlib
 import json
+import math
 import subprocess
 import textwrap
 from pathlib import Path
 
+import ifc
+import profiles
+from model import CITED, GRID, TRUTH, building, grid_lines, phase_of_x
+import model as bmodel
+
 ROOT = Path(__file__).resolve().parents[2]
 CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-W, H = 841.0, 594.0                    # A1 landscape, millimetres
-FX0, FY0, FX1, FY1 = 20.0, 10.0, 831.0, 584.0   # the frame
 TB = 50.0                              # title strip height
-AX0, AY0, AX1, AY1 = FX0 + 8, FY0 + 8, FX1 - 8, FY1 - TB - 6   # drawing area
+PR = None                              # the country profile, set by use()
+W = H = FX0 = FY0 = FX1 = FY1 = AX0 = AY0 = AX1 = AY1 = 0.0
+
+
+def use(profile):
+    """Set the paper and the drawing area for a profile (millimetres)."""
+    global PR, W, H, FX0, FY0, FX1, FY1, AX0, AY0, AX1, AY1
+    PR = profile
+    W, H = profile.w, profile.h
+    FX0, FY0, FX1, FY1 = 20.0, 10.0, W - 10.0, H - 10.0
+    AX0, AY0, AX1, AY1 = FX0 + 8, FY0 + 8, FX1 - 8, FY1 - TB - 6
+
 DATE = "27 Oct 2026"
 REV = "P1 for review"
 PROJECT = "Fab Gym campus"
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
-GRID = 12.0                            # assumed column grid, metres
 PLANT_H = 4.0                          # assumed roof plant height
 FONT = "Helvetica, Arial, sans-serif"
 INK = "#1d2430"
 GREY = "#6b7380"
 RED = "#b3261e"
 
-SHEETS = [
-    ("A-000", "Cover, drawing list and general notes", None),
-    ("A-100", "Site plan", 2000),
-    ("A-101", "Clean floor plan, phase 1 (+7.50)", 500),
-    ("A-102", "Clean floor plan, phase 2 (+7.50)", 500),
-    ("A-110", "Enlarged plan of a typical bay", 100),
-    ("A-301", "Building section across the bays", 200),
-    ("A-900", "Brief: numbers to check and questions for the architect", None),
-]
+SHEET_IDS = ["A-000", "A-100", "A-101", "A-102", "A-110", "A-301", "A-500", "A-900"]
+
+
+def sheets(S):
+    lv = PR.level(S["clean_z"])
+    return [("A-000", "Cover, drawing list and general notes"), ("A-100", "Site plan"),
+            ("A-101", f"Clean floor plan, phase 1 ({lv})"), ("A-102", f"Clean floor plan, phase 2 ({lv})"),
+            ("A-110", "Enlarged plan of a typical bay"), ("A-301", "Building section across the bays"),
+            ("A-500", "Exploded axonometric, phase 1"), ("A-900", "Brief: numbers to check and questions for the architect")]
+
 
 KIND_FILL = {
     "scanner": "#f3d36b", "track": "#f8e7a8", "metrology": "#f4b183", "inspection": "#f5b6c6",
@@ -53,12 +68,6 @@ KIND_NAME = {
     "scanner": "scanner", "track": "coat and develop track", "metrology": "metrology", "inspection": "inspection",
     "etch": "etch cluster tool", "deposition": "deposition cluster tool", "epitaxy": "epitaxy", "furnace": "vertical furnace",
     "implanter": "ion implanter", "polisher": "polisher (CMP)", "wet_bench": "wet bench", "stocker": "stocker",
-}
-# Sizes and their sources, from docs/FAB-LOOK.md (the look spec of this repo).
-CITED = {
-    "furnace": "footprint cited (secondary): Koyo Thermo Systems table as reproduced by Kiel University, "
-               "Electronic Materials ch. 6, VF5300, 3.0 m2 a tube; height assumed",
-    "implanter": "cited (secondary): used Purion M listing, mainframe 360 x 810 x 310 cm, labelled an estimate",
 }
 OTHER_CITED = [
     ("wafers in a lot", "25", "cited: SMT2020 order.txt, column PIECES"),
@@ -71,9 +80,7 @@ OTHER_CITED = [
 
 # ------------------------------------------------------------------ small helpers
 
-def f(v, nd=2):
-    s = f"{v:.{nd}f}".rstrip("0").rstrip(".")
-    return "0" if s in ("-0", "") else s
+f = profiles.f
 
 
 def esc(s):
@@ -147,24 +154,26 @@ def north(x, y, rot=0.0):
             f'{text(0, -10.5, "N", 4, "middle", "bold")}</g>')
 
 
-def scalebar(x, y, metres, scale, step):
-    mm = metres * 1000.0 / scale
-    n = int(round(metres / step))
-    o = [f'<g data-scalebar="{f(metres)}" data-mm="{f(mm, 3)}">']
+def scalebar(x, y, sid, note=""):
+    length, step = PR.bars[sid]
+    metres = length * PR.bar_unit_m
+    mm = metres * 1000.0 / PR.ratio(sid)
+    n = int(round(length / step))
+    o = [f'<g data-scalebar="{f(metres, 4)}" data-mm="{f(mm, 3)}">']
     seg = mm / n
     for i in range(n):
         o.append(rect(x + i * seg, y, seg, 2.0, INK, 0.18, INK if i % 2 == 0 else "#ffffff"))
         o.append(text(x + i * seg, y - 1.5, f(i * step), 2.2, "middle"))
-    o.append(text(x + mm, y - 1.5, f"{f(metres)} m", 2.2, "middle"))
-    o.append(text(x, y + 6, f"Scale 1:{scale} on A1", 2.4))
+    o.append(text(x + mm, y - 1.5, f"{f(length)} {PR.bar_unit}", 2.2, "middle"))
+    o.append(text(x, y + 6, f"Scale {PR.scale_text(sid)}{note}", 2.4))
     o.append("</g>")
     return "".join(o)
 
 
 # ------------------------------------------------------------------ the sheet frame and title block
 
-def sheet(sid, title, scale, body, sha):
-    o = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841 594" width="841mm" height="594mm" '
+def sheet(sid, title, body, sha):
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {f(W)} {f(H)}" width="{f(W)}mm" height="{f(H)}mm" '
          f'font-family="{FONT}">',
          rect(0, 0, W, H, "none", 0, "#ffffff"),
          rect(FX0, FY0, FX1 - FX0, FY1 - FY0, INK, 0.7)]
@@ -178,13 +187,13 @@ def sheet(sid, title, scale, body, sha):
     o.append(text(cols[0] + 5, y0 + 18, "Concept drawing set for review", 3.2))
     o.append(text(cols[0] + 5, y0 + 27, TRUTH, 2.8))
     o.append(text(cols[0] + 5, y0 + 33, "Every placement number is assumed unless sheet A-900 cites a source.", 2.4, fill=GREY))
-    o.append(text(cols[0] + 5, y0 + 39, "Units: metres. Levels above the support floor slab (+0.00).", 2.4, fill=GREY))
+    o.append(text(cols[0] + 5, y0 + 39, PR.units_line(), 2.4, fill=GREY))
     o.append(text(cols[0] + 5, y0 + 45, f"Drawn from results/layout-real/layout.json, sha256 {sha}", 2.4, fill=GREY))
     o.append(text(cols[1] + 5, y0 + 8, "DRAWING", 2.2, fill=GREY))
     for i, ln in enumerate(textwrap.wrap(title, 40)):
         o.append(text(cols[1] + 5, y0 + 17 + i * 6.5, ln, 4.6, weight="bold"))
     o.append(text(cols[2] + 5, y0 + 8, "SCALE", 2.2, fill=GREY))
-    o.append(text(cols[2] + 5, y0 + 18, f"1:{scale} on A1" if scale else "as shown", 4.2))
+    o.append(text(cols[2] + 5, y0 + 18, PR.scale_text(sid) if sid in PR.scales else f"as shown, {PR.paper}", 4.2 if sid in PR.scales and not PR.imperial else 3.6))
     o.append(text(cols[2] + 5, y0 + 30, "DATE", 2.2, fill=GREY))
     o.append(text(cols[2] + 5, y0 + 39, DATE, 4.0))
     o.append(text(cols[3] + 5, y0 + 8, "REVISION", 2.2, fill=GREY))
@@ -198,34 +207,6 @@ def sheet(sid, title, scale, body, sha):
 
 
 # ------------------------------------------------------------------ the plans
-
-def phase_of_x(S, x):
-    return 1 if x >= S["offsets"][1] - 1e-6 else 0
-
-
-def building(S, p):
-    return [c for c in S["campus"] if c["kind"] == "fab"][p]
-
-
-def grid_lines(S):
-    """The assumed 12 m column grid: x lines per building, y lines from the spine's edge outward to the bays' end."""
-    xs = []
-    for p in (0, 1):
-        b = building(S, p)
-        x = b["x0"]
-        while x <= b["x1"] + 1e-6:
-            xs.append(round(x, 3))
-            x += GRID
-        if abs(xs[-1] - b["x1"]) > 1e-6:
-            xs.append(round(b["x1"], 3))
-    half = S["spine"] / 2
-    ys = []
-    y = half
-    while y <= half + S["depth"] + 1e-6:
-        ys += [round(y, 3), round(-y, 3)]
-        y += GRID
-    return xs, sorted(ys, reverse=True)
-
 
 def clip_seg(a, b, x0, x1):
     (ax, ay), (bx, by) = a, b
@@ -247,8 +228,7 @@ def section_x(S):
 
 def plan_sheet(S, p):
     b = building(S, p)
-    scale = 500
-    bw = (b["x1"] - b["x0"]) * 2.0
+    scale = PR.ratio("A-101")
     ox = AX0 + (22 if p == 0 else 75)
     M = Map(scale, b["x0"], b["y1"], ox, AY0 + 70)
     xsec = M(section_x(S), 0)[0] if p == 0 else None
@@ -336,16 +316,16 @@ def plan_sheet(S, p):
     # dimensions
     BX0, BY1 = M(b["x0"], b["y0"])
     BX1, BY0 = M(b["x1"], b["y1"])
-    o.append(dim(BX0, BY1 + 46, BX1, BY1 + 46, f"{f(b['x1'] - b['x0'], 1)} building", off=0))
+    o.append(dim(BX0, BY1 + 46, BX1, BY1 + 46, f"{PR.dist(b['x1'] - b['x0'])} building", off=0))
     SX0, _ = M(lo, 0)
     SX1, _ = M(hi, 0)
-    o.append(dim(SX0, BY1 + 54, SX1, BY1 + 54, f"{f(S['lengths'][p], 1)} spine (phase {p + 1} length)", off=0))
-    o.append(dim(BX1 + 46, BY0, BX1 + 46, BY1, f"{f(b['y1'] - b['y0'], 1)} building", off=0))
+    o.append(dim(SX0, BY1 + 54, SX1, BY1 + 54, f"{PR.dist(S['lengths'][p])} spine (phase {p + 1} length)", off=0))
+    o.append(dim(BX1 + 46, BY0, BX1 + 46, BY1, f"{PR.dist(b['y1'] - b['y0'])} building", off=0))
     _, Ys0 = M(0, S["spine"] / 2)
     _, Ys1 = M(0, -S["spine"] / 2)
     _, Yd = M(0, S["spine"] / 2 + S["depth"])
-    o.append(dim(BX1 + 36, Yd, BX1 + 36, Ys0, f"{f(S['depth'], 1)} bay depth", off=0, size=2.1))
-    o.append(dim(BX1 + 36, Ys0, BX1 + 36, Ys1, f"{f(S['spine'], 1)}", off=0, size=2.1))
+    o.append(dim(BX1 + 36, Yd, BX1 + 36, Ys0, f"{PR.dist(S['depth'])} bay depth", off=0, size=2.1))
+    o.append(dim(BX1 + 36, Ys0, BX1 + 36, Ys1, f"{PR.dist(S['spine'])}", off=0, size=2.1))
     # legend
     counts = {}
     for t in S["tools"]:
@@ -367,17 +347,17 @@ def plan_sheet(S, p):
         kd = S["kinds"][k]
         yy = ly + 5 + row * 5
         o.append(rect(lx, yy - 2.6, 5, 3, INK, 0.1, KIND_FILL[k]))
-        o.append(text(lx + 7, yy, f"{KIND_NAME[k]}: {n}, each {f(kd['w'])} x {f(kd['d'])} m, {f(kd['h'])} m tall", 2.3))
+        o.append(text(lx + 7, yy, f"{KIND_NAME[k]}: {n}, each {PR.size(kd['w'], kd['d'])}, {PR.distu(kd['h'])} tall", 2.3))
         row += 1
     yy = ly + 5 + row * 5 + 2
     o.append(line(lx, yy - 1, lx + 5, yy - 1, "#2f6db3", 0.25, "1.2 0.8"))
-    o.append(text(lx + 7, yy, "hoist rail (underside +11.70)", 2.3))
+    o.append(text(lx + 7, yy, f"hoist rail (underside {PR.level(S['rail_z'])})", 2.3))
     o.append(line(lx, yy + 4, lx + 5, yy + 4, GREY, 0.18, "4 1 0.6 1"))
-    o.append(text(lx + 7, yy + 5, f"column grid, {f(GRID)} m, assumed (support floor below)", 2.3))
+    o.append(text(lx + 7, yy + 5, f"column grid, {PR.distu(GRID)}, assumed (support floor below)", 2.3))
     o.append(north(AX1 - 20, AY0 + 22))
-    o.append(scalebar(AX1 - 130, AY1 - 12, 50, scale, 10))
+    o.append(scalebar(AX1 - 170, AY1 - 12, "A-101"))
     tools_n = sum(counts.values())
-    o.append(text(AX0 + 4, AY0 + 6, f"PHASE {p + 1} CLEAN FLOOR AT +7.50: {sum(1 for bb in S['bays'] if bb['phase'] == p)} bays, {tools_n} tools", 4, weight="bold"))
+    o.append(text(AX0 + 4, AY0 + 6, f"PHASE {p + 1} CLEAN FLOOR AT {PR.level(S['clean_z'])}: {sum(1 for bb in S['bays'] if bb['phase'] == p)} bays, {tools_n} tools", 4, weight="bold"))
     o.append(text(AX0 + 4, AY0 + 12, "Bays open off the central spine; tools stand along both bay walls facing the aisle; service chases behind the tools.", 2.6, fill=GREY))
     return "".join(o)
 
@@ -385,8 +365,7 @@ def plan_sheet(S, p):
 # ------------------------------------------------------------------ the site
 
 def site_sheet(S):
-    scale = 2000
-    g = [c for c in S["campus"] if c["kind"] == "road"]
+    scale = PR.ratio("A-100")
     wx0 = min(c["x0"] for c in S["campus"]) - 10
     wy1 = max(c["y1"] for c in S["campus"]) + 10
     M = Map(scale, wx0, wy1, AX0 + 40, AY0 + 40)
@@ -432,15 +411,15 @@ def site_sheet(S):
     X1, _ = M(p1["x1"], p1["y0"])
     X2, _ = M(p2["x0"], p2["y0"])
     X3, _ = M(p2["x1"], p2["y0"])
-    o.append(dim(X0, Y + 4, X1, Y + 4, f(p1["x1"] - p1["x0"], 1), off=0, size=2.0))
-    o.append(dim(X1, Y + 4, X2, Y + 4, f(br["x1"] - br["x0"], 1), off=0, size=2.0))
-    o.append(dim(X2, Y + 4, X3, Y + 4, f(p2["x1"] - p2["x0"], 1), off=0, size=2.0))
+    o.append(dim(X0, Y + 4, X1, Y + 4, PR.dist(p1["x1"] - p1["x0"]), off=0, size=2.0))
+    o.append(dim(X1, Y + 4, X2, Y + 4, PR.dist(br["x1"] - br["x0"]), off=0, size=2.0))
+    o.append(dim(X2, Y + 4, X3, Y + 4, PR.dist(p2["x1"] - p2["x0"]), off=0, size=2.0))
     o.append(north(AX1 - 20, AY0 + 22))
-    o.append(scalebar(AX1 - 130, AY1 - 12, 200, scale, 50))
+    o.append(scalebar(AX1 - 170, AY1 - 12, "A-100"))
     o.append(text(AX0 + 4, AY0 + 6, "SITE PLAN", 4, weight="bold"))
     notes = ["Only the two fab phases and the bridge hold the model's tools. The pad, the utility buildings, the gas yard,",
              "the office, roads and parking are drawn only, at assumed places and sizes: the model holds none of them.",
-             "Hoist bridge between the phases at +8.70; phase 3 is an empty pad."]
+             f"Hoist bridge between the phases at {PR.level(br['z0'])}; phase 3 is an empty pad."]
     for i, n in enumerate(notes):
         o.append(text(AX0 + 4, AY0 + 12 + i * 4.2, n, 2.6, fill=GREY))
     return "".join(o)
@@ -449,8 +428,7 @@ def site_sheet(S):
 # ------------------------------------------------------------------ the enlarged bay
 
 def bay_sheet(S):
-    scale = 100
-    k = 1000.0 / scale
+    k = 1000.0 / PR.ratio("A-110")
     bi = next(i for i, b in enumerate(S["bays"]) if b["area"] == "Litho" and b["phase"] == 0)
     bay = S["bays"][bi]
     sgn = 1 if bay["y1"] > 0 else -1
@@ -489,23 +467,23 @@ def bay_sheet(S):
         a, c = P(rx, sgn * half), P(rx, sgn * (half + S["depth"]))
         o.append(line(a[0], a[1], c[0], c[1], "#2f6db3", 0.3, "2 1"))
     # dimensions
-    o.append(dim(ox, oy - 4, ox + S["depth"] * k, oy - 4, f"{f(S['depth'], 1)} bay depth", off=-6))
-    o.append(dim(ox + S["depth"] * k + 6, oy, ox + S["depth"] * k + 6, oy + bw * k, f"{f(bw, 2)} bay width", off=-8))
-    o.append(dim(ox + S["depth"] * k + 6, oy, ox + S["depth"] * k + 6, oy + ch * k, f"{f(ch, 1)} chase", off=6, size=2.0))
+    o.append(dim(ox, oy - 4, ox + S["depth"] * k, oy - 4, f"{PR.dist(S['depth'])} bay depth", off=-6))
+    o.append(dim(ox + S["depth"] * k + 6, oy, ox + S["depth"] * k + 6, oy + bw * k, f"{PR.dist(bw, 2)} bay width", off=-8))
+    o.append(dim(ox + S["depth"] * k + 6, oy, ox + S["depth"] * k + 6, oy + ch * k, f"{PR.dist(ch)} chase", off=6, size=2.0))
     aisle = S["aisle"]
     ya, yb = P(mid - aisle / 2, sgn * half)[1], P(mid + aisle / 2, sgn * half)[1]
-    o.append(dim(ox + S["depth"] * k + 6, ya, ox + S["depth"] * k + 6, yb, f"{f(aisle, 1)} aisle", off=6, size=2.0))
+    o.append(dim(ox + S["depth"] * k + 6, ya, ox + S["depth"] * k + 6, yb, f"{PR.dist(aisle)} aisle", off=6, size=2.0))
     if tools:
         deep = max(tools, key=lambda it: it[1]["y1"] - it[1]["y0"] if False else it[1]["x1"] - it[1]["x0"])[1]
         a, c = P(deep["x0"], deep["y0"]), P(deep["x1"], deep["y0"])
         o.append(dim(ox - 14, min(a[1], c[1]), ox - 14, max(a[1], c[1]),
-                     f"{f(deep['x1'] - deep['x0'], 1)} {KIND_NAME[deep['kind']]}", off=-2, size=1.9))
+                     f"{PR.dist(deep['x1'] - deep['x0'])} {KIND_NAME[deep['kind']]}", off=-2, size=1.9))
     o.append(north(AX1 - 20, AY0 + 22, 90.0 if sgn > 0 else -90.0))
-    o.append(scalebar(AX1 - 130, AY1 - 12, 10, scale, 2))
+    o.append(scalebar(AX1 - 170, AY1 - 12, "A-110"))
     name = S["areas"]["Litho"]["name"]
     o.append(text(AX0 + 4, AY0 + 6, f"ENLARGED PLAN: BAY {bi + 1:02d}, {name.upper()}, PHASE 1 (plan turned so the spine is on the left)", 4, weight="bold"))
-    notes = ["Small white boxes: load ports, one carrier (0.426 x 0.355 m) each. Blue dashed: intrabay hoist rails over the port rows.",
-             "Grey strips: service chases behind the tools (1.5 m, assumed). Centre line: the aisle. Lithography bays run in yellow light (A-900).",
+    notes = [f"Small white boxes: load ports, one carrier ({PR.size(0.426, 0.355, nd=3)}) each. Blue dashed: intrabay hoist rails over the port rows.",
+             f"Grey strips: service chases behind the tools ({PR.distu(ch)}, assumed). Centre line: the aisle. Lithography bays run in yellow light (A-900).",
              "Tool sizes are by kind, generic boxes of our own; the model's tool groups are named on them."]
     for i, n in enumerate(notes):
         o.append(text(AX0 + 4, AY0 + 12 + i * 4.2, n, 2.6, fill=GREY))
@@ -515,7 +493,7 @@ def bay_sheet(S):
         if any(t["kind"] == kd for _, t in tools):
             K = S["kinds"][kd]
             o.append(rect(ox, yk + row * 5 - 2.6, 5, 3, INK, 0.1, KIND_FILL[kd]))
-            o.append(text(ox + 7, yk + row * 5, f"{KIND_NAME[kd]}: {f(K['w'])} x {f(K['d'])} m, {f(K['h'])} m tall, {K['ports']} load ports (assumed)", 2.4))
+            o.append(text(ox + 7, yk + row * 5, f"{KIND_NAME[kd]}: {PR.size(K['w'], K['d'])}, {PR.distu(K['h'])} tall, {K['ports']} load ports (assumed)", 2.4))
             row += 1
     return "".join(o)
 
@@ -523,8 +501,7 @@ def bay_sheet(S):
 # ------------------------------------------------------------------ the section
 
 def section_sheet(S):
-    scale = 200
-    k = 1000.0 / scale
+    k = 1000.0 / PR.ratio("A-301")
     b = building(S, 0)
     xc = section_x(S)
     top = S["floors"][-1]["z1"] + PLANT_H
@@ -596,7 +573,7 @@ def section_sheet(S):
         p = P(yy + 6, rz1 + PLANT_H)
         o.append(rect(p[0], p[1], 12 * k, PLANT_H * k, INK, 0.25, "#f1f1ee"))
     p = P(46, rz1 + PLANT_H + 1)
-    o.append(text(p[0], p[1], "roof plant, make-up air (assumed 4.0 m)", 2.4))
+    o.append(text(p[0], p[1], f"roof plant, make-up air (assumed {PR.distu(PLANT_H)})", 2.4))
     # level marks on the right
     xr = P(b["y0"], 0)[0] + 10
     marks = []
@@ -613,25 +590,25 @@ def section_sheet(S):
         ty = min(yy + 0.9, ty - 3.2)
         if ty < yy + 0.9 - 0.01:
             o.append(line(xr + 3, yy, xr + 4.6, ty - 0.9, GREY, 0.13))
-        o.append(text(xr + 5, ty, f"+{z:.2f}  {nm}", 2.4))
+        o.append(text(xr + 5, ty, f"{PR.level(z)}  {nm}", 2.4))
     # floor names inside
     yl = P(b["y1"] - 3, 0)[0]
     for fl in S["floors"]:
         zm = (fl["z0"] + fl["z1"]) / 2 if fl["name"] != "cleanroom" else fl["z1"] - 0.9
         if fl["name"] in ("waffle slab", "raised floor", "roof"):
             continue
-        o.append(text(yl, oy - zm * k + 1, f"{fl['name'].upper()}  {f(fl['z1'] - fl['z0'], 1)} m", 2.6, weight="bold"))
+        o.append(text(yl, oy - zm * k + 1, f"{fl['name'].upper()}  {PR.distu(fl['z1'] - fl['z0'])}", 2.6, weight="bold"))
     # dims
     a0, a1 = P(b["y1"], 0), P(b["y0"], 0)
-    o.append(dim(a0[0], a0[1] + 10, a1[0], a1[1] + 10, f"{f(b['y1'] - b['y0'], 1)} building width", off=0))
+    o.append(dim(a0[0], a0[1] + 10, a1[0], a1[1] + 10, f"{PR.dist(b['y1'] - b['y0'])} building width", off=0))
     s0, s1 = P(S["spine"] / 2, 0), P(-S["spine"] / 2, 0)
     d0 = P(S["spine"] / 2 + S["depth"], 0)
-    o.append(dim(d0[0], d0[1] + 4, s0[0], s0[1] + 4, f"{f(S['depth'], 1)} bay depth", off=0, size=2.2))
-    o.append(dim(s0[0], s0[1] + 4, s1[0], s1[1] + 4, f"{f(S['spine'], 1)}", off=0, size=2.2))
-    o.append(scalebar(AX1 - 130, AY1 - 12, 20, scale, 5))
-    o.append(text(AX0 + 4, AY0 + 6, f"SECTION 1-1 ACROSS PHASE 1 AT x = {f(xc, 1)} m, LOOKING EAST (cut through a stocker; marked on A-101)", 4, weight="bold"))
+    o.append(dim(d0[0], d0[1] + 4, s0[0], s0[1] + 4, f"{PR.dist(S['depth'])} bay depth", off=0, size=2.2))
+    o.append(dim(s0[0], s0[1] + 4, s1[0], s1[1] + 4, f"{PR.dist(S['spine'])}", off=0, size=2.2))
+    o.append(scalebar(AX1 - 170, AY1 - 12, "A-301"))
+    o.append(text(AX0 + 4, AY0 + 6, f"SECTION 1-1 ACROSS PHASE 1 AT x = {PR.distu(xc)}, LOOKING EAST (cut through a stocker; marked on A-101)", 4, weight="bold"))
     notes = ["Tools are cut where the section line crosses them, at their kind's height. Blue dashed: hoist rail level; the two blue squares are",
-             "the interbay rails in the spine. Columns in the support floor on the assumed 12 m grid. The cleanroom air returns through the chases (assumed).",
+             f"the interbay rails in the spine. Columns in the support floor on the assumed {PR.distu(GRID)} grid. The cleanroom air returns through the chases (assumed).",
              "Every height on this sheet is assumed (A-900)."]
     for i, n in enumerate(notes):
         o.append(text(AX0 + 4, AY0 + 12 + i * 4.2, n, 2.6, fill=GREY))
@@ -641,7 +618,7 @@ def section_sheet(S):
 
 def section_detail(S, top):
     """Detail 2: the levels at the spine's north edge at 1:100, cut on the same line as section 1-1."""
-    k = 10.0
+    k = 1000.0 / PR.ratio("A-301-detail")
     xc = section_x(S)
     fl = {x["name"]: x for x in S["floors"]}
     y_lo, y_hi = -2.0, 20.0           # spine centre side to 16 m into the north bay
@@ -652,7 +629,7 @@ def section_detail(S, top):
         return ox + (y_hi - y) * k, oy - z * k
 
     o = [text(AX0 + 4, top + 6, "DETAIL 2: THE LEVELS AT THE SPINE, ON SECTION LINE 1-1", 4, weight="bold"),
-         text(AX0 + 4, top + 12, "Scale 1:100 on A1. Every height and size here is assumed unless A-900 cites it.", 2.6, fill=GREY)]
+         text(AX0 + 4, top + 12, f"Scale {PR.scale_text('A-301-detail')}. Every height and size here is assumed unless A-900 cites it.", 2.6, fill=GREY)]
     W = (y_hi - y_lo) * k
     a = P(y_hi, 0)
     o.append(line(a[0] - 4, a[1], a[0] + W + 4, a[1], INK, 0.7))
@@ -719,8 +696,8 @@ def section_detail(S, top):
         q, q2 = P(py, rz - 0.8), P(py, seat + 0.338)
         o.append(line(q[0], q[1], q2[0], q2[1], GREY, 0.15, "0.8 0.8"))
         lx = P(y_lo, 0)[0] + 44
-        for zz, msg, yy0 in ((rz - 0.4, "hoist vehicle on the intrabay rail (beyond the cut), 0.9 x 0.6 x 0.8 m", py - 0.45),
-                             (seat + 0.17, "carrier on a load port, seat 0.9 m above the raised floor (beyond)", py - 0.18)):
+        for zz, msg, yy0 in ((rz - 0.4, f"hoist vehicle on the intrabay rail (beyond the cut), {PR.size(0.9, 0.6, 0.8)}", py - 0.45),
+                             (seat + 0.17, f"carrier on a load port, seat {PR.distu(0.9)} above the raised floor (beyond)", py - 0.18)):
             q = P(yy0, zz)
             o.append(line(q[0], q[1], lx - 1, q[1], GREY, 0.13))
             o.append(text(lx, q[1] + 0.8, msg, 2.3))
@@ -732,7 +709,7 @@ def section_detail(S, top):
     # labels on the left, a height chain on the right
     xl = P(y_hi, 0)[0] - 6
     for nm, z in (("support floor", fl["support floor"]["z1"] / 2), ("waffle slab", (ws["z0"] + ws["z1"]) / 2),
-                  ("raised floor, 0.6 x 0.6 m panels", (rf["z0"] + rf["z1"]) / 2), ("cleanroom", cl["z0"] + 3.6),
+                  (f"raised floor, {PR.size(0.6, 0.6)} panels", (rf["z0"] + rf["z1"]) / 2), ("cleanroom", cl["z0"] + 3.6),
                   ("filter ceiling, fan filter units", cl["z1"] + 0.17), ("air space (return air)", (cl["z1"] + fl["air space"]["z1"]) / 2),
                   ("roof", (rf_["z0"] + rf_["z1"]) / 2)):
         o.append(text(xl, P(0, z)[1] + 0.9, nm, 2.4, "end"))
@@ -740,21 +717,220 @@ def section_detail(S, top):
     chain = [0.0] + [x["z1"] for x in S["floors"]]
     for z0, z1 in zip(chain, chain[1:]):
         p0, p1 = P(y_lo, z0), P(y_lo, z1)
-        o.append(dim(xr, p0[1], xr, p1[1], f(z1 - z0, 2), off=0, size=2.0))
+        o.append(dim(xr, p0[1], xr, p1[1], PR.dist(z1 - z0, 2), off=0, size=2.0))
     p0, p1 = P(y_lo, cl["z0"]), P(y_lo, S["rail_z"])
-    o.append(dim(xr + 14, p0[1], xr + 14, p1[1], f"{f(S['rail_z'] - cl['z0'], 1)} to rail", off=0, size=2.0))
+    o.append(dim(xr + 14, p0[1], xr + 14, p1[1], f"{PR.dist(S['rail_z'] - cl['z0'])} to rail", off=0, size=2.0))
     p1 = P(y_lo, cl["z0"] + 0.9)
-    o.append(dim(xr + 24, p0[1], xr + 24, p1[1], "0.9", off=0, size=2.0))
+    o.append(dim(xr + 24, p0[1], xr + 24, p1[1], PR.dist(0.9), off=0, size=2.0))
     nx, ny = xr + 150, top + 30
     o.append(text(nx, ny, "WHAT TO CHECK ON THIS SHEET (questions 1 to 3 and 6 on A-900)", 3.0, weight="bold"))
     for i, ln in enumerate([
             "Cleanroom height, raised floor to filter ceiling: is it enough for the tallest tools and the hoist rail above them?",
             "Support floor height under the waffle slab: is it enough for pumps, abatement and chemical distribution?",
-            "Waffle slab depth and the 12 m column grid: would they meet vibration criteria for lithography?",
+            f"Waffle slab depth and the {PR.distu(GRID)} column grid: would they meet vibration criteria for lithography?",
             "Air space above the filters and the roof build-up: are they reasonable for return air and plant?",
             "Return air: we assume it falls through the raised floor and rises in the chases; is that a sensible scheme?",
             "Every height on this sheet is a starting guess of ours, not taken from a real building."]):
         o.append(text(nx, ny + 7 + i * 5.2, f"- {ln}", 2.6))
+    return "".join(o)
+
+
+# ------------------------------------------------------------------ the exploded axonometric
+
+C30 = math.cos(math.radians(30))
+AXO_LIFT = {"support-floor": 0.0, "waffle-slab": 20.0, "clean-floor": 40.0, "filter-ceiling": 95.0, "roof": 130.0}
+CUT_BACK = 24.0      # metres of the filter ceiling and roof drawn solid at the west end; the rest as a ghost outline
+
+
+def shade(hex_, k):
+    h = hex_.lstrip("#")
+    r, g, b = (round(int(h[i:i + 2], 16) * k) for i in (0, 2, 4))
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def axo_sheet(S):
+    """A-500: phase 1 as an isometric drawing seen from the south-west above, its five layers pulled apart."""
+    sid = "A-500"
+    s = 1000.0 / PR.ratio(sid)
+    b = building(S, 0)
+    x0, y0, x1, y1 = b["x0"], b["y0"], b["x1"], b["y1"]
+    fl = {x["name"]: x for x in S["floors"]}
+    top = fl["roof"]["z1"] + AXO_LIFT["roof"]
+    upmin, upmax = (x0 + y0) / 2, (x1 + y1) / 2 + top
+    ox = AX0 + 40 - (x0 - y1) * C30 * s
+    oy = AY0 + 30 + upmax * s
+
+    def P(x, y, z):
+        return ox + (x - y) * C30 * s, oy - ((x + y) / 2 + z) * s
+
+    def poly(pts, fill, sw=0.12, stroke=INK, extra=""):
+        return (f'<polygon points="{" ".join(f"{f(a)},{f(c)}" for a, c in pts)}" fill="{fill}" stroke="{stroke}" '
+                f'stroke-width="{f(sw)}" stroke-linejoin="round"{extra}/>')
+
+    def box(bx0, by0, bz0, bx1, by1, bz1, fill, sw=0.12, extra=""):
+        t = [P(bx0, by0, bz1), P(bx1, by0, bz1), P(bx1, by1, bz1), P(bx0, by1, bz1)]
+        south = [P(bx0, by0, bz0), P(bx1, by0, bz0), P(bx1, by0, bz1), P(bx0, by0, bz1)]
+        west = [P(bx0, by0, bz0), P(bx0, by1, bz0), P(bx0, by1, bz1), P(bx0, by0, bz1)]
+        return (f"<g{extra}>" + poly(west, shade(fill, 0.72), sw) + poly(south, shade(fill, 0.86), sw)
+                + poly(t, fill, sw) + "</g>")
+
+    def seg(a, c, z, stroke=INK, sw=0.12, dash=None):
+        p, q = P(a[0], a[1], z), P(c[0], c[1], z)
+        return line(p[0], p[1], q[0], q[1], stroke, sw, dash)
+
+    def ghost(z, lift):
+        pts = [P(x0, y0, z + lift), P(x1, y0, z + lift), P(x1, y1, z + lift), P(x0, y1, z + lift)]
+        return poly(pts, "none", 0.25, GREY, ' stroke-dasharray="2 1.2"')
+
+    def far_first(items):
+        return sorted(items, key=lambda r: -((r[0] + r[3]) / 2 + (r[1] + r[4]) / 2))
+
+    o = []
+    # explosion lines at the three corners the eye can see
+    names = list(AXO_LIFT)
+    zr = {"support-floor": (0.0, fl["support floor"]["z1"]), "waffle-slab": (fl["waffle slab"]["z0"], fl["waffle slab"]["z1"]),
+          "clean-floor": (fl["raised floor"]["z0"], S["rail_z"]),
+          "filter-ceiling": (fl["cleanroom"]["z1"], fl["cleanroom"]["z1"] + bmodel.FILTER), "roof": (fl["roof"]["z0"], fl["roof"]["z1"])}
+    for lo, hi in zip(names, names[1:]):
+        for cx, cy in ((x0, y0), (x1, y0), (x0, y1)):
+            p = P(cx, cy, zr[lo][1] + AXO_LIFT[lo])
+            q = P(cx, cy, zr[hi][0] + AXO_LIFT[hi])
+            o.append(line(p[0], p[1], q[0], q[1], GREY, 0.15, "1.2 1.2"))
+
+    # 1. support floor: the slab on grade and the columns
+    L = AXO_LIFT["support-floor"]
+    o.append('<g data-axo-layer="support-floor">')
+    o.append(poly([P(x0, y0, L), P(x1, y0, L), P(x1, y1, L), P(x0, y1, L)], "#eceae4", 0.3))
+    h = bmodel.COLUMN / 2
+    xs, ys = grid_lines(S)
+    cols = []
+    for x in xs:
+        if x0 - 1e-6 <= x <= x1 + 1e-6:
+            cx = min(max(x, x0 + h), x1 - h)
+            for y in ys:
+                cols.append((cx - h, y - h, L, cx + h, y + h, L + fl["support floor"]["z1"]))
+    for c in far_first(cols):
+        o.append(box(*c, "#b9b4aa", 0.08))
+    o.append("</g>")
+
+    # 2. waffle slab with the column grid on its top
+    L = AXO_LIFT["waffle-slab"]
+    ws = fl["waffle slab"]
+    o.append('<g data-axo-layer="waffle-slab">')
+    o.append(box(x0, y0, ws["z0"] + L, x1, y1, ws["z1"] + L, "#d9d6cf", 0.3))
+    zt = ws["z1"] + L
+    k = 0
+    while x0 + k * 3.0 <= x1:
+        x = x0 + k * 3.0
+        o.append(seg((x, y0), (x, y1), zt, "#a8a39a" if k % 4 else "#7d786f", 0.06 if k % 4 else 0.12))
+        k += 1
+    k = 0
+    while y0 + k * 3.0 <= y1:
+        y = y0 + k * 3.0
+        o.append(seg((x0, y), (x1, y), zt, "#a8a39a", 0.06))
+        k += 1
+    o.append("</g>")
+
+    # 3. clean floor: raised floor, bays, spine, tools, stockers, hoist rails
+    L = AXO_LIFT["clean-floor"]
+    rf = fl["raised floor"]
+    zc = S["clean_z"] + L
+    o.append('<g data-axo-layer="clean-floor">')
+    o.append(box(x0, y0, rf["z0"] + L, x1, y1, rf["z1"] + L, "#eef1f4", 0.3))
+    for bay in S["bays"]:
+        if bay["phase"] != 0:
+            continue
+        pts = [P(bay["x0"], bay["y0"], zc), P(bay["x1"], bay["y0"], zc), P(bay["x1"], bay["y1"], zc), P(bay["x0"], bay["y1"], zc)]
+        o.append(poly(pts, lighten(S["areas"][bay["area"]]["colour"], 0.82), 0.1))
+    sp = S["spine"] / 2
+    o.append(poly([P(x0, -sp, zc), P(x1, -sp, zc), P(x1, sp, zc), P(x0, sp, zc)], "#dde3ea", 0.15))
+    items = []
+    for i, t in enumerate(S["tools"]):
+        if phase_of_x(S, t["x0"]) == 0:
+            items.append((t["x0"], t["y0"], zc, t["x1"], t["y1"], zc + t["h"], KIND_FILL[t["kind"]], f' data-axo-tool="{i}"'))
+    hs = S["kinds"]["stocker"]["h"]
+    for i, st in enumerate(S["stockers"]):
+        if phase_of_x(S, st["x0"]) == 0:
+            items.append((st["x0"], st["y0"], zc, st["x1"], st["y1"], zc + hs, KIND_FILL["stocker"], f' data-axo-stocker="{i}"'))
+    for it in far_first(items):
+        o.append(box(*it[:6], it[6], 0.06, it[7]))
+    for a, c in S["rails"]:
+        if phase_of_x(S, min(a[0], c[0])) != 0:
+            continue
+        ax_, cx_ = min(max(a[0], x0), x1), min(max(c[0], x0), x1)
+        o.append(seg((ax_, a[1]), (cx_, c[1]), S["rail_z"] + L, "#2f6db5", 0.16))
+    o.append("</g>")
+
+    # 4. filter ceiling: solid at the west end, a ghost outline beyond
+    L = AXO_LIFT["filter-ceiling"]
+    z0f = fl["cleanroom"]["z1"]
+    o.append('<g data-axo-layer="filter-ceiling">')
+    o.append(ghost(z0f + bmodel.FILTER, L))
+    xe = x0 + CUT_BACK
+    o.append(box(x0, y0, z0f + L, xe, y1, z0f + bmodel.FILTER + L, "#f7f8fa", 0.25))
+    zt = z0f + bmodel.FILTER + L
+    k = 1
+    while x0 + k * 2.4 < xe - 1e-6:
+        o.append(seg((x0 + k * 2.4, y0), (x0 + k * 2.4, y1), zt, "#b8c0ca", 0.05))
+        k += 1
+    k = 1
+    while y0 + k * 2.4 < y1 - 1e-6:
+        o.append(seg((x0, y0 + k * 2.4), (xe, y0 + k * 2.4), zt, "#b8c0ca", 0.05))
+        k += 1
+    o.append("</g>")
+
+    # 5. roof: solid at the west end, a ghost outline beyond
+    L = AXO_LIFT["roof"]
+    rr = fl["roof"]
+    o.append('<g data-axo-layer="roof">')
+    o.append(ghost(rr["z1"], L))
+    o.append(box(x0, y0, rr["z0"] + L, xe, y1, rr["z1"] + L, "#cfd3d8", 0.3))
+    o.append("</g>")
+
+    # labels at each layer's south-east corner
+    lx = ox + (x1 - y0) * C30 * s + 14
+    cnt = sum(1 for t in S["tools"] if phase_of_x(S, t["x0"]) == 0)
+    nst = sum(1 for st in S["stockers"] if phase_of_x(S, st["x0"]) == 0)
+    nbays = sum(1 for bay in S["bays"] if bay["phase"] == 0)
+    rows = {
+        "roof": ("Roof", f"{PR.level(rr['z0'])} to {PR.level(rr['z1'])}, {PR.distu(rr['z1'] - rr['z0'])} deep",
+                 f"drawn solid for the west {PR.distu(CUT_BACK)}; roof plant not drawn"),
+        "filter-ceiling": ("Filter ceiling", f"{PR.level(z0f)}, fan filter units, {PR.distu(bmodel.FILTER, 2)} deep (assumed)",
+                           f"drawn solid for the west {PR.distu(CUT_BACK)}; air space above not drawn"),
+        "clean-floor": ("Clean floor", f"raised floor at {PR.level(S['clean_z'])}: {nbays} bays, {cnt} tools, {nst} stockers",
+                        f"hoist rails (blue) at {PR.level(S['rail_z'])}; cleanroom {PR.distu(fl['cleanroom']['z1'] - fl['cleanroom']['z0'])} high"),
+        "waffle-slab": ("Waffle slab", f"{PR.level(ws['z0'])} to {PR.level(ws['z1'])}, {PR.distu(ws['z1'] - ws['z0'])} deep",
+                        f"lines every {PR.distu(3.0)}; column grid {PR.distu(GRID)} darker"),
+        "support-floor": ("Support floor", f"{PR.level(0)} to {PR.level(fl['support floor']['z1'])}, columns {PR.size(bmodel.COLUMN, bmodel.COLUMN)}",
+                          f"on the {PR.distu(GRID)} grid (assumed); sub-fab equipment not drawn"),
+    }
+    for key, (name, l1, l2) in rows.items():
+        cx, cy = P(x1, y0, zr[key][1] + AXO_LIFT[key])
+        o.append(line(cx + 1, cy, lx - 2, cy, INK, 0.15))
+        o.append(f'<circle cx="{f(cx)}" cy="{f(cy)}" r="0.7" fill="{INK}"/>')
+        o.append(text(lx, cy - 1.8, name, 3.6, weight="bold"))
+        o.append(text(lx, cy + 2.6, l1, 2.6))
+        o.append(text(lx, cy + 6.2, l2, 2.6, fill=GREY))
+
+    # legend of tool kinds
+    counts = {}
+    for t in S["tools"]:
+        if phase_of_x(S, t["x0"]) == 0:
+            counts[t["kind"]] = counts.get(t["kind"], 0) + 1
+    gy = AY1 - 30 - 5 * (len(KIND_FILL) + 1)
+    o.append(text(lx, gy, "TOOL KINDS ON THE CLEAN FLOOR (PHASE 1)", 2.8, weight="bold"))
+    for j, kd in enumerate(KIND_FILL):
+        yy = gy + 5 + j * 4.6
+        o.append(rect(lx, yy - 2.6, 5, 3, INK, 0.1, KIND_FILL[kd]))
+        n = counts.get(kd, nst if kd == "stocker" else 0)
+        o.append(text(lx + 7, yy, f"{KIND_NAME[kd]}: {n}", 2.4))
+    o.append(north(lx + 120, gy - 4, -60))
+    o.append(scalebar(AX1 - 170, AY1 - 12, sid))
+    o.append(text(AX0 + 4, AY0 + 6, "EXPLODED AXONOMETRIC: PHASE 1, SEEN FROM THE SOUTH-WEST", 4, weight="bold"))
+    notes = ["Isometric drawing: lengths along the three axes are at the scale shown. The five layers are pulled apart to show",
+             "what each holds; the gaps between them are not to scale. Every tool is a generic box at its kind's size (A-900)."]
+    for i, n in enumerate(notes):
+        o.append(text(AX0 + 4, AY0 + 12 + i * 4.2, n, 2.6, fill=GREY))
     return "".join(o)
 
 
@@ -775,53 +951,65 @@ def brief_blocks(S, L, sha):
                    "of its lots. Within a phase, areas are packed into bays on both sides of a central spine, and an optimiser "
                    f"orders the bays to cut hoist travel: {f(L['plans']['optimised']['metres_per_day'] / 1000, 0)} km a day "
                    f"against {f(L['plans']['plain']['metres_per_day'] / 1000, 0)} km for a plain alphabetical plan. A hoist move "
-                   f"takes {f(A['overhead_min'])} min plus the distance at {f(A['speed_m_per_min'])} m/min, give or take "
+                   f"takes {f(A['overhead_min'])} min plus the distance at {PR.speed(A['speed_m_per_min'])}, give or take "
                    f"{f(A['jitter_min'])} min (assumed)."))
     B.append(("h2", "Numbers to check: the layout"))
+    br = [c for c in S["campus"] if c["kind"] == "bridge"][0]
+    b0, b1 = building(S, 0), building(S, 1)
     rows = [
-        ("bay depth", f"{f(A['bay_depth'])} m from the spine's edge", "assumed"),
-        ("bay aisle", f"{f(A['bay_aisle'])} m between the two rows of tools", "assumed"),
-        ("chase", f"{f(A['chase'])} m service chase behind each row", "assumed"),
-        ("spine", f"{f(A['spine'])} m wide, interbay rails and stockers", "assumed"),
-        ("bridge", f"{f(A['bridge'])} m between the phases' spines; bridge building "
-                   f"{f([c for c in S['campus'] if c['kind'] == 'bridge'][0]['x1'] - [c for c in S['campus'] if c['kind'] == 'bridge'][0]['x0'], 1)} m long at +8.70", "assumed"),
-        ("balance", f"the two sides of a spine within {f(A['balance'])} m of each other in length", "assumed"),
-        ("bay width", "2 x (deepest tool + chase) + aisle; 17.5 m in most bays", "follows from the above"),
-        ("column grid", f"{f(GRID)} x {f(GRID)} m in the support floor; the spine and aisles avoid columns", "assumed"),
-        ("building", f"phase 1 {f(building(S, 0)['x1'] - building(S, 0)['x0'], 1)} x {f(building(S, 0)['y1'] - building(S, 0)['y0'], 1)} m, "
-                     f"phase 2 {f(building(S, 1)['x1'] - building(S, 1)['x0'], 1)} x {f(building(S, 1)['y1'] - building(S, 1)['y0'], 1)} m", "follows from the above"),
+        ("bay depth", f"{PR.distu(A['bay_depth'], 2)} from the spine's edge", "assumed"),
+        ("bay aisle", f"{PR.distu(A['bay_aisle'], 2)} between the two rows of tools", "assumed"),
+        ("chase", f"{PR.distu(A['chase'], 2)} service chase behind each row", "assumed"),
+        ("spine", f"{PR.distu(A['spine'], 2)} wide, interbay rails and stockers", "assumed"),
+        ("bridge", f"{PR.distu(A['bridge'], 2)} between the phases' spines; bridge building "
+                   f"{PR.distu(br['x1'] - br['x0'])} long at {PR.level(br['z0'])}", "assumed"),
+        ("balance", f"the two sides of a spine within {PR.distu(A['balance'], 2)} of each other in length", "assumed"),
+        ("bay width", f"2 x (deepest tool + chase) + aisle; {PR.distu(17.5)} in most bays", "follows from the above"),
+        ("column grid", f"{PR.size(GRID, GRID)} in the support floor; the spine and aisles avoid columns", "assumed"),
+        ("building", f"phase 1 {PR.size(b0['x1'] - b0['x0'], b0['y1'] - b0['y0'], nd=1)}, "
+                     f"phase 2 {PR.size(b1['x1'] - b1['x0'], b1['y1'] - b1['y0'], nd=1)}", "follows from the above"),
+        ("walls", f"{PR.distu(bmodel.WALL, 2)} thick, in the IFC model only", "assumed"),
     ]
     B.append(("table", rows))
     B.append(("h2", "Numbers to check: the levels (A-301)"))
-    rows = [(fl["name"], f"+{fl['z0']:.2f} to +{fl['z1']:.2f}, {f(fl['z1'] - fl['z0'], 1)} m", "assumed") for fl in S["floors"]]
-    rows += [("hoist rail underside", f"+{S['rail_z']:.2f}, 4.2 m above the raised floor", "assumed"),
-             ("load port carrier seat", "0.9 m above the raised floor", "assumed"),
-             ("roof plant", f"{f(PLANT_H, 1)} m on the roof", "assumed")]
+    rows = [(fl["name"], f"{PR.level(fl['z0'])} to {PR.level(fl['z1'])}, {PR.distu(fl['z1'] - fl['z0'])}", "assumed") for fl in S["floors"]]
+    rows += [("hoist rail underside", f"{PR.level(S['rail_z'])}, {PR.distu(S['rail_z'] - S['clean_z'])} above the raised floor", "assumed"),
+             ("load port carrier seat", f"{PR.distu(0.9)} above the raised floor", "assumed"),
+             ("roof plant", f"{PR.distu(PLANT_H)} on the roof", "assumed")]
     B.append(("table", rows))
     B.append(("break", None))
-    B.append(("h2", "Numbers to check: tools by kind (W x D x H, metres)"))
+    B.append(("h2", f"Numbers to check: tools by kind (W x D x H, {PR.unit_words})"))
     rows = []
     for kd, v in A["kinds"].items():
         K = S["kinds"][kd]
-        rows.append((kd.replace("_", " "), f"{f(K['w'])} x {f(K['d'])} x {f(K['h'])}", CITED.get(kd, "assumed")))
+        rows.append((kd.replace("_", " "), PR.size(K["w"], K["d"], K["h"]), CITED.get(kd, "assumed")))
     B.append(("table", rows))
     B.append(("h2", "Cited items"))
     B.append(("table", OTHER_CITED))
+    B.append(("h2", "Building codes"))
+    B.append(("p", f"Profile: {PR.name}. No building code has been read for this set, so none of these has been checked "
+                   "and the drawings change nothing for them. Each sets the item named."))
+    B.append(("table", [(c["topic"], c["sets"], c["status"]) for c in PR.codes]))
     B.append(("break", None))
     B.append(("h2", "Questions for the architect"))
+    d = PR.distu
+    fl = {x["name"]: x for x in S["floors"]}
+    th = {n: fl[n]["z1"] - fl[n]["z0"] for n in fl}
+    sk = S["kinds"]["stocker"]
     qs = [
-        "Is a 5.5 m cleanroom, raised floor to filter ceiling, enough for scanners about 2.9 m tall with hoist rails 4.2 m above the floor?",
-        "Is a 6.0 m support floor (sub-fab) enough for pumps, abatement and chemical distribution under the tools?",
-        "Does a 0.9 m waffle slab on a 12 m column grid meet vibration criteria for lithography, or should the grid or slab change?",
-        "Do 60 m deep bays with a 3.5 m aisle and 1.5 m chases work for service access, return air and egress?",
-        "Is an 8 m spine wide enough for two interbay rails, stockers 3 x 12 x 5 m and people moving?",
-        "Is 4.0 m of air space above the filters and a 1.5 m roof with 4.0 m plant reasonable for this floor area?",
-        "Phase 1 is about 251 x 140 m with no exits, stairs or fire walls drawn: how would it be compartmented, and where must exits go?",
-        "Can a hoist bridge 48 m long at +8.70 join two cleanroom buildings, and what separation does it need?",
-        "Is the site plan sensible: utility building to the south with a 30 m link, ultrapure water beside it, gas yard and tanks to the north near the office?",
+        f"Is a {d(th['cleanroom'])} cleanroom, raised floor to filter ceiling, enough for scanners about {d(S['kinds']['scanner']['h'])} tall with hoist rails {d(S['rail_z'] - S['clean_z'])} above the floor?",
+        f"Is a {d(th['support floor'])} support floor (sub-fab) enough for pumps, abatement and chemical distribution under the tools?",
+        f"Does a {d(th['waffle slab'])} waffle slab on a {d(GRID)} column grid meet vibration criteria for lithography, or should the grid or slab change?",
+        f"Do {d(S['depth'])} deep bays with a {d(A['bay_aisle'])} aisle and {d(A['chase'])} chases work for service access, return air and egress?",
+        f"Is a {d(S['spine'])} spine wide enough for two interbay rails, stockers {PR.size(sk['w'], sk['d'], sk['h'])} and people moving?",
+        f"Is {d(th['air space'])} of air space above the filters and a {d(th['roof'])} roof with {d(PLANT_H)} plant reasonable for this floor area?",
+        f"Phase 1 is about {PR.size(b0['x1'] - b0['x0'], b0['y1'] - b0['y0'], nd=0)} with no exits, stairs or fire walls drawn: how would it be compartmented, and where must exits go?",
+        f"Can a hoist bridge {d(br['x1'] - br['x0'], 0)} long at {PR.level(br['z0'])} join two cleanroom buildings, and what separation does it need?",
+        "Is the site plan sensible: utility building to the south with a link, ultrapure water beside it, gas yard and tanks to the north near the office?",
         "Which of our numbers would you change first, and by about how much?",
-        "Which drawings or formats would you want from us next (more sections, sub-fab plan, IFC model)?",
+        "Which drawings or formats would you want from us next (more sections, sub-fab plan, more detail in the IFC model)?",
         "Would the lithography bays need separating from the others for their yellow light, vibration or temperature?",
+        "Which building codes on this list would change the layout most here, and which are missing?",
     ]
     B.append(("ol", qs))
     B.append(("h2", "Not drawn"))
@@ -853,9 +1041,10 @@ def brief_md(blocks):
 
 
 def brief_sheet(blocks):
-    cols = [AX0 + 2, AX0 + 2 + 265, AX0 + 2 + 530]
-    cw = 250.0
-    size = 3.4
+    step = (AX1 - AX0) / 3.0
+    cols = [AX0 + 2, AX0 + 2 + step, AX0 + 2 + 2 * step]
+    cw = step - 15.0
+    size = 3.4 if not PR.imperial else 3.9
     lh = size * 1.5
     chars = int(cw / (size * 0.52))
     ci, y = 0, AY0 + 4
@@ -918,26 +1107,36 @@ def cover_sheet(S, L):
          text(AX0 + 20, AY0 + 76, TRUTH, 4.5, fill=GREY)]
     y = AY0 + 100
     o.append(text(AX0 + 20, y, "DRAWING LIST", 3.6, weight="bold"))
-    for sid, title, scale in SHEETS:
+    for sid, title in sheets(S):
         y += 8
         o.append(text(AX0 + 20, y, sid, 3.4, weight="bold"))
         o.append(text(AX0 + 45, y, title, 3.4))
-        o.append(text(AX0 + 230, y, f"1:{scale}" if scale else "-", 3.4))
+        o.append(text(AX0 + 230, y, PR.scale_label(sid) if sid in PR.scales else "-", 3.4))
     y += 18
     o.append(text(AX0 + 20, y, "GENERAL NOTES", 3.6, weight="bold"))
     notes = [
-        "Units are metres. Levels are above the support floor's slab, +0.00; the clean floor is at +7.50.",
+        f"Units are {PR.unit_words}. Levels are above the support floor's slab, {PR.level(0)}; the clean floor is at {PR.level(S['clean_z'])}.",
         "Plan origin: the west end of phase 1's spine, on its centre line; x east, y north.",
         "The layout is our own design, made by an optimiser over the SMT2020 model's tool groups and lot flows. It is not a real fab.",
         "Tools are generic boxes at the size of their kind (A-900), not any maker's equipment.",
         "Every placement number is assumed unless A-900 cites a source. The site outside the two fab buildings is drawn only.",
         "Not drawn: exits, stairs, fire walls, gowning, sub-fab equipment, utility routes. A-900 asks about them.",
-        "A DXF of the plans in metres comes with this set (fab-plan.dxf), with layers for grid, walls, spine, bays, tools, stockers,",
-        "hoist rails, labels and site.",
+        f"A DXF of the plans in {PR.dxf_unit} (fab-plan.dxf) and an IFC4 model in metres (fab-model.ifc) come with this set;",
+        "the DXF has layers for grid, walls, spine, bays, tools, stockers, hoist rails, labels and site.",
+        f"Country profile: {PR.name}. It sets paper, units and scales only; the building is the same in every profile.",
     ]
     for i, n in enumerate(notes):
         y += 6.5
-        o.append(text(AX0 + 20, y, (f"{i + 1}. " if not n.startswith("hoist") else "    ") + n, 3.0))
+        o.append(text(AX0 + 20, y, (f"{i + 1}. " if not n.startswith("the DXF") else "    ") + n, 3.0))
+    y += 16
+    o.append(text(AX0 + 20, y, "BUILDING CODES: NOT CHECKED", 3.6, weight="bold", fill=RED))
+    y += 6.5
+    o.append(text(AX0 + 20, y, "No building code has been read for this set. Each topic below is not checked; an architect "
+                               "or code consultant settles them.", 3.0))
+    for c in PR.codes:
+        y += 6.5
+        o.append(text(AX0 + 24, y, f"{c['topic']}: {c['status']}", 3.0, weight="bold"))
+        o.append(text(AX0 + 120, y, f"sets {c['sets']}", 3.0, fill=GREY))
     # key plan
     M = Map(2500, -10, 80, AX0 + 470, AY0 + 115)
     o.append(text(AX0 + 470, AY0 + 105, "KEY PLAN", 3.6, weight="bold"))
@@ -963,11 +1162,14 @@ class Dxf:
     LAYERS = [("A-GRID", 8), ("A-WALL", 7), ("A-SPINE", 9), ("A-BAY", 3), ("A-EQPM", 4), ("A-STKR", 6),
               ("A-OHT", 5), ("A-ANNO", 2), ("A-SITE", 8)]
 
-    def __init__(self):
+    def __init__(self, unit_m=1.0, insunits=6):
         self.ents = []
         self.xs, self.ys = [], []
+        self.k = 1.0 / unit_m          # metres to drawing units
+        self.insunits = insunits
 
     def _pt(self, x, y):
+        x, y = x * self.k, y * self.k
         self.xs.append(x)
         self.ys.append(y)
         return f"10\n{x:.3f}\n20\n{y:.3f}\n30\n0.0\n"
@@ -984,6 +1186,7 @@ class Dxf:
 
     def line(self, layer, x1, y1, x2, y2):
         s = f"0\nLINE\n8\n{layer}\n" + self._pt(x1, y1)
+        x2, y2 = x2 * self.k, y2 * self.k
         self.xs.append(x2)
         self.ys.append(y2)
         s += f"11\n{x2:.3f}\n21\n{y2:.3f}\n31\n0.0\n"
@@ -991,13 +1194,13 @@ class Dxf:
 
     def text(self, layer, x, y, h, s, rot=0.0):
         s = s.replace("\n", " ")
-        e = f"0\nTEXT\n8\n{layer}\n" + self._pt(x, y) + f"40\n{h:.3f}\n1\n{s}\n"
+        e = f"0\nTEXT\n8\n{layer}\n" + self._pt(x, y) + f"40\n{h * self.k:.3f}\n1\n{s}\n"
         if rot:
             e += f"50\n{rot:.1f}\n"
         self.ents.append(e)
 
     def dump(self):
-        o = ["0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n9\n$INSUNITS\n70\n6\n",
+        o = [f"0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n9\n$INSUNITS\n70\n{self.insunits}\n",
              f"9\n$EXTMIN\n10\n{min(self.xs):.3f}\n20\n{min(self.ys):.3f}\n30\n0.0\n",
              f"9\n$EXTMAX\n10\n{max(self.xs):.3f}\n20\n{max(self.ys):.3f}\n30\n0.0\n0\nENDSEC\n",
              "0\nSECTION\n2\nTABLES\n",
@@ -1012,7 +1215,7 @@ class Dxf:
 
 
 def dxf(S):
-    D = Dxf()
+    D = Dxf(PR.dxf_unit_m, PR.insunits)
     xs, ys = grid_lines(S)
     for p in (0, 1):
         b = building(S, p)
@@ -1040,13 +1243,14 @@ def dxf(S):
         D.box("A-SITE", c["x0"], c["y0"], c["x1"], c["y1"])
         if c["label"]:
             D.text("A-SITE", c["x0"] + 1, (c["y0"] + c["y1"]) / 2, 2.5, c["label"])
-    D.text("A-ANNO", 0, -80, 3.0, "Fab Gym campus. " + TRUTH + " Units metres. NOT FOR CONSTRUCTION.")
+    D.text("A-ANNO", 0, -80, 3.0, "Fab Gym campus. " + TRUTH + f" Units {PR.dxf_unit}. NOT FOR CONSTRUCTION.")
     return D.dump()
 
 
 # ------------------------------------------------------------------ main
 
-def build(scene, layout, out, pdf=True):
+def build(scene, layout, out, pdf=True, place="intl"):
+    use(profiles.load(place))
     S = json.loads(Path(scene).read_text())
     L = json.loads(Path(layout).read_text())
     sha = hashlib.sha256(Path(layout).read_bytes()).hexdigest()[:12]
@@ -1060,17 +1264,18 @@ def build(scene, layout, out, pdf=True):
         "A-102": plan_sheet(S, 1),
         "A-110": bay_sheet(S),
         "A-301": section_sheet(S),
+        "A-500": axo_sheet(S),
         "A-900": brief_sheet(blocks),
     }
     svgs = []
-    for sid, title, scale in SHEETS:
-        svg = sheet(sid, title, scale, bodies[sid], sha)
+    for sid, title in sheets(S):
+        svg = sheet(sid, title, bodies[sid], sha)
         (out / "sheets" / f"{sid}.svg").write_text(svg)
         svgs.append((sid, svg))
     html = ["<!doctype html><html><head><meta charset=\"utf-8\"><title>Fab Gym campus: drawing set</title><style>",
-            "@page{size:841mm 594mm;margin:0}html,body{margin:0;padding:0;background:#fff}",
-            ".s{width:841mm;height:594mm;break-after:page;page-break-after:always;overflow:hidden}",
-            ".s:last-child{break-after:auto;page-break-after:auto}.s svg{display:block;width:841mm;height:594mm}",
+            f"@page{{size:{f(W)}mm {f(H)}mm;margin:0}}html,body{{margin:0;padding:0;background:#fff}}",
+            f".s{{width:{f(W)}mm;height:{f(H)}mm;break-after:page;page-break-after:always;overflow:hidden}}",
+            f".s:last-child{{break-after:auto;page-break-after:auto}}.s svg{{display:block;width:{f(W)}mm;height:{f(H)}mm}}",
             "</style></head><body>"]
     for sid, svg in svgs:
         html.append(f'<section class="s" data-sheet="{sid}">{svg}</section>')
@@ -1078,7 +1283,8 @@ def build(scene, layout, out, pdf=True):
     (out / "fab-blueprint.html").write_text("".join(html))
     (out / "brief.md").write_text(brief_md(blocks))
     (out / "fab-plan.dxf").write_text(dxf(S))
-    msg = [f"wrote {out}: {len(SHEETS)} sheets, fab-blueprint.html, fab-plan.dxf, brief.md"]
+    (out / "fab-model.ifc").write_text(ifc.write(bmodel.build(S)))
+    msg = [f"wrote {out} ({PR.id}): {len(SHEET_IDS)} sheets, fab-blueprint.html, fab-plan.dxf, fab-model.ifc, brief.md"]
     if pdf:
         if CHROME.exists():
             pdf_path = (out / "fab-blueprint.pdf").resolve()
@@ -1095,10 +1301,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scene", default=str(ROOT / "data/layout-real/scene-optimised.json"))
     ap.add_argument("--layout", default=str(ROOT / "results/layout-real/layout.json"))
-    ap.add_argument("--out", default=str(ROOT / "data/layout-real/blueprint"))
+    ap.add_argument("--out", default=None, help="default data/layout-real/blueprint/<place>")
+    ap.add_argument("--place", default="intl", choices=profiles.ids())
     ap.add_argument("--no-pdf", action="store_true")
     a = ap.parse_args()
-    print(build(a.scene, a.layout, a.out, pdf=not a.no_pdf))
+    out = a.out or str(ROOT / "data/layout-real/blueprint" / a.place)
+    print(build(a.scene, a.layout, out, pdf=not a.no_pdf, place=a.place))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,103 @@
+{
+ "id": "us",
+ "name": "United States: feet and inches, ARCH E1",
+ "paper": {
+  "name": "ARCH E1",
+  "w_mm": 1066.8,
+  "h_mm": 762
+ },
+ "units": "feet-inches",
+ "scales": {
+  "A-100": {
+   "ratio": 2400,
+   "label": "1\" = 200'-0\""
+  },
+  "A-101": {
+   "ratio": 384,
+   "label": "1/32\" = 1'-0\""
+  },
+  "A-102": {
+   "ratio": 384,
+   "label": "1/32\" = 1'-0\""
+  },
+  "A-110": {
+   "ratio": 96,
+   "label": "1/8\" = 1'-0\""
+  },
+  "A-301": {
+   "ratio": 192,
+   "label": "1/16\" = 1'-0\""
+  },
+  "A-301-detail": {
+   "ratio": 96,
+   "label": "1/8\" = 1'-0\""
+  },
+  "A-500": {
+   "ratio": 768,
+   "label": "1/64\" = 1'-0\""
+  }
+ },
+ "scalebars": {
+  "A-100": [
+   800,
+   200
+  ],
+  "A-101": [
+   200,
+   50
+  ],
+  "A-102": [
+   200,
+   50
+  ],
+  "A-110": [
+   40,
+   10
+  ],
+  "A-301": [
+   80,
+   20
+  ],
+  "A-500": [
+   400,
+   100
+  ]
+ },
+ "dxf": {
+  "unit_m": 0.0254,
+  "insunits": 1,
+  "unit": "inches"
+ },
+ "codes": [
+  {
+   "topic": "seismic design",
+   "sets": "column grid, slab and bracing; how stiff the clean floor must be",
+   "status": "not checked"
+  },
+  {
+   "topic": "fire and hazardous-materials occupancy",
+   "sets": "how the building is classed, its fire walls and compartments",
+   "status": "not checked"
+  },
+  {
+   "topic": "exits and egress",
+   "sets": "where exits and stairs go and how far anyone may walk to one",
+   "status": "not checked"
+  },
+  {
+   "topic": "hazardous gas storage",
+   "sets": "where the gas yard, tanks and gas rooms may stand and their separations",
+   "status": "not checked"
+  },
+  {
+   "topic": "cleanroom classification and air",
+   "sets": "air changes, filter cover and how air returns",
+   "status": "not checked"
+  },
+  {
+   "topic": "accessibility",
+   "sets": "access to offices, gowning and support areas",
+   "status": "not checked"
+  }
+ ]
+}
