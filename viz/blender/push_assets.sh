@@ -19,5 +19,6 @@ cp "$K/Textures/colormap.png" "$S/cars/Textures/"
 Q="$A/quaternius/universal-base-characters-standard/Universal Base Characters[Standard]/Base Characters/Godot - UE"
 for p in Superhero_Male_FullBody Superhero_Female_FullBody; do cp "$Q/$p.gltf" "$Q/$p.bin" "$S/people/"; done
 cp "$A/quaternius/universal-animation-library-standard/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb" "$S/people/ual.glb"
+cp "$A/polypizza-hazmat/character-hazmat.glb" "$S/people/hazmat.glb"
 du -sh "$S"
 if [ -n "$1" ]; then rsync -a --delete "$S/" "$1/"; fi

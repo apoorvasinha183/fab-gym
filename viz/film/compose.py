@@ -252,7 +252,8 @@ def end_card(img, d, s, W, H):
     for i, line in enumerate(wrap(d, F["captions"]["end"][0].replace("Fab Gym. ", ""), F_END2, W * 0.7)):
         text(d, ((W - d.textlength(line, font=F_END2)) / 2, H * 0.36 + 96 + i * 44), line, F_END2, a, (210, 218, 228))
     small = ["SMT2020 high-volume testbed: Kopp, Hassoun, Kalir and Mönch, 2020.",
-             "Buildings, tools, carriers and materials are generic shapes of our own design; the sky is Blender's.",
+             "Buildings, tools and carriers are generic shapes of our own design.",
+             "Sky: Poly Haven. Ground textures: ambientCG. Cars: Kenney. People: Quaternius. All CC0.",
              "Tool sizes, floors and the campus are cited or assumed in docs/FAB-LOOK.md."]
     for i, line in enumerate(small):
         text(d, ((W - d.textlength(line, font=F_SMALL)) / 2, H * 0.72 + i * 34), line, F_SMALL, a, (160, 170, 182))

@@ -5,11 +5,19 @@ run (viz/look/scene.py), the lot, the captions and the clock from viz/film/film.
 
     Blender -b -P viz/blender/real.py -- SCENE MODELS FILM OUT [--still S1,S2 | --frames A:B]
                                           [--res 1920x1080] [--samples 16] [--nosave]
+                                          [--assets DIR] [--report OUT.json]
 
 SCENE, MODELS and FILM are data/layout-real/{scene-optimised,models,film}.json. Writes
 OUT/fab.blend, OUT/frames/f0001.jpg ... (or OUT/still-S.png for film second S), and
 OUT/overlay.json: per frame, where the labels sit on screen, for viz/film/compose.py.
 Everything outside the cleanroom is drawn only, at assumed places and sizes.
+
+With --assets (viz/blender/push_assets.sh stages it), the camera sees a cloud sky, the ground
+takes four photo textures and the box cars become low-poly cars, all CC0 (docs/ASSETS.md); the
+keyed dawn sun still lights the scene. Workers in white cleanroom suits walk the bays' aisles.
+Workers and cars are drawn only: they are not in the model and no number comes from them.
+Without --assets every material falls back to the procedural one. --report writes where the
+workers and cars are, for viz/tests/test_assets.py, and renders nothing.
 """
 
 import json
@@ -34,6 +42,10 @@ RES = [int(v) for v in opt("--res", "1920x1080").split("x")]
 SAMPLES = int(opt("--samples", "16"))
 STILLS = [float(v) for v in opt("--still").split(",")] if opt("--still") else None
 FR = [int(v) for v in opt("--frames").split(":")] if opt("--frames") else None
+ASSETS = Path(opt("--assets")).expanduser() if opt("--assets") else None
+if ASSETS and not (ASSETS / "sky.hdr").exists():
+    raise SystemExit(f"no staged assets in {ASSETS}: run viz/blender/push_assets.sh")
+REPORT = Path(opt("--report")) if opt("--report") else None
 S = json.loads(SCENE.read_text())
 M = json.loads(MODELS.read_text())
 F = json.loads(FILM.read_text())
@@ -177,6 +189,43 @@ def set_sun(frame, elev_deg):
 for s_, el in ((0, 3.0), (22, 7.0), (115, 16.0), (END_S, 18.0)):
     set_sun(frame_of_s(s_), el)
 
+# the cloud sky (Poly Haven, CC0): what the camera sees; the lighting still comes from the keyed
+# sun and its sky. Turned so its sun stands on the film sun's bearing (found at u 0.5951, v 0.7659
+# of the 4K image: 48 degrees up, 145.8 degrees round), warm at dawn and neutral by shot 3.
+SKY_SEEN = None
+if ASSETS:
+    HDRI_SUN_AZ = math.radians(145.8)
+    tcw = wn.new("ShaderNodeTexCoord")
+    mp = wn.new("ShaderNodeMapping")
+    mp.inputs["Rotation"].default_value[2] = HDRI_SUN_AZ - SUN_AZ
+    env = wn.new("ShaderNodeTexEnvironment")
+    env.image = bpy.data.images.load(str(ASSETS / "sky.hdr"), check_existing=True)
+    world.node_tree.links.new(tcw.outputs["Generated"], mp.inputs["Vector"])
+    world.node_tree.links.new(mp.outputs[0], env.inputs["Vector"])
+    tint = wn.new("ShaderNodeMix")
+    tint.data_type = "RGBA"
+    tint.blend_type = "MULTIPLY"
+    tint.inputs[0].default_value = 1.0
+    world.node_tree.links.new(env.outputs["Color"], tint.inputs[6])
+    gain = wn.new("ShaderNodeMix")
+    gain.data_type = "RGBA"
+    gain.blend_type = "MULTIPLY"
+    gain.inputs[0].default_value = 1.0
+    SKY_GAIN = float(opt("--sky-gain", "2.5"))
+    gain.inputs[7].default_value = (SKY_GAIN, SKY_GAIN, SKY_GAIN, 1.0)
+    world.node_tree.links.new(tint.outputs[2], gain.inputs[6])
+    lp = wn.new("ShaderNodeLightPath")
+    seen = wn.new("ShaderNodeMix")
+    seen.data_type = "RGBA"
+    world.node_tree.links.new(lp.outputs["Is Camera Ray"], seen.inputs[0])
+    world.node_tree.links.new(sky.outputs[0], seen.inputs[6])
+    world.node_tree.links.new(gain.outputs[2], seen.inputs[7])
+    world.node_tree.links.new(seen.outputs[2], bg.inputs[0])
+    for s_, c in ((0, (1.0, 0.78, 0.62)), (12, (1.0, 0.9, 0.82)), (22, (1.0, 1.0, 1.0))):
+        tint.inputs[7].default_value = c + (1.0,)
+        tint.inputs[7].keyframe_insert("default_value", frame=frame_of_s(s_))
+    SKY_SEEN = {"image": "sky.hdr", "camera_only": True, "turn_deg": round(math.degrees(HDRI_SUN_AZ - SUN_AZ), 1), "gain": SKY_GAIN}
+
 # ------------------------------------------------------------------------- materials
 MATS = {}
 
@@ -287,6 +336,80 @@ def noisy(name, a, b, scale=0.08, rough=0.9, plane="xy", bump=0.0):
     nt.links.new(mix.outputs[2], bs.inputs["Base Color"])
     bs.inputs["Roughness"].default_value = rough
     MATS[name] = m
+    return m
+
+
+TEXTURES = []  # the photo textures in use, for the report
+
+
+def photo(name, key, size, plane="xy", var=("c8ccc4", "ffffff"), var_scale=0.01, bump=0.25, tint="ffffff", fallback=None):
+    """A photo texture (ambientCG, CC0) laid in world space, size metres a tile, its height map through
+    a bump (the meshes have no UVs), and a slow two-tone variation so the tiling does not show from the
+    air. Without --assets, the procedural fallback."""
+    if not ASSETS:
+        return fallback
+    if name in MATS:
+        return MATS[name]
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    bs = nt.nodes["Principled BSDF"]
+    uv = coords(nt, plane, 1.0 / size)
+
+    def img(suffix, colour):
+        n = nt.nodes.new("ShaderNodeTexImage")
+        n.image = bpy.data.images.load(str(ASSETS / "tex" / (key + suffix)), check_existing=True)
+        if not colour:
+            n.image.colorspace_settings.name = "Non-Color"
+        nt.links.new(uv, n.inputs["Vector"])
+        return n
+
+    col_, rough_, height_ = img("_color.jpg", True), img("_rough.jpg", False), img("_height.jpg", False)
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = var_scale
+    nz.inputs["Detail"].default_value = 3.0
+    nt.links.new(coords(nt, plane), nz.inputs["Vector"])
+    vmix = nt.nodes.new("ShaderNodeMix")
+    vmix.data_type = "RGBA"
+    vmix.inputs[6].default_value = rgba(var[0])
+    vmix.inputs[7].default_value = rgba(var[1])
+    nt.links.new(nz.outputs["Fac"], vmix.inputs[0])
+    mul = nt.nodes.new("ShaderNodeMix")
+    mul.data_type = "RGBA"
+    mul.blend_type = "MULTIPLY"
+    mul.inputs[0].default_value = 1.0
+    nt.links.new(col_.outputs["Color"], mul.inputs[6])
+    nt.links.new(vmix.outputs[2], mul.inputs[7])
+    tn = nt.nodes.new("ShaderNodeMix")
+    tn.data_type = "RGBA"
+    tn.blend_type = "MULTIPLY"
+    tn.inputs[0].default_value = 1.0
+    tn.inputs[7].default_value = rgba(tint)
+    nt.links.new(mul.outputs[2], tn.inputs[6])
+    nt.links.new(tn.outputs[2], bs.inputs["Base Color"])
+    nt.links.new(rough_.outputs["Color"], bs.inputs["Roughness"])
+    bp = nt.nodes.new("ShaderNodeBump")
+    bp.inputs["Strength"].default_value = bump
+    bp.inputs["Distance"].default_value = 0.02
+    nt.links.new(height_.outputs["Color"], bp.inputs["Height"])
+    nt.links.new(bp.outputs["Normal"], bs.inputs["Normal"])
+    MATS[name] = m
+    if key not in TEXTURES:
+        TEXTURES.append(key)
+    return m
+
+
+def asphalt_lines(m):
+    """Give a panel material (the car park's bays) the asphalt photo under its painted lines."""
+    if not ASSETS:
+        return m
+    nt = m.node_tree
+    br = [n for n in nt.nodes if n.bl_idname == "ShaderNodeTexBrick"][0]
+    n = nt.nodes.new("ShaderNodeTexImage")
+    n.image = bpy.data.images.load(str(ASSETS / "tex" / "asphalt_color.jpg"), check_existing=True)
+    nt.links.new(coords(nt, "xy", 1.0 / 4.0), n.inputs["Vector"])
+    nt.links.new(n.outputs["Color"], br.inputs["Color1"])
+    nt.links.new(n.outputs["Color"], br.inputs["Color2"])
     return m
 
 
@@ -507,9 +630,11 @@ M_LOUVRE_X = panels("louvre x", "xz", "6f7781", "3d434a", 6.0, 0.25, mortar=0.25
 M_LOUVRE_Y = panels("louvre y", "yz", "6f7781", "3d434a", 6.0, 0.25, mortar=0.25, rough=0.5, metal=0.3)
 M_BAND_X = panels("band x", "xz", "2f6fb4", "245a93", 3.0, 1.2, mortar=0.004, rough=0.3, metal=0.4)
 M_BAND_Y = panels("band y", "yz", "2f6fb4", "245a93", 3.0, 1.2, mortar=0.004, rough=0.3, metal=0.4)
-M_ROOF = noisy("roof", "8e949a", "7b8187", scale=0.3, rough=0.8)
-M_CONC = noisy("concrete", "a7a9a6", "93958f", scale=0.4, rough=0.85)
-M_SLAB = principled("slab", "9a9c98", rough=0.9)
+M_ROOF = photo("roof photo", "concrete", 5.0, var=("d9dcdf", "ffffff"), tint="e6e9ec", bump=0.15,
+               fallback=noisy("roof", "8e949a", "7b8187", scale=0.3, rough=0.8))
+M_CONC = photo("concrete photo", "concrete", 3.0, fallback=noisy("concrete", "a7a9a6", "93958f", scale=0.4, rough=0.85))
+M_SLAB = photo("slab photo", "concrete", 2.0, tint="c8c8c4", fallback=principled("slab", "9a9c98", rough=0.9))
+M_PLATE = photo("plate photo", "metal", 2.4, var=("e0e0e0", "ffffff"), bump=0.4, fallback=M_CONC)
 M_WAFFLE_Y = panels("waffle cut", "yz", "2a2c2e", "9a9c98", 0.6, 0.6, mortar=0.25, rough=0.9)
 M_PLENUM = principled("plenum", "3a3f45", rough=0.8)
 M_STEEL = principled("struct steel", "8a939c", metal=0.8, rough=0.4)
@@ -521,10 +646,11 @@ M_YELLOW = principled("safety yellow", "f2c230", rough=0.6)
 M_RAIL = principled("rail", "aeb7c2", metal=1.0, rough=0.3)
 M_HANGER = principled("hanger", "6b737c", metal=0.8, rough=0.4)
 M_SHELF = principled("shelf", "9ca6b1", metal=0.8, rough=0.35)
-M_GRASS = noisy("grass", "3f5f2a", "5b7a37", scale=0.02, rough=0.95)
-M_ASPHALT = noisy("asphalt", "2e3032", "3a3c3e", scale=0.5, rough=0.9)
+M_GRASS = photo("grass photo", "grass", 2.5, var=("a7b58c", "ffffff"), var_scale=0.004, bump=0.4, tint="a9c48a",
+                fallback=noisy("grass", "3f5f2a", "5b7a37", scale=0.02, rough=0.95))
+M_ASPHALT = photo("asphalt photo", "asphalt", 4.0, var=("d0d0d0", "ffffff"), fallback=noisy("asphalt", "2e3032", "3a3c3e", scale=0.5, rough=0.9))
 M_MARK = panels("road mark", "xy", "2e3032", "e8e8e2", 6.0, 3.0, mortar=0.0, rough=0.9)
-M_PARK = panels("parking", "xy", "34373a", "e8e8e2", 2.6, 5.2, mortar=0.02, rough=0.9)
+M_PARK = asphalt_lines(panels("parking", "xy", "34373a", "e8e8e2", 2.6, 5.2, mortar=0.02, rough=0.9))
 M_GLASS = principled("glass", "86a9c6", metal=0.6, rough=0.08, alpha=0.35)
 M_CURTAIN_X = panels("curtain x", "xz", "3b5a78", "c9d1d8", 1.5, 3.8, mortar=0.012, rough=0.08, metal=0.7)
 M_CURTAIN_Y = panels("curtain y", "yz", "3b5a78", "c9d1d8", 1.5, 3.8, mortar=0.012, rough=0.08, metal=0.7)
@@ -743,24 +869,115 @@ def car_parts(b, x, y, yaw, m):
                 b.cyl(M_TYRE, (px - 0.12, py - 0.33, 0.0), (px + 0.12, py + 0.33, 0.66), axis="x", n=10)
 
 
+CAR_KINDS = ("sedan", "suv", "hatchback-sports", "van", "taxi", "delivery")
+CAR_SCALE = (1.2, 1.75, 1.15)  # Kenney's cars are 1.5 by 2.6 m; a car is about 1.8 by 4.5 m
+
+
+def car_meshes():
+    """Each Kenney car (CC0) as one mesh, body and wheels together, scaled to size, nose toward -y."""
+    import bmesh
+    from mathutils import Matrix
+
+    out = {}
+    for kind in CAR_KINDS:
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=str(ASSETS / "cars" / f"{kind}.glb"))
+        new = [o for o in bpy.data.objects if o not in before]
+        bm = bmesh.new()
+        mats = []
+        sc = Matrix.Diagonal(CAR_SCALE + (1.0,))
+        for o in new:
+            if o.type != "MESH":
+                continue
+            me = o.data.copy()
+            me.transform(sc @ o.matrix_world)
+            base = len(mats)
+            for m in me.materials:
+                mats.append(m)
+            for poly in me.polygons:
+                poly.material_index += base
+            bm.from_mesh(me)
+            bpy.data.meshes.remove(me)
+        me = bpy.data.meshes.new("car " + kind)
+        bm.to_mesh(me)
+        bm.free()
+        for m in mats:
+            me.materials.append(m)
+        for o in new:
+            bpy.data.objects.remove(o)
+        out[kind] = me
+    for m in {m for me in out.values() for m in me.materials}:
+        nt = m.node_tree
+        bs = [n for n in nt.nodes if n.bl_idname == "ShaderNodeBsdfPrincipled"][0]
+        link = bs.inputs["Base Color"].links
+        if link:
+            hs = nt.nodes.new("ShaderNodeHueSaturation")
+            hs.inputs["Saturation"].default_value = 0.35  # cars in a car park are mostly white, grey and black
+            hs.inputs["Value"].default_value = 0.95
+            nt.links.new(link[0].from_socket, hs.inputs["Color"])
+            nt.links.new(hs.outputs["Color"], bs.inputs["Base Color"])
+        bs.inputs["Roughness"].default_value = 0.35
+    return out
+
+
 park = [c for c in S["campus"] if c["kind"] == "parking"][0]
-cb = Batch()
-for i in range(int((park["x1"] - park["x0"]) // 2.6)):
-    for j in range(int((park["y1"] - park["y0"]) // 5.2)):
-        if random.random() < 0.55:
-            car_parts(cb, park["x0"] + (i + 0.5) * 2.6, park["y0"] + (j + 0.5) * 5.2, math.pi / 2, random.choice(M_CAR))
-cb.make("parked cars", col("campus"))
 road = [c for c in S["campus"] if c["name"] == "R1"][0]
-for i in range(6):
-    vb = Batch()
-    car_parts(vb, 0, 0, 0, random.choice(M_CAR))
-    v = vb.make(f"arriving car {i}", col("campus"))
-    yy = (road["y0"] + road["y1"]) / 2 + 2.0
-    x_start, x_end = road["x1"] - 40 - i * 55, park["x0"] + 60 + i * 12
-    v.location = (x_start, yy, 0)
-    v.keyframe_insert("location", frame=1)
-    v.location = (x_end, yy, 0)
-    v.keyframe_insert("location", frame=frame_of_s(30 + i * 3))
+PARKED, MOVING = [], []
+if ASSETS:
+    import bmesh
+    from mathutils import Matrix
+
+    CARS = car_meshes()
+    bm = bmesh.new()
+    pm_mats = []
+    for i in range(int((park["x1"] - park["x0"]) // 2.6)):
+        for j in range(int((park["y1"] - park["y0"]) // 5.2)):
+            if random.random() < 0.55:
+                x, y = park["x0"] + (i + 0.5) * 2.6, park["y0"] + (j + 0.5) * 5.2
+                me = CARS[random.choice(CAR_KINDS)].copy()
+                me.transform(Matrix.Translation((x, y, 0.0)) @ Matrix.Rotation(math.pi * (j % 2), 4, "Z"))
+                bm.from_mesh(me)
+                if not pm_mats:
+                    pm_mats = list(me.materials)
+                bpy.data.meshes.remove(me)
+                PARKED.append([round(x, 2), round(y, 2)])
+    pme = bpy.data.meshes.new("parked cars")
+    bm.to_mesh(pme)
+    bm.free()
+    for m in pm_mats:
+        pme.materials.append(m)
+    pob = bpy.data.objects.new("parked cars", pme)
+    col("campus").objects.link(pob)
+    for i in range(6):
+        v = bpy.data.objects.new(f"arriving car {i}", CARS[CAR_KINDS[i % len(CAR_KINDS)]])
+        col("campus").objects.link(v)
+        yy = (road["y0"] + road["y1"]) / 2 + 2.0
+        x_start, x_end = road["x1"] - 40 - i * 55, park["x0"] + 60 + i * 12
+        v.rotation_euler = (0, 0, -math.pi / 2 if x_end < x_start else math.pi / 2)  # the nose (-y) toward travel
+        v.location = (x_start, yy, 0)
+        v.keyframe_insert("location", frame=1)
+        v.location = (x_end, yy, 0)
+        v.keyframe_insert("location", frame=frame_of_s(30 + i * 3))
+        nose = Matrix.Rotation(v.rotation_euler.z, 3, "Z") @ Vector((0, -1, 0))
+        travel = Vector((x_end - x_start, 0, 0)).normalized()
+        MOVING.append({"name": v.name, "heading_dot": round(nose.dot(travel), 4)})
+else:
+    cb = Batch()
+    for i in range(int((park["x1"] - park["x0"]) // 2.6)):
+        for j in range(int((park["y1"] - park["y0"]) // 5.2)):
+            if random.random() < 0.55:
+                car_parts(cb, park["x0"] + (i + 0.5) * 2.6, park["y0"] + (j + 0.5) * 5.2, math.pi / 2, random.choice(M_CAR))
+    cb.make("parked cars", col("campus"))
+    for i in range(6):
+        vb = Batch()
+        car_parts(vb, 0, 0, 0, random.choice(M_CAR))
+        v = vb.make(f"arriving car {i}", col("campus"))
+        yy = (road["y0"] + road["y1"]) / 2 + 2.0
+        x_start, x_end = road["x1"] - 40 - i * 55, park["x0"] + 60 + i * 12
+        v.location = (x_start, yy, 0)
+        v.keyframe_insert("location", frame=1)
+        v.location = (x_end, yy, 0)
+        v.keyframe_insert("location", frame=frame_of_s(30 + i * 3))
 
 # ------------------------------------------------------------------------- the fab buildings
 SP, DEPTH, AISLE = S["spine"], S["depth"], S["aisle"]
@@ -772,7 +989,7 @@ for ph, c in enumerate(fabs):
     pre = c["name"]
     # support floor: slab on grade, columns, pumps and scrubbers under every tool, ducts, pipe racks
     sb = Batch()
-    sb.box(M_CONC, X0, Y0, -0.05, X1, Y1, 0.0)
+    sb.box(M_PLATE, X0, Y0, -0.05, X1, Y1, 0.0)
     for gx in range(int((X1 - X0) // 12) + 1):
         for gy in range(int((Y1 - Y0) // 12) + 1):
             x, y = X0 + 3 + gx * 12, Y0 + 3 + gy * 12
@@ -1388,6 +1605,260 @@ for s_, ex in ((0, 0.0), (SHOTS["3"]["start"] + 6, 0.0), (SHOTS["4"]["start"] + 
     scene.view_settings.exposure = ex
     scene.view_settings.keyframe_insert("exposure", frame=frame_of_s(s_))
 
+# ------------------------------------------------------------------------- workers, drawn only
+# Quaternius's Character Hazmat (CC0) recoloured as a white cleanroom suit, walking with its own
+# Walk (slowed so the feet keep pace) and pausing at a tool with its Idle. A worker walks
+# to a tool, stops and faces it, then walks on; at an assumed 1.15 m/s. A worker whose path comes
+# within 2 m of the camera is left out. Not in the model; no number comes from them.
+WALK_V = 1.15
+WORKERS = []  # per worker: {"bay", "keys": [(frame, x, y, yaw)], "arm"}
+
+
+def wrap_to(prev, a):
+    return prev + (a - prev + math.pi) % (2 * math.pi) - math.pi
+
+
+def worker_at(w, fr):
+    k = w["keys"]
+    if fr <= k[0][0]:
+        return k[0][1:]
+    for a, b in zip(k, k[1:]):
+        if a[0] <= fr <= b[0]:
+            u = 0.0 if b[0] == a[0] else (fr - a[0]) / (b[0] - a[0])
+            return tuple(a[i] + (b[i] - a[i]) * u for i in (1, 2, 3))
+    return k[-1][1:]
+
+
+def lane_walk(rng, axis, fixed, lo, hi, faces):
+    """Keys (frame, x, y, yaw) for one worker on a straight lane: walk at least 4 m to a spot, turn in
+    half a second, stop 3 to 7 s facing one of `faces` (yaws), walk on, until the film ends."""
+    def at(u):
+        return (fixed, u) if axis == "y" else (u, fixed)
+
+    def heading(d):  # the character faces +y at yaw 0
+        if axis == "y":
+            return 0.0 if d > 0 else math.pi
+        return -math.pi / 2 if d > 0 else math.pi / 2
+
+    u = rng.uniform(lo, hi)
+    yaw = rng.choice(faces)
+    fr = 1 - rng.uniform(0, 60)
+    keys = [(fr, *at(u), yaw)]
+    while fr < NFRAMES + 1:
+        nu = rng.uniform(lo, hi)
+        while abs(nu - u) < 4.0:
+            nu = rng.uniform(lo, hi)
+        yaw_go = wrap_to(yaw, heading(nu - u))
+        f1 = fr + abs(nu - u) / WALK_V * FPS
+        keys.append((fr + 12, *at(u + (nu - u) * 12 / (f1 - fr)), yaw_go))
+        keys.append((f1, *at(nu), yaw_go))
+        yaw_face = wrap_to(yaw_go, rng.choice(faces))
+        f2 = f1 + rng.uniform(3, 7) * FPS
+        keys.append((f1 + 12, *at(nu), yaw_face))
+        keys.append((f2, *at(nu), yaw_face))
+        fr, u, yaw = f2, nu, yaw_face
+    return keys
+
+
+def plan_workers():
+    seen = set()  # bays the camera enters: two workers each, for the film
+    for fr, loc, tgt, lens in CAM:
+        if CZ - 0.5 < loc.z < CEIL + 0.5:
+            for i, b in enumerate(S["bays"]):
+                if b["x0"] - 1.0 <= loc.x <= b["x1"] + 1.0 and b["y0"] - 3.0 <= loc.y <= b["y1"] + 1.0:
+                    seen.add(i)
+    rng = random.Random(11)
+    out = []
+
+    def keep(w, tries):
+        """Keep a worker whose path stays 2 m from the camera; retry its walk up to `tries` times."""
+        for _ in range(tries):
+            w["keys"] = w["plan"]()
+            if camera_gap(w) >= 2.0:
+                out.append(w)
+                return
+
+    for i, b in enumerate(S["bays"]):
+        ts = [t for t in S["tools"] if t["bay"] == i]
+        west = max([t["x1"] for t in ts if t["wall"] == 0], default=b["x0"] + 1.0)
+        east = min([t["x0"] for t in ts if t["wall"] == 1], default=b["x1"] - 1.0)
+        if east - west < 2.0:
+            continue
+        sgn = 1 if b["side"] == 0 else -1
+        lo, hi = sorted((sgn * (SP / 2 + 1.5), sgn * (SP / 2 + DEPTH - 1.5)))
+        for n in range(2 if i in seen else 1 + (rng.random() < 0.5)):
+            lane = (west + east) / 2 + (0.55 if n == 0 else -0.55)
+            keep({"bay": i, "phase": b["phase"], "plan": lambda lane=lane, lo=lo, hi=hi: lane_walk(
+                rng, "y", lane, lo, hi, (math.pi / 2, -math.pi / 2))}, 40 if i in seen else 1)
+    # the spine, beside the stockers, where the camera rides over: lanes 2.6 m either side of the middle
+    for ph in range(len(S["offsets"])):
+        x0, x1 = S["offsets"][ph] + 2.0, S["offsets"][ph] + S["lengths"][ph] - 2.0
+        for lane in (2.6, -2.6):
+            for n in range(4):
+                lo = x0 + (x1 - x0) * n / 4
+                hi = x0 + (x1 - x0) * (n + 1) / 4
+                keep({"bay": None, "phase": ph, "plan": lambda lane=lane, lo=lo, hi=hi: lane_walk(
+                    rng, "x", lane, lo, hi, (0.0 if lane > 0 else math.pi,))}, 40)
+    for w in out:
+        del w["plan"]
+    return out
+
+
+def camera_gap(w):
+    """The nearest the camera comes to a worker (a 1.8 m upright line on the floor) over the film."""
+    near = 1e9
+    for fr, loc, tgt, lens in CAM:
+        x, y, _ = worker_at(w, fr)
+        dz = 0.0 if CZ <= loc.z <= CZ + 1.8 else min(abs(loc.z - CZ), abs(loc.z - CZ - 1.8))
+        near = min(near, math.sqrt((loc.x - x) ** 2 + (loc.y - y) ** 2 + dz * dz))
+    return near
+
+
+WORKER_H = 1.75  # m, assumed; the hazmat character stands 2.11 m with its big helmet
+WALK_FOOT = 2.35  # m/s: its walk's feet sweep 1.0 m in about 10 frames at its own size (measured)
+
+
+def worker_templates():
+    """Quaternius's Character Hazmat (CC0, Poly Pizza), recoloured white as a cleanroom suit, its
+    weapons removed: [(armature object, [mesh objects], scale)], out of the scene."""
+    suit = principled("cleanroom suit", "eceff3", rough=0.85)
+    visor = principled("suit visor", "1b2733", metal=0.4, rough=0.08)
+    trim = principled("suit trim", "7f8fb4", rough=0.5)  # gloves, boots and hoses: nitrile blue
+    pack = principled("suit pack", "b8c0c8", metal=0.2, rough=0.5)  # the air pack on the back
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=str(ASSETS / "people" / "hazmat.glb"))
+    new = [o for o in bpy.data.objects if o not in before]
+    arm = [o for o in new if o.type == "ARMATURE"][0]
+    keep = [o for o in new if o.type == "MESH" and o.parent == arm and o.name.startswith("Character_Hazmat")]
+    for o in new:
+        if o is not arm and o not in keep:
+            bpy.data.objects.remove(o)
+    for o in keep:
+        head = o.name.endswith("_Head")
+        for i, m in enumerate(o.data.materials):
+            n = m.name.split(".")[0]
+            o.data.materials[i] = suit if n == "Hazmat_Main" else (visor if head else trim) if n == "Black" else pack
+    mirror_arms(arm)  # while the template is still in the scene, so its pose evaluates
+    for o in [arm] + keep:
+        for c in list(o.users_collection):
+            c.objects.unlink(o)
+    ws = [o.matrix_world @ v.co for o in keep for v in o.data.vertices]
+    k = WORKER_H / (max(w.z for w in ws) - min(w.z for w in ws))
+    return [(arm, keep, k)]
+
+
+ARM_BONES = ("Shoulder", "UpperArm", "LowerArm")
+
+
+def mirror_arms(arm):
+    """The hazmat's Walk moves only the left arm; its Idle neither. Bake two actions on the template:
+    'walk right arm', the left arm's swing mirrored across the body half a step later, and 'arms down',
+    both arms at the walk's frame 6, so no arm is left in the model's T-pose."""
+    from mathutils import Matrix
+
+    walk = bpy.data.actions["CharacterArmature|Walk"]
+    ad = arm.animation_data or arm.animation_data_create()
+    for t in list(ad.nla_tracks):
+        ad.nla_tracks.remove(t)
+    ad.action = walk
+    S = Matrix.Diagonal((-1.0, 1.0, 1.0, 1.0))
+    n = int(walk.frame_range[1] - walk.frame_range[0])
+
+    def pose_at(f, mirror_from_left):
+        scene.frame_set(f)
+        out = {}
+        for b in ARM_BONES:
+            pb = arm.pose.bones[b + (".L" if mirror_from_left else ".R")]
+            out[b] = pb.matrix.copy()
+        return out
+
+    def right_quats(left):
+        q = {}
+        for b in ARM_BONES:  # parent first, so each child sees its parent's new pose
+            arm.pose.bones[b + ".R"].matrix = S @ left[b] @ S
+            bpy.context.view_layer.update()
+            q[b] = arm.pose.bones[b + ".R"].rotation_quaternion.copy()
+        return q
+
+    keys = [right_quats(pose_at(int(walk.frame_range[0]) + (f + n // 2) % n, True)) for f in range(n + 1)]
+    l6 = pose_at(int(walk.frame_range[0]) + 6, True)
+    left6 = {b: arm.pose.bones[b + ".L"].rotation_quaternion.copy() for b in ARM_BONES}
+    right6 = right_quats(l6)
+    ad.action = None
+    for name, frames in (("walk right arm", {f: (None, keys[f]) for f in range(n + 1)}), ("arms down", {0: (left6, right6), 1: (left6, right6)})):
+        act = bpy.data.actions.new(name)
+        act.use_fake_user = True
+        ad.action = act  # curves are added for an action assigned to the armature
+        for f, (lq, rq) in frames.items():
+            for side, qs in ((".L", lq), (".R", rq)):
+                if qs is None:
+                    continue
+                for b in ARM_BONES:
+                    for i in range(4):
+                        fc = act.fcurve_ensure_for_datablock(arm, f'pose.bones["{b}{side}"].rotation_quaternion', index=i)
+                        fc.keyframe_points.insert(f + walk.frame_range[0], qs[b][i], options={"FAST"})
+        ad.action = None
+    for b in arm.pose.bones:
+        b.matrix_basis = Matrix.Identity(4)
+
+
+def strip(track, start, act, frames, slow=1.0):
+    st = track.strips.new(act.name, int(start), act)  # takes the action's one slot itself
+    n = act.frame_range[1] - act.frame_range[0]
+    st.scale = slow
+    st.repeat = max(frames / (n * slow), 0.05)
+    return st
+
+
+if ASSETS:
+    WORKERS = plan_workers()
+    TPL = worker_templates()
+    WALK, IDLE = bpy.data.actions["CharacterArmature|Walk"], bpy.data.actions["CharacterArmature|Idle"]
+    RARM, DOWN = bpy.data.actions["walk right arm"], bpy.data.actions["arms down"]
+    wc = col("workers")
+    for i, w in enumerate(WORKERS):
+        tarm, tmeshes, kk = TPL[0]
+        from mathutils import Matrix
+
+        walker = bpy.data.objects.new(f"worker {i}", None)  # walks and turns; the rig rides on it
+        wc.objects.link(walker)
+        rig = bpy.data.objects.new(f"worker {i} rig", tarm.data)
+        rig.parent = walker
+        rig.matrix_basis = Matrix.Scale(kk, 4) @ tarm.matrix_world  # the import's own turn and cm scale
+        wc.objects.link(rig)
+        arm = rig
+        for tm in tmeshes:
+            mo = tm.copy()
+            mo.name = f"worker {i} " + ("head" if tm.name.endswith("_Head") else "suit")
+            mo.parent = arm
+            for md in mo.modifiers:
+                if md.type == "ARMATURE":
+                    md.object = arm
+            wc.objects.link(mo)
+        k = w["keys"]
+        fill(walker, "location", [x[0] for x in k], [(x[1], x[2], CZ) for x in k])
+        # the plan's yaw has +y ahead at 0; these characters face -y, so turn them half round
+        fill(walker, "rotation_euler", [x[0] for x in k], [(0.0, 0.0, x[3] + math.pi) for x in k])
+        ad = rig.animation_data_create()
+        # Idle moves only the body and head; underneath it, a layer holds the arms down (the walk's
+        # frame 6, held), else the arms fall back to the model's T-pose
+        base = ad.nla_tracks.new().strips.new("arms down", -400, DOWN)
+        base.scale = 1000.0
+        base.repeat = (NFRAMES + 800) / 1000.0
+        tr = ad.nla_tracks.new()
+        tr_r = ad.nla_tracks.new()  # the right arm's swing, over the walk
+        # keys come in fours: start, turned, arrived, faced, (held =) next start
+        j = 0
+        while j + 3 < len(k):
+            f0, f1, f2 = k[j][0], k[j + 2][0], k[j + 4][0] if j + 4 < len(k) else k[j + 3][0]
+            wa, wb, ib = math.ceil(f0), math.floor(f1), math.floor(f2)
+            if wa < NFRAMES + 1 and wb > wa:
+                strip(tr, wa, WALK, wb - wa, slow=WALK_FOOT * TPL[0][2] / WALK_V)
+                strip(tr_r, wa, RARM, wb - wa, slow=WALK_FOOT * TPL[0][2] / WALK_V)
+            if ib > wb and wb < NFRAMES + 1:
+                strip(tr, wb, IDLE, ib - wb)
+            j += 4
+        w["arm"], w["rig"] = walker, rig
 # ------------------------------------------------------------------------- overlay data and render
 CAM_AT = {x[0]: x for x in CAM}
 
@@ -1413,6 +1884,59 @@ def overlay(frames):
     return out
 
 
+if REPORT:
+    rep = {"what": "Where the drawn-only workers and cars are; on the SMT2020 model, a layout of our own design.",
+           "sky": SKY_SEEN, "textures": sorted(TEXTURES), "parked": PARKED, "moving": MOVING, "workers": [], "placed": [], "visor": []}
+    near, ok, n = 1e9, 0, 0
+    for i, w in enumerate(WORKERS):
+        k = w["keys"]
+        rep["workers"].append({"bay": w["bay"], "phase": w["phase"], "samples": [[round(c, 3) for c in worker_at(w, fr)[:2]] + [CZ]
+                                                            for fr in range(1, NFRAMES + 1, 12)]})
+        for a, b in zip(k, k[1:]):
+            d = b[2] - a[2]
+            if abs(d) > 0.5 and abs(b[3] - a[3]) < 1e-6:  # a walk after its turn
+                for fr in range(int(a[0]) + 1, int(b[0]), 6):
+                    yaw = worker_at(w, fr)[2]
+                    fwd = (-math.sin(yaw), math.cos(yaw))
+                    n += 1
+                    ok += fwd[1] * (1 if d > 0 else -1) >= 0.95
+        near = min(near, camera_gap(w))
+    rep["facing_ok"] = round(ok / max(n, 1), 4)
+    seen_frames = 0
+    for fr, loc, tgt, lens in CAM:
+        q = (tgt - loc).to_track_quat("-Z", "Y").inverted()
+        f = lens / 36.0
+        for w in WORKERS:
+            x, y, _ = worker_at(w, fr)
+            v = q @ (Vector((x, y, CZ + 1.0)) - loc)
+            if -40.0 < v.z < -0.5 and abs(f * v.x / -v.z) < 0.45 and abs(f * v.y / -v.z * RES[0] / RES[1]) < 0.45:
+                seen_frames += 1
+                break
+    rep["frames_with_a_worker"] = seen_frames
+    rep["camera_min_m"] = round(near, 3)
+    for fr in (1, 300, 1200, 2000, 3000):
+        scene.frame_set(fr)
+        for i in range(0, len(WORKERS), max(1, len(WORKERS) // 4)):
+            got = list(WORKERS[i]["arm"].matrix_world.translation)
+            want = list(worker_at(WORKERS[i], fr)[:2]) + [CZ]
+            rep["placed"].append([fr, i, [round(v, 3) for v in got], [round(v, 3) for v in want]])
+            dg = bpy.context.evaluated_depsgraph_get()
+            arm = WORKERS[i]["rig"]
+            ev = bpy.data.objects[f"worker {i} head"].evaluated_get(dg)
+            em = ev.to_mesh()
+            vslots = {j for j, m in enumerate(ev.data.materials) if m and m.name == "suit visor"}
+            vi = {j for poly in em.polygons if poly.material_index in vslots for j in poly.vertices}
+            vc = sum((ev.matrix_world @ em.vertices[j].co for j in vi), Vector()) / max(len(vi), 1)
+            ev.to_mesh_clear()
+            hd = arm.matrix_world @ arm.pose.bones["Head"].head
+            d = Vector((vc.x - hd.x, vc.y - hd.y, 0)).normalized()
+            yaw = worker_at(WORKERS[i], fr)[2]
+            rep["visor"].append([fr, i, round(d.dot(Vector((-math.sin(yaw), math.cos(yaw), 0))), 3), round(vc.z - CZ, 3)])
+    rep["weapons_drawn"] = sum(1 for o in scene.objects if o.type == "MESH" and any(
+        w in o.name for w in ("Revolver", "Pistol", "Sniper", "SMG", "Grenade", "Cannon", "Shotgun", "Rocket", "AK", "Knife", "Shovel")))
+    REPORT.write_text(json.dumps(rep))
+    print("report", REPORT, len(WORKERS), "workers", len(PARKED), "parked", rep["camera_min_m"], "m", rep["facing_ok"])
+    sys.exit(0)
 if "--probe" in argv:
     dg = bpy.context.evaluated_depsgraph_get()
     for s_ in STILLS or []:
@@ -1432,8 +1956,20 @@ scene.render.image_settings.file_format = "JPEG"
 scene.render.image_settings.quality = 92
 if STILLS is not None:
     scene.render.image_settings.file_format = "PNG"
+    near_w = opt("--near-worker")  # a close-up of worker N, 2.2 m in front of him, to check the suit
+    if near_w is not None:
+        cam.animation_data_clear()
+        target.animation_data_clear()
+        cam.data.animation_data_clear()
+        cam.data.lens = 35
     for s_ in STILLS:
         fr = int(round(frame_of_s(s_)))
+        if near_w is not None:
+            x, y, yaw = worker_at(WORKERS[int(near_w)], fr)
+            fwd = Vector((-math.sin(yaw), math.cos(yaw), 0))
+            side = Vector((math.cos(yaw), math.sin(yaw), 0))
+            cam.location = Vector((x, y, CZ + 1.6)) + fwd * 2.2 + side * 0.6
+            target.location = (x, y, CZ + 1.3)
         scene.frame_set(fr)
         scene.render.filepath = str(OUT / f"still-{s_:06.2f}.png")
         bpy.ops.render.render(write_still=True)
