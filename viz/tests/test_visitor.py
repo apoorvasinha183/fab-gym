@@ -453,5 +453,95 @@ class Plan(unittest.TestCase):
         self.assertEqual(json.dumps(a, sort_keys=True), json.dumps(P, sort_keys=True))
 
 
+# ---------------------------------------------------------------- Godot plays the plan
+
+GPROJ = ROOT / "viz/godot-real"
+GREPORT = ROOT / "data/layout-real/visitor-check.json"
+
+
+def godot_report():
+    import os
+    g = os.environ.get("GODOT")
+    if g and P is not None:
+        subprocess.run(["sh", str(GPROJ / "sync.sh")], cwd=ROOT, check=True)
+        subprocess.run([g, "--headless", "--path", str(GPROJ), "--", "--visitor-check", str(GREPORT)],
+                       check=True, timeout=900)
+    return json.loads(GREPORT.read_text()) if GREPORT.exists() else None
+
+
+class GodotSource(unittest.TestCase):
+    def test_the_explore_scene_has_a_visitor_mode(self):
+        main = (GPROJ / "main.gd").read_text()
+        self.assertIn("res://visitor.gd", main)
+        self.assertIn("KEY_V", main)
+        self.assertIn("V visitor", main)
+        v = (GPROJ / "visitor.gd").read_text()
+        self.assertIn("res://data/visitor.json", v)
+        self.assertIn("hazmat.glb", v)
+        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+            self.assertIn(words, v, words)
+
+    def test_sync_copies_the_plan_and_the_model(self):
+        sync = (GPROJ / "sync.sh").read_text()
+        self.assertIn("visitor.json", sync)
+        self.assertIn("character-hazmat.glb", sync)
+
+
+G = godot_report() if P is not None else None
+
+
+def anim_at(path, s):
+    for a, b in zip(path, path[1:]):
+        if a[0] <= s < b[0]:
+            return "walk" if math.hypot(b[1] - a[1], b[2] - a[2]) / (b[0] - a[0]) > 0.3 else "idle"
+    return "idle"
+
+
+@unittest.skipUnless(G is not None and P is not None, "no Godot and no visitor check report")
+class GodotPlays(unittest.TestCase):
+    def test_it_plays_this_plan(self):
+        self.assertEqual(G["seed"], P["seed"])
+        self.assertEqual(G["rooms"], len(P["rooms"]))
+        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+            self.assertIn(words, G["badge"], words)
+
+    def test_the_visitor_is_the_hazmat_suit_and_nothing_else(self):
+        m = G["model"]
+        self.assertEqual(sorted(m["meshes"]), ["Character_Hazmat", "Character_Hazmat_Head"])
+        self.assertTrue(1.70 <= m["height"] <= 1.80, m["height"])
+
+    def test_he_is_where_the_plan_puts_him(self):
+        path = {round(p[0], 4): p for p in P["path"]}
+        cam = {round(c[0], 4): c for c in P["camera"]}
+        smp = G["samples"]
+        self.assertGreaterEqual(len(smp), 24)
+        stages = {st["name"] for st in P["stages"] for x in smp if st["s0"] <= x["s"] < st["s1"]}
+        self.assertEqual(stages, set(STAGES[:-1]) | ({"clean floor"} & stages) | {"clean floor"})
+        for x in smp:
+            p = path[round(x["s"], 4)]
+            for a, b in zip(x["pos"], p[1:4]):
+                self.assertAlmostEqual(a, b, delta=0.02, msg=f"at {x['s']} s")
+            self.assertLess(angle(x["body"], p[4]), math.radians(2), f"body at {x['s']} s")
+            c = cam[round(x["s"], 4)]
+            for a, b in zip(x["cam"], c[1:4]):
+                self.assertAlmostEqual(a, b, delta=0.02, msg=f"camera at {x['s']} s")
+            want = [c[4 + i] - c[1 + i] for i in range(3)]
+            self.assertLess(ang3(x["look"], want), 1.0, f"camera aim at {x['s']} s")
+            self.assertAlmostEqual(x["t"], clock_at(P["clock"], x["s"]), delta=1e-3)
+            self.assertEqual(x["anim"], anim_at(P["path"], x["s"]), f"at {x['s']} s")
+
+    def test_the_cards_come_up_with_the_sights(self):
+        shown = 0
+        for x in G["samples"]:
+            want = [c["title"] for c in P["cards"] if c["s0"] <= x["s"] <= c["s1"]]
+            self.assertEqual(x["card"], want[0] if want else "", f"at {x['s']} s")
+            shown += bool(want)
+        self.assertGreaterEqual(shown, 3)
+
+    def test_the_fab_runs_on_the_visitors_clock(self):
+        last = G["samples"][-1]
+        self.assertEqual(G["lamps"], [W.state(i, last["t"]) for i in range(len(W.s["tools"]))])
+
+
 if __name__ == "__main__":
     unittest.main()
