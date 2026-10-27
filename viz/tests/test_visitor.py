@@ -98,7 +98,8 @@ class World:
                 if a[0] <= t <= b[0]:
                     u = 0.0 if b[0] == a[0] else (t - a[0]) / (b[0] - a[0])
                     p = [a[i] + (b[i] - a[i]) * u for i in (1, 2, 3)]
-                    if p[2] >= self.s["ride_z"] - 0.01 and abs(p[0] - x) <= 15.0:
+                    # moving on the rail: lots parked on shelves sit at the same height
+                    if a[1:4] != b[1:4] and p[2] >= self.s["ride_z"] - 0.01 and abs(p[0] - x) <= 15.0:
                         n += 1
                     break
         return n
