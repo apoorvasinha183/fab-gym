@@ -45,7 +45,7 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     reg = json.loads((ROOT / pdata["permit"]["register"]).read_text())
     rules = json.loads((ROOT / pdata["permit"]["rules"]).read_text())
     items = None
-    if stage == "dd":
+    if stage in ("dd", "cd"):
         dd = pdata["permit"].get("dd")
         if not dd:
             raise SystemExit(f"place {place!r}: no design development block in its profile")
@@ -57,6 +57,21 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
         base_ids = {r["id"] for r in rules}
         rules = [by_id.get(r["id"], r) for r in rules] + [r for r in more if r["id"] not in base_ids]
         items = json.loads((HERE / "items.json").read_text()) + json.loads((ROOT / dd["items"]).read_text())
+    if stage == "cd":
+        cdb = pdata["permit"]["cd"]
+        reg3 = json.loads((HERE / "codes/us-2024-cd.json").read_text())
+        reg = {**reg, "sections": {**reg["sections"], **reg3["sections"]}}
+        nf = ROOT / cdb["nfpa"]
+        if nf.exists():      # NFPA read in the founder's session: its sections in, its documents off the not-read list
+            reg4 = json.loads(nf.read_text())
+            done = {s["code"].split(" 20")[0] for s in reg4["sections"].values()}
+            reg = {**reg, "sections": {**reg["sections"], **reg4["sections"]},
+                   "not_read": [n for n in reg["not_read"] if n["id"] not in done]}
+        more = json.loads((ROOT / cdb["rules"]).read_text())
+        by_id = {r["id"]: r for r in more}
+        base_ids = {r["id"] for r in rules}
+        rules = [by_id.get(r["id"], r) for r in rules] + [r for r in more if r["id"] not in base_ids]
+        items = items + json.loads((ROOT / cdb["items"]).read_text())
     S = json.loads(Path(scene).read_text())
     C = Ctx(S, reg, rules, pdata, prof)
     C.dd = {}
@@ -71,8 +86,8 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     C.P["fab_digest"] = fab_digest(C.M)
     C.P["layout_sha256"] = hashlib.sha256(Path(layout).read_bytes()).hexdigest()
     C.made.update({"register", "design_data", "lot"})
-    arch.run(C, "full" if stage == "dd" else stage)
-    if stage == "dd":
+    arch.run(C, "full" if stage in ("dd", "cd") else stage)
+    if stage in ("dd", "cd"):
         import dd_arch
         C.made.add("dd:register")
         dd_arch.pre(C, json.loads(Path(layout).read_text())["assumed"]["chase"])
@@ -91,8 +106,11 @@ def build(scene, layout, out, place="us", stage="full", pdf=True):
     frame.run(C)
     utilities.run(C)
     airfire.run(C)
-    if stage == "dd":
+    if stage in ("dd", "cd"):
         design_development(C)
+    if stage == "cd":
+        import cd
+        cd.run(C)
     coord.run(C)
     V = R.run_all(rules, C.cases, reg)
     C.made.add("verdicts")
@@ -149,12 +167,15 @@ def main():
     ap.add_argument("--scene", default=None, help="default data/layout-real/scene-optimised.json (dd: the profile's)")
     ap.add_argument("--layout", default=None, help="default results/layout-real/layout.json (dd: the profile's)")
     ap.add_argument("--out", default=None, help="default data/layout-real/permit/<place> (dd: the profile's)")
-    ap.add_argument("--stage", default="full", choices=["concept", "full", "dd"])
+    ap.add_argument("--stage", default="full", choices=["concept", "full", "dd", "cd"])
     ap.add_argument("--no-pdf", action="store_true")
     a = ap.parse_args()
     dd = {}
-    if a.stage == "dd":
-        dd = json.loads((ROOT / "viz/blueprint/places" / f"{a.place}.json").read_text()).get("permit", {}).get("dd", {})
+    if a.stage in ("dd", "cd"):
+        pm = json.loads((ROOT / "viz/blueprint/places" / f"{a.place}.json").read_text()).get("permit", {})
+        dd = dict(pm.get("dd", {}))
+        if a.stage == "cd":
+            dd["out"] = pm.get("cd", {}).get("out", dd.get("out"))
     scene = a.scene or str(ROOT / dd.get("scene", "data/layout-real/scene-optimised.json"))
     layout = a.layout or str(ROOT / dd.get("layout", "results/layout-real/layout.json"))
     out = a.out or str(ROOT / dd.get("out", f"data/layout-real/permit/{a.place}"))

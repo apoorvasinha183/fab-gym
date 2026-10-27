@@ -83,7 +83,11 @@ def chases(C, X):
             if (g1 - g0) / 2 <= limit:
                 break
             target = (g0 + g1) / 2
-            cand = sorted((y for y in frange(g0 + 1.0, g1 - 1.0, 0.25)), key=lambda y: abs(y - target))
+            side_cl = max(C.cards[t["kind"]]["clearance_m"]["side"]["value"] for t in touch) if touch else 0.0
+            ends = [v for t in touch for v in (t["y0"], t["y1"])]
+            room = lambda y: min((abs(y - v) for v in ends), default=99.0)
+            # in the middle of a gap in the tools, clear of their side clearances where the gap allows
+            cand = sorted((y for y in frange(g0 + 1.0, g1 - 1.0, 0.05)), key=lambda y: (room(y) < 0.6 + side_cl, abs(y - target) if room(y) >= 0.6 + side_cl else -room(y)))
             boxes = [(wx[0], y - 0.6, cz, wx[1], y + 0.6, cz + 2.1) for y in cand
                      if not any(t["y0"] - 0.1 < y + 0.6 and t["y1"] + 0.1 > y - 0.6 for t in touch)]
             e = X.place(f"door/chase/{c['id']}/{len(doors)}", "IfcDoor", f"Chase door {c['id']}", boxes, p, "cleanroom", "DOOR",
@@ -467,7 +471,7 @@ def paths(C):
     for p, b in enumerate(C.blds):
         k = C.keys[p]
         for s in (1, -1):
-            out.append((p, k, f"spine {'N' if s > 0 else 'S'}", cz, "x", s * 3.8, b["x0"] + 1.0, b["x1"] - 1.0))
+            out.append((p, k, f"spine {'N' if s > 0 else 'S'}", cz, "x", s * 2.6, b["x0"] + 1.0, b["x1"] - 1.0))
             out.append((p, k, f"perimeter {'N' if s > 0 else 'S'}", cz, "x", s * 67.0, b["x0"] + 1.0, b["x1"] - 1.0))
         for x in C.P["exits"]:
             if x["building"] == k and x["kind"] == "exit passageway":

@@ -133,3 +133,12 @@ rules (`viz/permit/rules/us-cd.json`) and the items (`viz/permit/items-cd.json`)
 - 28 Oct, before any construction documents code: the services test asked an isolation valve on every drop; the spec
   asks one on every pipe drop, so exhaust duct drops (which take no valve, and never a damper on hazardous exhaust)
   are left out of that check.
+- 28 Oct, as built: the service clearance check found five intrusions placed by earlier passes (a roof column, a
+  chase door, an exit sign and two emergency lights on the spine-edge line). They were fixed where they are made, for
+  the whole fab, from design development on:
+  - roof columns keep a tool's side clearance (the inner line moves to 3.04 m, clear of the hoist rail, and the spine
+    roof beams end at the columns' faces);
+  - chase doors sit in the middle of the cross aisle;
+  - the spine's signs and lights run 2.6 m from the spine's centre line.
+  The schematic stage is unchanged byte for byte. Two more clash joints, as built: members of one truss meeting, and
+  a drop through a cut floor tile.

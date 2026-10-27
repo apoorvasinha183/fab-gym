@@ -138,6 +138,14 @@ def write(model, name="fab-model.ifc"):
         if e["cls"] == "IfcSpace":
             eid = F.add(f"IFCSPACE({g},$,{nm},$,$,{pl},{shape},$,.ELEMENT.,{pre},$)")
             spaces.setdefault(holder, []).append(eid)
+        elif e.get("bar"):
+            dia, area, length = e["bar"]
+            eid = F.add(f"IFCREINFORCINGBAR({g},$,{nm},$,{ot},{pl},{shape},$,$,{r(dia)},{r(area)},{r(length)},.MAIN.,.TEXTURED.)")
+            contained.setdefault(holder, []).append(eid)
+        elif e.get("fastener"):
+            dia, length = e["fastener"]
+            eid = F.add(f"IFCMECHANICALFASTENER({g},$,{nm},$,{ot},{pl},{shape},$,{r(dia)},{r(length)},.ANCHORBOLT.)")
+            contained.setdefault(holder, []).append(eid)
         elif e.get("door"):
             hgt, wid, op = e["door"]
             eid = F.add(f"IFCDOOR({g},$,{nm},$,{ot},{pl},{shape},$,{r(hgt)},{r(wid)},.DOOR.,.{op}.,$)")

@@ -1,0 +1,188 @@
+[
+ {
+  "id": "site.seismic_values",
+  "topic": "structure",
+  "cite": [
+   "IBC 1603.1.5"
+  ],
+  "binds": "building",
+  "test": "The earthquake design data the values give are on the documents: risk category, Ie, SS and S1, site class, SDS and SD1, the design category",
+  "input": "seismic_items_shown",
+  "op": "true",
+  "limit": null,
+  "fix": "show the values on S-001 and S-510"
+ },
+ {
+  "id": "cd.base_plates",
+  "topic": "structure",
+  "cite": [
+   "IBC 1603.1"
+  ],
+  "binds": "bay",
+  "test": "Every column under the bay with its base plate and anchor rods shown",
+  "input": "plates_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "detail the base plates"
+ },
+ {
+  "id": "cd.footing_mats",
+  "topic": "structure",
+  "cite": [
+   "IBC 1603.1"
+  ],
+  "binds": "bay",
+  "test": "Every footing under the bay with its reinforcement, at least what its bending needs",
+  "input": "mats_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add bars"
+ },
+ {
+  "id": "cd.tiles",
+  "topic": "construction type",
+  "cite": [
+   "IBC 107.2.1"
+  ],
+  "binds": "bay",
+  "test": "The raised floor tiled over the whole bay, perforated tiles marked",
+  "input": "tiles_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "tile the floor"
+ },
+ {
+  "id": "cd.ffu_coverage",
+  "topic": "cleanroom air",
+  "cite": [
+   "IBC 107.2.1",
+   "IBC 415.11.1.8"
+  ],
+  "binds": "bay",
+  "test": "Fan filter units placed one by one at the coverage the bay's class asks (assumed)",
+  "input": "ffu_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add units"
+ },
+ {
+  "id": "cd.drops",
+  "topic": "ventilation",
+  "cite": [
+   "IBC 107.2.1"
+  ],
+  "binds": "bay",
+  "test": "Every tool with a drop and an isolation valve per utility it needs, and a power feeder",
+  "input": "drops_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add the drops"
+ },
+ {
+  "id": "cd.hangers",
+  "topic": "ventilation",
+  "cite": [
+   "IBC 107.2.1"
+  ],
+  "binds": "bay",
+  "test": "Laterals hung from the waffle slab at most 2.4 m apart (assumed; MSS SP-58 not read)",
+  "input": "hangers_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add hangers"
+ },
+ {
+  "id": "cd.gas_lines",
+  "topic": "gas detection",
+  "cite": [
+   "IBC 107.2.1",
+   "IBC 415.11.8.1"
+  ],
+  "binds": "bay",
+  "test": "Every tool that draws a hazardous gas with a double-contained line from that gas's valve box",
+  "input": "gas_lines_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "route the line"
+ },
+ {
+  "id": "cd.clearances",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 107.2.1"
+  ],
+  "binds": "bay",
+  "test": "Nothing added stands in a tool's service clearance on the clean floor",
+  "input": "clearances_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "move the element"
+ },
+ {
+  "id": "sprinklers.spacing",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 903.2.5.2",
+   "IBC 107.2.2"
+  ],
+  "binds": "bay",
+  "test": "Sprinkler heads within the spacing and area per head NFPA 13 allows for the hazard",
+  "input": "spacing_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 13",
+  "rests_on": [
+   "NFPA 13"
+  ]
+ },
+ {
+  "id": "sprinklers.branch_sizing",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 903.2.5.2",
+   "IBC 107.2.2"
+  ],
+  "binds": "bay",
+  "test": "Branch lines sized as NFPA 13 asks for the heads they feed",
+  "input": "branch_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 13",
+  "rests_on": [
+   "NFPA 13"
+  ]
+ },
+ {
+  "id": "alarm.detector_spacing",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.2.5",
+   "IBC 107.2.2"
+  ],
+  "binds": "bay",
+  "test": "Detectors and notification appliances spaced as NFPA 72 asks",
+  "input": "detectors_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 72",
+  "rests_on": [
+   "NFPA 72"
+  ]
+ },
+ {
+  "id": "elec.conductors",
+  "topic": "emergency power",
+  "cite": [
+   "IBC 415.11.1.8"
+  ],
+  "binds": "bay",
+  "test": "Every tool feeder's conductor within its ampacity, as NFPA 70 asks",
+  "input": "conductors_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "read NFPA 70",
+  "rests_on": [
+   "NFPA 70"
+  ]
+ }
+]

@@ -147,17 +147,21 @@ def roof_columns(C):
     hoist vehicles' path (never moving a rail)."""
     env = rail_envelopes(C.S)
     fixed = [t for t in C.S["tools"]] + C.S["stockers"]
+    # design development and later keep a tool's side clearance free (docs/CONSTRUCTION-DOCS.md, CD4)
+    pad = 0.1
+    if C.P.get("stage") in ("dd", "cd"):
+        pad = max(c["clearance_m"]["side"]["value"] for c in C.cards.values()) + 0.05
     out = []
     for p, b in enumerate(C.blds):
         for i, (xa, xb, m) in enumerate(cells(C, p)):
             for side in (1, -1):
-                for y in ROOF_Y:
+                for y in (ROOF_Y if pad <= 0.1 else (3.04, ROOF_Y[1])):
                     yc = side * y
-                    for dx in (0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0):
+                    for dx in (0, 1.0, -1.0, 2.0, -2.0, 3.0, -3.0) + ((4.0, -4.0, 5.0, -5.0) if pad > 0.1 else ()):
                         x = m + dx
                         box = (x - 0.3, yc - 0.3, 0.0, x + 0.3, yc + 0.3, C.fl["roof"]["z0"])
                         if any(overlap2(box, e, 0.05) for e in env) or any(
-                                overlap2(box, (t["x0"], t["y0"], 0, t["x1"], t["y1"], 0), 0.1) for t in fixed):
+                                overlap2(box, (t["x0"], t["y0"], 0, t["x1"], t["y1"], 0), pad) for t in fixed):
                             continue
                         out.append({"id": f"{C.keys[p]}/rcol/{i}/{'N' if side > 0 else 'S'}{int(y)}", "p": p, "x": round(x, 3),
                                     "y": yc, "box": box, "moved_m": dx})

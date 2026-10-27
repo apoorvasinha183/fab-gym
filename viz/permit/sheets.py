@@ -149,8 +149,9 @@ def of(C, cls, pred=lambda e: True):
 # ------------------------------------------------------------------ the sheets
 
 def g001(C, V, L):
-    dd = C.P.get("stage") == "dd"
-    o = [text(bp.AX0 + 10, bp.AY0 + 20, PROJECT + (": design development set" if dd else ": schematic permit set"), 14, weight="bold"),
+    dd = C.P.get("stage") in ("dd", "cd")
+    head = {"dd": ": design development set", "cd": ": construction documents, lithography bay 09"}.get(C.P.get("stage"), ": schematic permit set")
+    o = [text(bp.AX0 + 10, bp.AY0 + 20, PROJECT + head, 14, weight="bold"),
          text(bp.AX0 + 10, bp.AY0 + 31, TRUTH + " Every sheet is NOT FOR CONSTRUCTION.", 4.2, fill=GREY)]
     rows = [[sid, t] for sid, t in CURRENT]
     t, yb = table(bp.AX0 + 10, bp.AY0 + 42, [("Sheet", 22), ("Title", 120)], rows, 2.8 if len(rows) <= 22 else 2.4)
@@ -179,6 +180,10 @@ def g001(C, V, L):
         lines_[-1] = ("A permit needs a real site and the seals of an architect and engineers licensed where the fab is built. No pipeline "
                       "gives either. This set is design development across every trade, at LOD 300: what a design team would carry "
                       "into construction documents.")
+        if C.P.get("stage") == "cd":
+            lines_.insert(-1, "Construction documents for one bay, lithography bay 09 in phase 1, at LOD 400 (sheets A-110 to FA-110), "
+                              "as the sample the other bays would follow; the rest of the fab stays at design development. Seismic "
+                              "values for a point near Salem in the Willamette Valley, Oregon (USGS, ASCE 7-22); no real site.")
         lines_.insert(-1, "Design development, on the stricter reading of two judgements (assumed, for the authority to confirm): the "
                           "chases are service corridors (IBC 415.11.3) and the risk category is IV (Table 1604.5). The layout has a "
                           "1.6 m chase and a 1.6 m cross aisle on every wall of tools; see results/layout-real-dd/rescore.md.")
@@ -803,7 +808,7 @@ def specs(C):
         "28": ("Electronic safety and security", ["Gas detection at every HPM gas tool and room (415.11.8); manual fire alarm with a pull station at every "
                                                   "exit (907.2.5); emergency control station in the office (415.11.10)."]),
     }
-    if C.P.get("stage") == "dd":
+    if C.P.get("stage") in ("dd", "cd"):
         import dd_sheets
         sec = dd_sheets.specs_dd(C, sec)
     for d, (name, items) in sec.items():
@@ -826,11 +831,16 @@ def write(C, V, out, layout):
     C.V = V
     out = Path(out)
     bodies = dict(BODIES)
-    if C.P.get("stage") == "dd":
+    if C.P.get("stage") in ("dd", "cd"):
         import dd_sheets
         SUBTITLE, REV = "Design development set, all trades, for review", "DD1 design development for review"
         CURRENT = SHEETS + dd_sheets.SHEETS
         bodies.update(dd_sheets.BODIES)
+    if C.P.get("stage") == "cd":
+        import cd_sheets
+        SUBTITLE, REV = "Construction documents, lithography bay 09, for review", "CD1 construction documents for review"
+        CURRENT = CURRENT + cd_sheets.SHEETS
+        bodies.update(cd_sheets.BODIES)
     (out / "sheets").mkdir(parents=True, exist_ok=True)
     sha = hashlib.sha256(Path(layout).read_bytes()).hexdigest()[:12]
     C.sha = sha
@@ -840,7 +850,11 @@ def write(C, V, out, layout):
             continue
         (out / "sheets" / f"{sid}.svg").write_text(frame(sid, titles[sid], fn(C), sha))
     (out / "sheets" / "G-002.svg").write_text(frame("G-002", titles["G-002"], g002(C, V, None), sha))
-    (out / "specs.md").write_text(specs(C))
+    md = specs(C)
+    if C.P.get("stage") == "cd":
+        import cd_sheets
+        md += cd_sheets.specs_cd(C)
+    (out / "specs.md").write_text(md)
     return [s for s, _ in CURRENT]
 
 
@@ -853,7 +867,7 @@ def write_ledger_sheet(C, L, out, layout):
     (out / "index.json").write_text(json.dumps([{"id": s, "title": t, "file": f"sheets/{s}.svg"} for s, t in CURRENT], indent=1) + "\n")
     W, H = bp.W, bp.H
     html = ["<!doctype html><html><head><meta charset=\"utf-8\"><title>Fab Gym campus: " +
-            ("design development set" if C.P.get("stage") == "dd" else "schematic permit set") + "</title><style>",
+            {"dd": "design development set", "cd": "construction documents"}.get(C.P.get("stage"), "schematic permit set") + "</title><style>",
             f"@page{{size:{f(W)}mm {f(H)}mm;margin:0}}html,body{{margin:0;padding:0;background:#fff}}",
             f".s{{width:{f(W)}mm;height:{f(H)}mm;break-after:page;page-break-after:always;overflow:hidden}}",
             f".s:last-child{{break-after:auto;page-break-after:auto}}.s svg{{display:block;width:{f(W)}mm;height:{f(H)}mm}}",

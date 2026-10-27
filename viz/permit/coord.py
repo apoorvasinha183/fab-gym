@@ -39,6 +39,25 @@ def joint(a, b):
             return "sprinkler piping among its heads"
         if s["cls"] == "IfcFireSuppressionTerminal" and o["cls"] == "IfcTransportElement":
             return "a hoistway the sprinkler heads leave out"
+        # construction documents (docs/CONSTRUCTION-DOCS.md): connections and pieces inside what holds them
+        so, oo = s["otype"] or "", o["otype"] or ""
+        if so == "base plate" and o["cls"] in ("IfcColumn", "IfcFooting"):
+            return "a base plate on its column and footing"
+        if s["cls"] == "IfcMechanicalFastener" and o["cls"] in ("IfcPlate", "IfcFooting", "IfcColumn"):
+            return "anchor rods through the plate into the footing"
+        if s["cls"] == "IfcReinforcingBar" and o["cls"] == "IfcFooting":
+            return "reinforcement inside its footing"
+        if so == "waffle rib" and (o["cls"] == "IfcSlab" and not o["key"].startswith("permit/") or oo == "waffle rib"):
+            return "ribs inside the waffle slab"
+        if so == "isolation valve" and o["cls"] == "IfcPipeSegment":
+            return "a valve on its pipe"
+        if so == "raised floor tile" and o["cls"] == "IfcCovering" and not o["key"].startswith("permit/"):
+            return "tiles inside the raised floor"
+        if so == "raised floor tile" and o["cls"] in ("IfcPipeSegment", "IfcDuctSegment", "IfcCableCarrierSegment") \
+                and o["box"][2] <= s["box"][2] and o["box"][5] >= s["box"][5]:
+            return "a drop through a cut floor tile"
+        if so.startswith("truss member") and oo.startswith("truss member") and so == oo:
+            return "members of one truss meeting"
         if s["cls"] in ("IfcSlab", "IfcCovering") and not s["key"].startswith("permit/"):
             if o["box"][2] <= s["box"][2] + 1e-6 and o["box"][5] >= s["box"][5] - 1e-6:
                 return "through an opening in a slab"

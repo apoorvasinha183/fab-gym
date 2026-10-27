@@ -1,0 +1,243 @@
+[
+ {
+  "id": "CD.site",
+  "discipline": "S",
+  "item": "Earthquake design data for the region (USGS values), wind and snow assumed",
+  "sheet": "S-510",
+  "ifc": null,
+  "stage": "CD",
+  "made": "cd:site",
+  "rules": [
+   "site.seismic_values"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.bay_floor",
+  "discipline": "A",
+  "item": "Bay floor plan: raised floor tiles, perforated tiles, chase panels, doors",
+  "sheet": "A-110",
+  "ifc": "IfcCovering",
+  "stage": "CD",
+  "made": "cd:tiles",
+  "rules": [
+   "cd.tiles"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "CD.bay_ceiling",
+  "discipline": "A",
+  "item": "Bay ceiling plan: fan filter units one by one, sprinkler heads",
+  "sheet": "A-130",
+  "ifc": "IfcAirTerminal",
+  "stage": "CD",
+  "made": "cd:ffu",
+  "rules": [
+   "cd.ffu_coverage"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "CD.bay_schedules",
+  "discipline": "A",
+  "item": "Bay schedules: tiles, chase panels, door hardware",
+  "sheet": "A-610",
+  "ifc": null,
+  "stage": "CD",
+  "made": "sheet:A-610",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.base_plates",
+  "discipline": "S",
+  "item": "Base plates and anchor rods under the bay's columns",
+  "sheet": "S-110",
+  "ifc": "IfcPlate",
+  "stage": "CD",
+  "made": "cd:plates",
+  "rules": [
+   "cd.base_plates"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.footing_mats",
+  "discipline": "S",
+  "item": "Footing reinforcement under the bay",
+  "sheet": "S-510",
+  "ifc": "IfcReinforcingBar",
+  "stage": "CD",
+  "made": "cd:mats",
+  "rules": [
+   "cd.footing_mats"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.ribs",
+  "discipline": "S",
+  "item": "Waffle slab ribs under the bay",
+  "sheet": "S-110",
+  "ifc": "IfcMember",
+  "stage": "CD",
+  "made": "cd:ribs",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.trusses",
+  "discipline": "S",
+  "item": "Roof trusses over the bay as chords and verticals",
+  "sheet": "S-110",
+  "ifc": "IfcMember",
+  "stage": "CD",
+  "made": "cd:trusses",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.struct_details",
+  "discipline": "S",
+  "item": "Structural details: base plate, footing mat, truss joint",
+  "sheet": "S-510",
+  "ifc": null,
+  "stage": "CD",
+  "made": "sheet:S-510",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.hangers",
+  "discipline": "M",
+  "item": "Lateral hangers under the bay",
+  "sheet": "M-110",
+  "ifc": "IfcMember",
+  "stage": "CD",
+  "made": "cd:hangers",
+  "rules": [
+   "cd.hangers"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "CD.drops",
+  "discipline": "PP",
+  "item": "A drop and an isolation valve per utility per tool",
+  "sheet": "PP-110",
+  "ifc": "IfcValve",
+  "stage": "CD",
+  "made": "cd:drops",
+  "rules": [
+   "cd.drops"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "CD.gas_lines",
+  "discipline": "PP",
+  "item": "Double-contained gas lines from the valve boxes to the tools",
+  "sheet": "PP-110",
+  "ifc": null,
+  "stage": "CD",
+  "made": "cd:drops",
+  "rules": [
+   "cd.gas_lines"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.clearances",
+  "discipline": "A",
+  "item": "Tool service clearances kept free",
+  "sheet": "A-110",
+  "ifc": null,
+  "stage": "CD",
+  "made": "cd:clearances",
+  "rules": [
+   "cd.clearances"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.feeders",
+  "discipline": "E",
+  "item": "A power feeder per tool",
+  "sheet": "E-110",
+  "ifc": "IfcCableCarrierSegment",
+  "stage": "CD",
+  "made": "cd:drops",
+  "rules": [
+   "elec.conductors"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "CD.heads",
+  "discipline": "FP",
+  "item": "Sprinkler heads one by one and branch sizing",
+  "sheet": "FP-110",
+  "ifc": "IfcFireSuppressionTerminal",
+  "stage": "CD",
+  "made": "cd:heads",
+  "rules": [
+   "sprinklers.spacing",
+   "sprinklers.branch_sizing"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.shop_drawings",
+  "discipline": "FP",
+  "item": "Fire protection shop drawings (107.2.2), by the installing contractor",
+  "sheet": "FP-110",
+  "ifc": null,
+  "stage": "CD",
+  "made": "cd:heads",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "CD.alarm",
+  "discipline": "FA",
+  "item": "Detectors and notification in the bay",
+  "sheet": "FA-110",
+  "ifc": "IfcSensor",
+  "stage": "CD",
+  "made": "cd:alarm",
+  "rules": [
+   "alarm.detector_spacing"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "CD.specs",
+  "discipline": "spec",
+  "item": "Specifications in three parts for the bay's divisions",
+  "sheet": "specs.md",
+  "ifc": null,
+  "stage": "CD",
+  "made": "specs",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ }
+]

@@ -211,6 +211,14 @@
      "basis": "assumed: the stricter reading (Table 1604.5 IV), decided by quiz 27 Oct; the authority confirms"
     }
    }
+  },
+  "cd": {
+   "bay": 8,
+   "site": "viz/permit/codes/us-site-willamette.json",
+   "rules": "viz/permit/rules/us-cd.json",
+   "items": "viz/permit/items-cd.json",
+   "nfpa": "viz/permit/codes/us-nfpa.json",
+   "out": "data/layout-real-dd/permit-cd/us"
   }
  }
 }

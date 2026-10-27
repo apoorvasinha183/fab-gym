@@ -59,7 +59,7 @@ def run(C):
         rxs_s = sorted({c["x"] for c in rc if c["y"] < 0})
         rx_s = dict(zip(rxs_s, tributary(rxs_s, b["x0"], b["x1"])))
         mid_y = (3.2 + 66.5) / 2
-        bands = {3.2: (0.0, mid_y), 66.5: (mid_y, b["y1"])}
+        bands = {3.2: (0.0, mid_y), 3.04: (0.0, mid_y), 66.5: (mid_y, b["y1"])}   # inner columns at 3.04 m from design development on
         h = C.fl["roof"]["z0"]
         for c in rc:
             ax = (rx_n if c["y"] > 0 else rx_s)[c["x"]]
@@ -93,8 +93,9 @@ def run(C):
             C.add(f"{k}/truss/S/{x}", "IfcBeam", f"Roof truss at x {x}", (x - 0.25, -66.2, filt, x + 0.25, -3.5, top), p, "air space",
                   "BEAM", "roof truss", stage="D5", lod=200, review="preliminary, licensed review",
                   numbers=f"span {66.5 - 3.2:.1f} m, depth {TRUSS_DEPTH} m (assumed)")
+        ybeam = min(abs(c["y"]) for c in C.roof_cols) - 0.3   # to the inner roof columns' faces
         for x in sorted(set(rxs) & set(rxs_s)):
-            C.add(f"{k}/spinebeam/{x}", "IfcBeam", f"Spine roof beam at x {x}", (x - 0.2, -2.9, top - 0.8, x + 0.2, 2.9, top), p,
+            C.add(f"{k}/spinebeam/{x}", "IfcBeam", f"Spine roof beam at x {x}", (x - 0.2, -ybeam, top - 0.8, x + 0.2, ybeam, top), p,
                   "air space", "BEAM", "roof beam", stage="D5", lod=200, review="preliminary, licensed review", numbers="span 6.4 m")
         for (pp, i, side), use in sorted(C.res.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2])):
             if pp != p or "brace" not in use:
