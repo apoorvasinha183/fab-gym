@@ -123,7 +123,9 @@
   "topic": "sprinklers",
   "cite": [
    "IBC 903.2.5.2",
-   "IBC 107.2.2"
+   "IBC 107.2.2",
+   "NFPA 13 T10.2.4.2.1(b)",
+   "NFPA 13 10.2.5"
   ],
   "binds": "bay",
   "test": "Sprinkler heads within the spacing and area per head NFPA 13 allows for the hazard",
@@ -140,7 +142,9 @@
   "topic": "sprinklers",
   "cite": [
    "IBC 903.2.5.2",
-   "IBC 107.2.2"
+   "IBC 107.2.2",
+   "NFPA 13 19.2.2.3",
+   "NFPA 13 T19.2.3.1.1"
   ],
   "binds": "bay",
   "test": "Branch lines sized as NFPA 13 asks for the heads they feed",
@@ -157,7 +161,9 @@
   "topic": "alarms",
   "cite": [
    "IBC 907.2.5",
-   "IBC 107.2.2"
+   "IBC 107.2.2",
+   "NFPA 72 17.7.4.2.3.1",
+   "NFPA 72 17.7.4.6"
   ],
   "binds": "bay",
   "test": "Detectors and notification appliances spaced as NFPA 72 asks",
@@ -173,7 +179,9 @@
   "id": "elec.conductors",
   "topic": "emergency power",
   "cite": [
-   "IBC 415.11.1.8"
+   "IBC 415.11.1.8",
+   "NFPA 70 T310.16",
+   "NFPA 70 215.2(A)(1)"
   ],
   "binds": "bay",
   "test": "Every tool feeder's conductor within its ampacity, as NFPA 70 asks",

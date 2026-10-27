@@ -23,8 +23,6 @@ BAR_D, BAR_A, FY_BAR = 0.020, 314e-6, 420.0                   # bottom mat bars 
 RIB_W, RIB_PITCH = 0.2, 1.5                                   # waffle ribs (assumed)
 TILE = 0.6
 HANGER = 2.4                                                  # largest hanger spacing, m (assumed)
-HEAD_SP = 3.4                                                 # sprinkler head spacing, m (assumed until NFPA 13 is read)
-SAMPLE_SP = 9.1                                               # sampling points, m (assumed until NFPA 72 is read)
 V_FEED = 480.0                                                # feeder voltage, three phase (assumed)
 AMPACITY = [(30, "10 AWG"), (40, "8 AWG"), (55, "6 AWG"), (75, "4 AWG"), (95, "3 AWG"), (115, "2 AWG"), (130, "1 AWG"),
             (150, "1/0"), (175, "2/0"), (200, "3/0"), (230, "4/0"), (255, "250 kcmil"), (285, "300 kcmil"),
@@ -335,11 +333,16 @@ def services(C, X, D, B, tools, old):
         gaps = [b - a for a, b in zip(ys, ys[1:])] + [2 * (ys[0] - y0), 2 * (y1 - ys[-1])]
         worst = max(worst, max(gaps))
     feeders = {}
+    table = C.reg["sections"].get("NFPA 70 T310.16")
+    rows = [(a, nm) for nm, a in table["facts"]["copper_75C_A"]] if table else AMPACITY
+    cf = C.reg["sections"]["NFPA 70 215.2(A)(1)"]["facts"]["continuous_factor"] if table else 1.25
     for i in tools:
         kva = C.cards[S["tools"][i]["kind"]]["utilities"]["power_kva"]["value"]
-        amps = kva * 1000 / (math.sqrt(3) * V_FEED) * 1.25
-        cond = next((nm for a, nm in AMPACITY if a >= amps), "parallel 500 kcmil")
-        feeders[str(i)] = {"kva": kva, "amps_125pct": round(amps, 1), "conductor": cond, "basis": "assumed table; NFPA 70 not read"}
+        amps = kva * 1000 / (math.sqrt(3) * V_FEED) * cf
+        a_, cond = next(((a, nm) for a, nm in rows if a >= amps), (None, "parallel conductors"))
+        feeders[str(i)] = {"kva": kva, "amps_125pct": round(amps, 1), "conductor": cond, "ampacity_A": a_,
+                           "basis": "NFPA 70-2023 Table 310.16, 75 C copper, at 125% (215.2(A)(1)); terminals rated 75 C (assumed)"
+                           if table else "assumed table; NFPA 70 not read"}
     D["services"] = {"tools": out, "valves": nv, "hangers": nh, "max_hanger_spacing_m": round(worst, 3), "feeders": feeders}
     bay = D["bay"]["building"]
     C.case("cd.drops", bay, drops_ok=q(all(set(g["drops"]) | ({"power_kva"} if g["feeder"] else set()) ==
@@ -348,38 +351,110 @@ def services(C, X, D, B, tools, old):
     C.case("cd.hangers", bay, hangers_ok=q(worst <= HANGER + 1e-9, "assumed: 2.4 m largest spacing"))
     C.case("cd.gas_lines", bay, gas_lines_ok=q(True, f"design: {sum(len(g['gas_lines']) for g in out.values())} lines; the bay's tools "
                                                      "draw no hazardous gas" if not any(g["gas_lines"] for g in out.values()) else "design"))
-    C.case("elec.conductors", bay, conductors_ok=q(True, "design on an assumed table; NFPA 70 not read"))
+    C.case("elec.conductors", bay, conductors_ok=q(all(f["ampacity_A"] is not None and f["ampacity_A"] >= f["amps_125pct"]
+                                                       for f in feeders.values()), feeders[str(tools[0])]["basis"] if tools else "none"))
 
 
-# ------------------------------------------------------------------ CD6 sprinklers and detection (assumed spacing until NFPA)
+# ------------------------------------------------------------------ CD5 to CD7: sprinklers and detection by NFPA 13 and 72
+
+def nfpa(C, key, fact, default):
+    sec = C.reg["sections"].get(key)
+    return (sec["facts"][fact], True) if sec else (default, False)
+
+
+def grid(a, b, step):
+    """Even rows across a span: as few as keep the spacing within step, the first and last half a spacing in."""
+    n = max(1, math.ceil((b - a) / step - 1e-9))
+    s = (b - a) / n
+    return [a + s * (i + 0.5) for i in range(n)], s
+
 
 def fire(C, X, D, B, p, name):
-    S = C.S
     ceil0 = C.fl["cleanroom"]["z1"]
-    heads = 0
-    for x in frange(B["x0"] + HEAD_SP / 2, B["x1"] - 0.3, HEAD_SP):
-        for y in frange(B["y0"] + HEAD_SP / 2, B["y1"] - 0.3, HEAD_SP):
-            cand = [(x + dx - 0.03, y + dy - 0.03, ceil0 - 0.17, x + dx + 0.03, y + dy + 0.03, ceil0 - 0.05)
-                    for dx, dy in ((0, 0), (0.3, 0), (-0.3, 0), (0, 0.3), (0, -0.3), (0.3, 0.3), (-0.3, -0.3))]
-            if X.place(f"cd/head/{x:.2f}/{y:.2f}", "IfcFireSuppressionTerminal", f"Sprinkler head, {name}", cand, p, "cleanroom",
-                       "SPRINKLER", "sprinkler head", need=False, **cd(numbers="pendent, quick response (assumed); NFPA 13 not read")):
+    sp, r13 = nfpa(C, "NFPA 13 T10.2.4.2.1(b)", "spacing_ft", 15)
+    ar, _ = nfpa(C, "NFPA 13 T10.2.4.2.1(b)", "area_sqft", 130)
+    wf, _ = nfpa(C, "NFPA 13 10.2.5", "wall_max_fraction_of_spacing", 0.5)
+    mn, _ = nfpa(C, "NFPA 13 10.2.5", "between_min_ft", 6)
+    ps, r72 = nfpa(C, "NFPA 72 17.7.4.2.3.1", "nominal_spacing_ft", 30)
+    SP, AR, PS = sp * FT, ar * SQFT, ps * FT
+    # the rooms: the bay between its chase partitions, and the two chases it shares with its neighbours; the
+    # partitions reach within the top 15% of the ceiling height, so each is a wall
+    rooms = [("main", B["x0"] + 1.7, B["x1"] - 1.7), ("chase W", B["x0"] - 1.6, B["x0"] + 1.6), ("chase E", B["x1"] - 1.6, B["x1"] + 1.6)]
+    heads = chase_heads = 0
+    stats = {"sx": [], "sy": [], "area": [], "wall": []}
+    for room, xa, xb in rooms:
+        W = xb - xa
+        xs, sx = grid(xa, xb, SP)
+        ys, sy = grid(B["y0"], B["y1"], min(SP, AR / sx))
+        stats["sx"].append(sx); stats["sy"].append(sy); stats["area"].append(sx * sy); stats["wall"].append(sx / 2)
+        for x in xs:
+            for y in ys:
+                cand = [(x + dx - 0.03, y + dy - 0.03, ceil0 - 0.17, x + dx + 0.03, y + dy + 0.03, ceil0 - 0.05)
+                        for dx, dy in ((0, 0), (0, 0.1), (0, -0.1), (0.1, 0), (-0.1, 0), (0, 0.15), (0, -0.15))]
+                e = X.place(f"cd/head/{room}/{x:.2f}/{y:.2f}", "IfcFireSuppressionTerminal", f"Sprinkler head, {name} {room}", cand, p,
+                            "cleanroom", "SPRINKLER", "sprinkler head", **cd(numbers=f"pendent, quick response; {sx:.2f} x {sy:.2f} m"))
                 heads += 1
-    pts = 0
-    for x in frange(B["x0"] + SAMPLE_SP / 2, B["x1"] - 0.3, SAMPLE_SP):
-        for y in frange(B["y0"] + SAMPLE_SP / 2, B["y1"] - 0.3, SAMPLE_SP):
-            cand = [(x + dx - 0.03, y + dy - 0.03, ceil0 - 0.45, x + dx + 0.03, y + dy + 0.03, ceil0 - 0.39)
-                    for dx, dy in ((0, 0), (0.4, 0), (-0.4, 0), (0, 0.4), (0, -0.4))]
-            if X.place(f"cd/sample/{x:.2f}/{y:.2f}", "IfcSensor", f"Air-sampling point, {name}", cand, p, "cleanroom", "SMOKESENSOR",
-                       "sampling point", need=False, **cd(numbers="on the bay's air-sampling detector; NFPA 72 not read")):
+                chase_heads += room != "main"
+    pts = chase_ports = 0
+    pstats = []
+    for room, xa, xb in rooms:
+        xs, sx = grid(xa, xb, PS)
+        ys, sy = grid(B["y0"], B["y1"], PS)
+        pstats.append((max(sx, sy), sx / 2))
+        for x in xs:
+            for y in ys:
+                cand = [(x + dx - 0.03, y + dy - 0.03, ceil0 - 0.45, x + dx + 0.03, y + dy + 0.03, ceil0 - 0.39)
+                        for dx, dy in ((0, 0), (0, 0.2), (0, -0.2), (0.2, 0), (-0.2, 0), (0, 0.4), (0, -0.4))]
+                X.place(f"cd/sample/{room}/{x:.2f}/{y:.2f}", "IfcSensor", f"Air-sampling port, {name} {room}", cand, p, "cleanroom",
+                        "SMOKESENSOR", "sampling point", **cd(numbers="on the bay's air-sampling detector"))
                 pts += 1
+                chase_ports += room != "main"
     area = (B["x1"] - B["x0"]) * (B["y1"] - B["y0"])
-    D["fire"] = {"heads": heads, "spacing_m": HEAD_SP, "area_per_head_sqft": round(area / max(heads, 1) / SQFT, 1),
-                 "sampling_points": pts, "sampling_spacing_m": SAMPLE_SP,
-                 "basis": "assumed spacing; NFPA 13 and 72 not read, so their rules say cannot say"}
+    face = C.P["air"]["face_m_s"]
+    D["fire"] = {"heads": heads, "chase_heads": chase_heads, "rooms": [r[0] for r in rooms],
+                 "spacing_m": round(max(stats["sx"] + stats["sy"]), 3), "area_per_head_sqft": round(max(stats["area"]) / SQFT, 1),
+                 "max_spacing_ft": round(max(stats["sx"] + stats["sy"]) / FT, 2),
+                 "max_area_per_head_sqft": round(max(stats["area"]) / SQFT, 1),
+                 "max_wall_distance_ft": round(max(stats["wall"]) / FT, 2),
+                 "min_between_ft": round(min(stats["sx"] + stats["sy"]) / FT, 2),
+                 "sampling_points": pts, "chase_ports": chase_ports, "sampling_spacing_m": round(max(x for x, _ in pstats), 3),
+                 "max_port_spacing_ft": round(max(x for x, _ in pstats) / FT, 2), "max_port_wall_ft": round(max(w for _, w in pstats) / FT, 2),
+                 "density": {"gpm_sqft": nfpa(C, "NFPA 13 T19.2.3.1.1", "OH2_gpm_sqft", 0.2)[0],
+                             "area_sqft": nfpa(C, "NFPA 13 T19.2.3.1.1", "OH2_area_sqft", 1500)[0]},
+                 "bay_area_sqft": round(area / SQFT),
+                 "nfpa13_read": r13, "nfpa72_read": r72,
+                 "basis": ("NFPA 13-2022 and NFPA 72-2022 read" if r13 and r72 else "assumed spacing; NFPA 13 and 72 not read")}
+    F = D["fire"]
     bay = D["bay"]["building"]
-    C.case("sprinklers.spacing", bay, spacing_ok=q(True, "assumed spacing"))
-    C.case("sprinklers.branch_sizing", bay, branch_ok=q(True, "assumed sizes"))
-    C.case("alarm.detector_spacing", bay, detectors_ok=q(True, "assumed spacing"))
+    ok_s = F["max_spacing_ft"] <= sp + 1e-6 and F["max_area_per_head_sqft"] <= ar + 1e-6 and \
+        F["max_wall_distance_ft"] <= wf * sp + 1e-6 and F["min_between_ft"] >= mn - 1e-6
+    C.case("sprinklers.spacing", bay, spacing_ok=q(ok_s, f"computed: at most {F['max_spacing_ft']} ft apart, {F['max_area_per_head_sqft']} sq ft "
+                                                       f"a head, {F['max_wall_distance_ft']} ft from a wall, at least {F['min_between_ft']} ft apart"))
+    water = ("cannot be settled without the site's water supply: over 5,000 sq ft (this bay {0:,} sq ft) the pipe schedule needs the "
+             "Table 19.2.2.1 flows at 50 psi residual (19.2.2.3), and the hydraulic method at {1} gpm/sq ft over {2:,} sq ft "
+             "(Table 19.2.3.1.1) needs a water supply test").format(F["bay_area_sqft"], F["density"]["gpm_sqft"], F["density"]["area_sqft"])
+    C.case("sprinklers.branch_sizing", bay, branch_ok=q(None, why=water) if r13 else q(True, "assumed sizes"))
+    ok_d = F["max_port_spacing_ft"] <= ps + 1e-6 and F["max_port_wall_ft"] <= 0.5 * ps + 1e-6 and face <= 1.5
+    C.case("alarm.detector_spacing", bay, detectors_ok=q(ok_d, f"computed: ports at most {F['max_port_spacing_ft']} ft apart and "
+                                                             f"{F['max_port_wall_ft']} ft from a wall; air {face} m/s; transport time "
+                                                             "(120 s at most) by the maker's calculation"))
+    if r13:
+        C.cases.pop("sprinklers.density", None)
+        for k in C.keys:
+            C.case("sprinklers.density", k, density_ok=q(None, why=(
+                f"the design density is known ({F['density']['gpm_sqft']} gpm/sq ft over {F['density']['area_sqft']:,} sq ft, "
+                "Table 19.2.3.1.1); whether the system delivers it waits for the site's water supply test and a hydraulic "
+                "calculation (19.2.2.3, 19.2.3)")))
+    if r72:
+        C.cases.pop("alarm.notification", None)
+        for k in C.keys:
+            C.case("alarm.notification", k, notification=q(None, why="NFPA 72 read for detector spacing; the notification appliance "
+                                                                      "layout (its chapter 18) is not checked"))
+    if nfpa(C, "NFPA 70 T310.16", "copper_75C_A", None)[1]:
+        C.cases.pop("elec.wiring", None)
+        for k in C.keys:
+            C.case("elec.wiring", k, wiring_ok=q(None, why="NFPA 70 read for feeder ampacity; fault current, overcurrent protection "
+                                                            "and hazardous locations are not checked"))
 
 
 # ------------------------------------------------------------------ CD4 service clearances

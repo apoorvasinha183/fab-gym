@@ -83,7 +83,8 @@ def a130(C):
         (lambda e: (e["otype"] or "") == "sprinkler head", RED, RED, 0.2),
         (lambda e: (e["otype"] or "") == "chase exhaust" and e["cls"] == "IfcAirTerminal", AMBER, AMBER, 0.2)],
         [f"{A['units']} fan filter units of 1200 x 600 mm: coverage {A['coverage']:.0%} against {A['target']:.0%} for the bay's class (assumed).",
-         f"{F['heads']} sprinkler heads on a {F['spacing_m']} m grid (assumed), about {F['area_per_head_sqft']} sq ft a head; NFPA 13 not read.",
+         f"{F['heads']} sprinkler heads ({F['chase_heads']} in the chases), at most {F['max_spacing_ft']} ft apart and "
+         f"{F['max_area_per_head_sqft']} sq ft a head ({F['basis']}).",
          "Chase exhaust grilles at the top of each chase (amber)."])
 
 
@@ -138,8 +139,9 @@ def e110(C):
         TOOL,
         (lambda e: (e["otype"] or "") == "power feeder", RED, RED, 0.1),
         (lambda e: e["cls"] == "IfcElectricDistributionBoard", INK, "#f3d1cf", 0.2)],
-        ["Feeders at 480 V, three phase, sized at 125% of the tool's kVA on an assumed copper table: NFPA 70 not read, "
-         "so the conductor rule says cannot say.", "The bay's panelboards on E-602."],
+        ["Feeders at 480 V, three phase, at 125% of the tool's load as continuous (NFPA 70-2023 215.2(A)(1)), copper from the "
+         "75 C column of Table 310.16 (terminals rated 75 C, assumed).", "Fault current, overcurrent protection and hazardous "
+         "locations are not checked. The bay's panelboards on E-602."],
         rows, [("Tool", 12), ("kVA", 14), ("A x 1.25", 18), ("Conductor", 28)])
 
 
@@ -149,8 +151,13 @@ def fp110(C):
         TOOL,
         (lambda e: (e["otype"] or "") == "sprinkler branch line", BLUE, "none", 0.15),
         (lambda e: (e["otype"] or "") == "sprinkler head", RED, RED, 0.3)],
-        [f"{F['heads']} heads on a {F['spacing_m']} m grid, {F['area_per_head_sqft']} sq ft a head (assumed).",
-         "Spacing, area per head and branch sizes follow NFPA 13; until it is read in the founder's session, those rules say cannot say.",
+        [f"{F['heads']} heads in three rooms: the bay between its chase partitions and the two chases (the partitions reach "
+         "within the top 15% of the ceiling, so each is a wall).",
+         f"At most {F['max_spacing_ft']} ft apart (15 asked), {F['max_area_per_head_sqft']} sq ft a head (130), {F['max_wall_distance_ft']} ft "
+         f"from a wall (7.5), at least {F['min_between_ft']} ft apart (6): NFPA 13-2022 Table 10.2.4.2.1(b) and 10.2.5.",
+         f"Design density {F['density']['gpm_sqft']} gpm/sq ft over {F['density']['area_sqft']:,} sq ft for ordinary hazard group 2 "
+         "(Table 19.2.3.1.1). Branch and main sizes wait for the site's water supply: the bay is over 5,000 sq ft (19.2.2.3), "
+         "so a water supply test and a hydraulic calculation decide them.",
          "Fire protection shop drawings follow (107.2.2), by the installing contractor."])
 
 
@@ -161,8 +168,11 @@ def fa110(C):
         (lambda e: (e["otype"] or "") == "sampling point", GREEN, GREEN, 0.3),
         (lambda e: e["cls"] == "IfcSensor" and "smoke" in (e["name"] or "").lower(), RED, RED, 0.3),
         (lambda e: e["cls"] == "IfcAlarm", AMBER, AMBER, 0.3)],
-        [f"{F['sampling_points']} sampling points on a {F['sampling_spacing_m']} m grid on the bay's air-sampling detector (assumed).",
-         "Spacing follows NFPA 72; until it is read, the detector spacing rule says cannot say."])
+        [f"{F['sampling_points']} sampling ports ({F['chase_ports']} in the chases) on the bay's air-sampling detector, at most "
+         f"{F['max_port_spacing_ft']} ft apart and {F['max_port_wall_ft']} ft from a wall: each port spaced as a spot detector, 30 ft "
+         "nominal (NFPA 72-2022 17.7.4.6, 17.7.4.2.3.1).",
+         "Transport time from the farthest port at most 120 s, by the maker's calculation; horn and strobe layout per NFPA 72 "
+         "chapter 18, not checked."])
 
 
 def a610(C):
