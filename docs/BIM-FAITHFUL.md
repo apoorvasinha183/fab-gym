@@ -255,6 +255,9 @@ Made while building, 28 Oct 2026, before the code was committed:
 5. **A door across two panels** (bay 09's chase partition is in 1.2 m panels) cuts an opening in each panel, clipped
    to it. The door fills the opening in the panel that holds most of it.
 6. **The glTF test** compares a material set (a door's frame and leaf) by the materials in it.
+7. **Tool dressing in Blender.** Each film tool model's body lies inside its IFC box (to 5 cm). Its status light
+   tower stands on top, up to 0.6 m above the box (the furnace's pole), as in the film. So the tower is a separate
+   object, and the test checks the body.
 
 Found and left for the founder (not changed here):
 
