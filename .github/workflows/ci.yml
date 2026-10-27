@@ -11,3 +11,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build and test
         run: cargo test --workspace --locked
+      - name: Realistic fab checks (Python, standard library)
+        run: python3 -m unittest discover -s viz/tests

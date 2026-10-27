@@ -1,6 +1,6 @@
 # Film script: Where the Time Goes
 
-About 2 minutes 5 seconds, 1920×1080, 24 fps. Rendered in Blender; the same
+About 2 minutes 7 seconds, 1920×1080, 24 fps. Rendered in Blender; the same
 scene is explorable in Godot. A gigafab-style layout of our own design on the
 SMT2020 model; not a real fab.
 
@@ -105,27 +105,27 @@ etch; the camera pulls back and rises to show the carriers waiting for the wet
 benches. The clock spins, ×400.
 *Caption:* "Then it waits. Two hours in the queue for wet etch."
 
-## Act 4 · Where the time went (1:35–1:52)
+## Act 4 · Where the time went (1:35–1:55)
 
-**Shot 11 (1:35–1:45). Up through the ceiling.** 35 mm rising through the
+**Shot 11 (1:35–1:44). Up through the ceiling.** 35 mm rising through the
 filter grid to a top-down view at 120 m. The lot's path drawn across both
 buildings. A bar fills: on tools 4 h 41 · waiting 2 h 46 · moving 26 min.
 *Caption:* "Moving: 26 minutes. Waiting: almost three hours."
 
-**Shot 12 (1:45–1:52). All lots.** Same view. Every waiting carrier glows at
+**Shot 12 (1:44–1:55). All lots.** Same view. Every waiting carrier glows at
 its queue.
 *Captions:* "Across the fab, half of lot time was spent waiting for a tool and
 3% moving." · "Our layout cut hoist travel by 30%. Cycle time did not clearly
 change."
 
-## Act 5 · The question (1:52–2:05)
+## Act 5 · The question (1:55–2:07)
 
-**Shot 13 (1:52–2:02). Back out.** 24 mm. Pull up and out to the campus in
+**Shot 13 (1:55–2:01). Back out.** 24 mm. Pull up and out to the campus in
 morning light, ending on Shot 1's angle.
 *Caption:* "Which lot should go next? In Fab Gym, an agent proposes, the
 simulator scores, a person signs."
 
-**End card (2:02–2:05).** "Fab Gym. A gigafab-style layout of our own design on
+**End card (2:01–2:07).** "Fab Gym. A gigafab-style layout of our own design on
 the SMT2020 model. Not a real fab." Small: SMT2020 (Kopp, Hassoun, Kalir and
 Mönch, 2020); the CC0 sources by name.
 

@@ -1,0 +1,37 @@
+{
+  "what": "The size book of docs/FAB-LOOK.md as data: metres unless stated. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.",
+  "carrier": {"w": 0.426, "d": 0.355, "h": 0.338, "mass_kg": 8.2, "wafers": 25, "pitch_mm": 10},
+  "vehicle": {"l": 0.9, "w": 0.6, "h": 0.8},
+  "rail_underside": 4.2,
+  "port_seat": 0.9,
+  "speed_m_per_min": 150,
+  "building": {
+    "support_floor": 6.0,
+    "waffle_slab": 0.9,
+    "raised_floor": 0.6,
+    "cleanroom": 5.5,
+    "air_space": 4.0,
+    "roof_slab": 1.5,
+    "roof_plant": 4.0,
+    "column_grid": 12.0,
+    "floor_panel": 0.6,
+    "floor_open": 0.38,
+    "ffu": [1.2, 0.6]
+  },
+  "light": {"litho_cut_nm": 500, "litho_pass_nm": 540, "white_k": 5000},
+  "status_light": 0.6,
+  "kinds": [
+    {"kind": "metrology",   "prefixes": ["LithoMet_", "Litho_REG_", "TF_Met_"], "w": 1.8, "d": 2.8,  "h": 2.2, "ports": 1},
+    {"kind": "track",       "prefixes": ["LithoTrack_"],                        "w": 3.5, "d": 7.0,  "h": 2.5, "ports": 4},
+    {"kind": "scanner",     "prefixes": ["Litho_"],                             "w": 4.5, "d": 11.0, "h": 2.9, "ports": 4},
+    {"kind": "inspection",  "prefixes": ["DefMet_", "DefMEt_"],                 "w": 2.2, "d": 3.4,  "h": 2.3, "ports": 2},
+    {"kind": "etch",        "prefixes": ["DE_"],                                "w": 3.5, "d": 5.5,  "h": 2.6, "ports": 2},
+    {"kind": "deposition",  "prefixes": ["Dielectric_", "TF_"],                 "w": 3.5, "d": 5.5,  "h": 2.7, "ports": 2},
+    {"kind": "epitaxy",     "prefixes": ["EPI_"],                               "w": 4.0, "d": 6.0,  "h": 2.8, "ports": 2},
+    {"kind": "furnace",     "prefixes": ["Diffusion_"],                         "w": 1.5, "d": 2.0,  "h": 3.2, "ports": 2},
+    {"kind": "implanter",   "prefixes": ["Implant_"],                           "w": 3.6, "d": 8.1,  "h": 3.1, "ports": 2},
+    {"kind": "polisher",    "prefixes": ["Planar_"],                            "w": 3.0, "d": 6.0,  "h": 2.6, "ports": 2},
+    {"kind": "wet_bench",   "prefixes": ["WE_"],                                "w": 2.5, "d": 10.0, "h": 2.8, "ports": 2},
+    {"kind": "stocker",     "prefixes": ["Delay_"],                             "w": 3.0, "d": 12.0, "h": 5.0, "ports": 0}
+  ]
+}
