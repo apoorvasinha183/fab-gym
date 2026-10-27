@@ -1,0 +1,604 @@
+{
+ "place": "us",
+ "stage": "design development",
+ "jurisdiction": "a hypothetical jurisdiction that adopts the 2024 IBC and the 2024 IFC as published, with no local amendments",
+ "read_in": "ICC's free reader, codes.iccsafe.org, on 27 Oct 2026; no copy of the code text is kept",
+ "hash": "SHA-256 of the section's text as shown: whitespace collapsed, the reader's CDP and INSIGHTS labels removed, the characters = ? & % turned to spaces; chars is the length hashed",
+ "sources": {
+  "IBC 2024": "2024 International Building Code, International Code Council",
+  "IFC 2024": "2024 International Fire Code, International Code Council",
+  "IPC 2024": "2024 International Plumbing Code, International Code Council",
+  "IMC 2024": "2024 International Mechanical Code, International Code Council"
+ },
+ "extends": "viz/permit/codes/us-2024.json",
+ "sections": {
+  "IPC 403.1": {
+   "code": "IPC 2024",
+   "title": "Minimum number of fixtures (Table 403.1)",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-4-fixtures-faucets-and-fixture-fittings",
+   "opened": "2026-10-27",
+   "chars": 7649,
+   "sha256": "22d2bd18d8f08d001ece051fd5d4ff656f678a9c332d34c389a756cffbf2875e",
+   "facts": {
+    "factory_wc_per": 100,
+    "factory_lav_per": 100,
+    "factory_df_per": 400,
+    "factory_service_sinks": 1,
+    "h_listed": false,
+    "note": "uses not in the table are decided by the code official; H is not listed, so the factory and industrial row is our proposal (assumed)"
+   }
+  },
+  "IPC 403.2": {
+   "code": "IPC 2024",
+   "title": "Separate facilities",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-4-fixtures-faucets-and-fixture-fittings",
+   "opened": "2026-10-27",
+   "chars": 1104,
+   "sha256": "00e0122daef570fef7be31c6988cdf0906c1fa27f4ed368bcf658d1572c55f01",
+   "facts": {
+    "separate_by_sex": true,
+    "exempt_occupant_load_max": 15
+   }
+  },
+  "IPC 403.3.3": {
+   "code": "IPC 2024",
+   "title": "Location of toilet facilities",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-4-fixtures-faucets-and-fixture-fittings",
+   "opened": "2026-10-27",
+   "chars": 894,
+   "sha256": "feab608b96e50ef2a95219f6b5fbcecd05fb736a2668739d8de8a82b16924f92",
+   "facts": {
+    "max_travel_ft": 500,
+    "max_stories_away": 1
+   }
+  },
+  "IPC 411.1": {
+   "code": "IPC 2024",
+   "title": "Emergency showers and eyewash stations, approval",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-4-fixtures-faucets-and-fixture-fittings",
+   "opened": "2026-10-27",
+   "chars": 85,
+   "sha256": "304e015b23295d115361edaf4e036b0187f943df7b05ca2bde2ec8d83b33378a",
+   "facts": {
+    "per": "ISEA Z358.1"
+   }
+  },
+  "IPC T709.1": {
+   "code": "IPC 2024",
+   "title": "Drainage fixture units for fixtures and groups",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-7-sanitary-drainage",
+   "opened": "2026-10-27",
+   "chars": 2113,
+   "sha256": "aef694cabe89ed1d35efc7148af221ac85894fca0e361635e92aa18836408ff5",
+   "facts": {
+    "dfu": {
+     "water_closet_public_1_6gpf": 4,
+     "lavatory": 1,
+     "drinking_fountain": 0.5,
+     "service_sink": 2,
+     "urinal": 4,
+     "floor_drain": 2
+    }
+   }
+  },
+  "IPC T710.1(1)": {
+   "code": "IPC 2024",
+   "title": "Building drains and sewers",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-7-sanitary-drainage",
+   "opened": "2026-10-27",
+   "chars": 637,
+   "sha256": "ae8ba732fc446044de9b940b938f9c8fa6fffe29aaba39ff2a43ef3a2aaa8707",
+   "facts": {
+    "slope": "1/4 inch per foot",
+    "max_dfu_by_in": [
+     [
+      3,
+      42
+     ],
+     [
+      4,
+      216
+     ],
+     [
+      5,
+      480
+     ],
+     [
+      6,
+      840
+     ],
+     [
+      8,
+      1920
+     ],
+     [
+      10,
+      3500
+     ],
+     [
+      12,
+      5600
+     ]
+    ],
+    "min_in_with_water_closet": 3
+   }
+  },
+  "IPC T710.1(2)": {
+   "code": "IPC 2024",
+   "title": "Horizontal fixture branches and stacks",
+   "url": "https://codes.iccsafe.org/content/IPC2024P1/chapter-7-sanitary-drainage",
+   "opened": "2026-10-27",
+   "chars": 981,
+   "sha256": "0b2d47c0088bfb88b1db9ba4fded79994193e28498ace1d364c4fda397836d48",
+   "facts": {
+    "branch_max_dfu_by_in": [
+     [
+      2,
+      6
+     ],
+     [
+      3,
+      20
+     ],
+     [
+      4,
+      160
+     ],
+     [
+      5,
+      360
+     ],
+     [
+      6,
+      620
+     ],
+     [
+      8,
+      1400
+     ]
+    ],
+    "stack_3_intervals_max_dfu_by_in": [
+     [
+      3,
+      48
+     ],
+     [
+      4,
+      240
+     ],
+     [
+      5,
+      540
+     ],
+     [
+      6,
+      960
+     ]
+    ]
+   }
+  },
+  "IBC T716.1(2)": {
+   "code": "IBC 2024",
+   "title": "Opening fire protection assemblies, ratings and markings",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-7-fire-and-smoke-protection-features",
+   "opened": "2026-10-27",
+   "chars": 2734,
+   "sha256": "07fa3e2331a422ac81441d6cf85c1589cc06d62fe8005194657419d8ecc19a39",
+   "facts": {
+    "door_h_by_wall": {
+     "fire barrier 2 h": 1.5,
+     "exit enclosure 2 h": 1.5,
+     "exit enclosure 1 h": 1,
+     "exit passageway 1 h": 1,
+     "other fire barrier 1 h": 0.75,
+     "corridor 1 h": 0.333
+    }
+   }
+  },
+  "IBC 714.4.1.2": {
+   "code": "IBC 2024",
+   "title": "Through-penetration firestop system",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-7-fire-and-smoke-protection-features",
+   "opened": "2026-10-27",
+   "chars": 373,
+   "sha256": "1ee698a834eec5a1d6a30f73ba396c71a308b276e9da56041f24c4fc2de4b3ac",
+   "facts": {
+    "f_rating_at_least_wall_rating": true,
+    "tested_to": "ASTM E814 or UL 1479"
+   }
+  },
+  "IBC T721.1(2) item 13": {
+   "code": "IBC 2024",
+   "title": "Rated walls: noncombustible studs with gypsum wallboard each side",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-7-fire-and-smoke-protection-features",
+   "opened": "2026-10-27",
+   "chars": 1566,
+   "sha256": "0dd7cda08ec20c637c86899aad13e1d846291accb6d4febcdb63497f2d93518b",
+   "facts": {
+    "13-1.1": {
+     "rating_h": 1,
+     "thickness_in": 2.875,
+     "what": "steel studs at 24 in, one layer 5/8 in Type X each side"
+    },
+    "13-1.2": {
+     "rating_h": 2,
+     "thickness_in": 3.625,
+     "what": "steel studs, two layers 1/2 in Type X each side"
+    }
+   }
+  },
+  "IBC 905.3.1": {
+   "code": "IBC 2024",
+   "title": "Standpipes, height",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 1302,
+   "sha256": "0f7339a18d1a3cd0268d714686bf320ecaea8befeaf8c766eedd65a62b9fe614",
+   "facts": {
+    "stories_at_least": 4,
+    "highest_floor_above_access_ft": 30,
+    "lowest_floor_below_access_ft": 30,
+    "sprinklered_may_be": "Class I"
+   }
+  },
+  "IBC 907.4.2.1": {
+   "code": "IBC 2024",
+   "title": "Manual fire alarm boxes, location",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 379,
+   "sha256": "4b8d1d37e3562f527dd790b5024a5a7100750057ecb1a582ae9219bb0c9afe78",
+   "facts": {
+    "max_from_exit_entrance_ft": 5,
+    "travel_ft_unsprinklered": 200,
+    "sprinklered_travel_rule": false
+   }
+  },
+  "IBC 907.4.2.2": {
+   "code": "IBC 2024",
+   "title": "Manual fire alarm boxes, height",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 233,
+   "sha256": "b3b658c4ae260824799717981dbaef83616ba269e8d303573308604f50ba41c7",
+   "facts": {
+    "min_in": 42,
+    "max_in": 48
+   }
+  },
+  "IBC 907.5.2.1.1": {
+   "code": "IBC 2024",
+   "title": "Audible alarms, average sound pressure",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 334,
+   "sha256": "d2b60d8f1b303a9499d7bc544c18db39c8ecde9e4205dc562bf19d427faca603",
+   "facts": {
+    "above_ambient_dba": 15,
+    "above_max_dba": 5
+   }
+  },
+  "IBC 907.5.2.3.1": {
+   "code": "IBC 2024",
+   "title": "Visible alarms, public use and common use areas",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 491,
+   "sha256": "2ea8f9c1852390f7d230f66d191f1141a8df3cda4a1203ad8d138458b7efd6d2",
+   "facts": {
+    "visible_in_common_areas": true,
+    "employee_work_area_spare_capacity": 0.2
+   }
+  },
+  "IBC 1013.1": {
+   "code": "IBC 2024",
+   "title": "Exit signs, where required",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1524,
+   "sha256": "c16e7ee30eb8b10f0d46f35d5a9b6e2b2b357863d36389860175f049ed5c7d02",
+   "facts": {
+    "max_to_visible_sign_ft": 100,
+    "mark_exits_and_exit_access_doors": true
+   }
+  },
+  "IBC 1008.3.1": {
+   "code": "IBC 2024",
+   "title": "Emergency power for illumination, duration",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 279,
+   "sha256": "d9395a894f6bd6b8093802fcba48c74a0465cff537885849bcd8f9508fcf08ae",
+   "facts": {
+    "min_minutes": 90
+   }
+  },
+  "IBC 1008.3.2": {
+   "code": "IBC 2024",
+   "title": "Illumination level under emergency power",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 569,
+   "sha256": "bd304142050ada26499ce270a03e77f787fb130ebdacb377e61ad0285f27c40f",
+   "facts": {
+    "avg_fc": 1,
+    "min_fc": 0.1,
+    "max_to_min": 40
+   }
+  },
+  "IBC 1009.1": {
+   "code": "IBC 2024",
+   "title": "Accessible means of egress required",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 744,
+   "sha256": "0212e9ec2dadcfc8ac488d39cd5b663ab02498cdad0b8e62bbf354150af0c42b",
+   "facts": {
+    "two_where_two_exits_required": true
+   }
+  },
+  "IBC 1009.2.1": {
+   "code": "IBC 2024",
+   "title": "Accessible means of egress, elevators required",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1629,
+   "sha256": "fe0454d054f96f5de7021a2ce26449401ddbb0f36940595b44da7a965dd020f9",
+   "facts": {
+    "stories_above_discharge": 4
+   }
+  },
+  "IBC 1009.3.2": {
+   "code": "IBC 2024",
+   "title": "Accessible stairway width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 484,
+   "sha256": "27dc36de3988e14d3667438dea5e68cecbce06e24979b2480ad98ec0803311d4",
+   "facts": {
+    "min_between_handrails_in": 48,
+    "not_required_if_sprinklered": true
+   }
+  },
+  "IBC 1009.3.3": {
+   "code": "IBC 2024",
+   "title": "Accessible stairways, area of refuge",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 951,
+   "sha256": "49f1e06dfc4296e938578061f8eb013d66bfb353cb2e88ee358f591ca41c0d1e",
+   "facts": {
+    "not_required_if_sprinklered": true
+   }
+  },
+  "IBC 1103.2.2": {
+   "code": "IBC 2024",
+   "title": "Employee work areas",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-11-accessibility",
+   "opened": "2026-10-27",
+   "chars": 635,
+   "sha256": "68428d1f0a00f2521595083b54cba8bf862420d25bed812d00843e53830072ea",
+   "facts": {
+    "approach_enter_exit": true,
+    "only": [
+     "907.5.2.3.1",
+     "1009",
+     "1104.3.1"
+    ]
+   }
+  },
+  "IBC 1104.3.1": {
+   "code": "IBC 2024",
+   "title": "Accessible routes in employee work areas",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-11-accessibility",
+   "opened": "2026-10-27",
+   "chars": 1323,
+   "sha256": "157ee57768fc9f98a9b011d01511b66706ff47ca2e8a75e9a773de8f00d03551",
+   "facts": {
+    "common_use_paths_accessible": true,
+    "exempt_if_integral_to_equipment": true,
+    "exempt_under_sqft": 1000
+   }
+  },
+  "IBC 1104.4": {
+   "code": "IBC 2024",
+   "title": "Multistory buildings and facilities",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-11-accessibility",
+   "opened": "2026-10-27",
+   "chars": 1526,
+   "sha256": "fdb9d0dadf20df6607d5e4be36978c8db237707f70976268aec02087f24a35c6",
+   "facts": {
+    "route_between_accessible_stories": true,
+    "exempt_story_max_sqft": 3000,
+    "exempt_two_story_occupants_max": 5
+   }
+  },
+  "IFC 6004.2.2.9": {
+   "code": "IFC 2024",
+   "title": "Automatic fire detection where highly toxic compressed gases are stored or used",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-60-highly-toxic-and-toxic-materials",
+   "opened": "2026-10-27",
+   "chars": 330,
+   "sha256": "f2d8cfb5d944b18439726ea059b12ea79a6bbae78c5b8dbcc590f6fb48dfe2d3",
+   "facts": {
+    "where": "rooms or areas where highly toxic compressed gases are stored or used",
+    "local_alarm": true,
+    "per": "IBC 907"
+   }
+  },
+  "IFC 6004.1.2": {
+   "code": "IFC 2024",
+   "title": "Gas cabinets for highly toxic and toxic compressed gases",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-60-highly-toxic-and-toxic-materials",
+   "opened": "2026-10-27",
+   "chars": 963,
+   "sha256": "cf3d382b34c2833dff75f98f113de348660c4654f0d7ef28b508a0d7a317da55",
+   "facts": {
+    "face_avg_fpm": 200,
+    "face_min_fpm": 150,
+    "max_cylinders": 3,
+    "exhausted": true,
+    "sprinklered": true
+   }
+  },
+  "IFC 6004.2.2.2": {
+   "code": "IFC 2024",
+   "title": "Ventilated areas around gas cabinets",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-60-highly-toxic-and-toxic-materials",
+   "opened": "2026-10-27",
+   "chars": 254,
+   "sha256": "f43ffda73c97cf86effe2b3e0695fe62dd3e1f5353305c764d6c116cb0158414",
+   "facts": {
+    "room_exhausted": true,
+    "cabinet_not_sole_exhaust": true
+   }
+  },
+  "IMC 509.4": {
+   "code": "IMC 2024",
+   "title": "Hazardous exhaust: incompatible materials and common shafts",
+   "url": "https://codes.iccsafe.org/content/IMC2024P1/chapter-5-exhaust-systems",
+   "opened": "2026-10-27",
+   "chars": 1675,
+   "sha256": "577493d4bf01d73aef60110976173234fb486c730349f08649189e865286f033",
+   "facts": {
+    "incompatible_share_system": false,
+    "shared_shaft_only_same_fire_area": true
+   }
+  },
+  "IMC 509.5.5": {
+   "code": "IMC 2024",
+   "title": "Hazardous exhaust: makeup air",
+   "url": "https://codes.iccsafe.org/content/IMC2024P1/chapter-5-exhaust-systems",
+   "opened": "2026-10-27",
+   "chars": 518,
+   "sha256": "c44cd1636c499fc71cd6df8a645601ff0c0a81c39e2af0b4ee179f459d8c5197",
+   "facts": {
+    "makeup_about_equal_to_exhaust": true,
+    "tolerance_assumed": 0.1
+   }
+  },
+  "IMC 509.6.1": {
+   "code": "IMC 2024",
+   "title": "Hazardous exhaust: no fire or smoke dampers",
+   "url": "https://codes.iccsafe.org/content/IMC2024P1/chapter-5-exhaust-systems",
+   "opened": "2026-10-27",
+   "chars": 114,
+   "sha256": "e4da2f9113ad5de02b8083deb37e4bcf7e9754c4b4701b02006346eff8680855",
+   "facts": {
+    "dampers_allowed": false
+   }
+  },
+  "IMC 509.7": {
+   "code": "IMC 2024",
+   "title": "Hazardous exhaust: suppression in ducts",
+   "url": "https://codes.iccsafe.org/content/IMC2024P1/chapter-5-exhaust-systems",
+   "opened": "2026-10-27",
+   "chars": 1278,
+   "sha256": "0ece1032ef0b494ef5efac5da8a9f530ca117bc1d0c99e3b77857a20c65ed228",
+   "facts": {
+    "semiconductor_metallic_ducts_exempt": true,
+    "note": "IBC 415.11.12 still asks heads in flammable exhaust ducts of 10 in or more; the stricter of the two is kept"
+   }
+  }
+ },
+ "not_read": [
+  {
+   "id": "ASCE 7-22",
+   "why": "sold; IBC 1613.1 and 1609 point to it",
+   "topics": [
+    "seismic design",
+    "wind loads",
+    "snow loads"
+   ]
+  },
+  {
+   "id": "NFPA 13",
+   "why": "not read (free to view only with an account)",
+   "topics": [
+    "sprinkler density and spacing"
+   ]
+  },
+  {
+   "id": "NFPA 70",
+   "why": "not read",
+   "topics": [
+    "electrical installation",
+    "hazardous locations"
+   ]
+  },
+  {
+   "id": "NFPA 72",
+   "why": "not read",
+   "topics": [
+    "fire alarm and detection layout"
+   ]
+  },
+  {
+   "id": "NFPA 318",
+   "why": "not read",
+   "topics": [
+    "cleanroom protection"
+   ]
+  },
+  {
+   "id": "ISO 14644-1",
+   "why": "sold",
+   "topics": [
+    "cleanroom classes"
+   ]
+  },
+  {
+   "id": "SEMI S2",
+   "why": "sold",
+   "topics": [
+    "tool safety"
+   ]
+  },
+  {
+   "id": "FM Global DS 7-7",
+   "why": "not read",
+   "topics": [
+    "insurer requirements for fabs"
+   ]
+  },
+  {
+   "id": "ASHRAE 62.1 and 90.1",
+   "why": "not read",
+   "topics": [
+    "ventilation",
+    "energy"
+   ]
+  },
+  {
+   "id": "Local zoning",
+   "why": "no real site",
+   "topics": [
+    "setbacks",
+    "height",
+    "use"
+   ]
+  },
+  {
+   "id": "ICC A117.1",
+   "why": "not read (the founder chose free sources only)",
+   "topics": [
+    "accessible route details",
+    "toilet room dimensions"
+   ]
+  },
+  {
+   "id": "ISEA Z358.1",
+   "why": "sold; IPC 411.1 points to it",
+   "topics": [
+    "emergency shower and eyewash location and flow"
+   ]
+  },
+  {
+   "id": "ASME A17.1",
+   "why": "sold",
+   "topics": [
+    "elevator construction"
+   ]
+  }
+ ]
+}
