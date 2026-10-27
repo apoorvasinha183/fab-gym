@@ -1,0 +1,792 @@
+[
+ {
+  "id": "occupancy.h5",
+  "topic": "occupancy",
+  "cite": [
+   "IBC 307.7",
+   "IBC T307.1(1)",
+   "IBC T307.1(2)"
+  ],
+  "binds": "building",
+  "test": "Hazardous production materials in the building exceed the maximum allowable quantities, and the building is designed as Group H-5",
+  "input": "designed_h5",
+  "op": "true",
+  "limit": null,
+  "fix": "design the building as Group H-5"
+ },
+ {
+  "id": "construction.height",
+  "topic": "construction type",
+  "cite": [
+   "IBC T504.3"
+  ],
+  "binds": "building",
+  "test": "Building height in feet within Table 504.3 for H-5, sprinklered, at the chosen type",
+  "input": "height_ft",
+  "op": "le",
+  "limit": {
+   "input": "height_limit_ft"
+  },
+  "fix": "choose a less combustible type"
+ },
+ {
+  "id": "construction.stories",
+  "topic": "construction type",
+  "cite": [
+   "IBC T504.4"
+  ],
+  "binds": "building",
+  "test": "Stories above grade within Table 504.4 for H-5, sprinklered, at the chosen type",
+  "input": "stories",
+  "op": "le",
+  "limit": {
+   "input": "stories_limit"
+  },
+  "fix": "choose a less combustible type"
+ },
+ {
+  "id": "construction.area",
+  "topic": "construction type",
+  "cite": [
+   "IBC T506.2"
+  ],
+  "binds": "building",
+  "test": "Area of a story within Table 506.2 for H-5, sprinklered, more than one story (SM), at the chosen type",
+  "input": "story_area_sqft",
+  "op": "le",
+  "limit": {
+   "input": "area_limit_sqft"
+  },
+  "fix": "choose a less combustible type or split with fire walls"
+ },
+ {
+  "id": "construction.ratings",
+  "topic": "construction type",
+  "cite": [
+   "IBC T601"
+  ],
+  "binds": "building",
+  "test": "Frame, bearing walls, floors and roof rated as Table 601 asks for the chosen type",
+  "input": "ratings_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "raise the ratings of the elements named"
+ },
+ {
+  "id": "fabarea.gas",
+  "topic": "fab areas",
+  "cite": [
+   "IBC T415.11.1.1"
+  ],
+  "binds": "fab area",
+  "test": "Hazardous gas in the fab area (in tools) within the aggregate of Table 415.11.1.1",
+  "input": "gas_cf",
+  "op": "le",
+  "limit": {
+   "input": "gas_limit_cf"
+  },
+  "fix": "split the fab area at a bay line with a fire barrier"
+ },
+ {
+  "id": "fabarea.flammable_liquid",
+  "topic": "fab areas",
+  "cite": [
+   "IBC T415.11.1.1"
+  ],
+  "binds": "fab area",
+  "test": "Flammable liquid in the fab area within the combined aggregate of Table 415.11.1.1",
+  "input": "flammable_liquid_gal",
+  "op": "le",
+  "limit": {
+   "input": "flammable_liquid_limit_gal"
+  },
+  "fix": "move solvent to the dispense room or split the fab area"
+ },
+ {
+  "id": "fabarea.barrier",
+  "topic": "fab areas",
+  "cite": [
+   "IBC 415.11.1.2"
+  ],
+  "binds": "fab area",
+  "test": "Fab area separated by fire barriers of at least the rating 415.11.1.2 asks",
+  "input": "barrier_h",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.1.2",
+   "fact": "barrier_h"
+  },
+  "fix": "rate the barrier"
+ },
+ {
+  "id": "fabarea.location",
+  "topic": "fab areas",
+  "cite": [
+   "IBC 415.11.1.3"
+  ],
+  "binds": "fab area",
+  "test": "Occupied levels of the fab area at or above the first story",
+  "input": "lowest_story",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.1.3",
+   "fact": "min_story_above_grade"
+  },
+  "fix": "raise the fab area"
+ },
+ {
+  "id": "egress.travel",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC T1017.2",
+   "IBC 1017.3"
+  ],
+  "binds": "story",
+  "test": "Longest walk to the nearest exit, measured around tools, stockers and rooms, within Table 1017.2 for H-5, sprinklered",
+  "input": "max_travel_ft",
+  "op": "le",
+  "limit": {
+   "section": "IBC T1017.2",
+   "fact": "H5_sprinklered_ft"
+  },
+  "fix": "add exits (D4 places stair cores and facade stairs)"
+ },
+ {
+  "id": "egress.exit_count",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC T1004.5",
+   "IBC T1006.3.3"
+  ],
+  "binds": "story",
+  "test": "Exits on the story at least as Table 1006.3.3 asks for its occupant load (Table 1004.5)",
+  "input": "exits",
+  "op": "ge",
+  "limit": {
+   "input": "exits_needed"
+  },
+  "fix": "add exits"
+ },
+ {
+  "id": "egress.separation",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1007.1.1"
+  ],
+  "binds": "story",
+  "test": "Two exits at least a third of the story's diagonal apart (sprinklered)",
+  "input": "max_separation_m",
+  "op": "ge",
+  "limit": {
+   "input": "separation_needed_m"
+  },
+  "fix": "move an exit apart"
+ },
+ {
+  "id": "egress.common_path",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC T1006.2.1"
+  ],
+  "binds": "story",
+  "test": "Walk from any point to a corridor that leads two ways (spine, aisle, chase, perimeter) within the H-5 common path of Table 1006.2.1",
+  "input": "common_path_ft",
+  "op": "le",
+  "limit": {
+   "section": "IBC T1006.2.1",
+   "fact": "H5_common_path_ft"
+  },
+  "fix": "open a second way out of the pocket"
+ },
+ {
+  "id": "egress.stair_capacity",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1005.3.1",
+   "IBC T1004.5"
+  ],
+  "binds": "story",
+  "test": "Total stair width serving the story at least 0.3 in for each occupant",
+  "input": "stair_width_in",
+  "op": "ge",
+  "limit": {
+   "input": "stair_width_needed_in"
+  },
+  "fix": "widen stairs or add a stair"
+ },
+ {
+  "id": "egress.door_capacity",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1005.3.2",
+   "IBC T1004.5"
+  ],
+  "binds": "story",
+  "test": "Total exit door width serving the story at least 0.2 in for each occupant",
+  "input": "door_width_in",
+  "op": "ge",
+  "limit": {
+   "input": "door_width_needed_in"
+  },
+  "fix": "widen doors or add an exit"
+ },
+ {
+  "id": "egress.stair_width",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1011.2"
+  ],
+  "binds": "element",
+  "test": "Each stair at least 44 in wide",
+  "input": "width_in",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1011.2",
+   "fact": "min_in"
+  },
+  "fix": "widen the stair"
+ },
+ {
+  "id": "egress.stair_enclosure",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1023.2"
+  ],
+  "binds": "element",
+  "test": "Interior exit stair enclosure rated as 1023.2 asks for the number of stories it connects",
+  "input": "rating_h",
+  "op": "ge",
+  "limit": {
+   "input": "rating_needed_h"
+  },
+  "fix": "rate the enclosure"
+ },
+ {
+  "id": "egress.passageway_width",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1024.2",
+   "IBC 1023.3"
+  ],
+  "binds": "element",
+  "test": "Exit passageway at least 44 in wide",
+  "input": "width_in",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1024.2",
+   "fact": "min_in"
+  },
+  "fix": "widen the passageway"
+ },
+ {
+  "id": "egress.passageway_rating",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1024.3",
+   "IBC 1024.4"
+  ],
+  "binds": "element",
+  "test": "Exit passageway enclosed by fire barriers of at least 1 hour, ending at the exit discharge",
+  "input": "rating_h",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 1024.3",
+   "fact": "min_h"
+  },
+  "fix": "rate the passageway"
+ },
+ {
+  "id": "egress.corridor_rating",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC T1020.2",
+   "IBC T1020.3"
+  ],
+  "binds": "story",
+  "test": "Corridors serving H-5 rated as Table 1020.2 asks (the spine is taken as a corridor)",
+  "input": "corridor_rating_h",
+  "op": "ge",
+  "limit": {
+   "section": "IBC T1020.2",
+   "fact": "H5_over_30_sprinklered_h"
+  },
+  "fix": "rate the spine walls"
+ },
+ {
+  "id": "egress.exit_discharge",
+  "topic": "exits and egress",
+  "cite": [
+   "IBC 1023.3",
+   "IBC 1024.4"
+  ],
+  "binds": "story",
+  "test": "Every interior exit stair reaches the outside through an exit passageway",
+  "input": "all_discharge",
+  "op": "true",
+  "limit": null,
+  "fix": "run an exit passageway to the facade"
+ },
+ {
+  "id": "service.corridor_width",
+  "topic": "service corridors",
+  "cite": [
+   "IBC 415.11.3.1",
+   "IBC 415.11.3.4"
+  ],
+  "binds": "building",
+  "test": "If the chases behind the tools are service corridors, at least 5 ft wide",
+  "input": "chase_width_ft",
+  "when": "chase_is_service_corridor",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.3.4",
+   "fact": "min_width_ft"
+  },
+  "fix": "widen the chase to 5 ft (D10 rescored a 1.6 m chase)"
+ },
+ {
+  "id": "service.corridor_travel",
+  "topic": "service corridors",
+  "cite": [
+   "IBC 415.11.3.3"
+  ],
+  "binds": "building",
+  "test": "If the chases are service corridors, the walk along one to an exit within 75 ft",
+  "input": "chase_travel_ft",
+  "when": "chase_is_service_corridor",
+  "op": "le",
+  "limit": {
+   "section": "IBC 415.11.3.3",
+   "fact": "travel_ft"
+  },
+  "fix": "add exits from the chase"
+ },
+ {
+  "id": "service.corridor_ventilation",
+  "topic": "service corridors",
+  "cite": [
+   "IBC 415.11.3.2"
+  ],
+  "binds": "building",
+  "test": "If the chases are service corridors, ventilated at 6 air changes an hour or more",
+  "input": "chase_ach",
+  "when": "chase_is_service_corridor",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.3.2",
+   "fact": "air_changes_per_hour"
+  },
+  "fix": "exhaust the chase"
+ },
+ {
+  "id": "hpm.room_location",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IBC 415.11.6.4",
+   "IBC 415.11.6.1"
+  ],
+  "binds": "room",
+  "test": "Room has an exterior wall at least 30 ft from the lot lines",
+  "input": "lot_distance_ft",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.6.4",
+   "fact": "lot_line_ft"
+  },
+  "fix": "move the room to a facade farther from the lot line"
+ },
+ {
+  "id": "hpm.exterior_wall",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IBC 415.11.6.4"
+  ],
+  "binds": "room",
+  "test": "Room has at least one exterior wall",
+  "input": "exterior_wall",
+  "op": "true",
+  "limit": null,
+  "fix": "move the room to the facade"
+ },
+ {
+  "id": "hpm.room_rating",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IBC 415.11.6.1",
+   "IBC 415.11.6.2"
+  ],
+  "binds": "room",
+  "test": "Room separated by fire barriers rated by its area (2 hours for a large room, else 1)",
+  "input": "rating_h",
+  "op": "ge",
+  "limit": {
+   "input": "rating_needed_h"
+  },
+  "fix": "rate the room's barriers"
+ },
+ {
+  "id": "hpm.liquid_exterior_door",
+  "topic": "HPM and gas rooms",
+  "cite": [
+   "IBC 415.11.6.2"
+  ],
+  "binds": "room",
+  "test": "A liquid storage room over 500 sq ft has an exterior door",
+  "input": "exterior_door_ok",
+  "op": "true",
+  "limit": null,
+  "fix": "add an exterior door"
+ },
+ {
+  "id": "hpm.room_exhaust",
+  "topic": "ventilation",
+  "cite": [
+   "IBC 415.11.6.8"
+  ],
+  "binds": "room",
+  "test": "Room exhausted at least 1 cfm per square foot",
+  "input": "exhaust_cfm_sqft",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.6.8",
+   "fact": "exhaust_cfm_per_sqft"
+  },
+  "fix": "raise the room's exhaust"
+ },
+ {
+  "id": "ventilation.fab_exhaust",
+  "topic": "ventilation",
+  "cite": [
+   "IBC 415.11.1.6"
+  ],
+  "binds": "fab area",
+  "test": "Fab area exhausted at least 1 cfm per square foot",
+  "input": "exhaust_cfm_sqft",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.1.6",
+   "fact": "exhaust_cfm_per_sqft"
+  },
+  "fix": "raise the make-up and exhaust air"
+ },
+ {
+  "id": "ventilation.continuous_gas_exhaust",
+  "topic": "ventilation",
+  "cite": [
+   "IFC 2703.10.1",
+   "IFC 2703.10.2"
+  ],
+  "binds": "building",
+  "test": "Every tool that draws hazardous gas is on a toxic or general exhaust",
+  "input": "gas_tools_exhausted",
+  "op": "true",
+  "limit": null,
+  "fix": "connect the tool to an exhaust"
+ },
+ {
+  "id": "air.recirc_avg",
+  "topic": "cleanroom air",
+  "cite": [
+   "IBC 415.11.1.8"
+  ],
+  "binds": "building",
+  "test": "Recirculated air at least the average the hazardous-location wiring waiver asks",
+  "input": "recirc_avg",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.1.8",
+   "fact": "avg_air_change_multiple"
+  },
+  "fix": "add fan filter units"
+ },
+ {
+  "id": "air.recirc_min",
+  "topic": "cleanroom air",
+  "cite": [
+   "IBC 415.11.1.8"
+  ],
+  "binds": "building",
+  "test": "Recirculated air at least the minimum the hazardous-location wiring waiver asks, in every bay",
+  "input": "recirc_min",
+  "op": "ge",
+  "limit": {
+   "section": "IBC 415.11.1.8",
+   "fact": "min_air_change_multiple"
+  },
+  "fix": "add fan filter units"
+ },
+ {
+  "id": "air.cleanliness",
+  "topic": "cleanroom air",
+  "cite": [
+   "IBC 415.11.1.8"
+  ],
+  "binds": "building",
+  "test": "Cleanliness class of each space verified to ISO 14644-1",
+  "input": "classes_set",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "ISO 14644-1"
+  ],
+  "fix": "read ISO 14644-1"
+ },
+ {
+  "id": "gasdet.locations",
+  "topic": "gas detection",
+  "cite": [
+   "IBC 415.11.8.1",
+   "IFC 2703.13.1"
+  ],
+  "binds": "building",
+  "test": "Gas detection at every tool that draws hazardous gas, in every gas room and in every gas cabinet",
+  "input": "all_detected",
+  "op": "true",
+  "limit": null,
+  "fix": "add sensors"
+ },
+ {
+  "id": "gasdet.setpoint",
+  "topic": "gas detection",
+  "cite": [
+   "IBC 415.11.8.2"
+  ],
+  "binds": "building",
+  "test": "Flammable gas alarm set at no more than a quarter of the lower flammable limit",
+  "input": "flammable_setpoint_lfl",
+  "op": "le",
+  "limit": {
+   "section": "IBC 415.11.8.2",
+   "fact": "flammable_lfl_fraction"
+  },
+  "fix": "lower the setpoint"
+ },
+ {
+  "id": "alarm.manual",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.2.5",
+   "IBC 415.11.9"
+  ],
+  "binds": "building",
+  "test": "A manual fire alarm system with a pull station at every exit",
+  "input": "pull_at_every_exit",
+  "op": "true",
+  "limit": null,
+  "fix": "add pull stations"
+ },
+ {
+  "id": "alarm.ecs",
+  "topic": "alarms",
+  "cite": [
+   "IBC 415.11.10",
+   "IFC 2703.15"
+  ],
+  "binds": "site",
+  "test": "An emergency control station outside the fab area receives the alarms",
+  "input": "ecs_outside",
+  "op": "true",
+  "limit": null,
+  "fix": "place the station outside the fab area"
+ },
+ {
+  "id": "alarm.smoke_detection",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.2.5"
+  ],
+  "binds": "building",
+  "test": "Smoke detection where highly toxic gases are stored or used, as the fire code's chapter 60 asks",
+  "input": "smoke_detection",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "IFC chapters 50 and 60"
+  ],
+  "fix": "read IFC chapter 60"
+ },
+ {
+  "id": "alarm.notification",
+  "topic": "alarms",
+  "cite": [
+   "IBC 907.2.5"
+  ],
+  "binds": "building",
+  "test": "Occupant notification as the alarm sections ask",
+  "input": "notification",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "IBC 907.4.2 and 907.5",
+   "NFPA 72"
+  ],
+  "fix": "read 907.4.2, 907.5 and NFPA 72"
+ },
+ {
+  "id": "power.emergency_loads",
+  "topic": "emergency power",
+  "cite": [
+   "IBC 415.11.11",
+   "IFC 2703.15"
+  ],
+  "binds": "building",
+  "test": "Every load 415.11.11 lists is on emergency power",
+  "input": "all_loads_backed",
+  "op": "true",
+  "limit": null,
+  "fix": "put the load on the generators"
+ },
+ {
+  "id": "power.generator_capacity",
+  "topic": "emergency power",
+  "cite": [
+   "IBC 415.11.11"
+  ],
+  "binds": "building",
+  "test": "Generators carry the emergency loads (exhaust fans at half speed, as 415.11.11 allows)",
+  "input": "generator_kw",
+  "op": "ge",
+  "limit": {
+   "input": "emergency_kw"
+  },
+  "fix": "add a generator"
+ },
+ {
+  "id": "sprinklers.throughout",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 903.2.5.2",
+   "IBC 415.11.12.1"
+  ],
+  "binds": "building",
+  "test": "Sprinklers throughout the building (Group H)",
+  "input": "throughout",
+  "op": "true",
+  "limit": null,
+  "fix": "cover every space"
+ },
+ {
+  "id": "sprinklers.density",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 903.2.5.2"
+  ],
+  "binds": "building",
+  "test": "Design density and area for the hazard class of Table 903.2.5.2",
+  "input": "density_ok",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "NFPA 13"
+  ],
+  "fix": "read NFPA 13"
+ },
+ {
+  "id": "sprinklers.ducts",
+  "topic": "sprinklers",
+  "cite": [
+   "IBC 415.11.12.1",
+   "IBC 415.11.12.3"
+  ],
+  "binds": "building",
+  "test": "Sprinklers in exhaust ducts of 10 in or more that carry flammable fumes, at most 12 ft apart",
+  "input": "ducts_covered",
+  "op": "true",
+  "limit": null,
+  "fix": "add duct heads"
+ },
+ {
+  "id": "structure.live_load",
+  "topic": "structure",
+  "cite": [
+   "IBC T1607.1"
+  ],
+  "binds": "story",
+  "test": "Clean floor designed for at least the heavy manufacturing live load of Table 1607.1",
+  "input": "design_live_psf",
+  "op": "ge",
+  "limit": {
+   "section": "IBC T1607.1",
+   "fact": "manufacturing_heavy_psf"
+  },
+  "fix": "raise the design load"
+ },
+ {
+  "id": "structure.risk_category",
+  "topic": "structure",
+  "cite": [
+   "IBC T1604.5"
+  ],
+  "binds": "building",
+  "test": "Risk category settled (III or IV turns on whether the toxic quantities threaten the public: a judgement)",
+  "input": "risk_category_settled",
+  "op": "true",
+  "limit": null,
+  "fix": "ask the authority"
+ },
+ {
+  "id": "structure.seismic",
+  "topic": "structure",
+  "cite": [
+   "IBC 1613.1"
+  ],
+  "binds": "building",
+  "test": "Seismic design to ASCE 7 for the site",
+  "input": "seismic_ok",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "ASCE 7-22"
+  ],
+  "fix": "read ASCE 7 and get the site's hazard"
+ },
+ {
+  "id": "structure.wind",
+  "topic": "structure",
+  "cite": [
+   "IBC 1609.3"
+  ],
+  "binds": "building",
+  "test": "Wind design to ASCE 7 at the site's basic wind speed",
+  "input": "wind_ok",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "ASCE 7-22"
+  ],
+  "fix": "read ASCE 7 and get the site's wind speed"
+ },
+ {
+  "id": "structure.stair_load",
+  "topic": "structure",
+  "cite": [
+   "IBC T1607.1"
+  ],
+  "binds": "element",
+  "test": "Stairs designed for the live load of Table 1607.1",
+  "input": "stair_live_psf",
+  "op": "ge",
+  "limit": {
+   "section": "IBC T1607.1",
+   "fact": "stairs_psf"
+  },
+  "fix": "raise the stair design load"
+ },
+ {
+  "id": "access.route",
+  "topic": "accessibility",
+  "cite": [
+   "IBC 1011.2"
+  ],
+  "binds": "building",
+  "test": "An accessible route and accessible means of egress. Only the stair width of 1011.2 is read; IBC 1009, chapter 11 and ICC A117.1 are not",
+  "input": "accessible",
+  "op": "true",
+  "limit": null,
+  "rests_on": [
+   "ICC A117.1 and IBC chapter 11",
+   "IBC 1009"
+  ],
+  "fix": "read ICC A117.1 and IBC chapter 11"
+ }
+]

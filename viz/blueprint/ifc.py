@@ -115,6 +115,7 @@ def write(model, name="fab-model.ifc"):
     spaces = {}        # storey -> space ids
     basis = {}         # numbers-from -> element ids
     tool_psets = []
+    permit_psets = []  # the permit set's elements (viz/permit): stage, level of development, review, numbers
     for e in model["elements"]:
         if e["bld"] is None:
             rel_pl, z_ref, holder = site_pl, 0.0, site
@@ -136,12 +137,18 @@ def write(model, name="fab-model.ifc"):
         if e["cls"] == "IfcSpace":
             eid = F.add(f"IFCSPACE({g},$,{nm},$,$,{pl},{shape},$,.ELEMENT.,{pre},$)")
             spaces.setdefault(holder, []).append(eid)
+        elif e.get("door"):
+            hgt, wid, op = e["door"]
+            eid = F.add(f"IFCDOOR({g},$,{nm},$,{ot},{pl},{shape},$,{r(hgt)},{r(wid)},.DOOR.,.{op}.,$)")
+            contained.setdefault(holder, []).append(eid)
         else:
             eid = F.add(f"{e['cls'].upper()}({g},$,{nm},$,{ot},{pl},{shape},$,{pre})")
             contained.setdefault(holder, []).append(eid)
         basis.setdefault(e["from"], []).append(eid)
         if e["tool"]:
             tool_psets.append((e["key"], eid, e["tool"]))
+        if e.get("permit"):
+            permit_psets.append((e["key"], eid, e["permit"]))
     for n, (holder, ids) in enumerate(contained.items()):
         F.add(f"IFCRELCONTAINEDINSPATIALSTRUCTURE({s(guid(f'rel/contains/{n}'))},$,$,$,({','.join(ids)}),{holder})")
     for n, (holder, ids) in enumerate(spaces.items()):
@@ -163,4 +170,12 @@ def write(model, name="fab-model.ifc"):
             props.append(F.add(f"IFCPROPERTYSINGLEVALUE('{k}',$,{typ}({val}),$)"))
         ps = F.add(f"IFCPROPERTYSET({s(guid('pset/tool/' + key))},$,'FabGym_Tool',$,({','.join(props)}))")
         F.add(f"IFCRELDEFINESBYPROPERTIES({s(guid('rel/tool/' + key))},$,$,$,({eid}),{ps})")
+    pkinds = {"Stage": "IFCLABEL", "LOD": "IFCINTEGER", "Review": "IFCLABEL", "Numbers": "IFCTEXT"}
+    for key, eid, pm in permit_psets:
+        props = []
+        for k, typ in pkinds.items():
+            v = pm[k]
+            props.append(F.add(f"IFCPROPERTYSINGLEVALUE('{k}',$,{typ}({str(int(v)) if typ == 'IFCINTEGER' else s(v)}),$)"))
+        ps = F.add(f"IFCPROPERTYSET({s(guid('pset/permit/' + key))},$,'FabGym_Permit',$,({','.join(props)}))")
+        F.add(f"IFCRELDEFINESBYPROPERTIES({s(guid('rel/permit/' + key))},$,$,$,({eid}),{ps})")
     return F.text(name)

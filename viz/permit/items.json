@@ -1,0 +1,1074 @@
+[
+ {
+  "id": "G.cover",
+  "discipline": "G",
+  "item": "Cover, drawing index, project data",
+  "sheet": "G-001",
+  "ifc": null,
+  "stage": "D9",
+  "made": "sheet:G-001",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.jurisdiction",
+  "discipline": "G",
+  "item": "Jurisdiction and codes adopted (hypothetical, 2024 IBC and IFC unamended), codes not read",
+  "sheet": "G-001",
+  "ifc": null,
+  "stage": "D3",
+  "made": "register",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.stamps",
+  "discipline": "G",
+  "item": "Seals of the architect and engineers licensed where the fab is built",
+  "sheet": "G-001",
+  "ifc": null,
+  "stage": "D9",
+  "made": "sheet:G-001",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "G.code_analysis",
+  "discipline": "G",
+  "item": "Code analysis: every rule, its citation and verdict",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "D3",
+  "made": "verdicts",
+  "rules": [
+   "occupancy.h5"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.occupancy",
+  "discipline": "G",
+  "item": "Occupancy classification, Group H-5",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "D3",
+  "made": "verdicts",
+  "rules": [
+   "occupancy.h5"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.construction_type",
+  "discipline": "G",
+  "item": "Construction type, height, stories and area",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "D4",
+  "made": "construction",
+  "rules": [
+   "construction.height",
+   "construction.stories",
+   "construction.area",
+   "construction.ratings"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.fab_areas",
+  "discipline": "G",
+  "item": "Fab areas: hazardous material per area, barriers, location",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "D4",
+  "made": "fab_areas",
+  "rules": [
+   "fabarea.gas",
+   "fabarea.flammable_liquid",
+   "fabarea.barrier",
+   "fabarea.location"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "G.service_corridors",
+  "discipline": "G",
+  "item": "Whether the chases are service corridors (415.11.3)",
+  "sheet": "G-002",
+  "ifc": null,
+  "stage": "D4",
+  "made": "construction",
+  "rules": [
+   "service.corridor_width",
+   "service.corridor_travel",
+   "service.corridor_ventilation"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.ledger",
+  "discipline": "G",
+  "item": "Readiness ledger: every item with its status",
+  "sheet": "G-003",
+  "ifc": null,
+  "stage": "D9",
+  "made": "sheet:G-003",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.life_safety_p1",
+  "discipline": "G",
+  "item": "Life safety plan, phase 1: exits, travel, occupant loads",
+  "sheet": "G-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "egress",
+  "rules": [
+   "egress.travel",
+   "egress.exit_count",
+   "egress.separation",
+   "egress.common_path",
+   "egress.stair_capacity",
+   "egress.door_capacity"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.life_safety_p2",
+  "discipline": "G",
+  "item": "Life safety plan, phase 2: exits, travel, occupant loads",
+  "sheet": "G-102",
+  "ifc": null,
+  "stage": "D4",
+  "made": "egress",
+  "rules": [
+   "egress.travel",
+   "egress.exit_count",
+   "egress.separation",
+   "egress.common_path",
+   "egress.stair_capacity",
+   "egress.door_capacity"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.accessibility",
+  "discipline": "G",
+  "item": "Accessible route and accessible means of egress",
+  "sheet": "G-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "egress",
+  "rules": [
+   "access.route"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "G.ifc",
+  "discipline": "G",
+  "item": "IFC model with every element, its basis and its permit data",
+  "sheet": "fab-permit.ifc",
+  "ifc": null,
+  "stage": "D8",
+  "made": "ifc",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "C.site_plan",
+  "discipline": "C",
+  "item": "Site plan with the lot and its lot lines (hypothetical lot)",
+  "sheet": "C-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "lot",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "C.lot_distances",
+  "discipline": "C",
+  "item": "Distances from HPM rooms to the lot lines",
+  "sheet": "C-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "rooms:gas room",
+  "rules": [
+   "hpm.room_location"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "C.fire_access",
+  "discipline": "C",
+  "item": "Fire apparatus access roads and hydrants",
+  "sheet": "C-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "sheet:C-101",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "C.zoning",
+  "discipline": "C",
+  "item": "Zoning: setbacks, height, use",
+  "sheet": "C-101",
+  "ifc": null,
+  "stage": "D4",
+  "made": "sheet:C-101",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "C.site_utilities",
+  "discipline": "C",
+  "item": "Site utility routes, central plant to the fabs",
+  "sheet": "C-201",
+  "ifc": null,
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "C.stormwater",
+  "discipline": "C",
+  "item": "Grading and stormwater",
+  "sheet": "C-201",
+  "ifc": null,
+  "stage": "D6",
+  "made": "sheet:C-201",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.design_criteria",
+  "discipline": "S",
+  "item": "Design data: seismic, wind, snow, soil (assumed, no real site)",
+  "sheet": "S-001",
+  "ifc": null,
+  "stage": "D5",
+  "made": "design_data",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "S.loads",
+  "discipline": "S",
+  "item": "Live loads by use",
+  "sheet": "S-001",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [
+   "structure.live_load",
+   "structure.stair_load"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "S.risk_category",
+  "discipline": "S",
+  "item": "Risk category",
+  "sheet": "S-001",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [
+   "structure.risk_category"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "S.seismic",
+  "discipline": "S",
+  "item": "Seismic design",
+  "sheet": "S-001",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [
+   "structure.seismic"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.wind",
+  "discipline": "S",
+  "item": "Wind design",
+  "sheet": "S-001",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [
+   "structure.wind"
+  ],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.foundations",
+  "discipline": "S",
+  "item": "Footings under every column, sized on the assumed soil",
+  "sheet": "S-101",
+  "ifc": "IfcFooting",
+  "stage": "D5",
+  "made": "ifc:IfcFooting",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.columns",
+  "discipline": "S",
+  "item": "Support floor and roof columns with their loads",
+  "sheet": "S-201",
+  "ifc": "IfcColumn",
+  "stage": "D5",
+  "made": "ifc:IfcColumn",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.roof_trusses",
+  "discipline": "S",
+  "item": "Roof trusses spanning from the spine to the bay ends",
+  "sheet": "S-201",
+  "ifc": "IfcBeam",
+  "stage": "D5",
+  "made": "ifc:IfcBeam",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.bracing",
+  "discipline": "S",
+  "item": "Braced bays in the facades",
+  "sheet": "S-201",
+  "ifc": "IfcMember",
+  "stage": "D5",
+  "made": "ifc:IfcMember",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "S.waffle_vibration",
+  "discipline": "S",
+  "item": "Waffle slab first frequency per bay against an assumed target",
+  "sheet": "S-201",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "S.load_path",
+  "discipline": "S",
+  "item": "Every load carried to a footing",
+  "sheet": "S-101",
+  "ifc": null,
+  "stage": "D5",
+  "made": "frame",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "A.exit_stairs",
+  "discipline": "A",
+  "item": "Exit stairs: spine cores and facade stairs, widths and enclosures",
+  "sheet": "A-401",
+  "ifc": "IfcStair",
+  "stage": "D4",
+  "made": "ifc:IfcStair",
+  "rules": [
+   "egress.stair_width",
+   "egress.stair_enclosure"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.exit_passageways",
+  "discipline": "A",
+  "item": "Exit passageways from the spine stairs to the facade",
+  "sheet": "A-401",
+  "ifc": "IfcSpace",
+  "stage": "D4",
+  "made": "passageways",
+  "rules": [
+   "egress.passageway_width",
+   "egress.passageway_rating",
+   "egress.exit_discharge"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.doors",
+  "discipline": "A",
+  "item": "Doors: exits, stairs, rooms, with widths",
+  "sheet": "A-601",
+  "ifc": "IfcDoor",
+  "stage": "D4",
+  "made": "ifc:IfcDoor",
+  "rules": [
+   "egress.door_capacity"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.fire_barriers",
+  "discipline": "A",
+  "item": "Rated walls: fab area barriers, enclosures, rooms",
+  "sheet": "A-601",
+  "ifc": "IfcWall",
+  "stage": "D4",
+  "made": "ifc:IfcWall",
+  "rules": [
+   "fabarea.barrier",
+   "egress.corridor_rating"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.gas_rooms",
+  "discipline": "A",
+  "item": "Gas rooms on the support floor at the facades",
+  "sheet": "A-401",
+  "ifc": "IfcSpace",
+  "stage": "D4",
+  "made": "rooms:gas room",
+  "rules": [
+   "hpm.room_rating",
+   "hpm.exterior_wall",
+   "hpm.room_location"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.dispense_rooms",
+  "discipline": "A",
+  "item": "Chemical dispense rooms",
+  "sheet": "A-401",
+  "ifc": "IfcSpace",
+  "stage": "D4",
+  "made": "rooms:chemical dispense",
+  "rules": [
+   "hpm.room_rating",
+   "hpm.liquid_exterior_door",
+   "hpm.room_location"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.gowning",
+  "discipline": "A",
+  "item": "Gowning rooms at each building's west end",
+  "sheet": "A-401",
+  "ifc": "IfcSpace",
+  "stage": "D4",
+  "made": "rooms:gowning",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.ecs",
+  "discipline": "A",
+  "item": "Emergency control station in the office",
+  "sheet": "A-401",
+  "ifc": "IfcSpace",
+  "stage": "D4",
+  "made": "rooms:emergency control",
+  "rules": [
+   "alarm.ecs"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.room_schedule",
+  "discipline": "A",
+  "item": "Room schedule: area, rating, exhaust",
+  "sheet": "A-601",
+  "ifc": null,
+  "stage": "D4",
+  "made": "sheet:A-601",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.rating_schedule",
+  "discipline": "A",
+  "item": "Fire rating schedule by element (Table 601 and the H-5 sections)",
+  "sheet": "A-601",
+  "ifc": null,
+  "stage": "D4",
+  "made": "construction",
+  "rules": [
+   "construction.ratings"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "A.finishes",
+  "discipline": "A",
+  "item": "Cleanroom finishes (assumed, to the cleanliness class)",
+  "sheet": "A-601",
+  "ifc": null,
+  "stage": "D4",
+  "made": "sheet:A-601",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.subfab",
+  "discipline": "M",
+  "item": "Sub-fab plan: mains, laterals, central plant links",
+  "sheet": "M-101",
+  "ifc": "IfcDuctSegment",
+  "stage": "D6",
+  "made": "ifc:IfcDuctSegment",
+  "rules": [
+   "ventilation.continuous_gas_exhaust"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "M.fab_exhaust",
+  "discipline": "M",
+  "item": "Fab area exhaust and make-up air",
+  "sheet": "M-401",
+  "ifc": null,
+  "stage": "D7",
+  "made": "air",
+  "rules": [
+   "ventilation.fab_exhaust"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "M.room_exhaust",
+  "discipline": "M",
+  "item": "HPM room exhaust",
+  "sheet": "M-401",
+  "ifc": null,
+  "stage": "D7",
+  "made": "air",
+  "rules": [
+   "hpm.room_exhaust"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "M.recirculation",
+  "discipline": "M",
+  "item": "Fan filter units by bay and recirculated air",
+  "sheet": "M-401",
+  "ifc": "IfcAirTerminal",
+  "stage": "D7",
+  "made": "ifc:IfcAirTerminal",
+  "rules": [
+   "air.recirc_avg",
+   "air.recirc_min"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.cleanliness",
+  "discipline": "M",
+  "item": "Cleanliness class by space",
+  "sheet": "M-401",
+  "ifc": null,
+  "stage": "D7",
+  "made": "air",
+  "rules": [
+   "air.cleanliness"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "M.chase_ventilation",
+  "discipline": "M",
+  "item": "Chase ventilation, if the chases are service corridors",
+  "sheet": "M-401",
+  "ifc": null,
+  "stage": "D7",
+  "made": "air",
+  "rules": [
+   "service.corridor_ventilation"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "M.cooling",
+  "discipline": "M",
+  "item": "Chillers against the cooling load",
+  "sheet": "M-601",
+  "ifc": "IfcChiller",
+  "stage": "D7",
+  "made": "ifc:IfcChiller",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.equipment_schedule",
+  "discipline": "M",
+  "item": "Mechanical equipment schedule",
+  "sheet": "M-601",
+  "ifc": null,
+  "stage": "D7",
+  "made": "sheet:M-601",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "M.design",
+  "discipline": "M",
+  "item": "Mechanical design to the mechanical code",
+  "sheet": "M-601",
+  "ifc": null,
+  "stage": "D7",
+  "made": "sheet:M-601",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "PP.process_piping",
+  "discipline": "PP",
+  "item": "Process piping mains and laterals (water, gases, vacuum)",
+  "sheet": "PP-101",
+  "ifc": "IfcPipeSegment",
+  "stage": "D6",
+  "made": "ifc:IfcPipeSegment",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.drops",
+  "discipline": "PP",
+  "item": "One drop to every tool",
+  "sheet": "PP-101",
+  "ifc": "IfcPipeSegment",
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.connections",
+  "discipline": "PP",
+  "item": "Tool connection schedule: every utility each tool needs",
+  "sheet": "PP-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.sizing",
+  "discipline": "PP",
+  "item": "Pipes and ducts sized by velocity",
+  "sheet": "PP-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.exhaust",
+  "discipline": "PP",
+  "item": "Process exhaust by kind (general, acid, solvent, toxic)",
+  "sheet": "PP-301",
+  "ifc": "IfcDuctSegment",
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [
+   "ventilation.continuous_gas_exhaust"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.drains",
+  "discipline": "PP",
+  "item": "Process drains by kind (acid, fluoride, solvent, slurry)",
+  "sheet": "PP-301",
+  "ifc": "IfcPipeSegment",
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "PP.gas_supply",
+  "discipline": "PP",
+  "item": "Hazardous gas supply from the gas rooms to the tools",
+  "sheet": "PP-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "rooms:gas room",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "P.fixtures",
+  "discipline": "P",
+  "item": "Plumbing fixtures for the occupants",
+  "sheet": "P-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "sheet:P-101",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false,
+  "question": "Fixture counts need the IPC 2024 and IBC chapter 29, not read"
+ },
+ {
+  "id": "P.emergency_showers",
+  "discipline": "P",
+  "item": "Emergency showers and eyewashes at chemical rooms",
+  "sheet": "P-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "sheet:P-101",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false,
+  "question": "Showers and eyewashes follow a standard not read"
+ },
+ {
+  "id": "P.waste_treatment",
+  "discipline": "P",
+  "item": "Process waste to treatment in the central plant",
+  "sheet": "P-101",
+  "ifc": null,
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "FP.clean_floor",
+  "discipline": "FP",
+  "item": "Sprinklers on the clean floor",
+  "sheet": "FP-101",
+  "ifc": "IfcFireSuppressionTerminal",
+  "stage": "D7",
+  "made": "ifc:IfcFireSuppressionTerminal",
+  "rules": [
+   "sprinklers.throughout",
+   "sprinklers.density"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FP.support_floor",
+  "discipline": "FP",
+  "item": "Sprinklers on the support floor",
+  "sheet": "FP-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "fire",
+  "rules": [
+   "sprinklers.throughout",
+   "sprinklers.density"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FP.ducts",
+  "discipline": "FP",
+  "item": "Sprinklers in exhaust ducts",
+  "sheet": "FP-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "fire",
+  "rules": [
+   "sprinklers.ducts"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FP.water_supply",
+  "discipline": "FP",
+  "item": "Fire water supply and pumps",
+  "sheet": "FP-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "sheet:FP-101",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "FP.standpipes",
+  "discipline": "FP",
+  "item": "Standpipes",
+  "sheet": "FP-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "sheet:FP-101",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false,
+  "question": "Standpipes follow IBC 905, not read"
+ },
+ {
+  "id": "FA.gas_detection",
+  "discipline": "FA",
+  "item": "Gas detection at tools, gas rooms and cabinets",
+  "sheet": "FA-101",
+  "ifc": "IfcSensor",
+  "stage": "D7",
+  "made": "ifc:IfcSensor",
+  "rules": [
+   "gasdet.locations",
+   "gasdet.setpoint"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.smoke_detection",
+  "discipline": "FA",
+  "item": "Smoke detection where highly toxic gas is used",
+  "sheet": "FA-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "fire",
+  "rules": [
+   "alarm.smoke_detection"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.manual_alarm",
+  "discipline": "FA",
+  "item": "Pull stations at every exit",
+  "sheet": "FA-101",
+  "ifc": "IfcAlarm",
+  "stage": "D7",
+  "made": "ifc:IfcAlarm",
+  "rules": [
+   "alarm.manual"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.notification",
+  "discipline": "FA",
+  "item": "Occupant notification",
+  "sheet": "FA-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "fire",
+  "rules": [
+   "alarm.notification"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "FA.ecs_panel",
+  "discipline": "FA",
+  "item": "Alarms reported to the emergency control station",
+  "sheet": "FA-101",
+  "ifc": null,
+  "stage": "D7",
+  "made": "fire",
+  "rules": [
+   "alarm.ecs"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "E.one_line",
+  "discipline": "E",
+  "item": "One-line diagram: utility service, transformers, generators",
+  "sheet": "E-001",
+  "ifc": "IfcTransformer",
+  "stage": "D6",
+  "made": "ifc:IfcTransformer",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.emergency_power",
+  "discipline": "E",
+  "item": "Emergency power for the loads 415.11.11 lists",
+  "sheet": "E-001",
+  "ifc": "IfcElectricGenerator",
+  "stage": "D6",
+  "made": "ifc:IfcElectricGenerator",
+  "rules": [
+   "power.emergency_loads",
+   "power.generator_capacity"
+  ],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.load_schedule",
+  "discipline": "E",
+  "item": "Electrical load schedule by bay",
+  "sheet": "E-601",
+  "ifc": null,
+  "stage": "D6",
+  "made": "utilities",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.cable_trays",
+  "discipline": "E",
+  "item": "Cable trays to the tools",
+  "sheet": "E-601",
+  "ifc": "IfcCableCarrierSegment",
+  "stage": "D6",
+  "made": "ifc:IfcCableCarrierSegment",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "E.hazardous_wiring",
+  "discipline": "E",
+  "item": "Hazardous-location wiring waived by the recirculated air",
+  "sheet": "E-601",
+  "ifc": null,
+  "stage": "D7",
+  "made": "air",
+  "rules": [
+   "air.recirc_avg",
+   "air.recirc_min"
+  ],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "E.design",
+  "discipline": "E",
+  "item": "Electrical design to the electrical code",
+  "sheet": "E-601",
+  "ifc": null,
+  "stage": "D6",
+  "made": "sheet:E-601",
+  "rules": [],
+  "licensed_review": true,
+  "assumed": false
+ },
+ {
+  "id": "E.lighting",
+  "discipline": "E",
+  "item": "Lighting, with yellow light in lithography bays",
+  "sheet": "E-601",
+  "ifc": null,
+  "stage": "D7",
+  "made": "sheet:E-601",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": true
+ },
+ {
+  "id": "spec.outline",
+  "discipline": "spec",
+  "item": "Specifications outline by MasterFormat division",
+  "sheet": "specs.md",
+  "ifc": null,
+  "stage": "D9",
+  "made": "specs",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "spec.no_brands",
+  "discipline": "spec",
+  "item": "Products named by kind and performance, no brands",
+  "sheet": "specs.md",
+  "ifc": null,
+  "stage": "D9",
+  "made": "specs",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ },
+ {
+  "id": "D8.clashes",
+  "discipline": "G",
+  "item": "Coordination: zero hard clashes between elements",
+  "sheet": "fab-permit.ifc",
+  "ifc": null,
+  "stage": "D8",
+  "made": "clashes_zero",
+  "rules": [],
+  "licensed_review": false,
+  "assumed": false
+ }
+]

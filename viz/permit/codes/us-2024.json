@@ -1,0 +1,945 @@
+{
+ "place": "us",
+ "jurisdiction": "a hypothetical jurisdiction that adopts the 2024 IBC and the 2024 IFC as published, with no local amendments",
+ "read_in": "ICC's free reader, codes.iccsafe.org, on 27 Oct 2026; no copy of the code text is kept",
+ "hash": "SHA-256 of the section's text as shown: whitespace collapsed, the reader's CDP and INSIGHTS labels removed, the characters = ? & % turned to spaces; chars is the length hashed",
+ "sources": {
+  "IBC 2024": "2024 International Building Code, International Code Council",
+  "IFC 2024": "2024 International Fire Code, International Code Council"
+ },
+ "sections": {
+  "IBC 307.7": {
+   "code": "IBC 2024",
+   "title": "Group H-5",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-3-occupancy-classification-and-use",
+   "opened": "2026-10-27",
+   "chars": 383,
+   "sha256": "91496f9f8fadb9523611b6bddfa7ad73444fbee43fe4f5e90bbbbc55c97db61e",
+   "facts": {
+    "what": "semiconductor fabrication using HPM above the quantities of Tables 307.1(1) and 307.1(2) is Group H-5, built per 415.11"
+   }
+  },
+  "IBC T307.1(1)": {
+   "code": "IBC 2024",
+   "title": "Maximum allowable quantity per control area, physical hazards",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-3-occupancy-classification-and-use",
+   "opened": "2026-10-27",
+   "chars": 5625,
+   "sha256": "a36bb3663b8654370b318d5b47c9e0b8d8703e3ffd80a3bdba01402b29dbda4a",
+   "facts": {
+    "flammable_gas_cf": 1000,
+    "pyrophoric_gas_cf": 50,
+    "flammable_liquid_IA_gal": 30,
+    "note": "base storage quantities; footnotes allow increases (not used here)"
+   }
+  },
+  "IBC T307.1(2)": {
+   "code": "IBC 2024",
+   "title": "Maximum allowable quantity per control area, health hazards",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-3-occupancy-classification-and-use",
+   "opened": "2026-10-27",
+   "chars": 647,
+   "sha256": "6d3133bbaae58965e3dab0672fece449832ddf4e0750e20c634c7e557596c38d",
+   "facts": {
+    "toxic_gas_cf": 810,
+    "highly_toxic_gas_cf": 20,
+    "corrosive_liquid_gal": 500,
+    "corrosive_gas_cf": 810
+   }
+  },
+  "IBC 415.11": {
+   "code": "IBC 2024",
+   "title": "Group H-5",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 200,
+   "sha256": "17b960682fc39b13936b60a0d1cba108b94df86da1415530ed3150e94b1d91fa",
+   "facts": {
+    "what": "H-5 complies with 415.11.1 to 415.11.12 and the International Fire Code"
+   }
+  },
+  "IBC T415.11.1.1": {
+   "code": "IBC 2024",
+   "title": "Quantity limits for hazardous materials in a single fabrication area",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 2721,
+   "sha256": "674fd40174d9fe39ecaaae2b7bd906f91f71520d5435b2a93f12a86c26c982ec",
+   "facts": {
+    "flammable_liquid_comb_gal_per_sqft": 0.05,
+    "flammable_liquid_IA_gal_per_sqft": 0.005,
+    "oxidizer_liquid_gal_per_sqft": 0.06,
+    "oxidizing_gas_cf_per_sqft": 2.5,
+    "gas_aggregate_cf_per_sqft": 0.2,
+    "gas_aggregate_floor_cf": 9000,
+    "corrosives": "not limited",
+    "note": "note d: flammable, pyrophoric, toxic and highly toxic gases together; note a: piping not counted"
+   }
+  },
+  "IBC 415.11.1.2": {
+   "code": "IBC 2024",
+   "title": "Fabrication areas, separation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 767,
+   "sha256": "defc57c38c98e0c972f5a9839e151fca5f16da5573d59742a8fd6a0a9508db14",
+   "facts": {
+    "barrier_h": 1,
+    "door_h": 0.75
+   }
+  },
+  "IBC 415.11.1.3": {
+   "code": "IBC 2024",
+   "title": "Location of occupied levels",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 146,
+   "sha256": "f4d92d3681345214e782101ba45544c471f56e70027142f2b82c3a702c26045f",
+   "facts": {
+    "min_story_above_grade": 1
+   }
+  },
+  "IBC 415.11.1.5": {
+   "code": "IBC 2024",
+   "title": "Shafts and openings through floors",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 602,
+   "sha256": "ef39e3d64212a9e2a308b7aa4533d6d199c4876302d13fa51b47da5f0d54ad49",
+   "facts": {
+    "max_floors_penetrated": 2
+   }
+  },
+  "IBC 415.11.1.6": {
+   "code": "IBC 2024",
+   "title": "Fabrication areas, ventilation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 1088,
+   "sha256": "7e513d45263d9815552832866e0d4d0a23ff9335b4a8ec27ca7754ac3253b947",
+   "facts": {
+    "exhaust_cfm_per_sqft": 1.0,
+    "fire_dampers_in_exhaust": false
+   }
+  },
+  "IBC 415.11.1.8": {
+   "code": "IBC 2024",
+   "title": "Fabrication areas, electrical",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 437,
+   "sha256": "4ad698436abd00b65392d51cc5a541d69e088f76d397e8a29eaebcd12ffbc46b",
+   "facts": {
+    "avg_air_change_multiple": 4,
+    "min_air_change_multiple": 3
+   }
+  },
+  "IBC 415.11.3.1": {
+   "code": "IBC 2024",
+   "title": "Service corridors, use conditions",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 179,
+   "sha256": "220f028224a98ee59247293ff211cedfc7ba0e33d2925a24992dc3dbeff9f6a2",
+   "facts": {
+    "what": "a service corridor is not a required corridor"
+   }
+  },
+  "IBC 415.11.3.2": {
+   "code": "IBC 2024",
+   "title": "Service corridors, ventilation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 171,
+   "sha256": "0d6d41ff67efba6eb71756ea0ff723e5ff2380ee1c80f6d5de861986a515d161",
+   "facts": {
+    "air_changes_per_hour": 6
+   }
+  },
+  "IBC 415.11.3.3": {
+   "code": "IBC 2024",
+   "title": "Service corridors, means of egress",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 516,
+   "sha256": "e2cd0ef2dcbf1e7fb8ed05e46d3194e5d71993ad9e62afb59af95e93e7f0670d",
+   "facts": {
+    "travel_ft": 75,
+    "dead_end_ft": 4,
+    "min_exits": 2
+   }
+  },
+  "IBC 415.11.3.4": {
+   "code": "IBC 2024",
+   "title": "Service corridors, minimum width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 220,
+   "sha256": "b6b123c00fed2b629874635d128716eddceceb634c6fef21de04cc154f17b339",
+   "facts": {
+    "min_width_ft": 5,
+    "cart_plus_in": 33
+   }
+  },
+  "IBC 415.11.6.1": {
+   "code": "IBC 2024",
+   "title": "HPM rooms and gas rooms",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 429,
+   "sha256": "2353ddba628c810b8e789897f085756e0073715ecb3a674ac76f1525d366bff8",
+   "facts": {
+    "rating_h_large": 2,
+    "rating_h_small": 1,
+    "large_sqft": 300
+   }
+  },
+  "IBC 415.11.6.2": {
+   "code": "IBC 2024",
+   "title": "Liquid storage rooms",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 949,
+   "sha256": "b6f2fc5df3f8ae94302b111c391fb61c74263728b6eaa84ecb3251582c9981b0",
+   "facts": {
+    "exterior_door_over_sqft": 500,
+    "rating_h_small": 1,
+    "rating_h_large": 2,
+    "large_over_sqft": 150
+   }
+  },
+  "IBC 415.11.6.4": {
+   "code": "IBC 2024",
+   "title": "HPM, liquid storage and gas rooms, location",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 257,
+   "sha256": "27766a895751ae7cd643d0f051e1994ee6dd89731b5884f3481bc237f6c41175",
+   "facts": {
+    "exterior_walls_min": 1,
+    "lot_line_ft": 30
+   }
+  },
+  "IBC 415.11.6.6": {
+   "code": "IBC 2024",
+   "title": "HPM, liquid storage and gas rooms, exits",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 158,
+   "sha256": "4ae12840db3596052cad6968021a1aeeae812a79ff250d7a0067c0af3d7b0beb",
+   "facts": {
+    "what": "where two exits are required, one goes directly outside"
+   }
+  },
+  "IBC 415.11.6.8": {
+   "code": "IBC 2024",
+   "title": "HPM, liquid storage and gas rooms, ventilation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 434,
+   "sha256": "c782bea495c475378e068c7c214ee554b913209244f2692fd06cca7efab3461b",
+   "facts": {
+    "exhaust_cfm_per_sqft": 1.0,
+    "air_changes_per_hour": 6
+   }
+  },
+  "IBC 415.11.6.9": {
+   "code": "IBC 2024",
+   "title": "HPM, liquid storage and gas rooms, emergency alarm",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 559,
+   "sha256": "75565707744e048afc8446e4f7c3c5033ecabbbc3f571c1cac4854137c45da16",
+   "facts": {
+    "what": "alarm-initiating devices outside each interior exit door"
+   }
+  },
+  "IBC 415.11.8.1": {
+   "code": "IBC 2024",
+   "title": "Gas detection, where required",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 1161,
+   "sha256": "639c9296aaacb18d43c8694ecc2f456b69adda6d9cd847208d3826a37391eec2",
+   "facts": {
+    "where": [
+     "fabrication areas using HPM gas",
+     "HPM rooms",
+     "gas cabinets and exhausted enclosures",
+     "gas rooms",
+     "corridors with HPM gas piping"
+    ]
+   }
+  },
+  "IBC 415.11.8.2": {
+   "code": "IBC 2024",
+   "title": "Gas detection, operation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 926,
+   "sha256": "bfd604a4bcc8fc4b9f6c758e607475dc3bb4554ff12e86e8dface07525d55c65",
+   "facts": {
+    "flammable_lfl_fraction": 0.25
+   }
+  },
+  "IBC 415.11.9": {
+   "code": "IBC 2024",
+   "title": "Manual fire alarm system",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 340,
+   "sha256": "0dfbc52262aed9ebd3e3a681ceffc6e1e6c3a3a059db4e361b9d55f87cf5a6a1",
+   "facts": {
+    "what": "throughout buildings containing H-5"
+   }
+  },
+  "IBC 415.11.10": {
+   "code": "IBC 2024",
+   "title": "Emergency control station",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 1310,
+   "sha256": "4ec1f03d34103d8464aecb6364cddb777260ff55c1ab999ff23ecd4e96b124f1",
+   "facts": {
+    "outside_fab_area": true,
+    "staffed": "continuously"
+   }
+  },
+  "IBC 415.11.11": {
+   "code": "IBC 2024",
+   "title": "Emergency power system",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 1308,
+   "sha256": "f61479a08bb4ea064114a1b4bfc2c3863a0dcd719cd964008041a20cb2694394",
+   "facts": {
+    "loads": [
+     "HPM exhaust ventilation",
+     "gas cabinet ventilation",
+     "exhausted enclosure ventilation",
+     "gas room ventilation",
+     "gas detection",
+     "emergency alarm",
+     "fire alarm",
+     "sprinkler monitoring"
+    ]
+   }
+  },
+  "IBC 415.11.12.1": {
+   "code": "IBC 2024",
+   "title": "Sprinklers in metallic exhaust ducts",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 424,
+   "sha256": "f9b510359f891b7a65373b90f2ae3dd9317dd897e59e5d8a269c6793e7492ab9",
+   "facts": {
+    "min_diameter_in": 10,
+    "conditions": "within the building and conveying flammable gases, vapors or fumes"
+   }
+  },
+  "IBC 415.11.12.3": {
+   "code": "IBC 2024",
+   "title": "Sprinkler locations in ducts",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-4-special-detailed-requirements-based-on-occupancy-and-use",
+   "opened": "2026-10-27",
+   "chars": 259,
+   "sha256": "2885fa2cb107d064bccba1e7edad8ef5bd46a483f4731b33903909515c35666a",
+   "facts": {
+    "horizontal_interval_ft": 12
+   }
+  },
+  "IBC T504.3": {
+   "code": "IBC 2024",
+   "title": "Allowable building height in feet",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-5-general-building-heights-and-areas",
+   "opened": "2026-10-27",
+   "chars": 18567,
+   "sha256": "e13cd9db7bffb095139338fb24e90d065ca33e067e3eb440420b9386c238fab7",
+   "facts": {
+    "H5_ft": {
+     "IA": "UL",
+     "IB": 160,
+     "IIA": 65,
+     "IIB": 55,
+     "IIIA": 65,
+     "IIIB": 55,
+     "VA": 50,
+     "VB": 40
+    }
+   }
+  },
+  "IBC T504.4": {
+   "code": "IBC 2024",
+   "title": "Allowable number of stories above grade plane",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-5-general-building-heights-and-areas",
+   "opened": "2026-10-27",
+   "chars": 16007,
+   "sha256": "d2906bc18dec0f6f8b5cf71d48a3a85fa0cbc45b9cebfe372b273ea5c8c78d9c",
+   "facts": {
+    "H5_stories": {
+     "IA": 4,
+     "IB": 4,
+     "IIA": 3,
+     "IIB": 3,
+     "IIIA": 3,
+     "IIIB": 3,
+     "VA": 3,
+     "VB": 2
+    }
+   }
+  },
+  "IBC T506.2": {
+   "code": "IBC 2024",
+   "title": "Allowable area factor",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-5-general-building-heights-and-areas",
+   "opened": "2026-10-27",
+   "chars": 5862,
+   "sha256": "45787661b4f83a33027a513e5881c4ad886d416b138e84214cf33484c7d486f2",
+   "facts": {
+    "H5_S1_sqft": {
+     "IA": "UL",
+     "IB": "UL",
+     "IIA": 150000,
+     "IIB": 92000,
+     "IIIA": 114000,
+     "IIIB": 76000,
+     "VA": 72000,
+     "VB": 36000
+    },
+    "H5_SM_sqft": {
+     "IA": "UL",
+     "IB": "UL",
+     "IIA": 112500,
+     "IIB": 69000,
+     "IIIA": 85500,
+     "IIIB": 57000,
+     "VA": 54000,
+     "VB": 27000
+    },
+    "note": "S1: one story above grade, sprinklered; SM: more than one story, sprinklered (per story)."
+   }
+  },
+  "IBC T601": {
+   "code": "IBC 2024",
+   "title": "Fire-resistance ratings of building elements",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-6-types-of-construction",
+   "opened": "2026-10-27",
+   "chars": 723,
+   "sha256": "b3f71ade1c1552f537880a93427ca018255974c9955856011226d36e99ac5c96",
+   "facts": {
+    "IB": {
+     "frame_h": 2,
+     "bearing_exterior_h": 2,
+     "bearing_interior_h": 2,
+     "floor_h": 2,
+     "roof_h": 1
+    },
+    "IA": {
+     "frame_h": 3,
+     "bearing_exterior_h": 3,
+     "bearing_interior_h": 3,
+     "floor_h": 2,
+     "roof_h": 1.5
+    }
+   }
+  },
+  "IBC 903.2.5.2": {
+   "code": "IBC 2024",
+   "title": "Sprinklers in Group H-5",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 831,
+   "sha256": "54ea74a155ed571382a5e8e0f84a8b5029f148df953862bd161ff829ea5e15f1",
+   "facts": {
+    "throughout": true,
+    "hazard": {
+     "fabrication area": "OH2",
+     "service corridor": "OH2",
+     "storage room without dispensing": "OH2",
+     "storage room with dispensing": "EH2",
+     "corridor": "OH2"
+    }
+   }
+  },
+  "IBC 907.2.5": {
+   "code": "IBC 2024",
+   "title": "Fire alarm, Group H",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 434,
+   "sha256": "5652f33139b33b6db9c116693056b66a95bfc2cd4d39fdffe5d3906806072979",
+   "facts": {
+    "manual": true,
+    "smoke_detection_for": [
+     "highly toxic gases",
+     "organic peroxides",
+     "oxidizers"
+    ],
+    "per": "IFC chapters 60, 62, 63"
+   }
+  },
+  "IBC 916.6": {
+   "code": "IBC 2024",
+   "title": "Gas detection sensor locations",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-9-fire-protection-and-life-safety-systems",
+   "opened": "2026-10-27",
+   "chars": 122,
+   "sha256": "2098bbdcd50aeac0a1bd4674b7ed0d559e11258b9513f4d71503a4413a13ce9d",
+   "facts": {
+    "what": "sensors where leaking gases are expected to accumulate"
+   }
+  },
+  "IBC T1004.5": {
+   "code": "IBC 2024",
+   "title": "Maximum floor area allowances per occupant",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 456,
+   "sha256": "a2c774b9f9f74fb3ad4e45ba2ba3bd3d0efbf0902b3caa24e07f51419e070cc0",
+   "facts": {
+    "H5_fab_sqft": 200,
+    "mechanical_sqft": 300,
+    "business_sqft": 150
+   }
+  },
+  "IBC 1005.3.1": {
+   "code": "IBC 2024",
+   "title": "Stairway capacity",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1501,
+   "sha256": "ebc7cfff93edfa537b75212eb501db4c6164be9928a1f21882cb840908cdf6c5",
+   "facts": {
+    "in_per_occupant": 0.3
+   }
+  },
+  "IBC 1005.3.2": {
+   "code": "IBC 2024",
+   "title": "Other egress components capacity",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1419,
+   "sha256": "73114915759bfa0c9f19fb97bc7c133ff591c2cb2dcbd6994d01af86c7760850",
+   "facts": {
+    "in_per_occupant": 0.2
+   }
+  },
+  "IBC T1006.2.1": {
+   "code": "IBC 2024",
+   "title": "Spaces with one exit; common path of egress travel",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1515,
+   "sha256": "28a6cf717fd518f4066bae5216b0977e6dba5ad6d0ab6e565f166fead5f404ff",
+   "facts": {
+    "H5_one_exit_max_occupants": 10,
+    "H5_common_path_ft": 75
+   }
+  },
+  "IBC T1006.3.3": {
+   "code": "IBC 2024",
+   "title": "Minimum number of exits per story",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 241,
+   "sha256": "af180ee50d213ca18a62ba73c3a1390aaa1b879b7ee5e48b778cca5c57c41da0",
+   "facts": {
+    "exits": [
+     [
+      500,
+      2
+     ],
+     [
+      1000,
+      3
+     ],
+     [
+      null,
+      4
+     ]
+    ]
+   }
+  },
+  "IBC 1007.1.1": {
+   "code": "IBC 2024",
+   "title": "Two exits, separation",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 1453,
+   "sha256": "2664a41f8a9072009404c3f0919a892868b9d12409055d23ca0046b9eeb93067",
+   "facts": {
+    "fraction_of_diagonal_sprinklered": 0.3333333333333333,
+    "fraction_of_diagonal": 0.5
+   }
+  },
+  "IBC 1011.2": {
+   "code": "IBC 2024",
+   "title": "Stairway width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 838,
+   "sha256": "e787f166eaf9a18fd44ca7d76044af39027f4dc6364d186102ea83493b36c88e",
+   "facts": {
+    "min_in": 44
+   }
+  },
+  "IBC T1017.2": {
+   "code": "IBC 2024",
+   "title": "Exit access travel distance",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 2032,
+   "sha256": "21767ae13ec103efd873a74b28fbf64faaf6f6d0453133dc5f1113777afc96b9",
+   "facts": {
+    "H5_sprinklered_ft": 200
+   }
+  },
+  "IBC 1017.3": {
+   "code": "IBC 2024",
+   "title": "Measuring travel distance",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 667,
+   "sha256": "a83c9bd9003e82b66ba92d06b8a902d2dbbdbbe3ddfc5a1fbb6472e45363fa8f",
+   "facts": {
+    "what": "from the most remote point along the natural, unobstructed path to the entrance of the nearest exit"
+   }
+  },
+  "IBC T1020.2": {
+   "code": "IBC 2024",
+   "title": "Corridor fire-resistance rating",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 978,
+   "sha256": "737a73a9ec66a7b2c3ceed0d4c7990de0e3fa496791834a2559725b4df956b4d",
+   "facts": {
+    "H5_over_30_sprinklered_h": 1
+   }
+  },
+  "IBC T1020.3": {
+   "code": "IBC 2024",
+   "title": "Minimum corridor width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 496,
+   "sha256": "c3ce79953c5b3c11a79a89473b795a7190e92cb531714b85f1ab0c5fac3897b9",
+   "facts": {
+    "general_in": 44,
+    "mechanical_access_in": 24
+   }
+  },
+  "IBC 1023.2": {
+   "code": "IBC 2024",
+   "title": "Interior exit stairway enclosures",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 986,
+   "sha256": "00e4370e9f433d11df519e5d4d225400d4120ddcd2c040a587835d5d63f92a04",
+   "facts": {
+    "rating_h_4_or_more_stories": 2,
+    "rating_h_fewer": 1
+   }
+  },
+  "IBC 1023.3": {
+   "code": "IBC 2024",
+   "title": "Interior exit stairway termination",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 251,
+   "sha256": "a3c8ba2e708b0540a69077e6db8643c055012a998a7d5efaec8f2b4f9a7bf01c",
+   "facts": {
+    "what": "at an exit discharge or public way, or through an exit passageway forming a continuous protected enclosure"
+   }
+  },
+  "IBC 1024.2": {
+   "code": "IBC 2024",
+   "title": "Exit passageway width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 446,
+   "sha256": "7bbb1c66afaeabf9278350108d6ed54538b0bb92fa239404465e6954377da374",
+   "facts": {
+    "min_in": 44
+   }
+  },
+  "IBC 1024.3": {
+   "code": "IBC 2024",
+   "title": "Exit passageway construction",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 384,
+   "sha256": "010bd6f1f65e7062f9bd8598043d4d9330f272ecf8cecb0ce13fd736d234ed6a",
+   "facts": {
+    "min_h": 1,
+    "not_less_than_connecting_stair": true
+   }
+  },
+  "IBC 1024.4": {
+   "code": "IBC 2024",
+   "title": "Exit passageway termination",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-10-27",
+   "chars": 167,
+   "sha256": "5c51525017fd830f112c30d61a887cf6432abbbdecd5cc9eef543810ec8c053e",
+   "facts": {
+    "what": "at the level of exit discharge, terminates at an exit discharge"
+   }
+  },
+  "IBC T1604.5": {
+   "code": "IBC 2024",
+   "title": "Risk category",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-27",
+   "chars": 20570,
+   "sha256": "7cbc2004cd0215b2942f5f2ef4458df0bef5d316a6823821d60d75e3384531ac",
+   "facts": {
+    "III_if": "toxic or explosive materials above the maximum allowable quantities and enough to threaten the public if released",
+    "IV_if": "highly toxic materials above the maximum allowable quantities and enough to threaten the public if released"
+   }
+  },
+  "IBC T1607.1": {
+   "code": "IBC 2024",
+   "title": "Minimum uniformly distributed live loads",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-27",
+   "chars": 4755,
+   "sha256": "cb38fbcbb0819729ac6cbdc6b69ca85a1a957f7731a5ec2c849aca1776974fd0",
+   "facts": {
+    "manufacturing_heavy_psf": 250,
+    "manufacturing_light_psf": 125,
+    "stairs_psf": 100,
+    "roof_psf": 20
+   }
+  },
+  "IBC 1609.3": {
+   "code": "IBC 2024",
+   "title": "Basic design wind speed",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-27",
+   "chars": 6157,
+   "sha256": "a710a0a3b5bbd63dda0e3b6cae441e477f479bdd2190bfd45cc5650fbbb1a321",
+   "facts": {
+    "what": "from Figures 1609.3(1) to (4) by risk category (the figures are not read here)"
+   }
+  },
+  "IBC 1613.1": {
+   "code": "IBC 2024",
+   "title": "Earthquake loads, scope",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-16-structural-design",
+   "opened": "2026-10-27",
+   "chars": 1306,
+   "sha256": "0e38702702830c8593f785059af8e35a503405e157f0033f5e0416d321b7890a",
+   "facts": {
+    "what": "design per ASCE 7 chapters 11 to 13, 15, 17 and 18"
+   }
+  },
+  "IFC 2703.1": {
+   "code": "IFC 2024",
+   "title": "Emergency control station",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 1220,
+   "sha256": "2c91e33034b38417a9fbc1dd802e82d0366d7e68f07d4c01a1fba1f61e6200ab",
+   "facts": {
+    "outside_fab_area": true
+   }
+  },
+  "IFC 2703.10.1": {
+   "code": "IFC 2024",
+   "title": "Sprinklers, workstations and tools",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 163,
+   "sha256": "3e09d04200205ff1c658ecc95cd5e1b27e51d931ceb672676fac132163989098",
+   "facts": {
+    "what": "the design considers the spray pattern and the effect on the equipment"
+   }
+  },
+  "IFC 2703.10.2": {
+   "code": "IFC 2024",
+   "title": "Sprinklers in gas cabinets and exhausted enclosures",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 283,
+   "sha256": "35cb0d1631db517cb55abfb5c28f1db7e58a00edde6adc950c2f82505b76ecbf",
+   "facts": {
+    "except": "cabinets in an HPM room unless they hold pyrophoric gas"
+   }
+  },
+  "IFC 2703.13.1": {
+   "code": "IFC 2024",
+   "title": "Gas detection, where required",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 1124,
+   "sha256": "e5352825ae692e35d78254f92bf4c980cee16ca7cc3b5c124f71bb02f6c5f53f",
+   "facts": {
+    "what": "as IBC 415.11.8.1"
+   }
+  },
+  "IFC 2703.14.1": {
+   "code": "IFC 2024",
+   "title": "Exhaust ventilation for HPM, where required",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 1729,
+   "sha256": "5c5dc8e561acb0f82419e846777c1694d367d88f9a2a6968494f53664778d9c4",
+   "facts": {
+    "what": "fabrication areas per the IBC; workstations capture at the source"
+   }
+  },
+  "IFC 2703.15": {
+   "code": "IFC 2024",
+   "title": "Emergency power system",
+   "url": "https://codes.iccsafe.org/content/IFC2024V1.0/chapter-27-semiconductor-fabrication-facilities",
+   "opened": "2026-10-27",
+   "chars": 1211,
+   "sha256": "50368f9ff231cbc1c9d401db39a3ecd95c09d8b4afdf56484618ce0400696f72",
+   "facts": {
+    "what": "as IBC 415.11.11"
+   }
+  }
+ },
+ "not_read": [
+  {
+   "id": "ASCE 7-22",
+   "why": "sold; IBC 1613.1 and 1609 point to it",
+   "topics": [
+    "seismic design",
+    "wind loads",
+    "snow loads"
+   ]
+  },
+  {
+   "id": "NFPA 13",
+   "why": "not read (free to view only with an account)",
+   "topics": [
+    "sprinkler density and spacing"
+   ]
+  },
+  {
+   "id": "NFPA 70",
+   "why": "not read",
+   "topics": [
+    "electrical installation",
+    "hazardous locations"
+   ]
+  },
+  {
+   "id": "NFPA 72",
+   "why": "not read",
+   "topics": [
+    "fire alarm and detection layout"
+   ]
+  },
+  {
+   "id": "NFPA 318",
+   "why": "not read",
+   "topics": [
+    "cleanroom protection"
+   ]
+  },
+  {
+   "id": "ISO 14644-1",
+   "why": "sold",
+   "topics": [
+    "cleanroom classes"
+   ]
+  },
+  {
+   "id": "SEMI S2",
+   "why": "sold",
+   "topics": [
+    "tool safety"
+   ]
+  },
+  {
+   "id": "FM Global DS 7-7",
+   "why": "not read",
+   "topics": [
+    "insurer requirements for fabs"
+   ]
+  },
+  {
+   "id": "ASHRAE 62.1 and 90.1",
+   "why": "not read",
+   "topics": [
+    "ventilation",
+    "energy"
+   ]
+  },
+  {
+   "id": "IMC 2024",
+   "why": "not read yet (free in the same reader)",
+   "topics": [
+    "duct construction",
+    "exhaust systems"
+   ]
+  },
+  {
+   "id": "IPC 2024 and IBC chapter 29",
+   "why": "not read yet",
+   "topics": [
+    "plumbing fixtures",
+    "drainage"
+   ]
+  },
+  {
+   "id": "ICC A117.1 and IBC chapter 11",
+   "why": "not read yet",
+   "topics": [
+    "accessibility"
+   ]
+  },
+  {
+   "id": "IFC chapters 50 and 60",
+   "why": "not read yet",
+   "topics": [
+    "gas cabinets",
+    "highly toxic and toxic gases",
+    "smoke detection for highly toxic gases"
+   ]
+  },
+  {
+   "id": "IBC 907.4.2 and 907.5",
+   "why": "not read yet",
+   "topics": [
+    "pull station spacing",
+    "notification"
+   ]
+  },
+  {
+   "id": "IBC 716",
+   "why": "not read yet",
+   "topics": [
+    "opening protectives",
+    "fire shutters at the hoist bridge"
+   ]
+  },
+  {
+   "id": "IBC chapter 7 (707, 711)",
+   "why": "not read yet",
+   "topics": [
+    "fire barrier construction",
+    "penetrations"
+   ]
+  },
+  {
+   "id": "IBC 1009",
+   "why": "not read yet",
+   "topics": [
+    "accessible means of egress",
+    "areas of refuge"
+   ]
+  },
+  {
+   "id": "Local zoning",
+   "why": "no real site",
+   "topics": [
+    "setbacks",
+    "height",
+    "use"
+   ]
+  }
+ ]
+}

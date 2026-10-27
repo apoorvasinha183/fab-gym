@@ -1,0 +1,78 @@
+{
+ "truth": "On the SMT2020 model. A layout of our own design. Not a real fab. Effect in a real fab: cannot say.",
+ "question": "If the 1.5 m chases are service corridors, IBC 415.11.3.4 asks at least 5 ft (1.524 m). What does a 1.6 m chase cost the fab?",
+ "cites": [
+  "IBC 415.11.3.4"
+ ],
+ "chase_before_m": 1.5,
+ "chase_after_m": 1.6,
+ "hoist_m_per_day": {
+  "before": 2180616.746,
+  "after": 2183034.77
+ },
+ "seeds": 10,
+ "seed_list": [
+  3000,
+  3001,
+  3002,
+  3003,
+  3004,
+  3005,
+  3006,
+  3007,
+  3008,
+  3009
+ ],
+ "days": 150,
+ "warmup": 60,
+ "alpha_each": 0.01,
+ "preregistered_design": true,
+ "how": "fabsim layout-score on the same seeds: the optimised plan with a 1.5 m chase against the optimised plan with the wider chase; paired t intervals, each at the stated level, Bonferroni over five measures.",
+ "measures": [
+  {
+   "name": "transport minutes a move",
+   "before": 4.612442800087427,
+   "after": 4.613414623325776,
+   "diff": 0.0009718232383484349,
+   "lo": 0.0005119656665414934,
+   "hi": 0.0014316808101553762,
+   "verdict": "worse"
+  },
+  {
+   "name": "cycle time, days",
+   "before": 49.756025500496925,
+   "after": 50.125893035830686,
+   "diff": 0.36986753533376204,
+   "lo": -0.3024755258721915,
+   "hi": 1.0422105965397157,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "wafers out a day",
+   "before": 1311.8333333333335,
+   "after": 1307.111111111111,
+   "diff": -4.72222222222224,
+   "lo": -16.780446444651673,
+   "hi": 7.336002000207194,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "mean WIP, lots",
+   "before": 2610.8268995791127,
+   "after": 2620.7776081143816,
+   "diff": 9.950708535269086,
+   "lo": -9.034111424384644,
+   "hi": 28.935528494922817,
+   "verdict": "no clear effect"
+  },
+  {
+   "name": "hot-lot cycle time, days",
+   "before": 23.834472954360997,
+   "after": 23.801750715120736,
+   "diff": -0.03272223924026143,
+   "lo": -0.15154607140588805,
+   "hi": 0.08610159292536518,
+   "verdict": "no clear effect"
+  }
+ ]
+}

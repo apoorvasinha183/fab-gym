@@ -9,7 +9,7 @@
 //!                                                (docs/LEAN-LONG.md); the overrides are for
 //!                                                smoke runs only; --reference reads the
 //!                                                files as the reference compile does
-//!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S]
+//!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S] [--chase M]
 //!                                                the gigafab-style campus (docs/FAB-LAYOUT.md):
 //!                                                plain and optimised plans; layout.json and a
 //!                                                summary to O, the shops with layouts to D
@@ -202,6 +202,8 @@ fn layout(args: &[String]) {
     cfg.iters = arg(args, "--iters", cfg.iters as u64) as usize;
     cfg.restarts = arg(args, "--restarts", cfg.restarts as u64) as usize;
     cfg.seed = arg(args, "--seed", cfg.seed);
+    // a wider service chase (docs/PERMIT.md, D10): metres, assumed 1.5
+    cfg.chase = flag(args, "--chase", "").parse().unwrap_or(cfg.chase);
     let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
     let areas = fabsim::smt2020::areas(&dir).expect("areas");
     let p = Problem::new(&shop, &areas, &cfg).expect("a layout problem");

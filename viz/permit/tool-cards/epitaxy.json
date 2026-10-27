@@ -1,0 +1,187 @@
+{
+ "kind": "epitaxy",
+ "note": "Assumed by kind, with a range; SMT2020 holds no masses, utilities or chemistry and no maker's number is used. On the SMT2020 model. A layout of our own design. Not a real fab.",
+ "clearance_m": {
+  "front": {
+   "value": 1.0,
+   "lo": 0.9,
+   "hi": 1.5,
+   "basis": "assumed"
+  },
+  "back": {
+   "value": 0.9,
+   "lo": 0.6,
+   "hi": 1.2,
+   "basis": "assumed"
+  },
+  "side": {
+   "value": 0.6,
+   "lo": 0.3,
+   "hi": 0.9,
+   "basis": "assumed"
+  }
+ },
+ "mass_kg": {
+  "value": 8000,
+  "lo": 5600.0,
+  "hi": 11200.0,
+  "basis": "assumed"
+ },
+ "heat_kw": {
+  "air": {
+   "value": 20,
+   "lo": 12.0,
+   "hi": 30.0,
+   "basis": "assumed"
+  },
+  "pcw": {
+   "value": 150,
+   "lo": 90.0,
+   "hi": 225.0,
+   "basis": "assumed"
+  }
+ },
+ "backed_up_power": true,
+ "utilities": {
+  "power_kva": {
+   "value": 250,
+   "lo": 150.0,
+   "hi": 400.0,
+   "basis": "assumed"
+  },
+  "pcw_lpm": {
+   "value": 430.0,
+   "lo": 258.0,
+   "hi": 645.0,
+   "basis": "assumed"
+  },
+  "upw_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "cda_slpm": {
+   "value": 300,
+   "lo": 150.0,
+   "hi": 600.0,
+   "basis": "assumed"
+  },
+  "n2_slpm": {
+   "value": 800,
+   "lo": 400.0,
+   "hi": 1600.0,
+   "basis": "assumed"
+  },
+  "pv_slpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_general_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_acid_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_solvent_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_toxic_m3h": {
+   "value": 800,
+   "lo": 480.0,
+   "hi": 1280.0,
+   "basis": "assumed"
+  },
+  "drain_acid_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_fluoride_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_solvent_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_slurry_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  }
+ },
+ "chemistry": [
+  {
+   "material": "silane",
+   "hazard": "pyrophoric gas",
+   "qty": {
+    "value": 100,
+    "lo": 40.0,
+    "hi": 200.0,
+    "basis": "assumed"
+   },
+   "unit": "cf",
+   "where": "gas room"
+  },
+  {
+   "material": "dichlorosilane",
+   "hazard": "flammable gas",
+   "qty": {
+    "value": 100,
+    "lo": 40.0,
+    "hi": 200.0,
+    "basis": "assumed"
+   },
+   "unit": "cf",
+   "where": "gas room"
+  },
+  {
+   "material": "hydrogen chloride",
+   "hazard": "corrosive gas",
+   "qty": {
+    "value": 100,
+    "lo": 40.0,
+    "hi": 200.0,
+    "basis": "assumed"
+   },
+   "unit": "cf",
+   "where": "gas room"
+  },
+  {
+   "material": "hydrogen",
+   "hazard": "flammable gas",
+   "qty": {
+    "value": 200,
+    "lo": 80.0,
+    "hi": 400.0,
+    "basis": "assumed"
+   },
+   "unit": "cf",
+   "where": "gas room"
+  }
+ ],
+ "environment": {
+  "vibration": "VC-A",
+  "iso_class": 6,
+  "yellow_light": false,
+  "basis": "assumed"
+ }
+}

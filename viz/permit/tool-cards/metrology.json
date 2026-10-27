@@ -1,0 +1,138 @@
+{
+ "kind": "metrology",
+ "note": "Assumed by kind, with a range; SMT2020 holds no masses, utilities or chemistry and no maker's number is used. On the SMT2020 model. A layout of our own design. Not a real fab.",
+ "clearance_m": {
+  "front": {
+   "value": 1.0,
+   "lo": 0.9,
+   "hi": 1.5,
+   "basis": "assumed"
+  },
+  "back": {
+   "value": 0.9,
+   "lo": 0.6,
+   "hi": 1.2,
+   "basis": "assumed"
+  },
+  "side": {
+   "value": 0.6,
+   "lo": 0.3,
+   "hi": 0.9,
+   "basis": "assumed"
+  }
+ },
+ "mass_kg": {
+  "value": 1500,
+  "lo": 1050.0,
+  "hi": 2100.0,
+  "basis": "assumed"
+ },
+ "heat_kw": {
+  "air": {
+   "value": 3,
+   "lo": 1.8,
+   "hi": 4.5,
+   "basis": "assumed"
+  },
+  "pcw": {
+   "value": 5,
+   "lo": 3.0,
+   "hi": 7.5,
+   "basis": "assumed"
+  }
+ },
+ "backed_up_power": false,
+ "utilities": {
+  "power_kva": {
+   "value": 15,
+   "lo": 9.0,
+   "hi": 24.0,
+   "basis": "assumed"
+  },
+  "pcw_lpm": {
+   "value": 14.3,
+   "lo": 8.58,
+   "hi": 21.45,
+   "basis": "assumed"
+  },
+  "upw_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "cda_slpm": {
+   "value": 200,
+   "lo": 100.0,
+   "hi": 400.0,
+   "basis": "assumed"
+  },
+  "n2_slpm": {
+   "value": 20,
+   "lo": 10.0,
+   "hi": 40.0,
+   "basis": "assumed"
+  },
+  "pv_slpm": {
+   "value": 50,
+   "lo": 25.0,
+   "hi": 100.0,
+   "basis": "assumed"
+  },
+  "exhaust_general_m3h": {
+   "value": 100,
+   "lo": 60.0,
+   "hi": 160.0,
+   "basis": "assumed"
+  },
+  "exhaust_acid_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_solvent_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "exhaust_toxic_m3h": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_acid_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_fluoride_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_solvent_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  },
+  "drain_slurry_lpm": {
+   "value": 0,
+   "lo": 0.0,
+   "hi": 0.0,
+   "basis": "assumed"
+  }
+ },
+ "chemistry": [],
+ "environment": {
+  "vibration": "VC-D",
+  "iso_class": 6,
+  "yellow_light": false,
+  "basis": "assumed"
+ }
+}
