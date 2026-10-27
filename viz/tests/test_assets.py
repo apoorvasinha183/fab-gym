@@ -87,13 +87,23 @@ class Report(unittest.TestCase):
     def test_workers_walk_the_aisles_on_the_clean_floor(self):
         w = R["workers"]
         self.assertGreaterEqual(len(w), 20)
+        self.assertGreaterEqual(sum(1 for k in w if k["bay"] is None), 6, "some walk the spine, where the camera rides")
         cz = self.s["clean_z"]
         tools = self.s["tools"]
         bays = self.s["bays"]
+        sp = self.s["spine"]
+        stockers = self.s["stockers"]
         for k in w:
-            b = bays[k["bay"]]
             for x, y, z in k["samples"]:
                 self.assertAlmostEqual(z, cz, delta=0.01)
+                if k["bay"] is None:  # on the spine, beside the stockers
+                    ph = k["phase"]
+                    x0, x1 = self.s["offsets"][ph], self.s["offsets"][ph] + self.s["lengths"][ph]
+                    self.assertTrue(x0 < x < x1 and abs(y) < sp / 2 - 0.5, (ph, x, y))
+                    for st in stockers:
+                        self.assertFalse(st["x0"] - 0.3 < x < st["x1"] + 0.3 and st["y0"] - 0.3 < y < st["y1"] + 0.3, (x, y))
+                    continue
+                b = bays[k["bay"]]
                 self.assertTrue(b["x0"] < x < b["x1"] and b["y0"] <= y <= b["y1"], (k["bay"], x, y))
                 for t in tools:
                     inside = t["x0"] - 0.3 < x < t["x1"] + 0.3 and t["y0"] - 0.3 < y < t["y1"] + 0.3
@@ -101,6 +111,10 @@ class Report(unittest.TestCase):
 
     def test_workers_face_the_way_they_walk(self):
         self.assertGreaterEqual(R["facing_ok"], 0.97)
+
+    def test_workers_are_seen(self):
+        # frames of the film in which a worker stands in front of the camera, within 40 m
+        self.assertGreaterEqual(R["frames_with_a_worker"], 24 * 20)
 
     def test_blender_puts_them_where_the_plan_says(self):
         self.assertGreaterEqual(len(R["placed"]), 5)
