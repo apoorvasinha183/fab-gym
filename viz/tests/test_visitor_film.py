@@ -566,9 +566,12 @@ class Plan(unittest.TestCase):
             self.assertLessEqual(ang3(look, [me[i] - c[1 + i] for i in range(3)]), 22.0, f"he is out of frame at {c[0]:.2f} s")
 
     def test_the_camera_glides(self):
+        # "cuts" are where he jumps (a cut in the film); the camera may also cut while he walks on
+        cuts = set(P["camera_cuts"])
+        self.assertLessEqual(self.cuts, cuts, "the camera cuts wherever he jumps")
         cam = P["camera"]
         for a, b in zip(cam, cam[1:]):
-            if b[0] in self.cuts or a[7] != b[7]:
+            if b[0] in cuts or a[7] != b[7]:
                 continue
             v = math.dist(a[1:4], b[1:4]) / DT
             self.assertLessEqual(v, 3.0, f"camera jumps {v:.1f} m/s at {a[0]:.2f} s")
