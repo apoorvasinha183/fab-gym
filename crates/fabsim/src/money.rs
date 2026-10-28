@@ -75,3 +75,36 @@ pub fn money(shop: &Shop, r: &RunResult, w: &Window, m: &Money, tools_added: usi
         b_cycle_days: if b_lots > 0 { Some(ct_sum / b_lots as f64) } else { None },
     }
 }
+
+/// The pre-registered price grid of docs/TWO-FAMILIES-SWEEP.md, the central point first. Family A's margin is 1 a
+/// wafer, so every price is in wafers of family-A margin. All assumed.
+pub struct PriceGrid;
+
+impl PriceGrid {
+    pub fn preregistered(family_b: &str) -> Vec<Money> {
+        let at = |price0: f64, decay: f64, tool_day: f64, metre_day: f64| Money {
+            margin: vec![("A".to_string(), 1.0)],
+            family_b: family_b.to_string(),
+            price0,
+            free_days: 30.0,
+            decay,
+            tool_day,
+            metre_day,
+        };
+        let central = at(20.0, 1.0 / 30.0, 20.0, 2.0);
+        let mut out = vec![central.clone()];
+        for price0 in [10.0, 20.0, 40.0] {
+            for decay in [1.0 / 30.0, 1.0 / 10.0] {
+                for tool_day in [0.0, 20.0, 100.0] {
+                    for metre_day in [0.0, 2.0] {
+                        let m = at(price0, decay, tool_day, metre_day);
+                        if m != central {
+                            out.push(m);
+                        }
+                    }
+                }
+            }
+        }
+        out
+    }
+}

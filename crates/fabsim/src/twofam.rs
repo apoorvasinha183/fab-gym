@@ -5,8 +5,13 @@
 //! route. Copies of tool groups serve family B only; three layout strategies place them.
 
 use std::collections::{BTreeSet, HashMap};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
+use crate::engine::{run, Decision, RunOptions};
 use crate::layout::{Config, Problem};
+use crate::money::{money, Money, MoneyScore};
+use crate::window::Window;
 use crate::pyrandom::PyRandom;
 use crate::shop::{LotSpec, Per, Release, Shop};
 
@@ -160,9 +165,11 @@ fn route_rates(shop: &Shop) -> HashMap<String, (f64, f64)> {
         .collect()
 }
 
-/// Busy share each group would carry at the routes' rates (an estimate for ranking: per piece by
-/// the mean lot size, per batch at the batch's mean size in lots, sampled steps by their share).
-fn loads(shop: &Shop, only_family: Option<&str>) -> HashMap<String, f64> {
+/// Busy share each group would carry at the routes' rates, by the engine's own job times at their middle (an
+/// estimate for ranking): per piece the first piece plus the cascade interval for each further one (or every piece
+/// in full), per lot one time, per batch the lot's share of a batch of mean size in wafers; load and unload minutes on
+/// every job; sampled steps by their share; setups left out.
+pub fn loads(shop: &Shop, only_family: Option<&str>) -> HashMap<String, f64> {
     let rates = route_rates(shop);
     let mut load: HashMap<String, f64> = HashMap::new();
     for r in &shop.routes {
@@ -171,12 +178,17 @@ fn loads(shop: &Shop, only_family: Option<&str>) -> HashMap<String, f64> {
         }
         let Some(&(lots, wafers)) = rates.get(&r.name) else { continue };
         for st in &r.steps {
+            let grp = shop.group(&st.group);
+            let extra = grp.map(|g| g.load + g.unload).unwrap_or(0.0);
             let per_lot = match st.per {
-                Per::Piece => st.time * wafers,
-                Per::Lot => st.time,
-                Per::Batch => st.time / st.batch.map(|b| (b.0 + b.1) / 2.0).unwrap_or(1.0).max(1.0),
+                Per::Piece => match st.interval {
+                    Some(iv) if iv != 0.0 => st.time + (wafers - 1.0).max(0.0) * iv + extra,
+                    _ => st.time * wafers + extra,
+                },
+                Per::Lot => st.time + extra,
+                Per::Batch => (st.time + extra) * wafers / st.batch.map(|b| (b.0 + b.1) / 2.0).unwrap_or(wafers).max(1.0),
             };
-            let n = shop.group(&st.group).map(|g| g.count).unwrap_or(0).max(1) as f64;
+            let n = grp.map(|g| g.count).unwrap_or(0).max(1) as f64;
             *load.entry(st.group.clone()).or_insert(0.0) += lots * per_lot * st.sample.unwrap_or(1.0) / (n * 1440.0);
         }
     }
@@ -279,4 +291,146 @@ pub fn lay_out(
     s.oht = Some(p.oht(&campus));
     let tools_added = picks.iter().map(|p| p.1).sum();
     Ok((s, LayoutInfo { tools_added, metres_added: metres, copies }))
+}
+
+impl EngLots {
+    /// Lots a day on average: the lots of a release over the mean gap.
+    pub fn lots_per_day(&self) -> f64 {
+        let n = (self.per_release as f64 * self.scale).round().max(0.0);
+        if self.gaps.is_empty() {
+            return 0.0;
+        }
+        let gap_days = self.gaps.iter().sum::<f64>() / self.gaps.len() as f64 / 1440.0;
+        n / gap_days
+    }
+}
+
+/// P2's cap (docs/TWO-FAMILIES-SWEEP.md): ⌈1.5 × lots a day × raw processing days⌉.
+pub fn b_cap(e: &EngLots, raw_days: f64) -> i64 {
+    (1.5 * e.lots_per_day() * raw_days).ceil() as i64
+}
+
+/// The operating policies of the sweep (docs/TWO-FAMILIES-SWEEP.md).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Policy {
+    Today,
+    BFirst,
+    Cap,
+    Reserve,
+    Qualify,
+}
+
+impl Policy {
+    pub const ALL: [Policy; 5] = [Policy::Today, Policy::BFirst, Policy::Cap, Policy::Reserve, Policy::Qualify];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Policy::Today => "P0 today",
+            Policy::BFirst => "P1 family B first",
+            Policy::Cap => "P2 family cap",
+            Policy::Reserve => "P3 reservation",
+            Policy::Qualify => "P4 qualification",
+        }
+    }
+}
+
+/// The `n` groups the family still shares with others, most contested first (its copies left out).
+pub fn policy_groups(shop: &Shop, family: &str, n: usize) -> Vec<String> {
+    let tag = format!("@{family}");
+    contested(shop, family, usize::MAX).into_iter().filter(|g| !g.ends_with(&tag)).take(n).collect()
+}
+
+/// The shop under a policy: P2 caps the family, P3 reserves each group's first tool for it, P4 qualifies it on the
+/// first half of each group's tools (rounded up). P0 and P1 change no record (P1 is a choice, `b_first`).
+pub fn apply_policy(shop: &Shop, p: Policy, family: &str, groups: &[String], cap: i64) -> Shop {
+    let mut s = shop.clone();
+    let count = |g: &str| shop.group(g).map(|x| x.count).unwrap_or(0);
+    match p {
+        Policy::Today | Policy::BFirst => {}
+        Policy::Cap => s.famcaps.push((family.to_string(), cap)),
+        Policy::Reserve => {
+            for g in groups {
+                s.quals.push((g.clone(), family.to_string(), count(g)));
+                s.reserves.push((g.clone(), family.to_string(), 1));
+            }
+        }
+        Policy::Qualify => {
+            for g in groups {
+                s.quals.push((g.clone(), family.to_string(), count(g).div_ceil(2)));
+            }
+        }
+    }
+    s
+}
+
+/// P1: today's pick when it is of the family, else the family's first candidate, else today's pick.
+pub fn b_first(d: &Decision, family: &str) -> usize {
+    if d.candidates.get(d.default).is_some_and(|c| c.family == family) {
+        return d.default;
+    }
+    d.candidates.iter().position(|c| c.family == family).unwrap_or(d.default)
+}
+
+/// One cell of the sweep: a laid-out shop under a policy.
+#[derive(Clone, Debug)]
+pub struct Cell {
+    pub label: String,
+    pub shop: Shop,
+    pub policy: Policy,
+    pub tools_added: usize,
+    pub metres_added: f64,
+}
+
+/// One run of a cell.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CellRun {
+    pub cell: usize,
+    pub seed: u64,
+    /// wafers out a day of every family but `family`, in the window
+    pub a_wafers_per_day: f64,
+    /// money at each point of the price grid, in its order
+    pub money: Vec<MoneyScore>,
+}
+
+/// Every cell on every seed, at most `threads` at once; the rows in (cell, seed) order whatever the thread count.
+pub fn run_cells(
+    cells: &[Cell],
+    seeds: &[u64],
+    until: f64,
+    w: &Window,
+    grid: &[Money],
+    family: &str,
+    threads: usize,
+) -> Result<Vec<CellRun>, String> {
+    w.check()?;
+    let jobs: Vec<(usize, u64)> = (0..cells.len()).flat_map(|c| seeds.iter().map(move |&s| (c, s))).collect();
+    let next = AtomicUsize::new(0);
+    let out: Mutex<Vec<Option<CellRun>>> = Mutex::new(vec![None; jobs.len()]);
+    std::thread::scope(|sc| {
+        for _ in 0..threads.max(1).min(jobs.len().max(1)) {
+            sc.spawn(|| loop {
+                let i = next.fetch_add(1, Ordering::SeqCst);
+                let Some(&(c, seed)) = jobs.get(i) else { break };
+                let cell = &cells[c];
+                let opts = RunOptions { seed, until: Some(until), record: false };
+                let r = if cell.policy == Policy::BFirst {
+                    let mut pick = |d: &Decision| b_first(d, family);
+                    run(&cell.shop, &opts, Some(&mut pick))
+                } else {
+                    run(&cell.shop, &opts, None)
+                };
+                let days = (w.to - w.from) / 1440.0;
+                let a: f64 = r
+                    .lots
+                    .iter()
+                    .filter(|l| cell.shop.family_of(&l.route) != family)
+                    .filter(|l| l.done.is_some_and(|d| d > w.from && d <= w.to))
+                    .map(|l| l.size as f64)
+                    .sum();
+                let money = grid.iter().map(|m| money(&cell.shop, &r, w, m, cell.tools_added, cell.metres_added)).collect();
+                out.lock().unwrap()[i] = Some(CellRun { cell: c, seed, a_wafers_per_day: a / days, money });
+            });
+        }
+    });
+    Ok(out.into_inner().unwrap().into_iter().map(|x| x.expect("every job ran")).collect())
 }

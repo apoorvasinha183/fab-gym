@@ -9,6 +9,10 @@
 //!                                                (docs/LEAN-LONG.md); the overrides are for
 //!                                                smoke runs only; --reference reads the
 //!                                                files as the reference compile does
+//!   fabsim two-families [DIR] [--threads T] [--out O] [--days N --warmup W --seeds K --iters I]
+//!                                                the pre-registered two-family sweep
+//!                                                (docs/TWO-FAMILIES-SWEEP.md); overrides are for
+//!                                                smoke runs only
 //!   fabsim layout [DIR] [--out O] [--data D] [--iters N] [--restarts R] [--seed S] [--chase M] [--cross M]
 //!                                                the gigafab-style campus (docs/FAB-LAYOUT.md):
 //!                                                plain and optimised plans; layout.json and a
@@ -69,6 +73,174 @@ fn bench(args: &[String]) {
             moves as f64 / total
         );
     }
+}
+
+fn two_families(args: &[String]) {
+    use fabsim::layout::Config as LayoutConfig;
+    use fabsim::money::PriceGrid;
+    use fabsim::twofam::{apply_policy, b_cap, lay_out, policy_groups, run_cells, two_family_shop, Cell, EngLots, Policy, Strategy};
+    use fabsim::uq::{crossover, paired, verdict, Crossover, Interval, Verdict};
+    use fabsim::window::Window;
+    use std::fmt::Write as _;
+
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let threads = arg(args, "--threads", 4) as usize;
+    let days = arg(args, "--days", 300) as f64;
+    let warmup = arg(args, "--warmup", 120) as f64;
+    let nseeds = arg(args, "--seeds", 10);
+    let iters = arg(args, "--iters", 0) as usize;
+    let out = PathBuf::from(args.iter().position(|a| a == "--out").and_then(|i| args.get(i + 1)).map(|s| s.as_str()).unwrap_or("results/two-families"));
+    let preregistered = days == 300.0 && warmup == 120.0 && nseeds == 10 && iters == 0;
+    let shares = [1.0, 2.0, 4.0, 8.0];
+    let strategies = [("D1 share", Strategy::Share), ("D2 wing", Strategy::Wing { groups: 3, tools: 1 }), ("D3 copies", Strategy::Copies { groups: 3, tools: 1 })];
+    let seeds: Vec<u64> = (2000..2000 + nseeds).collect();
+    let w = Window { from: warmup * 1440.0, to: days * 1440.0 };
+    let base = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let areas = fabsim::smt2020::areas(&dir).expect("areas load");
+    let raw = fabsim::measure::raw_processing_days(&base, 20, 0)["part_3"];
+    let mut cfg = LayoutConfig::realistic();
+    if iters > 0 {
+        cfg.iters = iters;
+        cfg.restarts = 1;
+    }
+    let grid = PriceGrid::preregistered("B");
+    let t0 = Instant::now();
+    // cells in (share, strategy, policy) order
+    let mut cells: Vec<Cell> = vec![];
+    let mut meta: Vec<(f64, &str, Policy, Vec<String>, i64, usize)> = vec![];
+    for &scale in &shares {
+        let e = EngLots { scale, ..EngLots::published("part_E3", days * 1440.0, 1) };
+        let shop = two_family_shop(&base, "part_3", &e).expect("two families");
+        let cap = b_cap(&e, raw);
+        for (sname, strat) in &strategies {
+            let (s, info) = lay_out(&shop, &areas, &cfg, strat, "B").expect("layout");
+            let groups = policy_groups(&s, "B", 3);
+            eprintln!("x{scale} {sname}: copies {:?}, policy groups {:?}, cap {cap}, {:.0} s", info.copies, groups, t0.elapsed().as_secs_f64());
+            for p in Policy::ALL {
+                let unqualified: usize = if p == Policy::Qualify { groups.iter().map(|g| s.group(g).unwrap().count / 2).sum() } else { 0 };
+                cells.push(Cell { label: format!("x{scale} {sname} {}", p.label()), shop: apply_policy(&s, p, "B", &groups, cap), policy: p, tools_added: info.tools_added, metres_added: info.metres_added });
+                meta.push((scale, sname, p, groups.clone(), cap, unqualified));
+            }
+        }
+    }
+    eprintln!("{} cells x {} seeds, {days} days (window {warmup}-{days}), {threads} threads", cells.len(), seeds.len());
+    let rows = run_cells(&cells, &seeds, w.to, &w, &grid, "B", threads).expect("cells run");
+    let secs = t0.elapsed().as_secs_f64();
+    eprintln!("done in {secs:.0} s");
+    std::fs::create_dir_all(&out).unwrap();
+    // every run, every price point
+    let mut tsv = String::from("share\tstrategy\tpolicy\tseed\ta_wafers_per_day\tb_lots\tb_wafers\tb_cycle_days");
+    for i in 0..grid.len() {
+        let _ = write!(tsv, "\tmoney_{i}");
+    }
+    tsv.push('\n');
+    for r in &rows {
+        let m = &meta[r.cell];
+        let c = &r.money[0];
+        let _ = write!(tsv, "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", m.0, m.1, m.2.label(), r.seed, r.a_wafers_per_day, c.b_lots, c.b_wafers, c.b_cycle_days.unwrap_or(f64::NAN));
+        for x in &r.money {
+            let _ = write!(tsv, "\t{}", x.per_day);
+        }
+        tsv.push('\n');
+    }
+    std::fs::write(out.join("runs.tsv"), tsv).unwrap();
+    let mut prices = String::from("index\tprice0\tfree_days\tdecay\ttool_day\tmetre_day\n");
+    for (i, m) in grid.iter().enumerate() {
+        let _ = writeln!(prices, "{i}\t{}\t{}\t{}\t{}\t{}", m.price0, m.free_days, m.decay, m.tool_day, m.metre_day);
+    }
+    std::fs::write(out.join("prices.tsv"), prices).unwrap();
+
+    // intervals: every cell against (D1, P0) at the same share, Bonferroni over 56
+    let per_share = strategies.len() * Policy::ALL.len();
+    let compared = (shares.len() * (per_share - 1)) as f64;
+    let alpha = 0.05 / compared;
+    let vals = |c: usize, f: &dyn Fn(&fabsim::twofam::CellRun) -> f64| -> Vec<f64> { rows.iter().filter(|r| r.cell == c).map(f).collect() };
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    let fmt_iv = |iv: &Interval| format!("{:+.2} ({:+.2} to {:+.2})", iv.mean, iv.lo, iv.hi);
+    let word = |v: Verdict| match v { Verdict::Better => "better", Verdict::Worse => "worse", Verdict::CannotSay => "no clear effect" };
+    let metrics: [(&str, &str, bool, &dyn Fn(&fabsim::twofam::CellRun) -> f64); 3] = [
+        ("money", "money a day (central prices, wafers of family-A margin)", true, &|r| r.money[0].per_day),
+        ("a_wafers", "family A wafers out a day", true, &|r| r.a_wafers_per_day),
+        ("b_cycle", "family B cycle time, days from scheduled arrival", false, &|r| r.money[0].b_cycle_days.unwrap_or(f64::NAN)),
+    ];
+    let mut md = String::new();
+    let _ = writeln!(md, "On the SMT2020 model, with a layout of our own design; not a real fab. {} seeds ({}..{}), {days} days, window days {warmup} to {days}; family B's lots drawn with seed 1 (the same lots on every seed). Each cell minus (D1 share, P0 today) at the same share, paired; intervals Bonferroni over {compared} cells (each at level {:.5}), so all cover at once with probability at least 95%. Every price assumed. Real-fab effect: cannot say.{}\n",
+        seeds.len(), seeds[0], seeds[seeds.len() - 1], alpha, if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
+    let mut json = format!("{{\"model\":\"SMT2020\",\"preregistered\":{preregistered},\"days\":{days},\"warmup\":{warmup},\"seeds\":{seeds:?},\"alpha_each\":{alpha},\"seconds\":{secs:.1},\"cells\":[");
+    let mut first = true;
+    for (mi, (key, title, higher, f)) in metrics.iter().enumerate() {
+        let _ = writeln!(md, "### {title}\n");
+        let _ = write!(md, "| share | strategy |");
+        for p in Policy::ALL {
+            let _ = write!(md, " {} |", p.label());
+        }
+        let _ = writeln!(md, "\n|---|---|{}", "---|".repeat(Policy::ALL.len()));
+        for (si, &scale) in shares.iter().enumerate() {
+            let b0 = si * per_share;
+            let base_v = vals(b0, *f);
+            for (ti, (sname, _)) in strategies.iter().enumerate() {
+                let _ = write!(md, "| x{scale} | {sname} |");
+                for pi in 0..Policy::ALL.len() {
+                    let c = b0 + ti * Policy::ALL.len() + pi;
+                    if c == b0 {
+                        let _ = write!(md, " {:.2} (mean) |", mean(&base_v));
+                        continue;
+                    }
+                    let iv = paired(&base_v, &vals(c, *f), alpha);
+                    let v = verdict(&iv, *higher);
+                    let _ = write!(md, " {} {} |", fmt_iv(&iv), word(v));
+                    if mi == 0 {
+                        // one json row per compared cell, with all three scores
+                        let ivs: Vec<String> = metrics.iter().map(|(k, _, h, g)| {
+                            let iv = paired(&vals(b0, *g), &vals(c, *g), alpha);
+                            format!("\"{k}\":{{\"mean\":{},\"lo\":{},\"hi\":{},\"verdict\":\"{}\"}}", iv.mean, iv.lo, iv.hi, word(verdict(&iv, *h)))
+                        }).collect();
+                        let _ = write!(json, "{}{{\"label\":\"{}\",\"share\":{scale},\"strategy\":\"{sname}\",\"policy\":\"{}\",{}}}", if first { "" } else { "," }, cells[c].label, Policy::ALL[pi].label(), ivs.join(","));
+                        first = false;
+                    }
+                }
+                md.push('\n');
+            }
+        }
+        md.push('\n');
+        let _ = key;
+    }
+    json.push_str("]}");
+    // the best cell per share by mean money, and each cell's crossover over share
+    let _ = writeln!(md, "### Best cell per share (central prices)\n");
+    for (si, &scale) in shares.iter().enumerate() {
+        let b0 = si * per_share;
+        let best = (b0..b0 + per_share).max_by(|&a, &b| mean(&vals(a, metrics[0].3)).total_cmp(&mean(&vals(b, metrics[0].3)))).unwrap();
+        let iv = if best == b0 { None } else { Some(paired(&vals(b0, metrics[0].3), &vals(best, metrics[0].3), alpha)) };
+        let _ = writeln!(md, "- x{scale}: {} ({:.2} a day){}", cells[best].label, mean(&vals(best, metrics[0].3)),
+            iv.map(|iv| format!(", against D1 P0 {} {}", fmt_iv(&iv), word(verdict(&iv, true)))).unwrap_or_default());
+    }
+    let _ = writeln!(md, "\n### Where each cell's money verdict changes, over share\n");
+    for k in 1..per_share {
+        let pts: Vec<(f64, Interval)> = shares.iter().enumerate().map(|(si, &x)| (x, paired(&vals(si * per_share, metrics[0].3), &vals(si * per_share + k, metrics[0].3), alpha))).collect();
+        let txt = match crossover(&pts) {
+            Crossover::None(v) => format!("same verdict at every share: {}", v.label()),
+            Crossover::Partial(v) => format!("{} at some shares, no clear effect at the others", v.label()),
+            Crossover::Unclear => "no clear effect at any share".into(),
+            Crossover::Between { last_clear_before, first_clear_after, unclear } => format!("flips between x{last_clear_before} and x{first_clear_after} (unclear at {unclear:?})"),
+            Crossover::Several(v) => format!("flips more than once: {v:?}"),
+        };
+        let lab = cells[k].label.splitn(2, ' ').nth(1).unwrap_or("");
+        let _ = writeln!(md, "- {lab}: {txt}");
+    }
+    let _ = writeln!(md, "\n### P4: break-even qualification cost per unqualified tool a day (central prices)\n");
+    for (si, &scale) in shares.iter().enumerate() {
+        for (ti, (sname, _)) in strategies.iter().enumerate() {
+            let p0 = si * per_share + ti * Policy::ALL.len();
+            let p4 = p0 + 4;
+            let lost = mean(&vals(p0, metrics[0].3)) - mean(&vals(p4, metrics[0].3));
+            let n = meta[p4].5;
+            let _ = writeln!(md, "- x{scale} {sname}: P4 loses {lost:.2} a day against P0 with {n} tools unqualified{}", if n > 0 { format!(": it pays when qualifying one tool costs more than {:.2} a day", lost / n as f64) } else { String::new() });
+        }
+    }
+    std::fs::write(out.join("summary.md"), md).unwrap();
+    std::fs::write(out.join("summary.json"), json).unwrap();
+    eprintln!("wrote {}", out.display());
 }
 
 fn lean_long(args: &[String]) {
@@ -360,6 +532,7 @@ fn main() {
             println!("wrote {}", out.display());
         }
         Some("lean-long") => lean_long(&args[1..]),
+        Some("two-families") => two_families(&args[1..]),
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),

@@ -86,3 +86,9 @@ time counted from the scheduled arrival (so holding counts). Every price is assu
 - 28 Oct, strategies: D2 and D3 copy the same groups (the most contested ones family B visits), so the two differ
   only in where the copies stand. "Metres added" is the wall length the copies' tools take (by tool kind), plus one
   OHT bridge for the wing.
+- 28 Oct, before any sweep run: `contested` estimated a batch step's load as if batch sizes were in lots (they are
+  in wafers) and left out load and unload minutes and cascade intervals, so wet benches ranked first. It now uses the
+  engine's own job times (first piece plus the cascade interval per further piece, load and unload on every job,
+  a lot's wafer share of a mean batch). On the SMT2020 model the top groups are then thin film, polishing
+  (Planar_FE_79 and 77) and lithography metrology. The estimates exceed 1 for several groups, as SMT2020's
+  release rate runs above capacity without a cap (`docs/LEAN-LONG.md`); only the order is used.
