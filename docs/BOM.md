@@ -42,6 +42,22 @@ kind as equipment, not as building material.
 2. Units add up: one per element, or one per placed copy.
 3. Pipe length equals the sum of the pipes' extrusion depths; footing volume equals the sum of width times length
    times depth.
-4. Fan filter units count 38,546, as in the faithful BIM.
+4. The fan filter arrays hold 38,546 units, as in the faithful BIM; bay 09's units, drawn one by one, and the
+   arrays' blank panels are separate lines.
 5. Units and sections come from the stated sets; the CSV has one row per line; the summary carries the truth line;
    the same IFC gives the same bytes twice.
+
+## Changes
+
+Made while building, 28 Oct 2026, before the code was committed:
+
+1. **Filter units.** The test had asked for 38,546 fan filter units in all. That is the arrays' total; bay 09 is
+   drawn unit by unit (1,914) and left out of the arrays, so the fab holds 40,460, and the arrays' 148 blank panels
+   are not units. The test now checks the arrays, the single units and the blank panels separately.
+2. **A site section.** The campus's other buildings, roads and tanks are massing blocks; they are listed under
+   "site" instead of process equipment.
+3. **Rectangular runs.** Some ducts, ribs and chords are drawn with their length in the profile and their thickness
+   as the extrusion; a rectangle's longest side is taken as its length.
+4. **Types** are the model's ObjectType first, so floor tiles count as tiles.
+5. **Solid layers.** The waffle slab, roof deck and filter ceiling are modelled as solid layers; their volumes are
+   listed but overstate material, and the summary says so.

@@ -23,7 +23,7 @@ LAYOUT = ROOT / "results/layout-real-dd/layout.json"
 RUN = ROOT / "viz/permit/run.py"
 BOM = ROOT / "viz/bim/bom.py"
 UNITS = {"m", "m3", "each"}
-SECTIONS = {"structure", "architecture", "mechanical", "piping", "fire", "electrical", "process equipment"}
+SECTIONS = {"structure", "architecture", "mechanical", "piping", "fire", "electrical", "process equipment", "site"}
 SKIP = ("IfcSpace", "IfcOpeningElement")
 
 try:
@@ -86,10 +86,15 @@ class Bom(unittest.TestCase):
         self.assertTrue(math.isclose(got, vol, rel_tol=1e-6), (got, vol))
 
     def test_filter_units(self):
-        ffu = [ln for ln in self.lines("IfcAirTerminal") if "fan filter" in ln["type"]]
-        self.assertTrue(ffu)
-        self.assertEqual(sum(ln["units"] for ln in ffu), 38546)
-        self.assertTrue(all(ln["unit"] == "each" and ln["quantity"] == ln["units"] for ln in ffu))
+        # the arrays hold 38,546 (docs/BIM-FAITHFUL.md); bay 09 is drawn unit by unit; blank panels count apart
+        arrays = [ln for ln in self.lines("IfcAirTerminal") if ln["type"] == "fan filter unit array"]
+        self.assertTrue(arrays)
+        self.assertEqual(sum(ln["units"] for ln in arrays), 38546)
+        self.assertTrue(all(ln["unit"] == "each" and ln["quantity"] == ln["units"] for ln in arrays))
+        single = [ln for ln in self.lines("IfcAirTerminal") if ln["type"] == "fan filter unit"]
+        self.assertTrue(single and all(ln["units"] == ln["elements"] for ln in single))
+        blank = [ln for ln in self.lines("IfcAirTerminal") if "blank panel" in ln["type"]]
+        self.assertTrue(blank and all(ln["units"] == ln["elements"] for ln in blank))
 
     def test_formats_and_bytes(self):
         for ln in self.B["lines"]:
