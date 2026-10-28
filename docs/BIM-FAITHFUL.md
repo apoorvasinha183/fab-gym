@@ -163,8 +163,8 @@ From the construction documents on, where a facade stair's tower stands across a
   passageway's) and its own space, "Exit passageway ... discharge vestibule";
 - the passageway's wall on that side stops at the vestibule's cross wall.
 
-Every other passageway keeps its door. Only P2-XP15S changes in this layout; its door moves west to x 496.75 to
-497.95.
+Every other passageway keeps its door. Two change in this layout (see Changes, 10): P2-XP15S's door moves west to
+x 496.75 to 497.95, and P1-XP21S's to x 253.65 to 254.85.
 
 ### The gowning rooms' way in (decided 28 Oct by quiz)
 
@@ -243,7 +243,7 @@ The schematic and design development sets keep the old passageway door and the s
 - **Fit-out:** toilet partitions and mirrors in every toilet core, gowning fit-out in every gowning room, a ladder
   under each hatch.
 - **Discharge:** every exit passageway's outside door is in a facade wall, clear of every facade stair tower by
-  0.3 m, and inside the x span of the passageway or its discharge vestibule. P2-XP15S has a vestibule.
+  0.3 m, and inside the x span the passageway and its discharge vestibule cover together. P2-XP15S has a vestibule.
 - **Gowning:** every gowning room has its fab door and an entry door in its end wall away from the spine, hardware
   HW-9; the 1.2 m outside the entry door is clear of the lift; GW1's entry door is within 3 m of its building's lift.
 - **Facade and parapets:** facade panels in 1.2 m modules; parapets with copings.
@@ -304,3 +304,7 @@ Found while building and fixed after the founder's quiz (28 Oct; see "Changes th
    moves west of the tower, through a discharge vestibule.
 9. **The gowning rooms** had one door, to the fab. Each gains an entry door at its end away from the spine, beside
    the lift in GW1. The door count goes from 278 to 282.
+10. **P1-XP21S had the same fault** (found by the new test, 28 Oct): its outside door ran 0.45 m into facade stair
+    P1-FS22S's tower, which the review that found P2-XP15S missed. It gets a vestibule the same way. Its moved door
+    spans the vestibule and the passageway's own width, so the test reads the x span the two cover together (they
+    meet with no gap) where it had asked for one space to hold the whole door.

@@ -21,6 +21,7 @@ HARDWARE = {
     "HW-6": ("Toilet room door", "push and pull plates, closer, privacy indicator not used (multi-user room)"),
     "HW-7": ("Gowning door", "lever passage set, closer, interlocked with the air shower"),
     "HW-8": ("Roof hatch", "hatch with gas springs, padlock hasp outside, ladder safety post"),
+    "HW-9": ("Gowning entry door", "lever passage set, closer, card reader outside"),
 }
 FINISH = {   # kind: floor, base, walls, ceiling, height above the floor (m), all assumed
     "bay": ("RF-1 conductive raised floor tile", "none (panels to the floor)", "WP-1 cleanroom wall panel", "FF-1 fan filter grid", 5.5),
@@ -109,7 +110,7 @@ def hardware(e):
     parts = k.split("/")
     rid, suf = parts[2], (parts[3] if len(parts) > 3 else "")
     if "-GW" in rid:
-        return "HW-7"
+        return "HW-9" if suf == "in" else "HW-7"
     if suf in ("ext", "out") or "-ED" in rid:
         return "HW-4"
     if "-XP" in rid and suf not in ("core",):

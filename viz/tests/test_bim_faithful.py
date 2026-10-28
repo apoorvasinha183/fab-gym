@@ -390,8 +390,12 @@ class Faithful(unittest.TestCase):
                 self.assertTrue(encl, t["id"])
                 tx0, tx1 = min(b[0] for b in encl), max(b[3] for b in encl)
                 self.assertTrue(db[3] <= tx0 - 0.3 + TOL or db[0] >= tx1 + 0.3 - TOL, (x["id"], t["id"], db[0], db[3], tx0, tx1))
-            mine = [self.box(sp) for sp in spaces if (sp.Name or "").startswith(f"Exit passageway {x['id']}")]
-            self.assertTrue(any(b[0] - TOL <= db[0] and db[3] <= b[3] + TOL for b in mine), x["id"])
+            # inside the x span the passageway and its vestibule cover together, with no gap between them
+            mine = sorted((self.box(sp) for sp in spaces if (sp.Name or "").startswith(f"Exit passageway {x['id']}")), key=lambda b: b[0])
+            self.assertTrue(mine, x["id"])
+            for a, c in zip(mine, mine[1:]):
+                self.assertLessEqual(c[0], a[3] + TOL, x["id"])
+            self.assertTrue(mine[0][0] - TOL <= db[0] and db[3] <= max(b[3] for b in mine) + TOL, x["id"])
 
     def test_facade_and_parapets(self):
         facade = [w for w in self.of("IfcWall", pre="SOLIDWALL") if re.match(r"Phase \d fab, (north|south|east|west) wall", w.Name or "")]

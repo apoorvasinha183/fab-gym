@@ -17,6 +17,7 @@ CORE_X, CORE_Y, CORE_TOP = 9.5, 3.4, 9.9      # spine stair core: plan and lid (
 TOWER_Y, TOWER_TOP = 3.4, 13.5                # facade stair outside the long wall (assumed)
 WALL_T = 0.2                                  # new partitions (assumed)
 PASS_X0, PASS_X1, PASS_H = 2.0, 4.0, 3.0      # exit passageway beside the core's mid line, and its height (assumed)
+VEST_D = 2.4                                   # a passageway's discharge vestibule, its depth from the facade (assumed)
 ROOM_Y0, ROOM_H = 58.0, 3.0                   # HPM rooms on the support floor at the facade (assumed)
 STORIES = 2                                   # support floor and clean floor; the waffle slab and the air space are not stories (assumed)
 DOOR_W = 1.2                                  # exit door leaf (assumed), 47 in
@@ -565,6 +566,27 @@ def g_block_core(g, m):
 
 # ------------------------------------------------------------------ D4 d: the elements
 
+def discharge(C, x, m, s, b):
+    """Construction documents (docs/BIM-FAITHFUL.md, "The passageway's discharge"): the centre of exit passageway x's
+    outside door, and the side ("W" or "E") its discharge vestibule widens to, or None where no facade stair's tower
+    stands across the door (it stays 3.0 m east of the stair's mid line)."""
+    cx = m + 3.0
+    towers = [(e["x"] - CORE_X / 2, e["x"] + CORE_X / 2) for e in C.P["exits"]
+              if e["kind"] == "facade stair" and e["building"] == x["building"] and e["side"] == s]
+
+    def hits(c):
+        return any(c - DOOR_W / 2 < t1 + 0.3 and c + DOOR_W / 2 > t0 - 0.3 for t0, t1 in towers)
+
+    if not hits(cx):
+        return cx, None
+    opts = [c for t0, t1 in towers for c in (t0 - 0.3 - DOOR_W / 2, t1 + 0.3 + DOOR_W / 2)
+            if not hits(c) and b["x0"] + 0.5 <= c - DOOR_W / 2 and c + DOOR_W / 2 <= b["x1"] - 0.5]
+    if not opts:
+        raise SystemExit(f"{x['id']}: no clear place on the facade for its outside door")
+    c = min(opts, key=lambda c: abs(c - cx))
+    return c, ("W" if c < cx else "E")
+
+
 def elements(C):
     S = C.S
     cz = S["clean_z"]
@@ -586,6 +608,13 @@ def elements(C):
             dx = x1 - t
             C.add(f"door/{r['id']}", "IfcDoor", f"Door, {r['id']}", (dx, (y0 + y1) / 2 - 0.6, z0, x1, (y0 + y1) / 2 + 0.6, z0 + 2.4),
                   bi, storey, "DOOR", numbers="1.2 m leaf", door=(2.4, 1.2, "SINGLE_SWING_RIGHT"))
+            if C.P.get("stage") == "cd":
+                # the entry door (docs/BIM-FAITHFUL.md, "The gowning rooms' way in"): the end wall away from the spine,
+                # 0.3 m in from the fab-side wall; in GW1 beside the lift's landing
+                yf = (y1 - t, y1) if abs(y1) > abs(y0) else (y0, y0 + t)
+                ex1 = x1 - t - 0.3
+                C.add(f"door/{r['id']}/in", "IfcDoor", f"Entry door, {r['id']}", (ex1 - 1.2, yf[0], z0, ex1, yf[1], z0 + 2.4),
+                      bi, storey, "DOOR", numbers="1.2 m leaf, card reader outside", door=(2.4, 1.2, "SINGLE_SWING_LEFT"))
         else:
             yi0 = inner_y if side > 0 else inner_y - t
             walls.append((x0 + t, yi0, z0, x1 - t, yi0 + t, z1))
@@ -630,13 +659,39 @@ def elements(C):
             t = WALL_T
             C.add(f"space/{x['id']}", "IfcSpace", f"Exit passageway {x['id']}", (m + PASS_X0 + t, y0, 0, m + PASS_X1 - t, y1, PASS_H), p,
                   "support floor", "INTERNAL", "exit passageway", numbers=f"{x['width_m']} m clear, 1 h")
-            C.add(f"wall/{x['id']}/W", "IfcWall", f"Exit passageway wall {x['id']}", (m + PASS_X0, y0, 0, m + PASS_X0 + t, y1, PASS_H), p,
+            cx, vest = discharge(C, x, m, s, b) if landed else (m + 3.0, None)
+            yf = s * (b["y1"] - 0.3)              # the facade's inner face
+            yc = yf - s * VEST_D                  # the vestibule's cross wall, on its core side
+            cut = sorted((s * CORE_Y / 2, yc - s * t))
+            wy = {"W": (y0, y1), "E": (y0, y1)}
+            if vest:
+                wy[vest] = tuple(cut)
+            C.add(f"wall/{x['id']}/W", "IfcWall", f"Exit passageway wall {x['id']}", (m + PASS_X0, wy["W"][0], 0, m + PASS_X0 + t, wy["W"][1], PASS_H), p,
                   "support floor", "SOLIDWALL", numbers="1 h")
-            C.add(f"wall/{x['id']}/E", "IfcWall", f"Exit passageway wall {x['id']}", (m + PASS_X1 - t, y0, 0, m + PASS_X1, y1, PASS_H), p,
+            C.add(f"wall/{x['id']}/E", "IfcWall", f"Exit passageway wall {x['id']}", (m + PASS_X1 - t, wy["E"][0], 0, m + PASS_X1, wy["E"][1], PASS_H), p,
                   "support floor", "SOLIDWALL", numbers="1 h")
+            if vest:
+                # docs/BIM-FAITHFUL.md, "The passageway's discharge": the last VEST_D m widens to a door clear of the tower
+                if vest == "W":
+                    vx0 = cx - DOOR_W / 2 - 0.1 - t
+                    outer, inner = (vx0, vx0 + t), (vx0 + t, m + PASS_X0 + t)
+                    cross = (vx0, m + PASS_X0 + t)
+                else:
+                    vx1 = cx + DOOR_W / 2 + 0.1 + t
+                    outer, inner = (vx1 - t, vx1), (m + PASS_X1 - t, vx1 - t)
+                    cross = (m + PASS_X1 - t, vx1)
+                ya, yb = sorted((yf, yc))
+                ca, cb = sorted((yc, yc - s * t))
+                oa, ob = sorted((yf, yc - s * t))
+                C.add(f"space/{x['id']}/vestibule", "IfcSpace", f"Exit passageway {x['id']} discharge vestibule", (inner[0], ya, 0, inner[1], yb, PASS_H),
+                      p, "support floor", "INTERNAL", "exit passageway", numbers=f"discharge vestibule, {VEST_D} m deep, 1 h")
+                C.add(f"wall/{x['id']}/cross", "IfcWall", f"Exit passageway wall {x['id']}", (cross[0], ca, 0, cross[1], cb, PASS_H), p,
+                      "support floor", "SOLIDWALL", numbers="1 h")
+                C.add(f"wall/{x['id']}/vestibule", "IfcWall", f"Exit passageway wall {x['id']}", (outer[0], oa, 0, outer[1], ob, PASS_H), p,
+                      "support floor", "SOLIDWALL", numbers="1 h")
             yw = s * 70.0
             C.add(f"door/{x['id']}/ext", "IfcDoor", f"Exit discharge door {x['id']}",
-                  (m + 3.0 - DOOR_W / 2, min(yw, yw - s * 0.3), 0, m + 3.0 + DOOR_W / 2, max(yw, yw - s * 0.3), 2.4), p,
+                  (cx - DOOR_W / 2, min(yw, yw - s * 0.3), 0, cx + DOOR_W / 2, max(yw, yw - s * 0.3), 2.4), p,
                   "support floor", "DOOR", numbers="1.2 m leaf", door=(2.4, DOOR_W, "SINGLE_SWING_LEFT"))
             C.add(f"door/{x['id']}/core", "IfcDoor", f"Stair to passageway door {x['id']}",
                   (m + 3.0 - DOOR_W / 2, min(s * (CORE_Y / 2 - t), s * CORE_Y / 2), 0, m + 3.0 + DOOR_W / 2,
