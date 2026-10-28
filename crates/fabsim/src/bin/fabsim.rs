@@ -292,6 +292,11 @@ fn evolve_cmd(args: &[String]) {
     eprintln!("done in {:.0} s; wrote {}", t0.elapsed().as_secs_f64(), out.display());
 }
 
+/// A number for JSON: `null` when it is not finite (JSON has no NaN).
+fn jnum(x: f64) -> String {
+    if x.is_finite() { format!("{x}") } else { "null".into() }
+}
+
 fn two_families(args: &[String]) {
     use fabsim::layout::Config as LayoutConfig;
     use fabsim::money::PriceGrid;
@@ -410,7 +415,7 @@ fn two_families(args: &[String]) {
                         // one json row per compared cell, with all three scores
                         let ivs: Vec<String> = metrics.iter().map(|(k, _, h, g)| {
                             let iv = paired(&vals(b0, *g), &vals(c, *g), alpha);
-                            format!("\"{k}\":{{\"mean\":{},\"lo\":{},\"hi\":{},\"verdict\":\"{}\"}}", iv.mean, iv.lo, iv.hi, word(verdict(&iv, *h)))
+                            format!("\"{k}\":{{\"mean\":{},\"lo\":{},\"hi\":{},\"verdict\":\"{}\"}}", jnum(iv.mean), jnum(iv.lo), jnum(iv.hi), word(verdict(&iv, *h)))
                         }).collect();
                         let _ = write!(json, "{}{{\"label\":\"{}\",\"share\":{scale},\"strategy\":\"{sname}\",\"policy\":\"{}\",{}}}", if first { "" } else { "," }, cells[c].label, Policy::ALL[pi].label(), ivs.join(","));
                         first = false;
