@@ -396,7 +396,9 @@ def a413(C):
     o, side = enlarged(C, "A-413", "GOWNING ROOMS: enlarged plans (interior elevations on A-702)", picks, 192, 12.0, 0, 0)
     t, _ = notes(bp.AX0 + 10, bp.AY0 + 24 + side + 30, [
         "Each gowning room at the west end of a clean floor: benches, lockers, garment racks and an air shower at the door to the "
-        "fab (assumed layout, A-702). Finishes on A-613.", "The door to the fab is interlocked with the air shower (HW-7)."], 2.6, 160, "NOTES")
+        "fab (assumed layout, A-702). Finishes on A-613.", "The door to the fab is interlocked with the air shower (HW-7).",
+        "The entry door is in the end wall away from the spine (HW-9, card reader outside); in GW1 it opens beside the "
+        "lift's landing: lift, entry door, benches and lockers, air shower, fab."], 2.6, 160, "NOTES")
     return o + t
 
 
