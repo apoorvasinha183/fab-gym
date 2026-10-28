@@ -18,7 +18,9 @@ rule), and a NaN key counts as the largest.
 `Cand` (one candidate, every field an `f64`): `is_batch`, `lots`, `priority`, `size_wafers`, `step`,
 `steps_left`, `waited_minutes`, `setup_change` (1 or 0), `proc_minutes`, `work_left_minutes`,
 `age_minutes` (now minus release), `cqt_slack_minutes` (minutes before a queue-time limit is breached,
-1e9 when none runs), `is_default` (1 for the engine's own pick).
+1e9 when none runs), `is_default` (1 for the engine's own pick), `family` (0 when the shop names no family;
+otherwise 1, 2, ... in the order the shop's `family` records first name them: in the two-family shop of
+`docs/TWO-FAMILIES.md`, 1 is volume and 2 is engineering lots).
 
 `Ctx` (the decision): `t` (minutes since the start), `queue` (how many candidates), `working`, `idle`,
 `down` (the deciding tool group's tools), `lots_waiting`, `lots_finished`.

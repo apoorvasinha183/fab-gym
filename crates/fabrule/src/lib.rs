@@ -22,7 +22,7 @@ use wasmtime::{
 };
 
 /// The fields of `Cand`, in the order the harness lays them out.
-pub const CAND_FIELDS: [&str; 13] = [
+pub const CAND_FIELDS: [&str; 14] = [
     "is_batch",
     "lots",
     "priority",
@@ -36,6 +36,7 @@ pub const CAND_FIELDS: [&str; 13] = [
     "age_minutes",
     "cqt_slack_minutes",
     "is_default",
+    "family",
 ];
 /// The fields of `Ctx`, in order.
 pub const CTX_FIELDS: [&str; 7] = [
@@ -64,7 +65,7 @@ pub const FUEL_PER_CANDIDATE: u64 = 2_000;
 /// How long rustc may take on one rule.
 pub const COMPILE_SECONDS: u64 = 120;
 /// Changes when the harness changes, so cached modules from an older harness are not reused.
-const HARNESS_VERSION: &str = "fabrule-harness-2";
+const HARNESS_VERSION: &str = "fabrule-harness-3";
 
 // ------------------------------------------------------------------ the source
 
@@ -398,6 +399,7 @@ impl Checked {
             choose,
             ctx_at,
             cands_at,
+            families: Default::default(),
         })
     }
 }
@@ -409,6 +411,8 @@ pub struct Rule {
     choose: TypedFunc<(i32, i32), i32>,
     ctx_at: usize,
     cands_at: usize,
+    /// family name to the number a rule sees (docs/TWO-FAMILIES.md); "" is 0
+    families: std::collections::HashMap<String, f64>,
 }
 
 /// One run under a rule.
@@ -467,6 +471,7 @@ impl Rule {
                 d.t - c.release,
                 c.cqt_slack_minutes.unwrap_or(1e9),
                 if i == d.default { 1.0 } else { 0.0 },
+                self.families.get(&c.family).copied().unwrap_or(0.0),
             ]);
         }
         let buf = self.memory.data_mut(&mut self.store);
@@ -487,6 +492,14 @@ impl Rule {
 
     pub fn run(&mut self, shop: &Shop, opts: &RunOptions) -> RuleRun {
         let (mut decisions, mut faults) = (0u64, 0u64);
+        // families numbered from 1 in the order the shop's `family` records first name them
+        self.families.clear();
+        for (_, f) in &shop.families {
+            if !f.is_empty() && !self.families.contains_key(f) {
+                let n = self.families.len() as f64 + 1.0;
+                self.families.insert(f.clone(), n);
+            }
+        }
         let result = {
             let mut pick = |d: &Decision| {
                 decisions += 1;

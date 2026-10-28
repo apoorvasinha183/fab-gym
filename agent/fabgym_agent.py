@@ -56,7 +56,8 @@ Cand, one candidate (every field f64):
   waited_minutes (in this queue), setup_change (1 if the tool must change setup), proc_minutes,
   work_left_minutes (processing left on its route), age_minutes (since release),
   cqt_slack_minutes (minutes before a queue-time limit is breached; 1e9 when none runs),
-  is_default (1 for the simulator's own pick).
+  is_default (1 for the simulator's own pick),
+  family (0 when the fab has one family; with two, 1 is volume and 2 is engineering lots).
 Ctx, the decision (every field f64):
   t (minutes since the start), queue (number of candidates), working, idle, down (the deciding tool
   group's tools), lots_waiting, lots_finished (in the whole fab).
