@@ -274,8 +274,15 @@ fn pio<T: std::str::FromStr>(s: &str) -> Result<Option<T>, String> {
     }
 }
 
+/// A bay number; one too large for this platform's usize (the 64-bit "no bay" marker read by a 32-bit build, such
+/// as the page's WebAssembly) reads as `usize::MAX`, the same marker.
+pub fn read_bay(s: &str) -> Result<usize, String> {
+    let v: u64 = pi(s)?;
+    Ok(usize::try_from(v).unwrap_or(usize::MAX))
+}
+
 fn read_place(f: &[&str]) -> Result<Place, String> {
-    Ok(Place { phase: pi(f[0])?, side: pi(f[1])?, bay: pi(f[2])?, x: pf(f[3])?, y: pf(f[4])? })
+    Ok(Place { phase: pi(f[0])?, side: pi(f[1])?, bay: read_bay(f[2])?, x: pf(f[3])?, y: pf(f[4])? })
 }
 
 fn write_place(p: &Place) -> String {

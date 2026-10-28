@@ -89,3 +89,10 @@ New records, off unless present (every `fabgym-scenario 1` file written before p
   and runs a hand-edited scenario end to end with a small protocol.
 - `web/tests/ask.test.mjs`: the page's result card and said/assumed rendering from a recorded report; family B
   colour by route; a wing hall appears when the arm has one.
+
+## Changes
+
+- 28 Oct, found in the browser: a laid-out shop marks the hoist's start as "no bay" with the largest 64-bit number,
+  which the page's 32-bit WebAssembly could not read. A bay too large for the platform now reads as "no bay"
+  (`shop::read_bay`); what a 64-bit build reads and writes is unchanged. Test added before the fix.
+

@@ -67,14 +67,36 @@
   <ul class="legend">
     <li><i class="dot"></i>a lot of 25 wafers</li>
     <li><i class="dot hot"></i>a hot lot</li>
+    <li><i class="dot proto"></i>a prototype lot (family B)</li>
   </ul>
   <p class="note small">Every number comes from the simulator on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020). It is a published model, not a real fab.</p>
 </aside>
 
 <section class="card compare" id="compare" hidden>
   <div class="tabs" role="tablist">
+    <button role="tab" id="tab-ask" aria-selected="false" type="button">Ask</button>
     <button role="tab" id="tab-long" aria-selected="true" class="on" type="button">300-day runs</button>
     <button role="tab" id="tab-change" aria-selected="false" type="button">Your change</button>
+  </div>
+  <div id="pane-ask" role="tabpanel" hidden>
+    <form id="ask-form">
+      <label for="ask-q" class="q">Ask the fab a question</label>
+      <textarea id="ask-q" rows="3" placeholder="Prototype orders double next quarter. Do we give them their own wing or put them first in line?"></textarea>
+      <button class="primary" type="submit" id="ask-go">Ask</button>
+    </form>
+    <div id="ask-examples" class="chips" aria-label="Example questions"></div>
+    <p class="note small" id="ask-model">Looking for the helper…</p>
+    <div id="ask-live" aria-live="polite">
+      <p id="ask-stage" class="stage" hidden></p>
+      <div id="ask-scenario" hidden></div>
+      <div id="ask-result"></div>
+    </div>
+    <details id="ask-edit">
+      <summary>Write or edit the scenario</summary>
+      <label for="ask-text" class="sr">Scenario text</label>
+      <textarea id="ask-text" rows="9" spellcheck="false"></textarea>
+      <button type="button" id="ask-run">Run this scenario</button>
+    </details>
   </div>
   <div id="pane-long" role="tabpanel">
     <h3 class="q">Is a WIP cap free?</h3>
@@ -137,6 +159,7 @@
 <div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit</div>
 
 <script src="stages.js"></script>
+<script src="ask.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

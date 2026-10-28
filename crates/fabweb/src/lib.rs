@@ -33,6 +33,8 @@ pub enum Policy {
     Fifo,
     /// shortest processing first
     Spt,
+    /// family B's lots before family A's, today's order within each (docs/ASK-FAMILIES.md)
+    BFirst,
 }
 
 impl Policy {
@@ -40,6 +42,7 @@ impl Policy {
         match c {
             1 => Policy::Fifo,
             2 => Policy::Spt,
+            3 => Policy::BFirst,
             _ => Policy::Today,
         }
     }
@@ -56,11 +59,15 @@ pub fn prepare(base: &Shop, dials: &Dials, down_group: i32, down_at: f64, down_h
     Ok(shop)
 }
 
-fn run_policy(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
+pub fn run_policy(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
     let p = match policy {
         Policy::Fifo => fabsim::policy::Policy::Fifo,
         Policy::Spt => fabsim::policy::Policy::Spt,
         Policy::Today => fabsim::policy::Policy::Today,
+        Policy::BFirst => {
+            let mut pick = |d: &fabsim::engine::Decision| fabsim::twofam::b_first(d, "B");
+            return fabsim::engine::run(shop, opts, Some(&mut pick));
+        }
     };
     fabsim::policy::run_with(shop, opts, p)
 }
@@ -218,7 +225,7 @@ fn num(x: f64) -> String {
 }
 
 /// Run the loaded shop for `days` simulated days.
-/// `policy`: 0 today's rule, 1 first come first served, 2 shortest processing first.
+/// `policy`: 0 today's rule, 1 first come first served, 2 shortest processing first, 3 family B first.
 /// `down_group` >= 0 takes that whole tool group down from `down_at` for `down_hours`.
 #[no_mangle]
 pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, down_at: f64, down_hours: f64) -> i32 {
@@ -260,7 +267,7 @@ pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, dow
 }
 
 
-fn summary(shop: &Shop, res: &RunResult) -> String {
+pub fn summary(shop: &Shop, res: &RunResult) -> String {
     let mut o = String::from("{");
     let _ = write!(o, "\"until\":{},\"finished\":{},\"moves\":{},\"decisions\":{},\"breaches\":{},", num(res.until), res.finished, res.moves, res.decisions, res.breaches.len());
     o.push_str("\"groups\":[");
@@ -293,6 +300,13 @@ fn summary(shop: &Shop, res: &RunResult) -> String {
             let _ = write!(o, "{}", gi[s.group.as_str()]);
         }
         o.push_str("]]");
+    }
+    o.push_str("],\"families\":[");
+    for (i, r) in shop.routes.iter().enumerate() {
+        if i > 0 {
+            o.push(',');
+        }
+        o.push_str(&js(shop.family_of(&r.name)));
     }
     o.push_str("],\"lots\":[");
     let ri: std::collections::HashMap<&str, usize> = shop.routes.iter().enumerate().map(|(i, r)| (r.name.as_str(), i)).collect();

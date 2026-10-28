@@ -19,9 +19,17 @@ function text(ptr, len) {
   return new TextDecoder().decode(new Uint8Array(e.memory.buffer, ptr, len));
 }
 
+function loadShop(shopText) {
+  const bytes = new TextEncoder().encode(shopText);
+  const p = e.fg_alloc(bytes.length);
+  new Uint8Array(e.memory.buffer, p, bytes.length).set(bytes);
+  if (e.fg_load(p, bytes.length) !== 0) throw new Error("the shop did not load");
+}
+
 onmessage = async ({ data: job }) => {
   try {
     await ready;
+    if (job.load) { loadShop(job.load); postMessage({ id: job.id, loaded: true }); return; }
     const d = job.dials;
     if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0) !== 0) {
       throw new Error(JSON.parse(text(e.fg_json_ptr(), e.fg_json_len())).error);

@@ -5,7 +5,7 @@
 const AREA_NAMES = {
   Litho: "Lithography", Litho_Met: "Litho checks", Def_Met: "Defect checks", TF_Met: "Film checks",
   Implant: "Implant", Diffusion: "Diffusion", Dielectric: "Dielectric", Wet_Etch: "Wet etch",
-  TF: "Thin film", Dry_Etch: "Dry etch", Planar: "Polishing", Delay_32: "Holding",
+  TF: "Thin film", Dry_Etch: "Dry etch", Planar: "Polishing", Delay_32: "Holding", "P3 wing": "Wing (P3)",
 };
 // one hall an area, except the three check areas, which share one hall
 const HALLS = [
@@ -91,8 +91,10 @@ function groupBlock(n) {
 function buildLayout(groups) {
   // halls of groups
   const hallOfArea = {};
-  HALLS.forEach(([h, areas], i) => areas.forEach(a => (hallOfArea[a] = i)));
-  const halls = HALLS.map(([name, areas]) => ({ name, areas, groups: [] }));
+  // a P3 wing gets a hall of its own when the setup on the floor has one (docs/ASK-FAMILIES.md)
+  const list = HALLS.concat(FabAsk.extraHalls(groups.map(g => sim.area[g.name])));
+  list.forEach(([h, areas], i) => areas.forEach(a => (hallOfArea[a] = i)));
+  const halls = list.map(([name, areas]) => ({ name, areas, groups: [] }));
   groups.forEach((g, gi) => {
     const a = sim.area[g.name];
     const hi = hallOfArea[a];
@@ -225,6 +227,8 @@ function prepare(run, halls, hallOfGroup) {
   const toolGroup = j.tools;
   const nT = toolGroup.length, nG = j.groups.length;
   const lotHot = j.lots.map(l => l[2] >= 20);
+  const isB = FabAsk.familyB(j);
+  const lotB = j.lots.map(l => (isB[l[1]] ? 1 : 0));
   // queue events (+1 at arrival, -1 at start), sorted by time, arrivals first at equal times
   const nRows = trace.length / 6;
   const qe = [];
@@ -233,8 +237,9 @@ function prepare(run, halls, hallOfGroup) {
     const lot = trace[r * 6], tool = trace[r * 6 + 2], arrive = trace[r * 6 + 3], start = trace[r * 6 + 4], end = trace[r * 6 + 5];
     const g = toolGroup[tool];
     if (start > arrive) {
-      qe.push([arrive, g, 1, lotHot[lot] ? 1 : 0]);
-      qe.push([start, g, -1, lotHot[lot] ? 1 : 0]);
+      // family B's lots are counted apart from hot ones, so a hot prototype counts once
+      qe.push([arrive, g, 1, lotHot[lot] && !lotB[lot] ? 1 : 0, lotB[lot]]);
+      qe.push([start, g, -1, lotHot[lot] && !lotB[lot] ? 1 : 0, lotB[lot]]);
     }
     let a = byLot.get(lot);
     if (!a) byLot.set(lot, (a = []));
@@ -248,7 +253,7 @@ function prepare(run, halls, hallOfGroup) {
     for (let k = 1; k < rows.length; k++) {
       const [, g0, , end0] = rows[k - 1];
       const [, g1, arrive1] = rows[k];
-      if (arrive1 > end0) trips.push([end0, arrive1, hallOfGroup[g0], hallOfGroup[g1], lotHot[lot], lot]);
+      if (arrive1 > end0) trips.push([end0, arrive1, hallOfGroup[g0], hallOfGroup[g1], lotHot[lot], lot, lotB[lot]]);
     }
   }
   trips.sort((x, y) => x[0] - y[0]);
@@ -269,9 +274,9 @@ function prepare(run, halls, hallOfGroup) {
 
 // playback cursor: state of every tool and queue at time t, moved forward cheaply
 function makeCursor(P) {
-  const c = { t: -1, si: 0, qi: 0, ti: 0, toolState: new Uint8Array(P.nT), queue: new Int32Array(P.nG), hotQ: new Int32Array(P.nG), active: [] };
+  const c = { t: -1, si: 0, qi: 0, ti: 0, toolState: new Uint8Array(P.nT), queue: new Int32Array(P.nG), hotQ: new Int32Array(P.nG), bQ: new Int32Array(P.nG), active: [] };
   c.reset = () => {
-    c.t = -1; c.si = 0; c.qi = 0; c.ti = 0; c.toolState.fill(1); c.queue.fill(0); c.hotQ.fill(0); c.active = [];
+    c.t = -1; c.si = 0; c.qi = 0; c.ti = 0; c.toolState.fill(1); c.queue.fill(0); c.hotQ.fill(0); c.bQ.fill(0); c.active = [];
   };
   c.reset();
   c.seek = t => {
@@ -279,7 +284,7 @@ function makeCursor(P) {
     const S = P.states;
     while (c.si < S.length / 3 && S[c.si * 3 + 1] <= t) { c.toolState[S[c.si * 3]] = S[c.si * 3 + 2]; c.si++; }
     const Q = P.qe;
-    while (c.qi < Q.length && Q[c.qi][0] <= t) { const q = Q[c.qi]; c.queue[q[1]] += q[2]; c.hotQ[q[1]] += q[2] * q[3]; c.qi++; }
+    while (c.qi < Q.length && Q[c.qi][0] <= t) { const q = Q[c.qi]; c.queue[q[1]] += q[2]; c.hotQ[q[1]] += q[2] * q[3]; c.bQ[q[1]] += q[2] * (q[4] || 0); c.qi++; }
     const T = P.trips;
     while (c.ti < T.length && T[c.ti][0] <= t) { c.active.push(T[c.ti]); c.ti++; }
     c.active = c.active.filter(tr => tr[1] > t);
@@ -372,7 +377,7 @@ const LOOK = {
   rail: "#d9a12b", beltTop: "#2b2926", chevron: "rgba(140, 104, 34, 0.95)",
   body: "#5a564d", bodyEdge: "#1b1a17", plate: "rgba(22, 21, 18, 0.82)",
   title: "#f3e4c4", sub: "#bcae92", label: "#d6cbb4", section: "#e3a83a",
-  lot: "#eadfc4", lotTop: "#b7a88a", hot: "#f08a3c", hotTop: "#b8602a",
+  lot: "#eadfc4", lotTop: "#b7a88a", hot: "#f08a3c", hotTop: "#b8602a", proto: "#e58ad6", protoTop: "#a8559c",
 };
 
 function noiseTile(base, spread, lines, seed) {
@@ -498,12 +503,12 @@ function drawBelt(points, phase, chevrons = true, small = false) {
   ctx.stroke();
 }
 
-function drawLot(X, Y, sz, hot) {
+function drawLot(X, Y, sz, hot, proto) {
   ctx.fillStyle = LOOK.bodyEdge;
   ctx.fillRect(X - sz / 2 - 1, Y - sz / 2 - 1, sz + 2, sz + 2);
-  ctx.fillStyle = hot ? LOOK.hot : LOOK.lot;
+  ctx.fillStyle = proto ? LOOK.proto : hot ? LOOK.hot : LOOK.lot;
   ctx.fillRect(X - sz / 2, Y - sz / 2, sz, sz);
-  ctx.fillStyle = hot ? LOOK.hotTop : LOOK.lotTop;
+  ctx.fillStyle = proto ? LOOK.protoTop : hot ? LOOK.hotTop : LOOK.lotTop;
   ctx.fillRect(X - sz / 2, Y - sz / 2, sz, Math.max(1, sz * 0.3));
 }
 
@@ -590,7 +595,7 @@ function draw() {
   for (const tr of cur.active) {
     const [x, y] = tripPoint(tr, t);
     const [X, Y] = W(x, y);
-    drawLot(X, Y, sz, tr[4]);
+    drawLot(X, Y, sz, tr[4], tr[6]);
   }
   drawFlash();
 }
@@ -645,13 +650,13 @@ function drawGroup(c, cx, cy, showLabels) {
   const qy = yLabel + 3;
   const bw = c.w - 2;
   drawBelt([[cx + 1, qy], [cx + 1 + bw, qy]], 0, false, true);
-  const n = cur.queue[g], hot = cur.hotQ[g];
+  const n = cur.queue[g], hot = cur.hotQ[g], protos = cur.bQ[g];
   const fits = Math.max(0, Math.floor((bw - 0.5) / 1.6));
   const shown = Math.min(n, n > fits ? fits - 2 : fits);
   const lsz = Math.max(3, 1.05 * s);
   for (let k = 0; k < shown; k++) {
     const [X, Y] = W(cx + 1.8 + k * 1.6, qy);
-    drawLot(X, Y, lsz, k < hot);
+    drawLot(X, Y, lsz, k < hot, k >= hot && k < hot + protos);
   }
   if (n > shown && s > 1.2) {
     ctx.textBaseline = "middle";
@@ -844,6 +849,7 @@ function setupInput() {
   addEventListener("resize", () => { resize(); });
   $("run").onclick = rerun;
   $("tab-long").onclick = () => showTab("long");
+  $("tab-ask").onclick = () => showTab("ask");
   $("tab-change").onclick = () => showTab("change");
   for (const k of DIAL_KEYS) $("d-" + k).oninput = showDials;
   $("reset").onclick = () => {
@@ -1006,7 +1012,7 @@ async function compare(o) {
 
 function showTab(which) {
   $("compare").hidden = false;
-  for (const [tab, pane, key] of [["tab-long", "pane-long", "long"], ["tab-change", "pane-change", "change"]]) {
+  for (const [tab, pane, key] of [["tab-ask", "pane-ask", "ask"], ["tab-long", "pane-long", "long"], ["tab-change", "pane-change", "change"]]) {
     const on = key === which;
     $(tab).classList.toggle("on", on);
     $(tab).setAttribute("aria-selected", on);
@@ -1256,25 +1262,183 @@ async function main() {
     return;
   }
   const first = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
-  const groups = first.j.groups.map(g => ({ name: g[0], count: g[1] }));
+  setFloor(first);
+  await loadLong();
+  fit();
+  $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, here in your browser.`;
+  askSetup();
+}
+
+// lay the floor out for a run's groups (today's fab, or a setup from the ask box) and play the run
+function setFloor(run) {
+  const groups = run.j.groups.map(g => ({ name: g[0], count: g[1] }));
   HALLS_L = buildLayout(groups);
-  const flows = hallFlows(HALLS_L, first.j.routes);
+  const flows = hallFlows(HALLS_L, run.j.routes);
   HALLS_L.hallOfGroup = flows.hallOfGroup;
   const padR = innerWidth > 900 ? 330 : 24, padL = innerWidth > 900 ? 372 : 24;
   TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - padR - padL) / (innerHeight - 220)));
   G = placeHalls(HALLS_L, flows);
   const sel = $("down-group");
+  sel.length = 1;
   groups
     .map((g, i) => [plainGroup(g.name, sim.area[g.name]), i])
     .filter(([, i]) => sim.area[groups[i].name] !== "Delay_32")
     .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
     .forEach(([name, i]) => { const o = document.createElement("option"); o.value = i; o.textContent = name; sel.appendChild(o); });
-  load(first);
-  ST.routes = first.j.routes.map(([name, steps]) => [name, steps.map(gi => first.j.groups[gi][0])]);
+  load(run);
+  ST.routes = run.j.routes.map(([name, steps]) => [name, steps.map(gi => run.j.groups[gi][0])]);
   if (!$("stages").hidden) stagesDraw();
-  await loadLong();
+}
+
+// ------------------------------------------------------------------ the ask box (docs/ASK-FAMILIES.md)
+// A question goes to the helper on this Mac (agent/helper.py), which asks the model, checks its scenario and runs
+// the simulator natively; the page shows the scenario, the answer, and any arm played on this floor.
+
+const ASK = { job: null, timer: null, helper: false, baseText: null, extra: [] };
+
+function esc(x) {
+  return String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ error: `the helper answered ${r.status}` }));
+  return j;
+}
+
+async function askSetup() {
+  $("ask-form").onsubmit = e => { e.preventDefault(); ask($("ask-q").value); };
+  $("ask-run").onclick = () => runText($("ask-text").value);
+  let st;
+  try { st = await api("/api/status"); } catch { st = null; }
+  if (!st || st.error) {
+    $("ask-model").innerHTML = "The ask box needs the helper on this Mac. Start it with <code>python3 -m agent.helper</code> in the fab-gym folder, then open <b>http://127.0.0.1:8766</b>.";
+    $("ask-go").disabled = true; $("ask-run").disabled = true;
+    return;
+  }
+  ASK.helper = true;
+  $("ask-model").textContent = st.model_connected
+    ? `Questions go to ${st.model}. It writes a scenario; the simulator answers it.`
+    : "No model is connected yet: the example questions answer from recorded example answers (written by us, not by a model), and you can write a scenario by hand below.";
+  $("ask-examples").innerHTML = st.examples.map((e, i) => `<button type="button" data-i="${i}">${esc(e.question)}</button>`).join("");
+  $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("ask-q").value = st.examples[+b.dataset.i].question; ask($("ask-q").value); }));
+  if (!$("ask-text").value) $("ask-text").value = "fabgym-scenario 1\nquestion\tPrototype orders double. Their own wing?\nfamily\tshare\t2\tsaid\ncandidate\town-wing\tfloor\twing\n";
+  showTab("ask");
+}
+
+async function ask(q) {
+  if (!q.trim()) return;
+  stage("Sending the question…");
+  const r = await api("/api/ask", { question: q });
+  if (r.no_model) { stage(r.message); return; }
+  if (r.error) { stage(r.error); return; }
+  follow(r.job);
+}
+
+async function runText(text) {
+  stage("Checking the scenario…");
+  const r = await api("/api/run", { scenario: text });
+  if (r.error) { stage(r.error); return; }
+  follow(r.job);
+}
+
+function stage(msg) {
+  $("ask-stage").hidden = !msg;
+  $("ask-stage").textContent = msg || "";
+}
+
+function follow(id) {
+  clearInterval(ASK.timer);
+  $("ask-result").innerHTML = "";
+  $("ask-scenario").hidden = true;
+  ASK.timer = setInterval(async () => {
+    const j = await api(`/api/job/${id}`);
+    if (j.error && !j.stage) { clearInterval(ASK.timer); stage(j.error); return; }
+    ASK.job = j;
+    if (j.scenario) showScenario(j);
+    if (j.stage === "done") { clearInterval(ASK.timer); stage(`Done in ${Math.round(j.seconds)} s.`); showResult(j); }
+    else if (j.stage === "failed") { clearInterval(ASK.timer); stage(j.error); }
+    else stage(`${j.stage[0].toUpperCase()}${j.stage.slice(1)}… ${Math.round(j.elapsed)} s`);
+  }, 1000);
+}
+
+function showScenario(j) {
+  const s = FabAsk.scenarioLines(j.scenario);
+  const src = j.answer_source === "example" ? "a recorded example answer (written by us, not by a model)"
+    : j.answer_source === "model" ? "the model's answer, checked" : "your scenario";
+  $("ask-scenario").hidden = false;
+  $("ask-scenario").innerHTML = `<p class="note">The scenario, from ${src}:</p>
+    <ul class="given">${s.given.map(g => `<li><span class="tag ${g.said ? "said" : "assumed"}">${g.said ? "said" : "assumed"}</span>${esc(g.text)}</li>`).join("") || "<li>Today's fab as it is.</li>"}</ul>
+    <p class="note">Compared with today's fab:</p>
+    <ul class="cands">${s.candidates.map(c => `<li><b>${esc(c.name)}</b>: ${esc(c.changes.join(", "))}</li>`).join("")}</ul>`;
+  $("ask-text").value = j.scenario;
+}
+
+function cellText(c) {
+  if (c.mean === null) return "—";
+  const unit = c.key === "money" ? "" : "";
+  return `${fmt(c.mean)}${unit}`;
+}
+
+function showResult(j) {
+  const r = j.report;
+  const rows = FabAsk.resultRows(r);
+  const arms = r.arms || [];
+  const armBtn = name => {
+    const i = arms.findIndex(a => a.name === name);
+    return i < 0 ? "" : `<button type="button" class="show" data-arm="${i}">Show on the floor</button>`;
+  };
+  const head = r.families
+    ? `<p class="note">Each line: the candidate minus today's fab on the same seeds, with its 95% interval. Today: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
+    : `<p class="note">Each line: the candidate minus today's fab on the same seeds, with its 95% interval.</p>`;
+  $("ask-result").innerHTML = `<p class="what">${esc(FabAsk.summaryLine(r))}</p>${head}` +
+    (arms.length ? `<div class="arm"><div class="top"><b>today</b>${armBtn("today")}</div></div>` : "") +
+    rows.map(row => `<div class="arm"><div class="top"><b>${esc(row.name)}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
+      <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${fmt(c.lo)} to ${fmt(c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table></div>`).join("") +
+    `<p class="note small">${r.families ? "Money a day in wafers of volume margin; every price is assumed. " : ""}Intervals hold together at 95% across the candidates (Bonferroni). On the SMT2020 model, a published model of a fab. Real-fab effect: cannot say.</p>`;
+  $("ask-result").querySelectorAll("button.show").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
+}
+
+async function loadShopText(text) {
+  const bytes = new TextEncoder().encode(text);
+  const p = sim.e.fg_alloc(bytes.length);
+  new Uint8Array(sim.e.memory.buffer, p, bytes.length).set(bytes);
+  if (sim.e.fg_load(p, bytes.length) !== 0) throw new Error(readJson().error);
+  if (pool) await Promise.all(pool.list.map(() => runJob({ load: text })));
+}
+
+async function showArm(j, k) {
+  const arm = j.report.arms[k];
+  $("runnote").textContent = `Loading “${arm.name}” onto the floor…`;
+  try {
+    const text = await fetch(arm.shop_url).then(r => (r.ok ? r.text() : Promise.reject(new Error("the helper has no such setup"))));
+    for (const g of ASK.extra) delete sim.area[g];
+    ASK.extra = [];
+    for (const [g, a] of arm.extra_areas) { sim.area[g] = a; ASK.extra.push(g); }
+    await loadShopText(text);
+    const rc = FabAsk.ruleCode(arm);
+    $("rule").value = rc.code < 3 ? String(rc.code) : "0";
+    const run = simulate({ seed: 0, days: 3, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 });
+    setFloor(run);
+    fit();
+    ASK.onFloor = arm.name;
+    $("runnote").innerHTML = `On the floor: <b>${esc(arm.name)}</b>, seed 0, the first 3 days${rc.exact ? "" : " (its rule is not in the page's simulator, so today's rule is shown)"}. Prototype lots are pink. <button type="button" class="link" id="back-today">Back to today's fab</button>`;
+    $("back-today").onclick = backToToday;
+  } catch (err) {
+    $("runnote").textContent = "Could not show it: " + err.message;
+  }
+}
+
+async function backToToday() {
+  for (const g of ASK.extra) delete sim.area[g];
+  ASK.extra = [];
+  const text = await fetch("data/shop.txt").then(r => r.text());
+  await loadShopText(text);
+  $("rule").value = "0";
+  const run = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
+  setFloor(run);
   fit();
-  $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, here in your browser.`;
+  $("runnote").textContent = `Today's fab: simulated 3 days (${run.j.moves.toLocaleString()} moves) in ${run.secs.toFixed(2)} s, here in your browser.`;
 }
 
 main();
