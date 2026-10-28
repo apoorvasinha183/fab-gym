@@ -170,7 +170,8 @@ fn t6_no_leakage() {
             "proc_minutes",
             "work_left_minutes",
             "release",
-            "cqt_slack_minutes"
+            "cqt_slack_minutes",
+            "family"
         ]
     );
     // and every decision handed out lies in the past or present
