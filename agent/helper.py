@@ -8,6 +8,7 @@ niced, one job at a time) and hands the report to the page. Without a key it ans
 and runs scenarios a person writes. On the SMT2020 model, a published model of a fab; not a real fab."""
 
 import argparse
+import hashlib
 import itertools
 import json
 import mimetypes
@@ -150,6 +151,37 @@ class Helper:
         out["report"] = rep
         return out
 
+    # ------------------------------------------------------------------ signing (docs/FLOOR-UI.md)
+
+    @staticmethod
+    def _hashes(job):
+        return {k: hashlib.sha256(v.encode()).hexdigest() for k, v in (
+            ("question", job.get("question") or ""), ("scenario", job.get("scenario") or ""),
+            ("report", json.dumps(job.get("report"), sort_keys=True)))}
+
+    def sign(self, jid, name):
+        """A person signs a finished answer: their name, the time and SHA-256 of question, scenario and report."""
+        j = self.jobs.get(jid)
+        name = (name or "").strip()
+        if j is None:
+            return {"signed": False, "error": "No such answer."}
+        if j.get("stage") != "done" or j.get("report") is None:
+            return {"signed": False, "error": "Only a finished answer can be signed."}
+        if not name:
+            return {"signed": False, "error": "Type the name of the person signing."}
+        if j.get("card"):
+            return {"signed": False, "error": "This answer is already signed.", "card": j["card"]}
+        card = {"name": name[:120], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "sha256": self._hashes(j)}
+        j["card"] = card
+        d = self.jobs_dir / jid; d.mkdir(parents=True, exist_ok=True)
+        (d / "signed.json").write_text(json.dumps(card, indent=1))
+        return {"signed": True, "card": card}
+
+    def verify(self, jid):
+        """True while the question, scenario and report still match their signature."""
+        j = self.jobs.get(jid)
+        return bool(j and j.get("card") and j["card"]["sha256"] == self._hashes(j))
+
     def arm_shop(self, jid, k):
         j = self.jobs.get(jid)
         arms = (j or {}).get("report", {}) or {}
@@ -198,6 +230,8 @@ def serve(h, port=8766):
                 r = h.ask(body.get("question"))
             elif self.path == "/api/run":
                 r = h.run_text(body.get("scenario"))
+            elif self.path == "/api/sign":
+                r = h.sign(str(body.get("job", "")), body.get("name"))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(409 if r.get("busy") else 200, r)
