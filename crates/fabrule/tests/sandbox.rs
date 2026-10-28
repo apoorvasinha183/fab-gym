@@ -68,12 +68,52 @@ fn every_field_reaches_the_rule() {
     let src = "pub fn key(c: &Cand, x: &Ctx) -> f64 {
         c.is_batch + c.lots + c.priority + c.size_wafers + c.step + c.steps_left + c.waited_minutes
         + c.setup_change + c.proc_minutes + c.work_left_minutes + c.age_minutes + c.cqt_slack_minutes.min(1e6)
-        + c.is_default + x.t + x.queue + x.working + x.idle + x.down + x.lots_waiting + x.lots_finished
+        + c.is_default + c.family + x.t + x.queue + x.working + x.idle + x.down + x.lots_waiting + x.lots_finished
         + c.waited_minutes.sqrt().ln_1p()
     }";
     let run = load(src).run(&toy(), &opts());
     assert!(run.decisions > 0);
     assert_eq!(run.faults, 0);
+}
+
+// Two families (docs/TWO-FAMILIES.md): a rule reads `family` as a number, 0 for none and then the
+// shop's families in the order its `family` records first name them, and it matters.
+#[test]
+fn a_rule_sees_the_family_as_a_number() {
+    let base = std::fs::read_to_string(repo().join("golden/toy/mixed.shop.txt")).unwrap();
+    let shop = Shop::parse(&base).unwrap();
+    let routes: Vec<String> = shop.routes.iter().map(|r| r.name.clone()).collect();
+    assert!(routes.len() >= 2);
+    let mut text = base.clone();
+    if !text.ends_with('\n') {
+        text.push('\n');
+    }
+    text.push_str(&format!("family\t{}\tA\n", routes[0]));
+    for r in &routes[1..] {
+        text.push_str(&format!("family\t{r}\tB\n"));
+    }
+    let two = Shop::parse(&text).unwrap();
+    let o = RunOptions { seed: 4, until: Some(4320.0), record: true };
+    // the numbers the rule sees are 1 and 2 only
+    let mut seen = std::collections::BTreeSet::new();
+    let mut look = |d: &fabsim::engine::Decision| {
+        for c in &d.candidates {
+            seen.insert(c.family.clone());
+        }
+        d.default
+    };
+    fabsim::engine::run(&two, &o, Some(&mut look));
+    assert_eq!(seen.into_iter().collect::<Vec<_>>(), vec!["A".to_string(), "B".to_string()]);
+    // preferring family 2 against family 1 changes the run, and with no families every lot is 0
+    let mut first_a = load("pub fn key(c: &Cand, _x: &Ctx) -> f64 { (c.family - 1.0).abs() * 1e6 - c.waited_minutes }");
+    let mut first_b = load("pub fn key(c: &Cand, _x: &Ctx) -> f64 { (c.family - 2.0).abs() * 1e6 - c.waited_minutes }");
+    let ra = first_a.run(&two, &o);
+    let rb = first_b.run(&two, &o);
+    assert_eq!((ra.faults, rb.faults), (0, 0));
+    assert_ne!(ra.result.log_text(), rb.result.log_text());
+    let mut zero = load("pub fn key(c: &Cand, _x: &Ctx) -> f64 { c.family * 1e6 - c.waited_minutes }");
+    let fifo = load(FIFO).run(&shop, &o).result.log_text();
+    assert_eq!(zero.run(&shop, &o).result.log_text(), fifo);
 }
 
 // ------------------------------------------------------------------ what is refused
