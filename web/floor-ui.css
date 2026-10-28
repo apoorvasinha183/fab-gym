@@ -174,3 +174,11 @@ body.opening-on .ticker, body.opening-on .hint, body.opening-on .brand, body.ope
 .vcard .iv { font: 10.5px var(--mono); color: var(--muted); }
 .vcard.better { border-color: rgba(79, 227, 163, 0.6); } .vcard.better .v { color: var(--good); }
 .vcard.worse { border-color: rgba(255, 98, 98, 0.6); } .vcard.worse .v { color: #ff9a9a; }
+
+/* side by side */
+.split-cards { left: 50%; transform: translateX(-50%); bottom: 82px; width: min(640px, calc(100vw - 36px)); padding: 10px 14px; z-index: 5; }
+.split-cards .split-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.split-cards .split-head b { color: var(--pink); }
+.split-cards .verdicts { margin: 8px 0 0; }
+.split-cards .note.small { margin-top: 6px; }
+body.split .kpis, body.split .ticker, body.split .hint { display: none; }

@@ -322,6 +322,7 @@ function resize() {
 
 function fit() {
   if (!G) return;
+  if (SPLIT.on && !SPLIT.fitting) { layoutSplit(); return; }
   const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
   updateTilt();
@@ -371,7 +372,7 @@ function W(x, y) { return [(x - view.x) * view.s, (y - view.y) * view.s]; }
 const TILT = { on: true, rot: -0.30, k: 0.6 };
 let TM = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, TMi = TM;
 function updateTilt() {
-  const cx = innerWidth / 2, cy = innerHeight / 2;
+  const cx = VP ? VP.x + VP.w / 2 : innerWidth / 2, cy = VP ? VP.y + VP.h / 2 : innerHeight / 2;
   const m = TILT.on ? new DOMMatrix().translate(cx, cy).scale(1, TILT.k).rotate((TILT.rot * 180) / Math.PI).translate(-cx, -cy) : new DOMMatrix();
   const i = m.inverse();
   TM = { a: m.a, b: m.b, c: m.c, d: m.d, e: m.e, f: m.f };
@@ -629,17 +630,25 @@ function hazard(X, Y, w, h) {
   ctx.restore();
 }
 
-function draw() {
+function draw(clear = true) {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const sky = ctx.createRadialGradient(innerWidth / 2, innerHeight * 0.4, 0, innerWidth / 2, innerHeight * 0.4, Math.max(innerWidth, innerHeight) * 0.75);
-  sky.addColorStop(0, LOOK.sky0); sky.addColorStop(0.6, LOOK.sky1); sky.addColorStop(1, LOOK.sky2);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, innerWidth, innerHeight);
+  if (clear) drawSky();
   if (!G || !P) return;
   updateTilt();
   const s = view.s;
   board();
+  drawFloorBody(s);
+}
+
+function drawSky() {
+  const sky = ctx.createRadialGradient(innerWidth / 2, innerHeight * 0.4, 0, innerWidth / 2, innerHeight * 0.4, Math.max(innerWidth, innerHeight) * 0.75);
+  sky.addColorStop(0, LOOK.sky0); sky.addColorStop(0.6, LOOK.sky1); sky.addColorStop(1, LOOK.sky2);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+}
+
+function drawFloorBody(s) {
   // belts: the spine and each hall's feeder
   const phase = (t * 0.35) % 1;
   HALLS_L.forEach((h, i) => {
@@ -673,6 +682,8 @@ function draw() {
     titles.push(() => {
       ctx.textBaseline = "top";
       const lift = TILT.on ? -wallH - tsz * 1.4 : 0;
+      ctx.font = `700 ${tsz}px -apple-system, Inter, sans-serif`;
+      if (ctx.measureText(h.name).width > h.w * s * 0.95) return; // too small to carry its name: the tooltip has it
       const tw = plateText(h.name, X + 1.6 * s, Y + 1.2 * s, tsz, 700, LOOK.title, 0, lift);
       const toolsN = h.groups.reduce((a, g) => a + P.j.groups[g][1], 0);
       if (h.w * s > tw + 80) {
@@ -885,6 +896,7 @@ function frame(now) {
   const dt = Math.min(0.1, (now - lastFrame) / 1000);
   lastFrame = now;
   stepFly(now);
+  if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -941,28 +953,34 @@ function showTip(h) {
 
 function setupInput() {
   let drag = null;
-  cv.addEventListener("mousedown", e => { const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y }; cv.classList.add("drag"); });
+  cv.addEventListener("mousedown", e => { splitPick(e.clientX); const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y, scene: SPLIT.active }; cv.classList.add("drag"); });
   addEventListener("mouseup", () => { drag = null; cv.classList.remove("drag"); });
   addEventListener("mousemove", e => {
     if (drag) {
+      if (SPLIT.on) useScene(drag.scene);
       const [ux, uy] = untilt(e.clientX, e.clientY);
       view.x = drag.vx - (ux - drag.x) / view.s;
       view.y = drag.vy - (uy - drag.y) / view.s;
+      keepScene();
       hover = null; $("tip").hidden = true;
     } else if (e.target === cv) {
+      splitPick(e.clientX);
       hover = groupAt(e.clientX, e.clientY);
+      if (hover) hover.scene = SPLIT.active;
       if (!hover) $("tip").hidden = true;
     }
   });
   cv.addEventListener("mouseleave", () => { hover = null; $("tip").hidden = true; });
   cv.addEventListener("wheel", e => {
     e.preventDefault();
+    splitPick(e.clientX);
     const k = Math.exp(-e.deltaY * 0.0015);
     const [ux, uy] = untilt(e.clientX, e.clientY);
     const wx = ux / view.s + view.x, wy = uy / view.s + view.y;
     view.s = Math.min(40, Math.max(0.5, view.s * k));
     view.x = wx - ux / view.s;
     view.y = wy - uy / view.s;
+    keepScene();
   }, { passive: false });
   $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "❚❚" : "▶"; if (playing && P && t >= P.j.until) t = 0; };
   document.querySelectorAll(".speeds button").forEach(b => (b.onclick = () => {
@@ -1406,6 +1424,7 @@ async function main() {
 
 // lay the floor out for a run's groups (today's fab, or a setup from the ask box) and play the run
 function setFloor(run) {
+  if (!SPLIT.building) leaveSplit(false);
   const groups = run.j.groups.map(g => ({ name: g[0], count: g[1] }));
   HALLS_L = buildLayout(groups);
   const flows = hallFlows(HALLS_L, run.j.routes);
@@ -1521,7 +1540,8 @@ function showResult(j) {
   const arms = r.arms || [];
   const armBtn = name => {
     const i = arms.findIndex(a => a.name === name);
-    return i < 0 ? "" : `<button type="button" class="show" data-arm="${i}">Show on the floor</button>`;
+    return i < 0 ? "" : `<button type="button" class="show" data-arm="${i}">Show on the floor</button>` +
+      (name === "today" ? "" : ` <button type="button" class="show sbs" data-arm="${i}">Side by side</button>`);
   };
   const head = r.families
     ? `<p class="note">Each line: the candidate minus today's fab on the same seeds, with its 95% interval. Today: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
@@ -1531,7 +1551,13 @@ function showResult(j) {
     rows.map(row => `<div class="arm"><div class="top"><b>${esc(row.name)}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
       <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${fmt(c.lo)} to ${fmt(c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table></div>`).join("") +
     `<p class="note small">${r.families ? "Money a day in wafers of volume margin; every price is assumed. " : ""}Intervals hold together at 95% across the candidates (Bonferroni). On the SMT2020 model, a published model of a fab. Real-fab effect: cannot say.</p>`;
-  $("ask-result").querySelectorAll("button.show").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
+  $("ask-result").querySelectorAll("button.show:not(.sbs)").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
+  $("ask-result").querySelectorAll("button.sbs").forEach(b => (b.onclick = () => sideBySide(j, +b.dataset.arm)));
+  {
+    const pick = rows.find(r => r.best) || rows[0];
+    const k = pick ? arms.findIndex(a => a.name === pick.name) : -1;
+    if (k >= 0 && arms.some(a => a.name === "today")) sideBySide(j, k);
+  }
   $("ask-result").insertAdjacentHTML("afterbegin", verdictCards(rows));
   const nb = document.createElement("button");
   nb.type = "button"; nb.className = "show"; nb.textContent = "See the numbers";
@@ -1588,7 +1614,9 @@ async function backToToday() {
 
 const UI = { lens: "day", sweep: null, metric: "money", share: 4 };
 
+let VP = null; // the part of the window a scene is drawn in; null for all of it
 function floorPad() {
+  if (VP) return { l: VP.x + 6, r: innerWidth - VP.x - VP.w + 6, t: 170, b: 175 };
   const wide = innerWidth > 900;
   return { l: wide && !$("compare").hidden ? 420 : 24, r: wide && !$("panel").hidden ? 340 : 24, t: 116, b: 86 };
 }
@@ -1867,6 +1895,144 @@ function signBox(j) {
     else box.querySelector("#sign-msg").textContent = r.error || "Could not sign.";
   };
   return box;
+}
+
+// ------------------------------------------------------------------ side by side (docs/FLOOR-UI.md, part 4)
+// Today's fab on the left, a candidate on the right, both from seed 0 on one clock and one scrubber, with the
+// candidate's verdict cards beneath. Each half keeps its own camera.
+
+const SPLIT = { on: false, building: false, fitting: false, scenes: [], clock: null, active: 0, job: null, name: "" };
+
+function useScene(k) {
+  if (!SPLIT.on) return;
+  const sc = SPLIT.scenes[k];
+  G = sc.G; HALLS_L = sc.HALLS_L; P = sc.P; cur = sc.cur; VP = sc.vp;
+  Object.assign(view, sc.view);
+  SPLIT.active = k;
+}
+function keepScene() {
+  if (SPLIT.on) Object.assign(SPLIT.scenes[SPLIT.active].view, view);
+}
+function splitPick(x) {
+  if (SPLIT.on) useScene(x < SPLIT.scenes[1].vp.x ? 0 : 1);
+}
+
+function layoutSplit() {
+  VP = null;
+  const pad = floorPad();
+  const l = pad.l - 10, r = innerWidth - pad.r + 10, mid = (l + r) / 2;
+  SPLIT.scenes[0].vp = { x: l, y: 0, w: mid - l, h: innerHeight };
+  SPLIT.scenes[1].vp = { x: mid, y: 0, w: r - mid, h: innerHeight };
+  SPLIT.fitting = true;
+  for (const k of [0, 1]) { useScene(k); fit(); keepScene(); }
+  SPLIT.fitting = false;
+  const c = $("split-cards");
+  c.style.left = `${(l + r) / 2}px`;
+  c.style.width = `${Math.min(640, r - l - 24)}px`;
+}
+
+async function sideBySide(j, k) {
+  const arms = j.report.arms || [];
+  const base = arms.findIndex(a => a.name === "today");
+  if (base < 0 || !arms[k]) return;
+  stage("Laying both out on the floor…");
+  try {
+    for (const g of ASK.extra) delete sim.area[g];
+    ASK.extra = [];
+    for (const i of [base, k]) for (const [g, a] of arms[i].extra_areas) { sim.area[g] = a; ASK.extra.push(g); }
+    const runs = [];
+    for (const i of [base, k]) {
+      const text = await fetch(arms[i].shop_url).then(r => (r.ok ? r.text() : Promise.reject(new Error("the helper has no such setup"))));
+      await loadShopText(text);
+      const rc = FabAsk.ruleCode(arms[i]);
+      runs.push({ name: arms[i].name, rc, run: simulate({ seed: 0, days: 3, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 }) });
+    }
+    SPLIT.building = true;
+    const scenes = runs.map(r => { setFloor(r.run); return { G, HALLS_L, P, cur, view: { ...view }, name: r.name, rc: r.rc }; });
+    SPLIT.building = false;
+    SPLIT.scenes = scenes;
+    SPLIT.on = true;
+    SPLIT.job = j;
+    SPLIT.name = arms[k].name;
+    ASK.onFloor = arms[k].name;
+    document.body.classList.add("split");
+    layoutSplit();
+    SPLIT.clock = FabUI.pairedClock(scenes[0].P.j.until, scenes[1].P.j.until);
+    $("scrub").max = SPLIT.clock.end;
+    t = 0; playing = true; $("play").textContent = "❚❚";
+    const row = FabAsk.resultRows(j.report).find(r => r.name === arms[k].name);
+    $("split-cards").hidden = false;
+    $("split-cards").innerHTML = `<div class="split-head"><b>${esc(arms[k].name)}</b> against today's fab, ${j.report.seeds.length} paired seeds of the full run` +
+      `<button type="button" class="link" id="split-leave">Leave side by side</button></div>` + (row ? verdictCards([row]).replace(/^<p class="note">.*?<\/p>/, "") : "") +
+      `<p class="note small">The halves replay seed 0 for 3 days in your browser${scenes[1].rc.exact ? "" : " (its rule is not in the page's simulator, so today's rule plays)"}; the cards are the helper's scored run. On the SMT2020 model.</p>`;
+    $("split-leave").onclick = () => leaveSplit(true);
+    stage("");
+  } catch (err) {
+    SPLIT.building = false;
+    stage("Could not lay them out: " + err.message);
+  }
+}
+
+function leaveSplit(reload) {
+  if (!SPLIT.on) return;
+  useScene(1);
+  SPLIT.on = false; SPLIT.scenes = []; VP = null;
+  document.body.classList.remove("split");
+  $("split-cards").hidden = true;
+  if (reload) backToToday();
+}
+
+function splitFrame(dt) {
+  const c = SPLIT.clock;
+  if (playing) {
+    t = Math.min(c.end, t + dt * speed);
+    if (t >= c.end) playing = false, ($("play").textContent = "▶");
+  }
+  const times = c.at(t);
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawSky();
+  for (const k of [0, 1]) {
+    useScene(k);
+    cur.seek(times[k]);
+    let hb = 0;
+    for (const q of P.groupTools[P.holdingGroup] || []) if (cur.toolState[q] === 0) hb++;
+    cur.holdingBusy = hb;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.beginPath(); ctx.rect(VP.x, VP.y, VP.w, VP.h); ctx.clip();
+    draw(false);
+    ctx.restore();
+    splitLabel(k, times[k]);
+  }
+  // the seam
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const x = SPLIT.scenes[1].vp.x;
+  ctx.fillStyle = "rgba(126, 232, 216, 0.35)"; ctx.fillRect(x - 0.5, 140, 1, innerHeight - 330);
+  useScene(1);
+  hud();
+  if (hover) { useScene(hover.scene || 0); showTip(hover); }
+}
+
+function splitLabel(k, tk) {
+  const sc = SPLIT.scenes[k], vp = sc.vp;
+  let waiting = 0;
+  for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup) waiting += cur.queue[g];
+  let protos = 0;
+  for (const q of cur.bQ) protos += q;
+  for (const tr of cur.active) if (tr[6]) protos++;
+  const title = k === 0 ? "Today's fab" : sc.name;
+  const line = `${countBelow(P.done, tk).toLocaleString()} lots finished · ${waiting.toLocaleString()} waiting · ${protos} prototype lots in the fab`;
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.font = "800 17px -apple-system, Inter, sans-serif";
+  ctx.fillStyle = k === 0 ? LOOK.title : LOOK.proto;
+  ctx.fillText(title, vp.x + vp.w / 2, 140);
+  ctx.font = "500 12px ui-monospace, Menlo, monospace";
+  ctx.fillStyle = LOOK.sub;
+  ctx.fillText(line, vp.x + vp.w / 2, 162);
+  ctx.textAlign = "left";
 }
 
 main();
