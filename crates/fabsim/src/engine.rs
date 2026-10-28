@@ -228,6 +228,8 @@ pub struct RunResult {
     pub decisions: u64,
     /// every started step, in start order (only with `record`)
     pub trace: Vec<Trace>,
+    /// defect findings and the lots they held (docs/RL-DEFECTS.md); empty without a `defects` record
+    pub holds: Vec<Hold>,
 }
 
 fn hx(x: f64) -> String {
@@ -336,6 +338,8 @@ enum Ev {
     /// a lot listed with a later start, under its family's cap
     Admit(u32),
     UnholdFam(u32),
+    /// a lot's defect hold may be over (docs/RL-DEFECTS.md)
+    Unpark(u32),
 }
 
 /// A release or a listed lot held by its family's cap: (release, n, log row) or (lot, log row).
@@ -413,6 +417,11 @@ struct Lot {
     at: Place,
     /// index into the family names
     fam: u32,
+    /// defects (docs/RL-DEFECTS.md): when the lot last left a queue to start work, until when it is held,
+    /// and whether it waits out of its queue now
+    last_start: f64,
+    held_until: f64,
+    parked: bool,
 }
 
 type QKey = (F, F, u64);
@@ -483,6 +492,21 @@ struct Sim<'a, 'c> {
     elig: Vec<u64>,
     /// per tool, the family whose lots it takes first
     reserved: Vec<Option<u32>>,
+    // defects (docs/RL-DEFECTS.md); with `defects` None nothing below changes a run
+    defects: Option<crate::shop::Defects>,
+    /// per tool, the lots it finished lately: (lot, step, end)
+    recent: Vec<VecDeque<(u32, usize, f64)>>,
+    holds: Vec<Hold>,
+}
+
+/// A defect finding: the tool that did the step, when, the step, the lot found, and the lots held with it.
+#[derive(Clone, Debug)]
+pub struct Hold {
+    pub tool: u32,
+    pub t: f64,
+    pub step: u32,
+    pub lot: u32,
+    pub lots: Vec<u32>,
 }
 
 enum Pick {
@@ -569,20 +593,38 @@ impl<'a, 'c> Sim<'a, 'c> {
             (st.group, st.per, st.setup, st.batch_wait, (lot.route, lot.step))
         };
         self.lots[l as usize].arrived = t;
+        if self.lots[l as usize].held_until > t {
+            self.lots[l as usize].parked = true;
+            let until = self.lots[l as usize].held_until;
+            self.at(until, Ev::Unpark(l));
+            return;
+        }
+        self.queue_in(l, g, per, setup, bw, key, t);
+        self.dispatch(g, t);
+    }
+
+    /// put a lot that has arrived (at `lots[l].arrived`) into its group's queue or batch list
+    #[allow(clippy::too_many_arguments)]
+    fn queue_in(&mut self, l: u32, g: u32, per: Per, setup: u32, bw: Option<f64>, key: (u32, usize), t: f64) {
+        let arrived = self.lots[l as usize].arrived;
         if per == Per::Batch {
             let ws = &mut self.waiting[g as usize];
             match ws.iter_mut().find(|w| w.key == key) {
-                Some(w) => w.lots.push((t, l)),
-                None => ws.push(Waiting { key, lots: vec![(t, l)] }),
+                // in arrival order (a lot back from a hold keeps its place)
+                Some(w) => {
+                    let at = w.lots.iter().position(|(a, _)| *a > arrived).unwrap_or(w.lots.len());
+                    w.lots.insert(at, (arrived, l));
+                }
+                None => ws.push(Waiting { key, lots: vec![(arrived, l)] }),
             }
             let wait = bw.or(self.shop.groups[g as usize].batch_wait);
             if let Some(w) = wait {
-                self.at(t + w, Ev::Wake(g));
+                self.at((arrived + w).max(t), Ev::Wake(g));
             }
         } else {
             let seq = self.seq;
             self.seq += 1;
-            let k = (F(-self.lots[l as usize].priority), F(t), seq);
+            let k = (F(-self.lots[l as usize].priority), F(arrived), seq);
             let qs = &mut self.queues[g as usize];
             match qs.iter_mut().find(|q| q.key == setup) {
                 Some(q) => {
@@ -595,6 +637,56 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
             }
         }
+    }
+
+    /// hold lot l until `until`: out of its queue now if it waits in one, else when it arrives
+    fn hold_lot(&mut self, l: u32, until: f64) {
+        let lot = &mut self.lots[l as usize];
+        if until <= lot.held_until {
+            return;
+        }
+        lot.held_until = until;
+        if lot.parked {
+            self.at(until, Ev::Unpark(l));
+            return;
+        }
+        let Some(st) = self.step_of(l) else { return };
+        let g = st.group as usize;
+        let mut found = false;
+        for q in &mut self.queues[g] {
+            if let Some(k) = q.q.iter().find(|(_, &x)| x == l).map(|(k, _)| *k) {
+                q.q.remove(&k);
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            for w in &mut self.waiting[g] {
+                if let Some(i) = w.lots.iter().position(|(_, x)| *x == l) {
+                    w.lots.remove(i);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if found {
+            self.lots[l as usize].parked = true;
+            self.at(until, Ev::Unpark(l));
+        }
+    }
+
+    fn unpark(&mut self, l: u32, t: f64) {
+        let lot = &self.lots[l as usize];
+        if !lot.parked || lot.held_until > t {
+            return;
+        }
+        self.lots[l as usize].parked = false;
+        let (g, per, setup, bw, key) = {
+            let st = self.step_of(l).expect("a parked lot has a step");
+            let lot = &self.lots[l as usize];
+            (st.group, st.per, st.setup, st.batch_wait, (lot.route, lot.step))
+        };
+        self.queue_in(l, g, per, setup, bw, key, t);
         self.dispatch(g, t);
     }
 
@@ -980,6 +1072,7 @@ impl<'a, 'c> Sim<'a, 'c> {
         let begin = t + s_min;
         self.at(begin, Ev::Begin(ti, batch.clone(), dur));
         for &l in &batch {
+            self.lots[l as usize].last_start = t;
             let waited = t - self.lots[l as usize].arrived;
             self.wait[g as usize] += waited;
             self.visits[g as usize] += 1;
@@ -1019,6 +1112,8 @@ impl<'a, 'c> Sim<'a, 'c> {
             }
         }
         self.set_state(ti, t, STANDBY, "");
+        let mut finding: Option<(u32, usize)> = None;
+        let mut finished: Vec<(u32, usize)> = vec![];
         for &l in &batch {
             let (rework, step) = {
                 let st = self.step_of(l).unwrap();
@@ -1035,10 +1130,33 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
             }
             match rework {
-                Some((to, p)) if lot.rng.random() < p => lot.step = to,
+                Some((to, p)) if lot.rng.random() < p => {
+                    lot.step = to;
+                    if finding.is_none() {
+                        finding = Some((l, step));
+                    }
+                }
                 _ => lot.step += 1,
             }
+            finished.push((l, step));
             self.move_on(l, t);
+        }
+        if let Some(d) = self.defects {
+            if let Some((found, step)) = finding {
+                self.find(ti, t, found, step, d);
+            }
+            let recent = &mut self.recent[ti as usize];
+            for x in finished {
+                recent.push_back((x.0, x.1, t));
+            }
+            while recent.front().is_some_and(|e| e.2 < t - d.lookback_minutes) {
+                recent.pop_front();
+            }
+            if finding.is_some() {
+                self.go_down_why(ti, t, UNSCHEDULED, d.hold_tool_minutes, "hold");
+                self.dispatch(self.tools[ti as usize].group, t);
+                return;
+            }
         }
         if let Some((kind, m)) = self.tools[ti as usize].pending.pop_front() {
             self.go_down(ti, t, kind, m);
@@ -1088,9 +1206,29 @@ impl<'a, 'c> Sim<'a, 'c> {
     }
 
     fn go_down(&mut self, ti: u32, t: f64, kind: u8, minutes: f64) {
+        self.go_down_why(ti, t, kind, minutes, "");
+    }
+
+    fn go_down_why(&mut self, ti: u32, t: f64, kind: u8, minutes: f64, why: &'static str) {
         self.tools[ti as usize].down = kind;
-        self.set_state(ti, t, kind, "");
+        self.set_state(ti, t, kind, why);
         self.at(t + minutes, Ev::Up(ti));
+    }
+
+    /// a finding against tool ti (docs/RL-DEFECTS.md): hold the lots it finished at this step in the
+    /// lookback that have not started another step since
+    fn find(&mut self, ti: u32, t: f64, found: u32, step: usize, d: crate::shop::Defects) {
+        let mut lots: Vec<u32> = vec![];
+        for &(l, s, end) in &self.recent[ti as usize] {
+            let lot = &self.lots[l as usize];
+            if s == step && l != found && end >= t - d.lookback_minutes && end < t && lot.last_start <= end && lot.done.is_none() && !lots.contains(&l) {
+                lots.push(l);
+            }
+        }
+        for &l in &lots {
+            self.hold_lot(l, t + d.hold_lot_minutes);
+        }
+        self.holds.push(Hold { tool: ti, t, step: step as u32, lot: found, lots });
     }
 
     fn down_due(&mut self, ti: u32, t: f64, kind: u8, minutes: f64) {
@@ -1130,6 +1268,9 @@ impl<'a, 'c> Sim<'a, 'c> {
             inwip: false,
             at,
             fam: self.route_fam[r],
+            last_start: f64::NEG_INFINITY,
+            held_until: f64::NEG_INFINITY,
+            parked: false,
         });
         (self.lots.len() - 1) as u32
     }
@@ -1289,6 +1430,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
     let fidx = |f: &str| fam_names.iter().position(|x| x == f).unwrap() as u32;
     let mut elig = vec![u64::MAX; tools.len()];
     let mut reserved: Vec<Option<u32>> = vec![None; tools.len()];
+    let ntools_for_defects = tools.len();
     if fam_on {
         for (g, f, n) in &shop.quals {
             let Some(gi) = gidx.get(g.as_str()) else { panic!("qual names unknown group {g}") };
@@ -1364,6 +1506,9 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         fam_held: (0..nf).map(|_| VecDeque::new()).collect(),
         elig,
         reserved,
+        defects: shop.defects,
+        recent: if shop.defects.is_some() { (0..ntools_for_defects).map(|_| VecDeque::new()).collect() } else { vec![] },
+        holds: vec![],
     };
 
     // downs: given windows, maintenance calendars, breakdowns
@@ -1549,6 +1694,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                 sim.at(t + next, Ev::Break(ti));
             }
             Ev::Wake(g) => sim.dispatch(g, t),
+            Ev::Unpark(l) => sim.unpark(l, t),
             Ev::Up(ti) => {
                 sim.tools[ti as usize].down = 0;
                 sim.set_state(ti, t, STANDBY, "");
@@ -1595,6 +1741,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
             .map(|(i, g)| GroupOut { name: g.name.clone(), busy: sim.busy[i], wait: sim.wait[i], visits: sim.visits[i], count: g.count })
             .collect(),
         release_log: std::mem::take(&mut sim.release_log),
+        holds: std::mem::take(&mut sim.holds),
         probes: std::mem::take(&mut sim.probes),
         finished: sim.done,
         waiting: sim.n,

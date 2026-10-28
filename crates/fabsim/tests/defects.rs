@@ -72,7 +72,18 @@ fn a_finding_holds_its_tool() {
         want.dedup();
         let mut got: Vec<(u32, u64)> = r.holds.iter().map(|h| (h.tool, h.t.to_bits())).collect();
         got.sort();
-        assert_eq!(got, want, "seed {seed}");
+        // a rework near the run's end has no next start in the trace yet, so the trace sees a subset
+        for w in &want {
+            assert!(got.binary_search(w).is_ok(), "seed {seed}: a rework without a hold");
+        }
+        for h in &r.holds {
+            let mine: Vec<_> = r.trace.iter().filter(|t| t.lot == h.lot).collect();
+            let at = mine.iter().position(|t| t.tool == h.tool && t.step == h.step && t.end == h.t).expect("the found lot did the step");
+            assert!(mine.get(at + 1).is_none_or(|n| n.step <= h.step), "seed {seed}: a hold where the lot moved on");
+        }
+        let mut dedup = got.clone();
+        dedup.dedup();
+        assert_eq!(dedup.len(), got.len(), "seed {seed}: one hold per tool and moment");
         for h in &r.holds {
             let row = r.states.iter().find(|s| s.tool_index == h.tool && s.time >= h.t && s.why == "hold")
                 .unwrap_or_else(|| panic!("seed {seed}: no hold row for tool {} at {}", h.tool, h.t));

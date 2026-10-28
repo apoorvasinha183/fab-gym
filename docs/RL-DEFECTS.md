@@ -98,3 +98,10 @@ space is `Discrete(8)`, and an action on an empty slot is masked to the engine's
    back to the engine's pick and is counted.
 8. `FabGymEnv` returns observations of a fixed shape, masks empty slots, and an episode of engine picks scores the
    same as test 5.
+
+## Changes
+
+- 29 Oct, test 2 before its code passed: it found reworks from each lot's next started step, which misses a
+  rework near the run's end whose lot has not started again. It now checks that every rework the trace shows
+  has a hold, that every hold's lot did that step on that tool at that moment and did not move on, and that
+  there is one hold per tool and moment. The rule tested is unchanged.

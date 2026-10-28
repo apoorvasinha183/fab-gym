@@ -190,6 +190,16 @@ pub struct Shop {
     pub quals: Vec<(String, String, usize)>,
     /// (group, family, tools): the group's first that-many tools take the family's waiting lots first
     pub reserves: Vec<(String, String, usize)>,
+    /// holds on top of rework (docs/RL-DEFECTS.md); None leaves every run as it was
+    pub defects: Option<Defects>,
+}
+
+/// A rework is a finding: the tool that did the step is held, and so are the lots it touched just before.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Defects {
+    pub hold_tool_minutes: f64,
+    pub lookback_minutes: f64,
+    pub hold_lot_minutes: f64,
 }
 
 // ------------------------------------------------------------------ Python float text
@@ -438,6 +448,14 @@ impl Shop {
                     need(3)?;
                     s.families.push((f[1].into(), f[2].into()));
                 }
+                "defects" => {
+                    need(4)?;
+                    let d = Defects { hold_tool_minutes: pf(f[1])?, lookback_minutes: pf(f[2])?, hold_lot_minutes: pf(f[3])? };
+                    if !(d.hold_tool_minutes >= 0.0 && d.lookback_minutes >= 0.0 && d.hold_lot_minutes >= 0.0) {
+                        return Err(format!("line {}: defects wants three minutes, none negative", no + 2));
+                    }
+                    s.defects = Some(d);
+                }
                 "famcap" => {
                     need(3)?;
                     s.famcaps.push((f[1].into(), pi(f[2])?));
@@ -622,6 +640,9 @@ impl Shop {
         }
         for (g, f, n) in &self.reserves {
             let _ = writeln!(o, "reserve\t{g}\t{f}\t{n}");
+        }
+        if let Some(d) = self.defects {
+            let _ = writeln!(o, "defects\t{}\t{}\t{}", pyrepr(d.hold_tool_minutes), pyrepr(d.lookback_minutes), pyrepr(d.hold_lot_minutes));
         }
         o
     }
