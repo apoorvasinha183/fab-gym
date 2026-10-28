@@ -60,6 +60,8 @@ pub struct GroupTools {
     pub working: u32,
     pub idle: u32,
     pub down: u32,
+    /// of the down tools, those on a defect hold (docs/RL-DEFECTS.md)
+    pub held: u32,
 }
 
 /// Running totals so far: lots finished, lots waiting, and lot-minutes spent waiting.
@@ -396,6 +398,8 @@ struct Tool {
     since: f64,
     minutes: [f64; 4],
     counts: Vec<f64>,
+    /// on a defect hold until (docs/RL-DEFECTS.md)
+    hold_until: f64,
 }
 
 struct Lot {
@@ -929,6 +933,9 @@ impl<'a, 'c> Sim<'a, 'c> {
             let tl = &self.tools[x as usize];
             if tl.down != 0 {
                 gt.down += 1;
+                if tl.hold_until > t {
+                    gt.held += 1;
+                }
             } else if tl.busy {
                 gt.working += 1;
             } else {
@@ -1210,6 +1217,9 @@ impl<'a, 'c> Sim<'a, 'c> {
     }
 
     fn go_down_why(&mut self, ti: u32, t: f64, kind: u8, minutes: f64, why: &'static str) {
+        if why == "hold" {
+            self.tools[ti as usize].hold_until = t + minutes;
+        }
         self.tools[ti as usize].down = kind;
         self.set_state(ti, t, kind, why);
         self.at(t + minutes, Ev::Up(ti));
@@ -1388,6 +1398,7 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                 since: 0.0,
                 minutes: [0.0; 4],
                 counts: vec![0.0; g.pm_pieces.len()],
+                hold_until: f64::NEG_INFINITY,
             });
         }
         group_tools.push(ids);

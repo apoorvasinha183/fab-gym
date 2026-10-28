@@ -756,6 +756,7 @@ fn main() {
         Some("lean-long") => lean_long(&args[1..]),
         Some("two-families") => two_families(&args[1..]),
         Some("evolve") => evolve_cmd(&args[1..]),
+        Some("env") => env_cmd(&args[1..]),
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),
@@ -801,4 +802,147 @@ fn main() {
         }
         _ => eprintln!("usage: fabsim bench [DIR] [--days N] [--seeds K] | fabsim log SHOP SEED [UNTIL]"),
     }
+}
+
+// ------------------------------------------------------------------ fabsim env (docs/RL-DEFECTS.md)
+// One episode, one dispatch decision at a time, as JSON lines on standard input and output.
+
+fn jnum_env(x: f64) -> String {
+    if x.is_finite() { format!("{x}") } else { "null".into() }
+}
+
+fn env_cmd(args: &[String]) {
+    use fabsim::engine::{run, Decision, RunOptions};
+    use fabsim::window::{score, with_probes, Window};
+    use std::io::{BufRead, Write};
+    const K: usize = 8;
+    let src = args.first().filter(|a| !a.starts_with("--")).expect("fabsim env SHOP --seed N [--warmup D] [--window D] [--defects H,L,R] [--auto]");
+    let p = PathBuf::from(src);
+    let mut shop = if p.is_dir() {
+        fabsim::smt2020::load(&p).expect("SMT2020 loads")
+    } else {
+        fabsim::shop::Shop::parse(&std::fs::read_to_string(&p).expect("read the shop")).expect("the shop parses")
+    };
+    if let Some(d) = args.iter().position(|a| a == "--defects").and_then(|i| args.get(i + 1)) {
+        let v: Vec<f64> = d.split(',').map(|x| x.parse().expect("--defects H,L,R in minutes")).collect();
+        assert!(v.len() == 3, "--defects H,L,R in minutes");
+        if shop.defects.is_none() {
+            shop.defects = Some(fabsim::shop::Defects { hold_tool_minutes: v[0], lookback_minutes: v[1], hold_lot_minutes: v[2] });
+        }
+    }
+    let seed = arg(args, "--seed", 0);
+    let warmup = argf(args, "--warmup", 1.0);
+    let window = argf(args, "--window", 3.0);
+    let auto = args.iter().any(|a| a == "--auto");
+    let w = Window { from: warmup * 1440.0, to: (warmup + window) * 1440.0 };
+    let shop = with_probes(&shop, &w);
+    // family names numbered from 1 in the order the shop's family records first name them; "" is 0
+    let mut fam: Vec<String> = vec![];
+    for (_, f) in &shop.families {
+        if !fam.contains(f) {
+            fam.push(f.clone());
+        }
+    }
+    let fam_no = |f: &str| if f.is_empty() { 0 } else { fam.iter().position(|x| x == f).map(|i| i + 1).unwrap_or(0) };
+    let stdin = std::io::stdin();
+    let mut input = stdin.lock();
+    let out = std::io::stdout();
+    let mut out = std::io::BufWriter::new(out.lock());
+    let (mut asked, mut fallbacks) = (0u64, 0u64);
+    let mut prev: Option<f64> = None;
+    let mut paid = 0.0f64;
+    let mut line = String::new();
+    let mut chooser = |d: &Decision| -> usize {
+        if d.t < w.from || d.t > w.to || d.candidates.len() < 2 || auto {
+            return d.default;
+        }
+        asked += 1;
+        let value = d.totals.finished as f64 - 0.01 * d.totals.wait_lot_minutes / 60.0;
+        let reward = prev.map(|p| value - p).unwrap_or(0.0);
+        prev = Some(value);
+        paid += reward;
+        // the engine's pick first, then the rest in the engine's order, at most K
+        let mut order: Vec<usize> = vec![d.default];
+        order.extend((0..d.candidates.len()).filter(|&i| i != d.default));
+        order.truncate(K);
+        let cands: Vec<String> = order
+            .iter()
+            .map(|&i| {
+                let c = &d.candidates[i];
+                format!(
+                    "{{\"is_batch\":{},\"lots\":{},\"priority\":{},\"size_wafers\":{},\"step\":{},\"steps_left\":{},\"waited_minutes\":{},\"setup_change\":{},\"proc_minutes\":{},\"work_left_minutes\":{},\"age_minutes\":{},\"cqt_slack_minutes\":{},\"is_default\":{},\"family\":{}}}",
+                    u8::from(c.kind == "batch"),
+                    c.lots.len(),
+                    jnum_env(c.priority),
+                    c.size_wafers,
+                    c.step,
+                    c.steps_left,
+                    jnum_env(c.waited_minutes),
+                    u8::from(c.setup_change),
+                    jnum_env(c.proc_minutes),
+                    jnum_env(c.work_left_minutes),
+                    jnum_env(d.t - c.release),
+                    jnum_env(c.cqt_slack_minutes.unwrap_or(1e9)),
+                    u8::from(i == d.default),
+                    fam_no(&c.family)
+                )
+            })
+            .collect();
+        let g = &d.group_tools;
+        let _ = writeln!(
+            out,
+            "{{\"t\":{},\"group\":\"{}\",\"tools\":{{\"working\":{},\"idle\":{},\"down\":{}}},\"held_tools\":{},\"totals\":{{\"finished\":{},\"waiting\":{},\"wait_lot_minutes\":{}}},\"cands\":[{}],\"default\":0,\"reward\":{}}}",
+            jnum_env(d.t),
+            d.tool_group,
+            g.working,
+            g.idle,
+            g.down,
+            g.held,
+            d.totals.finished,
+            d.totals.waiting,
+            jnum_env(d.totals.wait_lot_minutes),
+            cands.join(","),
+            jnum_env(reward)
+        );
+        let _ = out.flush();
+        line.clear();
+        if input.read_line(&mut line).unwrap_or(0) == 0 {
+            fallbacks += 1;
+            return d.default;
+        }
+        let k = line
+            .find("\"action\"")
+            .and_then(|i| line[i + 8..].trim_start().strip_prefix(':'))
+            .and_then(|r| {
+                let r = r.trim_start();
+                let end = r.find(|c: char| !c.is_ascii_digit()).unwrap_or(r.len());
+                r[..end].parse::<usize>().ok()
+            });
+        match k {
+            Some(k) if k < order.len() => order[k],
+            _ => {
+                fallbacks += 1;
+                d.default
+            }
+        }
+    };
+    let r = run(&shop, &RunOptions { seed, until: Some(w.to), record: false }, Some(&mut chooser));
+    let sc = score(&r, &w).expect("the window scores");
+    let last = sc.reward - paid;
+    println!(
+        "{{\"done\":true,\"reward\":{},\"decisions\":{},\"fallbacks\":{},\"score\":{{\"reward\":{},\"moves\":{},\"lots_finished\":{},\"wait_lot_hours\":{},\"wait_per_move_minutes\":{},\"breaches\":{},\"mean_wip\":{},\"lots_per_day\":{},\"wafers_per_day\":{},\"cycle_days\":{}}}}}",
+        jnum_env(last),
+        asked,
+        fallbacks,
+        jnum_env(sc.reward),
+        jnum_env(sc.moves),
+        jnum_env(sc.lots_finished),
+        jnum_env(sc.wait_lot_hours),
+        jnum_env(sc.wait_per_move_minutes),
+        jnum_env(sc.breaches),
+        jnum_env(sc.mean_wip),
+        jnum_env(sc.lots_per_day),
+        jnum_env(sc.wafers_per_day),
+        jnum_env(sc.cycle_days)
+    );
 }
