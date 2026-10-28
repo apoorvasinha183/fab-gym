@@ -1,0 +1,15 @@
+{
+  "example": true,
+  "note": "Example answer, written by us, not from a model.",
+  "question": "If breakdowns get 50% worse, does holding prototype lots at the door protect the volume product?",
+  "answer": {
+    "question": "If breakdowns get 50% worse, does holding prototype lots at the door protect the volume product?",
+    "family": {"share": 1, "said": false, "range": [0.5, 4]},
+    "shocks": [{"kind": "breakdowns", "value": 1.5, "said": true}],
+    "candidates": [
+      {"name": "capped", "policy": "cap"},
+      {"name": "reserved", "policy": "reserve"},
+      {"name": "copies-capped", "floor": "copies", "policy": "cap"}
+    ]
+  }
+}

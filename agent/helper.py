@@ -1,0 +1,221 @@
+"""The helper behind the floor page's ask box (docs/ASK-FAMILIES.md, part 4).
+
+    python3 -m agent.helper [--port 8766] [--smt2020 data/smt2020/hvlm] [--quick]
+
+Serves `web/` and an API on 127.0.0.1 only. It holds the model key (read from its file, never logged and never sent
+to the page), asks Muse Spark Open on Baseten for a scenario, checks it, runs `fabsim score` natively (4 threads,
+niced, one job at a time) and hands the report to the page. Without a key it answers the recorded example questions
+and runs scenarios a person writes. On the SMT2020 model, a published model of a fab; not a real fab."""
+
+import argparse
+import itertools
+import json
+import mimetypes
+import subprocess
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+from agent import ask
+from agent.fabgym_agent import DEFAULT_KEY, HttpModel
+
+ROOT = Path(__file__).resolve().parents[1]
+BASE_URL = "https://inference.baseten.co/v1"
+MODEL = "meta-models/muse-spark-open-1026"
+QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", "300"]
+
+
+class Helper:
+    def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
+                 key_file=DEFAULT_KEY, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=BASE_URL, model=MODEL, threads=4):
+        self.web = Path(web).resolve()
+        self.fabsim = Path(fabsim)
+        self.smt2020 = Path(smt2020)
+        self.key_file = Path(key_file).expanduser()
+        self.jobs_dir = Path(jobs)
+        self.quick = quick
+        self.base_url = base_url
+        self.model_name = model
+        self.threads = threads
+        self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
+        self.jobs = {}
+        self.lock = threading.Lock()
+        self.ids = itertools.count(1)
+
+    def __repr__(self):
+        return f"Helper(web={str(self.web)!r}, model={self.model_name!r}, key_file={str(self.key_file)!r})"
+
+    def model_connected(self):
+        try:
+            return self.key_file.is_file() and self.key_file.stat().st_size > 0
+        except OSError:
+            return False
+
+    def busy(self):
+        return any(j["stage"] not in ("done", "failed") for j in self.jobs.values())
+
+    def status(self):
+        return {
+            "model_connected": self.model_connected(),
+            "model": f"{self.model_name} on Baseten" if self.model_connected() else None,
+            "examples": [{"question": e["question"]} for e in ask.examples()],
+            "busy": self.busy(),
+            "quick": self.quick,
+        }
+
+    # ------------------------------------------------------------------ jobs
+
+    def _start(self, job, work):
+        with self.lock:
+            if self.busy():
+                return {"error": "One question runs at a time; wait for the one running now.", "busy": True}
+            jid = str(next(self.ids))
+            job.update({"id": jid, "stage": "queued", "started": time.time(), "report": None, "error": None})
+            self.jobs[jid] = job
+        threading.Thread(target=self._run, args=(jid, work), daemon=True).start()
+        return {"job": jid}
+
+    def ask(self, question):
+        q = (question or "").strip()
+        if not q:
+            return {"error": "Type a question first."}
+        for e in ask.examples():
+            if e["question"].strip().lower() == q.lower():
+                return self._start({"question": q, "answer_source": "example", "answer": e["answer"], "note": e["note"]}, "answer")
+        if not self.model_connected():
+            return {
+                "no_model": True,
+                "message": "No model is connected yet, so only the example questions answer. You can also write a scenario by hand.",
+                "examples": [e["question"] for e in ask.examples()],
+            }
+        return self._start({"question": q, "answer_source": "model", "answer": None}, "model")
+
+    def run_text(self, text):
+        if not (text or "").strip():
+            return {"error": "The scenario is empty."}
+        return self._start({"question": None, "answer_source": "hand", "answer": None, "scenario": text}, "text")
+
+    def _run(self, jid, work):
+        job = self.jobs[jid]
+        try:
+            if work == "model":
+                job["stage"] = "asking the model"
+                model = HttpModel(self.base_url, self.model_name, key_file=self.key_file, temperature=0.2)
+                reply, answer = ask.ask_model(model, job["question"], self.groups)
+                job["reply"] = reply
+                job["answer"] = answer
+            if work in ("model", "answer"):
+                job["stage"] = "checking the scenario"
+                reasons = ask.check(job["answer"], self.groups)
+                job["checks"] = reasons
+                if reasons:
+                    raise ValueError("The scenario was refused: " + "; ".join(reasons))
+                job["scenario"] = ask.to_scenario(job["answer"])
+            job["stage"] = "laying out and simulating"
+            job["report"] = self._score(jid, job["scenario"])
+            job["stage"] = "done"
+        except Exception as e:  # shown to the person; never holds the key
+            job["error"] = str(e)
+            job["stage"] = "failed"
+        job["seconds"] = round(time.time() - job["started"], 1)
+
+    def _score(self, jid, text):
+        d = self.jobs_dir / jid
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / "scenario.txt"
+        f.write_text(text)
+        cmd = ["nice", "-n", "10", str(self.fabsim), "score", str(f), str(self.smt2020), "--threads", str(self.threads),
+               "--layout-cache", str(ROOT / "data" / "ask" / "layouts")]
+        if self.quick:
+            cmd += QUICK
+        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        if p.returncode != 0:
+            msg = (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1]
+            raise ValueError(msg.removeprefix("refused: "))
+        (d / "report.json").write_text(p.stdout)
+        return json.loads(p.stdout)
+
+    def job(self, jid):
+        j = self.jobs.get(jid)
+        if j is None:
+            return None
+        out = {k: v for k, v in j.items() if k != "report"}
+        out["elapsed"] = round(time.time() - j["started"], 1)
+        rep = j.get("report")
+        if rep is not None:
+            rep = dict(rep)
+            rep["arms"] = [{k: v for k, v in a.items() if k != "shop"} | {"shop_url": f"/api/job/{jid}/arm/{i}"}
+                           for i, a in enumerate(rep.get("arms", []))]
+        out["report"] = rep
+        return out
+
+    def arm_shop(self, jid, k):
+        j = self.jobs.get(jid)
+        arms = (j or {}).get("report", {}) or {}
+        arms = arms.get("arms", [])
+        return arms[k]["shop"] if 0 <= k < len(arms) else None
+
+
+def serve(h, port=8766):
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, code, body, ctype="application/json"):
+            data = body if isinstance(body, bytes) else (json.dumps(body) if ctype == "application/json" else body).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith("text") or ctype.endswith("json") else ""))
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            path = self.path.split("?")[0]
+            if path == "/api/status":
+                return self._send(200, h.status())
+            if path.startswith("/api/job/"):
+                parts = path.split("/")
+                if len(parts) == 6 and parts[4] == "arm" and parts[5].isdigit():
+                    t = h.arm_shop(parts[3], int(parts[5]))
+                    return self._send(200, t, "text/plain") if t else self._send(404, {"error": "no such arm"})
+                j = h.job(parts[3])
+                return self._send(200, j) if j else self._send(404, {"error": "no such job"})
+            rel = "index.html" if path in ("/", "") else path.lstrip("/")
+            f = (h.web / rel).resolve()
+            if h.web not in f.parents and f != h.web or not f.is_file():
+                return self._send(404, {"error": "not found"})
+            return self._send(200, f.read_bytes(), mimetypes.guess_type(str(f))[0] or "application/octet-stream")
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads(self.rfile.read(n) or b"{}")
+            except json.JSONDecodeError:
+                return self._send(400, {"error": "not JSON"})
+            if self.path == "/api/ask":
+                r = h.ask(body.get("question"))
+            elif self.path == "/api/run":
+                r = h.run_text(body.get("scenario"))
+            else:
+                return self._send(404, {"error": "not found"})
+            return self._send(409 if r.get("busy") else 200, r)
+
+    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+
+def main():
+    a = argparse.ArgumentParser(description="The floor page's ask box, on this Mac (127.0.0.1 only).")
+    a.add_argument("--port", type=int, default=8766)
+    a.add_argument("--smt2020", default=str(ROOT / "data" / "smt2020" / "hvlm"))
+    a.add_argument("--quick", action="store_true", help="smoke runs: 3 seeds, short windows (not for results)")
+    o = a.parse_args()
+    h = Helper(smt2020=o.smt2020, quick=o.quick)
+    srv = serve(h, o.port)
+    print(f"Fab Gym on http://127.0.0.1:{o.port}  (model {'connected' if h.model_connected() else 'not connected: examples and hand-written scenarios only'})")
+    srv.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

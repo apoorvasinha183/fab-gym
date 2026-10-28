@@ -1,0 +1,14 @@
+{
+  "example": true,
+  "note": "Example answer, written by us, not from a model.",
+  "question": "Polisher group Planar_FE_79 is down for a shift tomorrow morning. Which dispatch rule should we run?",
+  "answer": {
+    "question": "Polisher group Planar_FE_79 is down for a shift tomorrow morning. Which dispatch rule should we run?",
+    "shocks": [{"kind": "outage", "group": "Planar_FE_79", "from_hours": 30, "hours": 8, "said": true}],
+    "candidates": [
+      {"name": "fifo", "rule": "fifo"},
+      {"name": "spt", "rule": "spt"},
+      {"name": "critical-ratio", "rule": "cr"}
+    ]
+  }
+}

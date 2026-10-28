@@ -1,0 +1,16 @@
+{
+  "example": true,
+  "note": "Example answer, written by us, not from a model.",
+  "question": "Prototype orders double next quarter. Do we give them their own wing or put them first in line?",
+  "answer": {
+    "question": "Prototype orders double next quarter. Do we give them their own wing or put them first in line?",
+    "family": {"share": 2, "said": true},
+    "shocks": [],
+    "candidates": [
+      {"name": "own-wing", "floor": "wing"},
+      {"name": "b-first", "policy": "bfirst"},
+      {"name": "copies", "floor": "copies"},
+      {"name": "copies-b-first", "floor": "copies", "policy": "bfirst"}
+    ]
+  }
+}
