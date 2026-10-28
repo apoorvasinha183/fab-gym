@@ -77,3 +77,12 @@ time counted from the scheduled arrival (so holding counts). Every price is assu
 8. **Strategies on the SMT2020 model:** D1 adds no group; D2 puts every copy in a third phase and D3 in the first
    two; every group has a place; a day runs.
 9. **Money:** a hand-worked case gives the exact figure; the same run gives the same money twice.
+
+## Changes
+
+- 28 Oct, test 5: in the toy shop the arrivals are evenly spaced and the families never waited together (0 of 800
+  decisions offered both), so preferring either family changed nothing. The test now starts eight lots of each family
+  at time 0 and also asserts that more than five decisions offer both families. The engine was not changed for it.
+- 28 Oct, strategies: D2 and D3 copy the same groups (the most contested ones family B visits), so the two differ
+  only in where the copies stand. "Metres added" is the wall length the copies' tools take (by tool kind), plus one
+  OHT bridge for the wing.

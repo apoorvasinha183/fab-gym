@@ -182,6 +182,14 @@ pub struct Shop {
     pub routes: Vec<Route>,
     pub lots: Vec<LotSpec>,
     pub releases: Vec<Release>,
+    /// (route, family): lots on the route belong to the family; others to family "" (docs/TWO-FAMILIES.md)
+    pub families: Vec<(String, String)>,
+    /// (family, lots): at most that many of the family's lots in the fab
+    pub famcaps: Vec<(String, i64)>,
+    /// (group, family, tools): only the group's first that-many tools may process the family's lots
+    pub quals: Vec<(String, String, usize)>,
+    /// (group, family, tools): the group's first that-many tools take the family's waiting lots first
+    pub reserves: Vec<(String, String, usize)>,
 }
 
 // ------------------------------------------------------------------ Python float text
@@ -281,6 +289,16 @@ impl Shop {
 
     pub fn route(&self, name: &str) -> Option<&Route> {
         self.routes.iter().find(|r| r.name == name)
+    }
+
+    /// The family of a route's lots ("" when none is named).
+    pub fn family_of(&self, route: &str) -> &str {
+        self.families.iter().find(|f| f.0 == route).map(|f| f.1.as_str()).unwrap_or("")
+    }
+
+    /// True when any of the two-family switches is on (families only label lots).
+    pub fn has_family_rules(&self) -> bool {
+        !self.famcaps.is_empty() || !self.quals.is_empty() || !self.reserves.is_empty()
     }
 
     /// Read the text form.
@@ -408,6 +426,24 @@ impl Shop {
                         count: pio(f[6])?,
                         prefix: f[7].into(),
                     });
+                }
+                "family" => {
+                    need(3)?;
+                    s.families.push((f[1].into(), f[2].into()));
+                }
+                "famcap" => {
+                    need(3)?;
+                    s.famcaps.push((f[1].into(), pi(f[2])?));
+                }
+                "qual" | "reserve" => {
+                    need(4)?;
+                    let n: usize = f[3].parse().map_err(|_| format!("line {}: {} wants a tool count", no + 2, f[0]))?;
+                    let rec = (f[1].to_string(), f[2].to_string(), n);
+                    if f[0] == "qual" {
+                        s.quals.push(rec);
+                    } else {
+                        s.reserves.push(rec);
+                    }
                 }
                 "oht" => {
                     need(6)?;
@@ -567,6 +603,18 @@ impl Shop {
                 optn(r.count),
                 r.prefix
             );
+        }
+        for (r, f) in &self.families {
+            let _ = writeln!(o, "family\t{r}\t{f}");
+        }
+        for (f, n) in &self.famcaps {
+            let _ = writeln!(o, "famcap\t{f}\t{n}");
+        }
+        for (g, f, n) in &self.quals {
+            let _ = writeln!(o, "qual\t{g}\t{f}\t{n}");
+        }
+        for (g, f, n) in &self.reserves {
+            let _ = writeln!(o, "reserve\t{g}\t{f}\t{n}");
         }
         o
     }

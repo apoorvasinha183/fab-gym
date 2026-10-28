@@ -126,10 +126,16 @@ fn reservation_holds() {
 // 5. Rules see the family, and it matters.
 #[test]
 fn rules_see_the_family() {
-    let shop = toy(FAMS);
+    // a burst of both families at time 0, so they wait together and the choice is real
+    let mut extra = FAMS.to_string();
+    for i in 0..8 {
+        extra.push_str(&format!("lot\tax{i}\tra\t25\t10.0\t0.0\t0\nlot\tbx{i}\trb\t5\t10.0\t0.0\t0\n"));
+    }
+    let shop = toy(&extra);
     let opts = RunOptions { seed: 13, until: Some(8000.0), record: false };
     let mut fams = HashMap::new();
-    let mut prefer = |want: &'static str| {
+    let mut mixed = 0;
+    let prefer = |want: &'static str| {
         move |d: &Decision| d.candidates.iter().position(|c| c.family == want).unwrap_or(d.default)
     };
     let mut pb = prefer("B");
@@ -140,10 +146,14 @@ fn rules_see_the_family() {
         for c in &d.candidates {
             *fams.entry(c.family.clone()).or_insert(0) += 1;
         }
+        if d.candidates.iter().any(|c| c.family == "A") && d.candidates.iter().any(|c| c.family == "B") {
+            mixed += 1;
+        }
         d.default
     };
     run(&shop, &opts, Some(&mut look));
     assert!(fams.contains_key("A") && fams.contains_key("B"));
+    assert!(mixed > 5, "only {mixed} decisions offered both families");
     let mean_b = |r: &RunResult| {
         let v: Vec<f64> = r.lots.iter().filter(|l| l.route == "rb").filter_map(|l| l.done.map(|d| d - l.release)).collect();
         v.iter().sum::<f64>() / v.len() as f64

@@ -296,6 +296,7 @@ fn load_with(dir: &Path, reference: bool) -> Result<Shop, String> {
         routes: out_routes,
         lots,
         releases,
+        ..Shop::default()
     })
 }
 

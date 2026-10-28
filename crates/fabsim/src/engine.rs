@@ -90,10 +90,12 @@ pub struct Candidate {
     pub release: f64,
     /// minutes left before a queue-time limit is breached, if one runs to this step
     pub cqt_slack_minutes: Option<f64>,
+    /// the lot's family ("" when the shop names none; docs/TWO-FAMILIES.md)
+    pub family: String,
 }
 
 impl Candidate {
-    pub const FIELDS: [&'static str; 13] = [
+    pub const FIELDS: [&'static str; 14] = [
         "kind",
         "lots",
         "priority",
@@ -107,6 +109,7 @@ impl Candidate {
         "work_left_minutes",
         "release",
         "cqt_slack_minutes",
+        "family",
     ];
 }
 
@@ -330,6 +333,15 @@ enum Ev {
     Break(u32),
     Wake(u32),
     Up(u32),
+    /// a lot listed with a later start, under its family's cap
+    Admit(u32),
+    UnholdFam(u32),
+}
+
+/// A release or a listed lot held by its family's cap: (release, n, log row) or (lot, log row).
+enum Held {
+    Rel(u32, i64, usize),
+    Lot(u32, usize),
 }
 
 struct HeapItem {
@@ -399,6 +411,8 @@ struct Lot {
     inwip: bool,
     /// where the lot is, when the shop has a layout
     at: Place,
+    /// index into the family names
+    fam: u32,
 }
 
 type QKey = (F, F, u64);
@@ -458,10 +472,21 @@ struct Sim<'a, 'c> {
     chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
     decisions: u64,
     trace: Vec<Trace>,
+    // two families (docs/TWO-FAMILIES.md); with fam_on false nothing below changes a run
+    fam_on: bool,
+    fam_names: Vec<String>,
+    route_fam: Vec<u32>,
+    fam_cap: Vec<Option<i64>>,
+    fam_wip: Vec<i64>,
+    fam_held: Vec<VecDeque<Held>>,
+    /// per tool, a bit per family it may process
+    elig: Vec<u64>,
+    /// per tool, the family whose lots it takes first
+    reserved: Vec<Option<u32>>,
 }
 
 enum Pick {
-    Q(usize),
+    Q(usize, QKey),
     B(usize),
 }
 
@@ -488,6 +513,9 @@ impl<'a, 'c> Sim<'a, 'c> {
         if !self.lots[l as usize].inwip {
             self.lots[l as usize].inwip = true;
             self.wipd(t, 1);
+            if self.fam_on {
+                self.fam_wip[self.lots[l as usize].fam as usize] += 1;
+            }
         }
     }
 
@@ -496,6 +524,13 @@ impl<'a, 'c> Sim<'a, 'c> {
         if self.lots[l as usize].inwip {
             self.lots[l as usize].inwip = false;
             self.wipd(t, -1);
+            if self.fam_on {
+                let f = self.lots[l as usize].fam as usize;
+                self.fam_wip[f] -= 1;
+                if self.fam_cap[f].is_some() && !self.fam_held[f].is_empty() {
+                    self.at(t, Ev::UnholdFam(f as u32));
+                }
+            }
         }
         if self.cap.is_some() && !self.held.is_empty() {
             self.at(t, Ev::Unhold);
@@ -592,7 +627,25 @@ impl<'a, 'c> Sim<'a, 'c> {
         out
     }
 
+    /// May tool ti process lot l (its family qualified)?
+    fn ok(&self, ti: u32, l: u32) -> bool {
+        !self.fam_on || (self.elig[ti as usize] >> self.lots[l as usize].fam) & 1 == 1
+    }
+
+    /// The family a waiting batch's lots belong to (one route, so one family).
+    fn batch_fam(&self, g: u32, wi: usize) -> u32 {
+        self.route_fam[self.waiting[g as usize][wi].key.0 as usize]
+    }
+
     fn pick(&self, g: u32, ti: u32) -> Option<Pick> {
+        if self.fam_on {
+            if let Some(rf) = self.reserved[ti as usize] {
+                if let Some(p) = self.pick_among(g, ti, Some(rf)) {
+                    return Some(p);
+                }
+            }
+            return self.pick_among(g, ti, None);
+        }
         let tool_setup = self.tools[ti as usize].setup;
         let mut best: Option<((F, u8, F), Pick)> = None;
         for (qi, q) in self.queues[g as usize].iter().enumerate() {
@@ -600,10 +653,42 @@ impl<'a, 'c> Sim<'a, 'c> {
             let change = if q.key == 0 || q.key == tool_setup { 0 } else { 1 };
             let cand = (k.0, change, k.1);
             if best.as_ref().is_none_or(|b| cand < b.0) {
-                best = Some((cand, Pick::Q(qi)));
+                best = Some((cand, Pick::Q(qi, *k)));
             }
         }
         for (wi, oldest) in self.ready_batches(g) {
+            let w = &self.waiting[g as usize][wi];
+            let pr = w
+                .lots
+                .iter()
+                .map(|(_, x)| -self.lots[*x as usize].priority)
+                .fold(f64::INFINITY, |a, b| if b < a { b } else { a });
+            let cand = (F(pr), 0, F(oldest));
+            if best.as_ref().is_none_or(|b| cand < b.0) {
+                best = Some((cand, Pick::B(wi)));
+            }
+        }
+        best.map(|b| b.1)
+    }
+
+    /// Today's rule over the lots tool ti may process, and only family `only` when given.
+    fn pick_among(&self, g: u32, ti: u32, only: Option<u32>) -> Option<Pick> {
+        let tool_setup = self.tools[ti as usize].setup;
+        let mut best: Option<((F, u8, F), Pick)> = None;
+        for (qi, q) in self.queues[g as usize].iter().enumerate() {
+            let first = q.q.iter().find(|(_, &l)| self.ok(ti, l) && only.is_none_or(|f| self.lots[l as usize].fam == f));
+            let Some((k, _)) = first else { continue };
+            let change = if q.key == 0 || q.key == tool_setup { 0 } else { 1 };
+            let cand = (k.0, change, k.1);
+            if best.as_ref().is_none_or(|b| cand < b.0) {
+                best = Some((cand, Pick::Q(qi, *k)));
+            }
+        }
+        for (wi, oldest) in self.ready_batches(g) {
+            let f = self.batch_fam(g, wi);
+            if (self.elig[ti as usize] >> f) & 1 == 0 || only.is_some_and(|o| o != f) {
+                continue;
+            }
             let w = &self.waiting[g as usize][wi];
             let pr = w
                 .lots
@@ -702,6 +787,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             work_left_minutes: self.rem_lot[r][lot.step] + lot.size as f64 * self.rem_piece[r][lot.step],
             release: lot.release,
             cqt_slack_minutes: slack,
+            family: self.fam_names[lot.fam as usize].clone(),
         }
     }
 
@@ -709,14 +795,32 @@ impl<'a, 'c> Sim<'a, 'c> {
     fn decision(&self, g: u32, ti: u32, t: f64) -> Option<(Decision, Vec<(bool, usize, Option<QKey>)>)> {
         let mut cands = vec![];
         let mut handles = vec![];
+        // with families on: only lots the tool may process, and only its reserved family's while any wait
+        let only: Option<u32> = if self.fam_on {
+            self.reserved[ti as usize].filter(|&rf| {
+                self.queues[g as usize].iter().any(|q| q.q.values().any(|&l| self.ok(ti, l) && self.lots[l as usize].fam == rf))
+                    || self.ready_batches(g).iter().any(|&(wi, _)| self.batch_fam(g, wi) == rf)
+            })
+        } else {
+            None
+        };
         for (qi, q) in self.queues[g as usize].iter().enumerate() {
             for (k, &l) in q.q.iter() {
+                if self.fam_on && (!self.ok(ti, l) || only.is_some_and(|f| self.lots[l as usize].fam != f)) {
+                    continue;
+                }
                 let a = self.lots[l as usize].arrived;
                 cands.push(self.candidate("lot", &[l], ti, t, a));
                 handles.push((true, qi, Some(*k)));
             }
         }
         for (wi, oldest) in self.ready_batches(g) {
+            if self.fam_on {
+                let f = self.batch_fam(g, wi);
+                if (self.elig[ti as usize] >> f) & 1 == 0 || only.is_some_and(|o| o != f) {
+                    continue;
+                }
+            }
             let taken = self.batch_take(g, wi);
             cands.push(self.candidate("batch", &taken, ti, t, oldest));
             handles.push((false, wi, None));
@@ -725,7 +829,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             return None;
         }
         let default = match self.pick(g, ti).unwrap() {
-            Pick::Q(qi) => handles.iter().position(|h| h.0 && h.1 == qi).unwrap(),
+            Pick::Q(qi, k) => handles.iter().position(|h| h.0 && h.1 == qi && h.2 == Some(k)).unwrap(),
             Pick::B(wi) => handles.iter().position(|h| !h.0 && h.1 == wi).unwrap(),
         };
         let mut gt = GroupTools::default();
@@ -797,8 +901,8 @@ impl<'a, 'c> Sim<'a, 'c> {
                 self.decisions += 1;
             }
             match choice {
-                Pick::Q(qi) => {
-                    let (_, l) = self.queues[g as usize][qi].q.pop_first().unwrap();
+                Pick::Q(qi, k) => {
+                    let l = self.queues[g as usize][qi].q.remove(&k).unwrap();
                     self.start_work(ti, t, vec![l]);
                 }
                 Pick::B(wi) => {
@@ -1025,8 +1129,45 @@ impl<'a, 'c> Sim<'a, 'c> {
             entered: false,
             inwip: false,
             at,
+            fam: self.route_fam[r],
         });
         (self.lots.len() - 1) as u32
+    }
+
+    /// A lot reaching the fab (or its next step after a listed start): the reference engine's arrival.
+    fn arrive(&mut self, l: u32, t: f64) {
+        if self.full && self.lots[l as usize].trail.is_none() {
+            self.lots[l as usize].trail = Some(vec![]);
+        }
+        self.enter(l, t);
+        let first = !self.lots[l as usize].entered;
+        self.lots[l as usize].entered = true;
+        let st0 = self.step_of(l).map(|s| s.sample);
+        let p0 = match st0 {
+            Some(s) if first => s,
+            _ => None,
+        };
+        if let Some(p) = p0 {
+            if self.lots[l as usize].rng.random() >= p {
+                self.lots[l as usize].step += 1;
+                self.move_on(l, t);
+                return;
+            }
+        }
+        if st0.is_none() {
+            self.lots[l as usize].done = Some(t);
+            self.leave(l, t);
+            return;
+        }
+        self.enqueue(l, t);
+    }
+
+    /// Is there room for one more lot of family f under its cap?
+    fn fam_room(&self, f: usize) -> bool {
+        match self.fam_cap[f] {
+            None => true,
+            Some(c) => self.fam_held[f].is_empty() && self.fam_wip[f] < c,
+        }
     }
 
     fn release(&mut self, k: u32, n: i64, t: f64) {
@@ -1122,6 +1263,56 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
             })
             .collect(),
     };
+    // two families (docs/TWO-FAMILIES.md)
+    let mut fam_names: Vec<String> = vec![String::new()];
+    let route_fam: Vec<u32> = shop
+        .routes
+        .iter()
+        .map(|r| {
+            let f = shop.family_of(&r.name).to_string();
+            match fam_names.iter().position(|x| *x == f) {
+                Some(i) => i as u32,
+                None => {
+                    fam_names.push(f);
+                    (fam_names.len() - 1) as u32
+                }
+            }
+        })
+        .collect();
+    for f in shop.famcaps.iter().map(|(f, _)| f).chain(shop.quals.iter().map(|(_, f, _)| f)).chain(shop.reserves.iter().map(|(_, f, _)| f)) {
+        if !fam_names.contains(f) {
+            fam_names.push(f.clone());
+        }
+    }
+    assert!(fam_names.len() <= 64, "at most 64 families");
+    let fam_on = shop.has_family_rules();
+    let fidx = |f: &str| fam_names.iter().position(|x| x == f).unwrap() as u32;
+    let mut elig = vec![u64::MAX; tools.len()];
+    let mut reserved: Vec<Option<u32>> = vec![None; tools.len()];
+    if fam_on {
+        for (g, f, n) in &shop.quals {
+            let Some(gi) = gidx.get(g.as_str()) else { panic!("qual names unknown group {g}") };
+            let bit = 1u64 << fidx(f);
+            for (k, &ti) in group_tools[*gi as usize].iter().enumerate() {
+                if k >= *n {
+                    elig[ti as usize] &= !bit;
+                }
+            }
+        }
+        for (g, f, n) in &shop.reserves {
+            let Some(gi) = gidx.get(g.as_str()) else { panic!("reserve names unknown group {g}") };
+            for (k, &ti) in group_tools[*gi as usize].iter().enumerate() {
+                if k < *n {
+                    reserved[ti as usize] = Some(fidx(f));
+                }
+            }
+        }
+    }
+    let nf = fam_names.len();
+    let mut fam_cap = vec![None; nf];
+    for (f, n) in &shop.famcaps {
+        fam_cap[fidx(f) as usize] = Some(*n);
+    }
     let mut sim = Sim {
         shop,
         seed: opts.seed,
@@ -1165,6 +1356,14 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         chooser,
         decisions: 0,
         trace: vec![],
+        fam_on,
+        fam_names,
+        route_fam,
+        fam_cap,
+        fam_wip: vec![0; nf],
+        fam_held: (0..nf).map(|_| VecDeque::new()).collect(),
+        elig,
+        reserved,
     };
 
     // downs: given windows, maintenance calendars, breakdowns
@@ -1206,7 +1405,12 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
     for d in &shop.lots {
         let wip = d.step > 0 || d.start < 0.0;
         let l = sim.new_lot(d.id.clone(), &d.route, d.size, d.priority, d.start, d.step, wip);
-        sim.at(d.start.max(0.0), Ev::Arrive(l));
+        let f = sim.lots[l as usize].fam as usize;
+        if sim.fam_on && !wip && sim.fam_cap[f].is_some() {
+            sim.at(d.start, Ev::Admit(l));
+        } else {
+            sim.at(d.start.max(0.0), Ev::Arrive(l));
+        }
     }
     for (k, rel) in shop.releases.iter().enumerate() {
         sim.at(rel.first, Ev::Release(k as u32, 0));
@@ -1221,31 +1425,39 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         }
         sim.now = t;
         match ev {
-            Ev::Arrive(l) => {
-                if sim.full && sim.lots[l as usize].trail.is_none() {
-                    sim.lots[l as usize].trail = Some(vec![]);
+            Ev::Arrive(l) => sim.arrive(l, t),
+            Ev::Admit(l) => {
+                let f = sim.lots[l as usize].fam as usize;
+                let id = sim.lots[l as usize].id.clone();
+                if sim.fam_room(f) {
+                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.fam_wip[f]) });
+                    sim.lots[l as usize].release = t;
+                    sim.arrive(l, t);
+                } else {
+                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
+                    let row = sim.release_log.len() - 1;
+                    sim.fam_held[f].push_back(Held::Lot(l, row));
                 }
-                sim.enter(l, t);
-                let first = !sim.lots[l as usize].entered;
-                sim.lots[l as usize].entered = true;
-                let st0 = sim.step_of(l).map(|s| s.sample);
-                let p0 = match st0 {
-                    Some(s) if first => s,
-                    _ => None,
-                };
-                if let Some(p) = p0 {
-                    if sim.lots[l as usize].rng.random() >= p {
-                        sim.lots[l as usize].step += 1;
-                        sim.move_on(l, t);
-                        continue;
+            }
+            Ev::UnholdFam(f) => {
+                let f = f as usize;
+                let cap = sim.fam_cap[f].unwrap();
+                while sim.fam_wip[f] < cap {
+                    let Some(h) = sim.fam_held[f].pop_front() else { break };
+                    match h {
+                        Held::Rel(k, n, row) => {
+                            sim.release_log[row].released = Some(t);
+                            sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
+                            sim.release(k, n, t);
+                        }
+                        Held::Lot(l, row) => {
+                            sim.release_log[row].released = Some(t);
+                            sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
+                            sim.lots[l as usize].release = t;
+                            sim.arrive(l, t);
+                        }
                     }
                 }
-                if st0.is_none() {
-                    sim.lots[l as usize].done = Some(t);
-                    sim.leave(l, t);
-                    continue;
-                }
-                sim.enqueue(l, t);
             }
             Ev::Release(k, n) => {
                 let rel = &shop.releases[k as usize];
@@ -1255,7 +1467,22 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                     }
                 }
                 let id = sim.rid(k, n);
-                if sim.cap.is_some() && (!sim.held.is_empty() || sim.wip >= sim.cap.unwrap()) {
+                let rf = if sim.fam_on {
+                    let r = shop.routes.iter().position(|x| x.name == rel.route).unwrap();
+                    Some(sim.route_fam[r] as usize).filter(|&f| sim.fam_cap[f].is_some())
+                } else {
+                    None
+                };
+                if let Some(f) = rf {
+                    if sim.fam_room(f) {
+                        sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.fam_wip[f]) });
+                        sim.release(k, n, t);
+                    } else {
+                        sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
+                        let row = sim.release_log.len() - 1;
+                        sim.fam_held[f].push_back(Held::Rel(k, n, row));
+                    }
+                } else if sim.cap.is_some() && (!sim.held.is_empty() || sim.wip >= sim.cap.unwrap()) {
                     sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
                     sim.held.push_back((k, n, sim.release_log.len() - 1));
                 } else {

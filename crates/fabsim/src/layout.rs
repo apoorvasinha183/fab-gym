@@ -53,6 +53,8 @@ pub struct Config {
     pub kinds: Vec<Kind>,
     /// move each group to the phase that sends it most of its lots (by the name rule's phases)
     pub phase_by_flow: bool,
+    /// groups whose name contains one of these texts keep their name rule's phase under `phase_by_flow`
+    pub pin: Vec<String>,
     /// the OHT: minutes per move, metres per minute, minutes of jitter
     pub overhead: f64,
     pub speed: f64,
@@ -94,6 +96,7 @@ impl Config {
             default_phase: 0,
             kinds: vec![],
             phase_by_flow: false,
+            pin: vec![],
             overhead: 4.0,
             speed: 150.0,
             jitter: 1.0,
@@ -315,6 +318,9 @@ impl Problem {
                 let mut moved = false;
                 for g in 0..phase.len() {
                     let Some(own) = phase[g] else { continue };
+                    if cfg.pin.iter().any(|t| shop.groups[g].name.contains(t.as_str())) {
+                        continue;
+                    }
                     let mut inflow = vec![0.0; nphases];
                     for f in flows.iter().filter(|f| f.1 == g) {
                         let from = if f.0 == START {
