@@ -98,6 +98,9 @@ space is `Discrete(8)`, and an action on an empty slot is masked to the engine's
    back to the engine's pick and is counted.
 8. `FabGymEnv` returns observations of a fixed shape, masks empty slots, and an episode of engine picks scores the
    same as test 5.
+9. `fabrule env RULE.rs SHOP` plays a written rule (an E2 winner, or a rule Muse Spark Open writes) through the
+   same episode code as `fabsim env` (`fabsim::gym`); today's rule written out scores exactly as the engine's own
+   pick, with no faults.
 
 ## Changes
 
@@ -105,3 +108,7 @@ space is `Discrete(8)`, and an action on an empty slot is masked to the engine's
   rework near the run's end whose lot has not started again. It now checks that every rework the trace shows
   has a hold, that every hold's lot did that step on that tool at that moment and did not move on, and that
   there is one hold per tool and moment. The rule tested is unchanged.
+- 29 Oct, before the contest's code: written rules (E2's winners now, the model's when its key is in) enter the
+  contest through `fabrule env`, which shares the episode loop with `fabsim env` (moved into `fabsim::gym`), so
+  every contestant is still scored by one piece of code. Test 9 added. E2's rules were bred for money a day with
+  two families at ×4; here they play today's single-family fab with defects, which the card says.
