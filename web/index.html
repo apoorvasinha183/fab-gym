@@ -5,16 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fab Gym Floor</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="floor-ui.css">
 </head>
-<body>
+<body class="opening-on">
 <canvas id="floor" aria-label="The fab floor: halls of tools around a spine belt"></canvas>
 
 <header class="card brand">
   <div class="title">Fab Gym</div>
   <div class="sub">A wafer fab on the SMT2020 model, simulated in your browser</div>
-  <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
   <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
 </header>
+
+<form id="cmd" class="cmd" role="search" autocomplete="off">
+  <span class="cmd-ic" aria-hidden="true">✦</span>
+  <label for="cmd-q" class="sr">Ask the fab a question</label>
+  <input id="cmd-q" type="text" placeholder="Ask the fab a question…">
+  <kbd>⌘K</kbd>
+</form>
+<nav class="lenses" aria-label="What the floor shows">
+  <button type="button" data-lens="day" class="on" aria-pressed="true">Day</button>
+  <button type="button" data-lens="heat" aria-pressed="false">Waiting heat</button>
+  <button type="button" data-lens="proto" aria-pressed="false">Prototype lots</button>
+  <button type="button" data-lens="flows" aria-pressed="false">Flows</button>
+</nav>
+<div id="lens-note" class="lens-note" aria-live="polite"></div>
 
 <section class="card kpis" aria-label="How the fab is doing">
   <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
@@ -23,8 +37,8 @@
   <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">tools working</div></div>
 </section>
 
-<aside class="card panel" id="panel">
-  <h2>Try a change</h2>
+<aside class="card panel drawer" id="panel" hidden>
+  <h2>Try a change <button type="button" class="icon close" data-close="panel" aria-label="Close">✕</button></h2>
   <label>Dispatch rule
     <select id="rule">
       <option value="0">Today's rule: hot lots first, then no setup change, then oldest</option>
@@ -72,8 +86,9 @@
   <p class="note small">Every number comes from the simulator on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020). It is a published model, not a real fab.</p>
 </aside>
 
-<section class="card compare" id="compare" hidden>
+<section class="card compare drawer" id="compare" hidden>
   <div class="tabs" role="tablist">
+    <button type="button" class="close-tab" data-close="compare" aria-label="Close">✕</button>
     <button role="tab" id="tab-ask" aria-selected="false" type="button">Ask</button>
     <button role="tab" id="tab-long" aria-selected="true" class="on" type="button">300-day runs</button>
     <button role="tab" id="tab-change" aria-selected="false" type="button">Your change</button>
@@ -141,8 +156,9 @@
 
 <section class="card ticker" aria-label="Floor log"><ol id="ticker"></ol></section>
 
-<footer class="card bar">
+<footer class="card bar pill">
   <button id="play" class="icon" aria-label="Play or pause">❚❚</button>
+  <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
   <div class="speeds" role="group" aria-label="Speed">
     <button data-speed="20">1×</button>
     <button data-speed="60" class="on">3×</button>
@@ -153,11 +169,55 @@
     <input id="scrub" type="range" min="0" max="4320" step="1" value="0" aria-label="Fab time">
   </div>
   <button id="fit" class="icon" aria-label="Fit the whole fab">⤢</button>
+  <span class="sep" aria-hidden="true"></span>
+  <button id="numbers-open" type="button" class="ghost">Numbers</button>
+  <button id="panel-open" type="button" class="ghost">Try a change</button>
+  <button id="ask-open" type="button" class="askbtn">Ask the fab</button>
 </footer>
 
-<div id="tip" class="tip" hidden></div>
-<div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit</div>
+<section id="opening" class="opening" aria-labelledby="open-title">
+  <div class="eyebrow">Fab Gym · a wafer fab on the SMT2020 model</div>
+  <h1 id="open-title">Ask the fab a question</h1>
+  <form id="open-form" class="open-form" autocomplete="off">
+    <label for="open-q" class="sr">Your question</label>
+    <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
+    <button type="submit" class="askbtn">Ask</button>
+  </form>
+  <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
+  <button id="open-explore" type="button" class="link explore">or explore the floor</button>
+  <p class="fine">Agents propose, the simulator scores, a person signs. A published model of a fab, not a real one.</p>
+</section>
 
+<section id="numbers" class="card numbers" role="dialog" aria-modal="true" aria-labelledby="numbers-title" hidden>
+  <div class="numbers-head">
+    <h2 id="numbers-title">The numbers</h2>
+    <button type="button" class="icon close" data-close="numbers" aria-label="Close">✕</button>
+  </div>
+  <p class="lead" id="num-lead"></p>
+  <div class="num-controls">
+    <div class="seg" role="group" aria-label="Measure" id="num-metric">
+      <button type="button" data-m="money" class="on">Money a day</button>
+      <button type="button" data-m="a_wafers">Volume wafers a day</button>
+      <button type="button" data-m="b_cycle">Prototype cycle time</button>
+    </div>
+    <div class="seg" role="group" aria-label="Prototype orders" id="num-share">
+      <span class="seg-l">Prototype orders</span>
+      <button type="button" data-s="1">×1</button><button type="button" data-s="2">×2</button><button type="button" data-s="4" class="on">×4</button><button type="button" data-s="8">×8</button>
+    </div>
+  </div>
+  <div id="num-base" class="num-base"></div>
+  <div class="num-charts">
+    <figure><figcaption id="num-forest-t"></figcaption><svg id="num-forest" role="img"></svg></figure>
+    <figure><figcaption id="num-lines-t"></figcaption><svg id="num-lines" role="img"></svg><div id="num-lines-key" class="key"></div></figure>
+  </div>
+  <div id="num-question"></div>
+  <p class="note small" id="num-note"></p>
+</section>
+
+<div id="tip" class="tip" hidden></div>
+<div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit · T to tilt · ⌘K to ask</div>
+
+<script src="ui.js"></script>
 <script src="stages.js"></script>
 <script src="ask.js"></script>
 <script src="app.js"></script>

@@ -24,7 +24,7 @@ const HALLS = [
 // 20 apart in CIE Lab for normal, protan, deutan and tritan vision; each is at least 3:1 against
 // the hall floor. Idle tools are drawn as outlines and broken ones carry a cross, so state never
 // rests on colour alone.
-const STATE_COLORS = ["#7fcfa8", "#7a8592", "#7a8ce6", "#cf4f4a", "#e8bb4e"];
+const STATE_COLORS = ["#4FE3A3", "#8FB3AE", "#7F9CFF", "#FF6262", "#FFC857"];
 const STATE_NAMES = ["working", "idle", "maintenance", "broken down", "changing setup"];
 const LOT = "#efe2c4", HOT = "#e8955a";
 const TOOL = 3, PITCH = 4;
@@ -322,12 +322,17 @@ function resize() {
 
 function fit() {
   if (!G) return;
-  const pad = { l: innerWidth > 900 && !$("compare").hidden ? 372 : 24, r: innerWidth > 900 ? 330 : 24, t: 110, b: 80 };
+  const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
-  const s = Math.min(w / G.L, h / G.bottom);
+  updateTilt();
+  const M = 6; // the board's margin around the fab, in tiles
+  const xs = [], ys = [];
+  for (const [x, y] of [[-M, -M], [G.L + M, -M], [G.L + M, G.bottom + M], [-M, G.bottom + M]]) { xs.push(TM.a * x + TM.c * y); ys.push(TM.b * x + TM.d * y); }
+  const s = Math.min(w / (Math.max(...xs) - Math.min(...xs)), h / (Math.max(...ys) - Math.min(...ys) + 3));
   view.s = s;
-  view.x = -(pad.l + (w - G.L * s) / 2) / s;
-  view.y = -(pad.t + (h - G.bottom * s) / 2) / s;
+  const [px, py] = untilt(pad.l + w / 2, pad.t + h / 2);
+  view.x = G.L / 2 - px / s;
+  view.y = G.bottom / 2 - py / s;
 }
 
 function ringPoint(s) {
@@ -360,6 +365,25 @@ function tripPoint(tr, now) {
 
 function W(x, y) { return [(x - view.x) * view.s, (y - view.y) * view.s]; }
 
+// The living diorama: the flat drawing is turned by TILT.rot and its depth squashed by TILT.k, about the canvas
+// centre, with one canvas transform. TM maps the flat picture to the screen; labels and lots are drawn upright at
+// their projected points; walls rise from the projected hall outlines. T toggles it.
+const TILT = { on: true, rot: -0.30, k: 0.6 };
+let TM = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, TMi = TM;
+function updateTilt() {
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  const m = TILT.on ? new DOMMatrix().translate(cx, cy).scale(1, TILT.k).rotate((TILT.rot * 180) / Math.PI).translate(-cx, -cy) : new DOMMatrix();
+  const i = m.inverse();
+  TM = { a: m.a, b: m.b, c: m.c, d: m.d, e: m.e, f: m.f };
+  TMi = { a: i.a, b: i.b, c: i.c, d: i.d, e: i.e, f: i.f };
+}
+function T(X, Y) { return [TM.a * X + TM.c * Y + TM.e, TM.b * X + TM.d * Y + TM.f]; }
+function untilt(X, Y) { return [TMi.a * X + TMi.c * Y + TMi.e, TMi.b * X + TMi.d * Y + TMi.f]; }
+function floorSpace() { const r = window.devicePixelRatio || 1; ctx.setTransform(r * TM.a, r * TM.b, r * TM.c, r * TM.d, r * TM.e, r * TM.f); }
+function screenSpace() { const r = window.devicePixelRatio || 1; ctx.setTransform(r, 0, 0, r, 0, 0); }
+// a point of the floor (world tiles) on the screen
+function S(x, y) { const [X, Y] = W(x, y); return T(X, Y); }
+
 function rr(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -373,11 +397,12 @@ function rr(x, y, w, h, r) {
 // The look, in the spirit of Factorio and drawn here: concrete floors, yellow-railed belts with
 // moving chevrons, machines as sprites with a state panel and a status light, lots as carrier boxes.
 const LOOK = {
-  ground: "#262420", hallFloor: "#3a3833", wall: "#6e695e", wallDark: "#1b1a17",
-  rail: "#d9a12b", beltTop: "#2b2926", chevron: "rgba(140, 104, 34, 0.95)",
-  body: "#5a564d", bodyEdge: "#1b1a17", plate: "rgba(22, 21, 18, 0.82)",
-  title: "#f3e4c4", sub: "#bcae92", label: "#d6cbb4", section: "#e3a83a",
-  lot: "#eadfc4", lotTop: "#b7a88a", hot: "#f08a3c", hotTop: "#b8602a", proto: "#e58ad6", protoTop: "#a8559c",
+  sky0: "#16323A", sky1: "#0B1418", sky2: "#070C0F", boardSide: "#071013",
+  ground: "#0F1D22", hallFloor: "#12262D", wall: "#2C5560", wallDark: "#0A1418", wallTop: "#7EE8D8",
+  rail: "#FFB347", beltTop: "#1F3A42", chevron: "rgba(255, 179, 71, 0.85)", glow: "rgba(255, 179, 71, 0.16)",
+  body: "#3A4A52", bodyEdge: "#0A1418", plate: "rgba(14, 27, 31, 0.86)",
+  title: "#E8F2F0", sub: "#8FB3AE", label: "#A9C4C0", section: "#7EE8D8",
+  lot: "#F4E7C6", lotTop: "#c9bc9c", hot: "#FF8A4C", hotTop: "#c25e2c", proto: "#FF8AD8", protoTop: "#c25aa6",
 };
 
 function noiseTile(base, spread, lines, seed) {
@@ -404,7 +429,7 @@ function noiseTile(base, spread, lines, seed) {
 const TILES = {};
 function pattern(name) {
   if (!TILES[name]) {
-    const src = name === "ground" ? noiseTile(LOOK.ground, 0.10, "rgba(0,0,0,0.22)", 7) : noiseTile(LOOK.hallFloor, 0.07, "rgba(0,0,0,0.18)", 11);
+    const src = name === "ground" ? noiseTile(LOOK.ground, 0.05, "rgba(126,232,216,0.07)", 7) : noiseTile(LOOK.hallFloor, 0.05, "rgba(126,232,216,0.10)", 11);
     TILES[name] = ctx.createPattern(src, "repeat");
   }
   // anchored to the world: one 64 px tile spans 4 floor tiles
@@ -435,7 +460,7 @@ function sprite(st, px) {
   const a = S * 0.2, w = S * 0.6;
   R(a, a, w, w, S * 0.08);
   if (st === 1) {
-    g.fillStyle = "#2a2925"; g.fill();
+    g.fillStyle = "#16262c"; g.fill();
     g.strokeStyle = STATE_COLORS[1]; g.lineWidth = Math.max(1, S * 0.07); g.stroke();
   } else {
     g.fillStyle = STATE_COLORS[st]; g.fill();
@@ -462,7 +487,7 @@ function sprite(st, px) {
   }
   // status light
   g.beginPath(); g.arc(S * 0.84, S * 0.84, Math.max(1, S * 0.065), 0, 2 * Math.PI);
-  g.fillStyle = st === 0 ? "#d6ffe6" : st === 3 ? "#ff8a80" : st === 1 ? "#3a3833" : "#ffe7a8";
+  g.fillStyle = st === 0 ? "#d6ffe6" : st === 3 ? "#ffb0aa" : st === 1 ? "#2C5560" : "#fff0c2";
   g.fill();
   SPRITES.set(key, c);
   return c;
@@ -475,6 +500,7 @@ function drawBelt(points, phase, chevrons = true, small = false) {
   const path = () => { ctx.beginPath(); pts.forEach(([X, Y], i) => (i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y))); };
   ctx.lineCap = "butt";
   ctx.lineJoin = "miter";
+  if (!small && chevrons) { path(); ctx.strokeStyle = LOOK.glow; ctx.lineWidth = Math.max(26, 6 * s); ctx.stroke(); }
   path();
   ctx.strokeStyle = LOOK.wallDark; ctx.lineWidth = Math.max(10 * m, (small ? 2.0 : 2.7) * s); ctx.stroke();
   ctx.strokeStyle = LOOK.rail; ctx.lineWidth = Math.max(8 * m, (small ? 1.7 : 2.3) * s); ctx.stroke();
@@ -503,23 +529,93 @@ function drawBelt(points, phase, chevrons = true, small = false) {
   ctx.stroke();
 }
 
+// X, Y are flat-picture coordinates; the caller is in floor space and stays there
 function drawLot(X, Y, sz, hot, proto) {
+  const [x, y] = T(X, Y);
+  const dim = UI.lens === "proto" && !proto;
+  if (dim) ctx.globalAlpha = 0.14;
+  else if (UI.lens === "proto") sz *= 1.6;
+  const h = sz * 0.75, top = sz * 0.38;
+  screenSpace();
   ctx.fillStyle = LOOK.bodyEdge;
-  ctx.fillRect(X - sz / 2 - 1, Y - sz / 2 - 1, sz + 2, sz + 2);
-  ctx.fillStyle = proto ? LOOK.proto : hot ? LOOK.hot : LOOK.lot;
-  ctx.fillRect(X - sz / 2, Y - sz / 2, sz, sz);
+  ctx.fillRect(x - sz / 2 - 1, y - h - top - 1, sz + 2, h + top + 2);
   ctx.fillStyle = proto ? LOOK.protoTop : hot ? LOOK.hotTop : LOOK.lotTop;
-  ctx.fillRect(X - sz / 2, Y - sz / 2, sz, Math.max(1, sz * 0.3));
+  ctx.fillRect(x - sz / 2, y - h, sz, h);
+  ctx.fillStyle = proto ? LOOK.proto : hot ? LOOK.hot : LOOK.lot;
+  ctx.fillRect(x - sz / 2, y - h - top, sz, top);
+  if (dim) ctx.globalAlpha = 1;
+  floorSpace();
 }
 
-function plateText(text, X, Y, size, weight, color) {
+// X, Y are flat-picture coordinates; dx, dy a screen offset. Drawn upright; the caller stays in floor space.
+function plateText(text, X, Y, size, weight, color, dx = 0, dy = 0) {
+  const [x0, y0] = T(X, Y), x = x0 + dx, y = y0 + dy;
+  screenSpace();
   ctx.font = `${weight} ${size}px -apple-system, Inter, sans-serif`;
   const w = ctx.measureText(text).width;
   ctx.fillStyle = LOOK.plate;
-  ctx.fillRect(X - size * 0.35, Y - size * 0.2, w + size * 0.7, size * 1.35);
+  ctx.fillRect(x - size * 0.35, y - size * 0.2, w + size * 0.7, size * 1.35);
   ctx.fillStyle = color;
-  ctx.fillText(text, X, Y);
+  ctx.fillText(text, x, y);
+  floorSpace();
   return w;
+}
+function uprightText(text, X, Y, font, color) {
+  const [x, y] = T(X, Y);
+  screenSpace();
+  ctx.font = font; ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  floorSpace();
+}
+
+// a hall's walls: the four sides of its outline raised by h screen pixels. Sides facing away are solid,
+// sides facing the viewer are glass, drawn after the hall's contents.
+function hallWalls(x, y, w, hgt, h, front) {
+  const P = [S(x, y), S(x + w, y), S(x + w, y + hgt), S(x, y + hgt)];
+  screenSpace();
+  for (let i = 0; i < 4; i++) {
+    const [ax, ay] = P[i], [bx, by] = P[(i + 1) % 4];
+    const ny = -(bx - ax); // the outward normal's screen y, for a clockwise outline
+    if ((ny > 0) !== front) continue;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(bx, by - h); ctx.lineTo(ax, ay - h); ctx.closePath();
+    if (front) {
+      ctx.fillStyle = "rgba(126, 232, 216, 0.05)"; ctx.fill();
+      ctx.strokeStyle = "rgba(126, 232, 216, 0.30)"; ctx.lineWidth = 1; ctx.stroke();
+    } else {
+      const gr = ctx.createLinearGradient(0, Math.min(ay, by) - h, 0, Math.max(ay, by));
+      gr.addColorStop(0, LOOK.wall); gr.addColorStop(1, "#16323A");
+      ctx.fillStyle = gr; ctx.fill();
+    }
+    ctx.beginPath(); ctx.moveTo(ax, ay - h); ctx.lineTo(bx, by - h);
+    ctx.strokeStyle = front ? "rgba(126, 232, 216, 0.75)" : LOOK.wallTop; ctx.lineWidth = front ? 1.5 : 1.2; ctx.stroke();
+  }
+  floorSpace();
+}
+
+// the board the fab stands on: a slab with a visible edge
+function board() {
+  const M = 6;
+  const P = [S(-M, -M), S(G.L + M, -M), S(G.L + M, G.bottom + M), S(-M, G.bottom + M)];
+  const D = Math.max(8, 1.6 * view.s);
+  screenSpace();
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 60; ctx.shadowOffsetY = 40;
+  ctx.beginPath(); P.forEach(([x, y], i) => (i ? ctx.lineTo(x, y + D) : ctx.moveTo(x, y + D))); ctx.closePath();
+  ctx.fillStyle = LOOK.boardSide; ctx.fill();
+  ctx.restore();
+  for (let i = 0; i < 4; i++) {
+    const [ax, ay] = P[i], [bx, by] = P[(i + 1) % 4];
+    if (-(bx - ax) <= 0) continue;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(bx, by + D); ctx.lineTo(ax, ay + D); ctx.closePath();
+    ctx.fillStyle = "#0E1B1F"; ctx.fill();
+  }
+  floorSpace();
+  const [x0, y0] = W(-M, -M);
+  ctx.fillStyle = pattern("ground");
+  ctx.fillRect(x0, y0, (G.L + 2 * M) * view.s, (G.bottom + 2 * M) * view.s);
+  ctx.strokeStyle = "rgba(126, 232, 216, 0.25)"; ctx.lineWidth = 1.5 / TILT.k;
+  ctx.strokeRect(x0, y0, (G.L + 2 * M) * view.s, (G.bottom + 2 * M) * view.s);
 }
 
 function hazard(X, Y, w, h) {
@@ -536,12 +632,14 @@ function hazard(X, Y, w, h) {
 function draw() {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = LOOK.ground;
+  const sky = ctx.createRadialGradient(innerWidth / 2, innerHeight * 0.4, 0, innerWidth / 2, innerHeight * 0.4, Math.max(innerWidth, innerHeight) * 0.75);
+  sky.addColorStop(0, LOOK.sky0); sky.addColorStop(0.6, LOOK.sky1); sky.addColorStop(1, LOOK.sky2);
+  ctx.fillStyle = sky;
   ctx.fillRect(0, 0, innerWidth, innerHeight);
   if (!G || !P) return;
+  updateTilt();
   const s = view.s;
-  ctx.fillStyle = pattern("ground");
-  ctx.fillRect(0, 0, innerWidth, innerHeight);
+  board();
   // belts: the spine and each hall's feeder
   const phase = (t * 0.35) % 1;
   HALLS_L.forEach((h, i) => {
@@ -550,8 +648,11 @@ function draw() {
     drawBelt([[p.door.x, p.door.y], [p.door.x, by]], phase, false);
   });
   drawBelt([[0, G.yTop], [G.L, G.yTop], [G.L, G.yBot], [0, G.yBot], [0, G.yTop]], phase);
-  // halls
+  // halls: back walls first, then floors and contents, then the glass fronts
   const showLabels = s > 2.6;
+  const wallH = Math.max(5, 2.2 * s * TILT.k);
+  if (TILT.on) HALLS_L.forEach((h, i) => hallWalls(G.pos[i].x, G.pos[i].y, h.w, h.h, wallH, false));
+  const titles = []; // hall titles go on top of everything
   HALLS_L.forEach((h, i) => {
     const p = G.pos[i];
     const [X, Y] = W(p.x, p.y);
@@ -569,27 +670,30 @@ function draw() {
     // title on a plate
     ctx.textBaseline = "top";
     const tsz = Math.max(12, 2.6 * s);
-    const tw = plateText(h.name, X + 1.6 * s, Y + 1.2 * s, tsz, 700, LOOK.title);
-    const toolsN = h.groups.reduce((a, g) => a + P.j.groups[g][1], 0);
-    if (h.w * s > tw + 80) {
-      const ssz = Math.max(11, 1.5 * s);
-      const label = h.areas[0] === "Delay_32" ? "between steps" : `${toolsN} tools`;
-      plateText(label, X + 1.6 * s + tw + tsz * 0.7 + 4, Y + 1.2 * s + (tsz - ssz) * 0.7, ssz, 500, LOOK.sub);
-    }
+    titles.push(() => {
+      ctx.textBaseline = "top";
+      const lift = TILT.on ? -wallH - tsz * 1.4 : 0;
+      const tw = plateText(h.name, X + 1.6 * s, Y + 1.2 * s, tsz, 700, LOOK.title, 0, lift);
+      const toolsN = h.groups.reduce((a, g) => a + P.j.groups[g][1], 0);
+      if (h.w * s > tw + 80) {
+        const ssz = Math.max(11, 1.5 * s);
+        const label = h.areas[0] === "Delay_32" ? "between steps" : `${toolsN} tools`;
+        plateText(label, X + 1.6 * s, Y + 1.2 * s, ssz, 500, LOOK.sub, tw + tsz * 0.7 + 4, lift + (tsz - ssz) * 0.7);
+      }
+    });
     for (const c of h.cells) {
       const cx = p.x + 3 + c.x, cy = p.y + c.y;
       if (c.label) {
         if (showLabels) {
-          ctx.fillStyle = LOOK.section;
-          ctx.font = `700 ${1.6 * s}px -apple-system, Inter, sans-serif`;
           const [LX, LY] = W(cx, cy + 0.3);
-          ctx.fillText(c.label.toUpperCase(), LX, LY);
+          uprightText(c.label.toUpperCase(), LX, LY, `700 ${1.6 * s}px -apple-system, Inter, sans-serif`, LOOK.section);
         }
         continue;
       }
       drawGroup(c, cx, cy, showLabels);
     }
   });
+  if (TILT.on) HALLS_L.forEach((h, i) => hallWalls(G.pos[i].x, G.pos[i].y, h.w, h.h, wallH, true));
   // lots in transit, as carrier boxes on the belts
   const sz = Math.max(4, 1.15 * s);
   for (const tr of cur.active) {
@@ -597,6 +701,8 @@ function draw() {
     const [X, Y] = W(x, y);
     drawLot(X, Y, sz, tr[4], tr[6]);
   }
+  if (UI.lens === "flows") drawFlows();
+  for (const f of titles) f();
   drawFlash();
 }
 
@@ -619,6 +725,7 @@ function drawGroup(c, cx, cy, showLabels) {
   }
   const px = Math.round(TOOL * s * (window.devicePixelRatio || 1));
   const big = TOOL * s >= 7;
+  if (UI.lens === "proto" || UI.lens === "flows") ctx.globalAlpha = 0.3;
   for (let k = 0; k < toolIds.length; k++) {
     const col = k % c.cols, row = Math.floor(k / c.cols);
     const [X, Y] = W(cx + 1 + col * PITCH, cy + 1 + row * PITCH);
@@ -638,13 +745,21 @@ function drawGroup(c, cx, cy, showLabels) {
       }
     }
   }
+  ctx.globalAlpha = 1;
+  if (UI.lens === "heat") {
+    // waiting heat: the group's cell glows with the lots waiting at it
+    const q = cur.queue[g], a = Math.min(0.75, q / 30);
+    if (q > 0) {
+      const [HX, HY] = W(cx + 0.3, cy + 0.3);
+      ctx.fillStyle = `rgba(255, ${Math.round(140 - 90 * a)}, 70, ${(0.12 + a * 0.7).toFixed(3)})`;
+      ctx.fillRect(HX, HY, (c.w - 0.6) * s, (c.h - 0.6) * s);
+    }
+  }
   const yLabel = cy + 1 + c.rows * PITCH;
   if (showLabels) {
     const [LX, LY] = W(cx + 1, yLabel + 0.2);
-    ctx.fillStyle = LOOK.label;
-    ctx.font = `500 ${1.5 * s}px -apple-system, Inter, sans-serif`;
     ctx.textBaseline = "top";
-    ctx.fillText(P.plain[g], LX, LY);
+    uprightText(P.plain[g], LX, LY, `500 ${1.5 * s}px -apple-system, Inter, sans-serif`, LOOK.label);
   }
   // the group's queue belt and its waiting lots
   const qy = yLabel + 3;
@@ -661,9 +776,7 @@ function drawGroup(c, cx, cy, showLabels) {
   if (n > shown && s > 1.2) {
     ctx.textBaseline = "middle";
     const [X, Y] = W(cx + 1.8 + shown * 1.6 - 0.4, qy);
-    ctx.font = `700 ${Math.max(9, 1.4 * s)}px -apple-system, Inter, sans-serif`;
-    ctx.fillStyle = LOOK.title;
-    ctx.fillText(`+${n - shown}`, X, Y);
+    uprightText(`+${n - shown}`, X, Y, `700 ${Math.max(9, 1.4 * s)}px -apple-system, Inter, sans-serif`, LOOK.title);
     ctx.textBaseline = "top";
   }
 }
@@ -696,7 +809,23 @@ function drawSpark() {
 
 const $ = id => document.getElementById(id);
 
+let lensShown = "";
+function lensNote() {
+  let txt = "";
+  if (UI.lens === "heat") txt = "Each group glows with the lots waiting at it: the hotter, the longer the queue.";
+  else if (UI.lens === "flows") txt = "The 14 busiest links between halls, by the route steps that cross them; the dot marks the direction.";
+  else if (UI.lens === "proto") {
+    let n = 0;
+    for (const tr of cur.active) if (tr[6]) n++;
+    for (const q of cur.bQ || []) n += q;
+    txt = n ? `${n} prototype lot${n === 1 ? "" : "s"} in the fab now, drawn large and pink; everything else is dimmed.`
+      : "Today's fab runs no prototype lots. Ask a question about prototypes, then press “Show on the floor” on a candidate.";
+  }
+  if (txt !== lensShown) { $("lens-note").textContent = txt; lensShown = txt; }
+}
+
 function hud() {
+  lensNote();
   const day = Math.floor(t / 1440) + 1;
   const m = Math.floor(t % 1440);
   $("day").textContent = `Day ${day}`;
@@ -774,7 +903,8 @@ function frame(now) {
 
 function groupAt(mx, my) {
   if (!G) return null;
-  const wx = mx / view.s + view.x, wy = my / view.s + view.y;
+  const [ux, uy] = untilt(mx, my);
+  const wx = ux / view.s + view.x, wy = uy / view.s + view.y;
   for (let i = 0; i < HALLS_L.length; i++) {
     const p = G.pos[i];
     for (const c of HALLS_L[i].cells) {
@@ -811,12 +941,13 @@ function showTip(h) {
 
 function setupInput() {
   let drag = null;
-  cv.addEventListener("mousedown", e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; cv.classList.add("drag"); });
+  cv.addEventListener("mousedown", e => { const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y }; cv.classList.add("drag"); });
   addEventListener("mouseup", () => { drag = null; cv.classList.remove("drag"); });
   addEventListener("mousemove", e => {
     if (drag) {
-      view.x = drag.vx - (e.clientX - drag.x) / view.s;
-      view.y = drag.vy - (e.clientY - drag.y) / view.s;
+      const [ux, uy] = untilt(e.clientX, e.clientY);
+      view.x = drag.vx - (ux - drag.x) / view.s;
+      view.y = drag.vy - (uy - drag.y) / view.s;
       hover = null; $("tip").hidden = true;
     } else if (e.target === cv) {
       hover = groupAt(e.clientX, e.clientY);
@@ -827,10 +958,11 @@ function setupInput() {
   cv.addEventListener("wheel", e => {
     e.preventDefault();
     const k = Math.exp(-e.deltaY * 0.0015);
-    const wx = e.clientX / view.s + view.x, wy = e.clientY / view.s + view.y;
+    const [ux, uy] = untilt(e.clientX, e.clientY);
+    const wx = ux / view.s + view.x, wy = uy / view.s + view.y;
     view.s = Math.min(40, Math.max(0.5, view.s * k));
-    view.x = wx - e.clientX / view.s;
-    view.y = wy - e.clientY / view.s;
+    view.x = wx - ux / view.s;
+    view.y = wy - uy / view.s;
   }, { passive: false });
   $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "❚❚" : "▶"; if (playing && P && t >= P.j.until) t = 0; };
   document.querySelectorAll(".speeds button").forEach(b => (b.onclick = () => {
@@ -845,6 +977,7 @@ function setupInput() {
     if (!$("stages").hidden && $("stages").contains(e.target)) return;
     if (e.key === " ") { e.preventDefault(); $("play").click(); }
     if (e.key === "f" || e.key === "F") fit();
+    if (e.key === "t" || e.key === "T") { TILT.on = !TILT.on; fit(); }
   });
   addEventListener("resize", () => { resize(); });
   $("run").onclick = rerun;
@@ -1010,8 +1143,8 @@ async function compare(o) {
 
 // ------------------------------------------------------------------ tabs and the 300-day runs
 
-function showTab(which) {
-  $("compare").hidden = false;
+function showTab(which, open = true) {
+  if (open) openDrawer("compare");
   for (const [tab, pane, key] of [["tab-ask", "pane-ask", "ask"], ["tab-long", "pane-long", "long"], ["tab-change", "pane-change", "change"]]) {
     const on = key === which;
     $(tab).classList.toggle("on", on);
@@ -1029,7 +1162,7 @@ function signed(x, d = 1) {
 async function loadLong() {
   let L;
   try { L = await fetch("data/lean-long.json").then(r => (r.ok ? r.json() : null)); } catch { L = null; }
-  if (!L) { $("tab-long").hidden = true; showTab("change"); return; }
+  if (!L) { $("tab-long").hidden = true; showTab("change", false); return; }
   const cell = (metric, k, cap) => L.cells.find(c => c.metric === metric && c.k === k && c.cap === cap);
   const ks = [...new Set(L.cells.map(c => c.k))];
   const caps = [...new Set(L.cells.map(c => c.cap))];
@@ -1060,7 +1193,7 @@ async function loadLong() {
   if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model; why is not traced yet.`);
   $("long-finding").innerHTML = lines.join("<br><br>");
   $("long-note").textContent = `Each cell: wafers out a day (cycle time in days below), cap minus no cap. Green better, red worse, grey no clear effect: 95% intervals for all ${L.cells.length / 3} cells at once (Bonferroni). Precomputed natively in ${Math.round(L.seconds)} s; the page's own runs go up to 14 days, too short for wafers to cross the fab. On the SMT2020 model. Real-fab effect: cannot say.`;
-  showTab("long");
+  showTab("long", false);
 }
 
 function rerun() {
@@ -1214,9 +1347,10 @@ function stagesSetup() {
 function flyToHall(i) {
   if (!G || !HALLS_L[i]) return;
   const H = HALLS_L[i], p = G.pos[i];
-  const pad = { l: innerWidth > 900 && !$("compare").hidden ? 372 : 24, r: innerWidth > 900 ? 330 : 24, t: 110, b: 90 };
+  const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
-  const sx = pad.l + w / 2, sy = pad.t + h / 2;
+  updateTilt();
+  const [sx, sy] = untilt(pad.l + w / 2, pad.t + h / 2);
   const to = { cx: p.x + H.w / 2, cy: p.y + H.h / 2, s: Math.min(40, Math.max(0.5, Math.min(w / (H.w + 16), h / (H.h + 16)))) };
   const from = { cx: view.x + sx / view.s, cy: view.y + sy / view.s, s: view.s };
   ST.fly = { from, to, sx, sy, t0: performance.now(), ms: 900 };
@@ -1253,6 +1387,7 @@ function drawFlash() {
 async function main() {
   resize();
   setupInput();
+  chromeSetup();
   stagesSetup();
   requestAnimationFrame(frame);
   try {
@@ -1275,8 +1410,8 @@ function setFloor(run) {
   HALLS_L = buildLayout(groups);
   const flows = hallFlows(HALLS_L, run.j.routes);
   HALLS_L.hallOfGroup = flows.hallOfGroup;
-  const padR = innerWidth > 900 ? 330 : 24, padL = innerWidth > 900 ? 372 : 24;
-  TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - padR - padL) / (innerHeight - 220)));
+  HALLS_L.flows = flows.f;
+  TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - 48) / (innerHeight - 220)));
   G = placeHalls(HALLS_L, flows);
   const sel = $("down-group");
   sel.length = 1;
@@ -1323,7 +1458,7 @@ async function askSetup() {
   $("ask-examples").innerHTML = st.examples.map((e, i) => `<button type="button" data-i="${i}">${esc(e.question)}</button>`).join("");
   $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("ask-q").value = st.examples[+b.dataset.i].question; ask($("ask-q").value); }));
   if (!$("ask-text").value) $("ask-text").value = "fabgym-scenario 1\nquestion\tPrototype orders double. Their own wing?\nfamily\tshare\t2\tsaid\ncandidate\town-wing\tfloor\twing\n";
-  showTab("ask");
+  showTab("ask", false);
 }
 
 async function ask(q) {
@@ -1397,6 +1532,12 @@ function showResult(j) {
       <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${fmt(c.lo)} to ${fmt(c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table></div>`).join("") +
     `<p class="note small">${r.families ? "Money a day in wafers of volume margin; every price is assumed. " : ""}Intervals hold together at 95% across the candidates (Bonferroni). On the SMT2020 model, a published model of a fab. Real-fab effect: cannot say.</p>`;
   $("ask-result").querySelectorAll("button.show").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
+  $("ask-result").insertAdjacentHTML("afterbegin", verdictCards(rows));
+  const nb = document.createElement("button");
+  nb.type = "button"; nb.className = "show"; nb.textContent = "See the numbers";
+  nb.onclick = () => openNumbers();
+  $("ask-result").appendChild(nb);
+  $("ask-result").appendChild(signBox(j));
 }
 
 async function loadShopText(text) {
@@ -1439,6 +1580,293 @@ async function backToToday() {
   setFloor(run);
   fit();
   $("runnote").textContent = `Today's fab: simulated 3 days (${run.j.moves.toLocaleString()} moves) in ${run.secs.toFixed(2)} s, here in your browser.`;
+}
+
+
+// ------------------------------------------------------------------ the redesigned chrome (docs/FLOOR-UI.md)
+// The opening, the command bar (⌘K), lens chips, drawers for the tools, the numbers view and signing.
+
+const UI = { lens: "day", sweep: null, metric: "money", share: 4 };
+
+function floorPad() {
+  const wide = innerWidth > 900;
+  return { l: wide && !$("compare").hidden ? 420 : 24, r: wide && !$("panel").hidden ? 340 : 24, t: 116, b: 86 };
+}
+
+function openDrawer(id, on = true) {
+  $(id).hidden = !on;
+  if (id === "compare") document.body.classList.toggle("drawer-left", on);
+  if (id === "panel") $("panel-open").classList.toggle("on", on);
+}
+
+function closeOpening() {
+  if (!document.body.classList.contains("opening-on")) return;
+  document.body.classList.remove("opening-on");
+  resize();
+  fit();
+}
+
+// a question from the opening, the command bar or an example
+function askFrom(q) {
+  q = (q || "").trim();
+  if (!q) return;
+  closeOpening();
+  showTab("ask");
+  fit();
+  $("ask-q").value = q;
+  if (ASK.helper) ask(q);
+  else stage("Asking needs the helper on this Mac: run python3 -m agent.helper in the fab-gym folder.");
+}
+
+async function chromeSetup() {
+  let st = null, bundled = [];
+  try { st = await api("/api/status"); if (st.error) st = null; } catch { st = null; }
+  try { bundled = await fetch("data/examples.json").then(r => r.json()); } catch { bundled = []; }
+  const o = FabUI.openingState(st, bundled);
+  $("open-title").textContent = o.prompt;
+  $("open-explore").textContent = o.explore;
+  $("open-examples").innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
+  $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(o.examples[+b.dataset.i])));
+  $("open-form").onsubmit = e => { e.preventDefault(); askFrom($("open-q").value); };
+  $("open-explore").onclick = closeOpening;
+  setTimeout(() => $("open-q").focus(), 60);
+
+  $("cmd").onsubmit = e => { e.preventDefault(); askFrom($("cmd-q").value); $("cmd-q").value = ""; $("cmd-q").blur(); };
+  addEventListener("keydown", e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      if (document.body.classList.contains("opening-on")) $("open-q").focus();
+      else { $("numbers").hidden = true; $("cmd-q").focus(); }
+    } else if (e.key === "Escape") {
+      if (!$("numbers").hidden) $("numbers").hidden = true;
+      else if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
+    }
+  });
+  document.querySelectorAll("[data-close]").forEach(b => (b.onclick = () => {
+    const id = b.dataset.close;
+    if (id === "numbers") $("numbers").hidden = true;
+    else { openDrawer(id, false); fit(); }
+  }));
+  $("panel-open").onclick = () => { openDrawer("panel", $("panel").hidden); fit(); };
+  $("ask-open").onclick = () => { showTab("ask"); fit(); $("ask-q").focus(); };
+  $("numbers-open").onclick = () => openNumbers();
+  document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
+    UI.lens = b.dataset.lens;
+    document.querySelectorAll(".lenses button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+  }));
+  document.querySelectorAll("#num-metric button").forEach(b => (b.onclick = () => { UI.metric = b.dataset.m; drawNumbers(); }));
+  document.querySelectorAll("#num-share button").forEach(b => (b.onclick = () => { UI.share = +b.dataset.s; drawNumbers(); }));
+}
+
+// the busiest links between halls, as arcs over the floor (route steps that cross from one hall to the next)
+function drawFlows() {
+  const f = HALLS_L.flows;
+  if (!f) return;
+  const links = [...f.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
+  const max = links.length ? links[0][1] : 1;
+  const centre = i => { const p = G.pos[i], h = HALLS_L[i]; return S(p.x + h.w / 2, p.y + h.h / 2); };
+  screenSpace();
+  ctx.lineCap = "round";
+  for (const [key, n] of links) {
+    const [ax, ay] = centre(Math.floor(key / 100)), [bx, by] = centre(key % 100);
+    const lift = Math.min(160, 0.35 * Math.hypot(bx - ax, by - ay));
+    const mx = (ax + bx) / 2, my = (ay + by) / 2 - lift;
+    const w = 1.5 + 9 * (n / max);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, bx, by);
+    ctx.strokeStyle = "rgba(255, 138, 216, 0.16)"; ctx.lineWidth = w + 8; ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 138, 216, 0.85)"; ctx.lineWidth = w; ctx.stroke();
+    // the direction: a dot two thirds of the way along
+    const u = 0.66, qx = (1 - u) * (1 - u) * ax + 2 * u * (1 - u) * mx + u * u * bx, qy = (1 - u) * (1 - u) * ay + 2 * u * (1 - u) * my + u * u * by;
+    ctx.beginPath(); ctx.arc(qx, qy, w * 0.7 + 2, 0, 2 * Math.PI); ctx.fillStyle = "#FFE3F5"; ctx.fill();
+  }
+  floorSpace();
+}
+
+// ------------------------------------------------------------------ the numbers
+
+const FLOOR_WORDS = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "D3 copies": "Copies in the halls" };
+const POLICY_WORDS = { "P0 today": "today's order", "P1 family B first": "prototypes first", "P2 family cap": "prototypes capped at the door",
+  "P3 reservation": "a tool kept for prototypes", "P4 qualification": "prototypes on half the tools" };
+const METRIC = {
+  money: { name: "Money a day", unit: "volume-wafer margins a day", higher: true, base: v => fmtN(v, 0) },
+  a_wafers: { name: "Volume wafers a day", unit: "wafers a day", higher: true, base: v => fmtN(v, 0) },
+  b_cycle: { name: "Prototype cycle time", unit: "days", higher: false, base: v => fmtN(v, 1) },
+};
+const LINE_COLORS = ["#7EE8D8", "#FF8AD8", "#FFC857", "#7F9CFF"];
+const VERDICT_COLOR = { better: "#4FE3A3", worse: "#FF6262", "no clear effect": "#8FB3AE" };
+
+function fmtN(v, d = 1) { return v === null || v === undefined ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+async function openNumbers() {
+  closeOpening();
+  $("numbers").hidden = false;
+  if (!UI.sweep) {
+    try { UI.sweep = await fetch("data/two-families.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
+    catch (err) { $("num-lead").textContent = "The sweep's results are not in this build (run web/build.sh)."; return; }
+  }
+  drawNumbers();
+  $("numbers").querySelector(".close").focus();
+}
+
+// a forest plot: one row per change, the mean as a dot, the 95% interval as a bar, the exact numbers on the right
+function forestSVG(rows, m, xTitle) {
+  const vals = rows.flatMap(r => (r.group || r.mean === null || r.mean === undefined ? [] : [r.lo, r.hi, r.mean])).concat([0]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const padV = (hi - lo) * 0.06 || 1; lo -= padV; hi += padV;
+  const ticks = FabUI.niceTicks(lo, hi);
+  lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const W0 = 760, L = 210, R = 196, top = 30, rh = 22;
+  const lines = [];
+  let y = top;
+  const rowsY = rows.map(r => { if (r.group) y += 8; const yy = y; y += rh; return yy; });
+  const H = y + 64;
+  const X = v => L + ((v - lo) / (hi - lo)) * (W0 - L - R);
+  // gridlines and ticks
+  for (const t of ticks) {
+    lines.push(`<line x1="${X(t)}" x2="${X(t)}" y1="${top - 4}" y2="${y + 2}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
+    lines.push(`<text x="${X(t)}" y="${y + 18}" fill="#A9C4C0" font-size="11" text-anchor="middle">${FabUI.tickLabel(t)}</text>`);
+  }
+  lines.push(`<line x1="${L}" x2="${W0 - R}" y1="${y + 2}" y2="${y + 2}" stroke="#2C5560"/>`);
+  rows.forEach((r, i) => {
+    const yy = rowsY[i] + rh / 2;
+    if (r.group) {
+      lines.push(`<text x="4" y="${yy + 4}" fill="#E8F2F0" font-size="12" font-weight="700">${esc(r.group)}</text>`);
+      return;
+    }
+    lines.push(`<text x="16" y="${yy + 4}" fill="#A9C4C0" font-size="12">${esc(r.label)}</text>`);
+    if (r.mean === null) {
+      lines.push(`<text x="${X(0) + 8}" y="${yy + 4}" fill="#8FB3AE" font-size="11" font-style="italic">${esc(r.text)}</text>`);
+      return;
+    }
+    const c = VERDICT_COLOR[r.verdict];
+    lines.push(`<line x1="${X(r.lo)}" x2="${X(r.hi)}" y1="${yy}" y2="${yy}" stroke="${c}" stroke-width="4" stroke-linecap="round" opacity="0.55"/>`);
+    lines.push(`<circle cx="${X(r.mean)}" cy="${yy}" r="5" fill="${c}" stroke="#0A1418" stroke-width="1.5"><title>${esc(r.label)}: ${esc(r.text)}, ${r.verdict}</title></circle>`);
+    lines.push(`<text x="${W0 - R + 12}" y="${yy + 4}" fill="${r.verdict === "no clear effect" ? "#A9C4C0" : c}" font-size="11" font-family="ui-monospace, Menlo, monospace">${esc(r.text)}</text>`);
+  });
+  // axis titles
+  const better = m.higher ? "better →" : "← better";
+  lines.push(`<text x="${(L + W0 - R) / 2}" y="${y + 38}" fill="#E8F2F0" font-size="12" text-anchor="middle" font-weight="600">${esc(xTitle)}</text>`);
+  lines.push(`<text x="${m.higher ? W0 - R : L}" y="${y + 54}" fill="#8FB3AE" font-size="11" text-anchor="${m.higher ? "end" : "start"}">${better}</text>`);
+  lines.push(`<text x="4" y="14" fill="#E8F2F0" font-size="12" font-weight="600">Floor and policy</text>`);
+  lines.push(`<text x="${W0 - R + 12}" y="14" fill="#E8F2F0" font-size="12" font-weight="600">Mean (95% interval)</text>`);
+  return { svg: lines.join(""), w: W0, h: H };
+}
+
+// the shared-floor policies across prototype orders: change against today with intervals
+function linesSVG(lines, m, share) {
+  const W0 = 520, L = 64, R = 16, top = 14, B = 54, H = 330;
+  const shares = lines[0].points.map(p => p.share);
+  const vals = lines.flatMap(l => l.points.flatMap(p => (p.mean === null ? [] : [p.lo, p.hi]))).concat([0]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const ticks = FabUI.niceTicks(lo, hi);
+  lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const X = i => L + 20 + (i / (shares.length - 1)) * (W0 - L - R - 40);
+  const Y = v => top + (1 - (v - lo) / (hi - lo)) * (H - top - B);
+  const out = [];
+  const si = shares.indexOf(share);
+  if (si >= 0) out.push(`<rect x="${X(si) - 18}" y="${top}" width="36" height="${H - top - B}" fill="rgba(126,232,216,0.07)" rx="6"/>`);
+  for (const t of ticks) {
+    out.push(`<line x1="${L}" x2="${W0 - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
+    out.push(`<text x="${L - 8}" y="${Y(t) + 4}" fill="#A9C4C0" font-size="11" text-anchor="end">${FabUI.tickLabel(t)}</text>`);
+  }
+  shares.forEach((s, i) => out.push(`<text x="${X(i)}" y="${H - B + 18}" fill="#A9C4C0" font-size="11.5" text-anchor="middle">×${s}</text>`));
+  out.push(`<line x1="${L}" x2="${L}" y1="${top}" y2="${H - B}" stroke="#2C5560"/><line x1="${L}" x2="${W0 - R}" y1="${H - B}" y2="${H - B}" stroke="#2C5560"/>`);
+  lines.forEach((l, k) => {
+    const c = LINE_COLORS[k % LINE_COLORS.length], dx = (k - 1.5) * 5;
+    const pts = l.points.map((p, i) => (p.mean === null ? null : [X(i) + dx, Y(p.mean), p]));
+    const d = pts.filter(Boolean).map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
+    out.push(`<path d="${d}" fill="none" stroke="${c}" stroke-width="2"/>`);
+    for (const q of pts) if (q) {
+      const [x, yv, p] = q;
+      out.push(`<line x1="${x}" x2="${x}" y1="${Y(p.lo)}" y2="${Y(p.hi)}" stroke="${c}" stroke-width="2" opacity="0.6"/>`);
+      out.push(`<circle cx="${x}" cy="${yv}" r="3.5" fill="${c}"><title>${esc(POLICY_WORDS[l.policy])} at ×${p.share}: ${fmtN(p.mean)} (${fmtN(p.lo)} to ${fmtN(p.hi)})</title></circle>`);
+    }
+  });
+  out.push(`<text x="${(L + W0 - R) / 2}" y="${H - 14}" fill="#E8F2F0" font-size="12" text-anchor="middle" font-weight="600">Prototype orders, times today's</text>`);
+  out.push(`<text transform="translate(16 ${(top + H - B) / 2}) rotate(-90)" fill="#E8F2F0" font-size="12" text-anchor="middle" font-weight="600">Change against today, ${esc(m.unit)}</text>`);
+  return { svg: out.join(""), w: W0, h: H };
+}
+
+function setSVG(el, o, label) {
+  el.setAttribute("viewBox", `0 0 ${o.w} ${o.h}`);
+  el.setAttribute("aria-label", label);
+  el.innerHTML = o.svg;
+}
+
+function drawNumbers() {
+  const d = UI.sweep;
+  if (!d) return;
+  const m = METRIC[UI.metric], share = UI.share;
+  document.querySelectorAll("#num-metric button").forEach(b => b.classList.toggle("on", b.dataset.m === UI.metric));
+  document.querySelectorAll("#num-share button").forEach(b => b.classList.toggle("on", +b.dataset.s === share));
+  const k = Math.round(0.05 / d.alpha_each);
+  $("num-lead").textContent = `The two-family sweep on the SMT2020 model: ${d.days} simulated days after ${d.warmup} days of warm-up, ` +
+    `${d.seeds.length} paired seeds, every change against today's fab (shared floor, today's order). Each interval is at level 1 − 0.05/${k}, ` +
+    `so all ${k} hold together at 95%. Prices are assumed. Real-fab effect: cannot say.`;
+  const base = d.baseline[String(share)] || {};
+  $("num-base").innerHTML = Object.entries(METRIC).map(([key, mm]) =>
+    `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">Today's fab at ×${share}: ${mm.name.toLowerCase()} (${mm.unit})</div></div>`).join("");
+  // the forest: rows grouped by floor
+  const rows = [];
+  let last = null;
+  for (const r of FabUI.sweepRows(d, share, UI.metric)) {
+    if (r.strategy !== last) { rows.push({ group: FLOOR_WORDS[r.strategy] }); last = r.strategy; }
+    rows.push({ ...r, label: POLICY_WORDS[r.policy] });
+  }
+  const f = forestSVG(rows, m, `Change against today's fab, ${m.unit}`);
+  $("num-forest-t").innerHTML = `${esc(m.name)}: every change at ×${share} prototype orders<span>Dot: mean of the paired differences. Bar: its interval. Green better, red worse, grey no clear effect.</span>`;
+  setSVG($("num-forest"), f, `${m.name}, every change against today at ×${share}`);
+  const ls = FabUI.sweepLines(d, UI.metric);
+  setSVG($("num-lines"), linesSVG(ls, m, share), `${m.name} on the shared floor across prototype orders`);
+  $("num-lines-t").innerHTML = `${esc(m.name)} on the shared floor as prototype orders grow<span>Each policy against today's order at the same share; bars are the intervals.</span>`;
+  $("num-lines-key").innerHTML = ls.map((l, i) => `<span><i style="background:${LINE_COLORS[i]}"></i>${esc(POLICY_WORDS[l.policy])}</span>`).join("");
+  // the question being answered, when there is one
+  const j = ASK.job;
+  const qkey = UI.metric === "b_cycle" ? "b_cycle_days" : UI.metric;
+  if (j && j.stage === "done" && j.report && j.report.families) {
+    const qrows = FabAsk.resultRows(j.report).map(r => {
+      const c = r.cells.find(x => x.key === qkey) || {};
+      const has = c.mean !== null && c.mean !== undefined && c.lo !== null;
+      return { label: r.name, mean: has ? c.mean : null, lo: has ? c.lo : null, hi: has ? c.hi : null, verdict: c.verdict || "no clear effect",
+        text: has ? `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})` : "no prototype lot out" };
+    });
+    const q = forestSVG(qrows, m, `Change against today's fab, ${m.unit}`);
+    $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}, each candidate against today on ${j.report.seeds.length} paired seeds (intervals hold together at 95%).</span></figcaption><svg role="img"></svg></figure>`;
+    setSVG($("num-question").querySelector("svg"), q, `${m.name} for each candidate in your question`);
+  } else $("num-question").innerHTML = "";
+  $("num-note").textContent = `Money a day is counted in volume-wafer margins: family A earns 1 a wafer; every price is assumed (docs/TWO-FAMILIES-SWEEP.md). On the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published model of a fab, not a real fab.`;
+}
+
+// ------------------------------------------------------------------ the evidence: verdict cards and signing
+
+function verdictCards(rows) {
+  const best = rows.find(r => r.best) || rows[0];
+  if (!best) return "";
+  return `<p class="note">${esc(best.name)} against today's fab:</p><div class="verdicts">${best.cells.map(c => {
+    const v = c.mean === null ? "no clear effect" : c.verdict;
+    return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
+      `<div class="iv">${c.lo === null || c.mean === null ? "" : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
+  }).join("")}</div>`;
+}
+
+function signedCard(card) {
+  return `<div class="signed"><b>Signed by ${esc(card.name)}</b> at ${esc(card.at)}<br><span class="note">SHA-256 of the question, the scenario and the report:</span><br>` +
+    `<code>question ${esc(card.sha256.question.slice(0, 16))}…</code><br><code>scenario ${esc(card.sha256.scenario.slice(0, 16))}…</code><br><code>report ${esc(card.sha256.report.slice(0, 16))}…</code></div>`;
+}
+
+function signBox(j) {
+  const box = document.createElement("div");
+  if (j.card) { box.innerHTML = signedCard(j.card); return box; }
+  box.className = "sign";
+  box.innerHTML = `<h4>Sign this answer</h4><p class="note">The model proposed, the simulator scored; a person signs. Your name, the time and a SHA-256 of the question, the scenario and the report are kept with it on this Mac.</p>` +
+    `<form><label class="sr" for="sign-name">Your name</label><input id="sign-name" placeholder="Your name" autocomplete="name"><button class="primary" style="width:auto;margin:0">Sign</button></form><p class="note" id="sign-msg"></p>`;
+  box.querySelector("form").onsubmit = async e => {
+    e.preventDefault();
+    const r = await api("/api/sign", { job: j.id, name: box.querySelector("input").value });
+    if (r.signed) { j.card = r.card; box.className = ""; box.innerHTML = signedCard(r.card); }
+    else box.querySelector("#sign-msg").textContent = r.error || "Could not sign.";
+  };
+  return box;
 }
 
 main();
