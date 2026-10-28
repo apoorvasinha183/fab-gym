@@ -5,6 +5,38 @@ use std::fmt::Write as _;
 use crate::dials::{Dials, Outage};
 use crate::policy::Policy;
 use crate::shop::Shop;
+use crate::twofam::Policy as FamPolicy;
+
+/// A floor for family B (docs/TWO-FAMILIES-SWEEP.md): no copies, copies in a P3 wing, or copies in the halls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FloorKind {
+    Share,
+    Wing,
+    Copies,
+}
+
+impl FloorKind {
+    pub fn key(self) -> &'static str {
+        match self {
+            FloorKind::Share => "share",
+            FloorKind::Wing => "wing",
+            FloorKind::Copies => "copies",
+        }
+    }
+
+    pub fn from_key(k: &str) -> Option<FloorKind> {
+        [FloorKind::Share, FloorKind::Wing, FloorKind::Copies].into_iter().find(|f| f.key() == k)
+    }
+}
+
+/// Family B's share: times the published engineering lots (docs/ASK-FAMILIES.md).
+#[derive(Clone, Debug, PartialEq)]
+pub struct FamilySpec {
+    pub share: f64,
+    pub said: bool,
+}
+
+pub const SHARE_RANGE: (f64, f64) = (0.25, 16.0);
 
 /// At most this many candidates in one scenario.
 pub const MAX_CANDIDATES: usize = 6;
@@ -45,6 +77,8 @@ pub enum Change {
     Cap(i64),
     Spare(String, usize),
     Demand(f64),
+    Floor(FloorKind),
+    FamilyPolicy(FamPolicy),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -73,6 +107,8 @@ impl Sweep {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Scenario {
     pub question: String,
+    /// a two-family question when present
+    pub family: Option<FamilySpec>,
     pub shocks: Vec<Shock>,
     pub candidates: Vec<CandidateSpec>,
     pub sweep: Option<Sweep>,
@@ -101,7 +137,7 @@ impl Scenario {
         if lines.next().map(str::trim_end) != Some("fabgym-scenario 1") {
             return Err("not a fabgym-scenario 1 file".into());
         }
-        let mut s = Scenario { question: String::new(), shocks: vec![], candidates: vec![], sweep: None };
+        let mut s = Scenario { question: String::new(), family: None, shocks: vec![], candidates: vec![], sweep: None };
         for (no, line) in lines.enumerate() {
             let line = line.trim_end_matches('\r');
             if line.trim().is_empty() {
@@ -114,6 +150,20 @@ impl Scenario {
                 "question" => {
                     need(2)?;
                     s.question = f[1].trim().to_string();
+                }
+                "family" => {
+                    need(4)?;
+                    if f[1] != "share" {
+                        return Err(at(format!("a family record sets the share, not {:?}", f[1])));
+                    }
+                    if s.family.is_some() {
+                        return Err(at("two family records".into()));
+                    }
+                    let v = num(f[2], "family share").map_err(at)?;
+                    if !(SHARE_RANGE.0..=SHARE_RANGE.1).contains(&v) {
+                        return Err(at(format!("family share out of range: {v} (from {} to {})", SHARE_RANGE.0, SHARE_RANGE.1)));
+                    }
+                    s.family = Some(FamilySpec { share: v, said: tag(f[3]).map_err(at)? });
                 }
                 "shock" => {
                     if f.len() < 2 {
@@ -185,6 +235,14 @@ impl Scenario {
                             }
                             Change::Demand(v)
                         }
+                        "floor" => {
+                            need(4)?;
+                            Change::Floor(FloorKind::from_key(f[3]).ok_or_else(|| at(format!("unknown floor {:?}", f[3])))?)
+                        }
+                        "policy" => {
+                            need(4)?;
+                            Change::FamilyPolicy(FamPolicy::from_key(f[3]).ok_or_else(|| at(format!("unknown policy {:?}", f[3])))?)
+                        }
                         k => return Err(at(format!("unknown candidate kind {k:?}"))),
                     };
                     let name = f[1].trim();
@@ -226,7 +284,26 @@ impl Scenario {
         if s.candidates.len() > MAX_CANDIDATES {
             return Err(format!("{} candidates, at most {MAX_CANDIDATES}", s.candidates.len()));
         }
-        if let Some(sw) = &s.sweep {
+        for c in &s.candidates {
+            let fam = c.changes.iter().any(|ch| matches!(ch, Change::Floor(_) | Change::FamilyPolicy(_)));
+            if fam && s.family.is_none() {
+                return Err(format!("candidate {:?} sets a floor or policy, which needs a family record", c.name));
+            }
+            let first = c.changes.iter().any(|ch| *ch == Change::FamilyPolicy(FamPolicy::BFirst));
+            let other_rule = c.changes.iter().any(|ch| matches!(ch, Change::Rule(p) if *p != Policy::Today));
+            if first && other_rule {
+                return Err(format!("candidate {:?}: family B first decides the order, so it takes no other rule", c.name));
+            }
+        }
+        if let Some(sw) = s.sweep.as_ref().filter(|sw| sw.shock == "family") {
+            let f = s.family.as_ref().ok_or("the sweep names the family share, but there is no family record")?;
+            if f.said {
+                return Err("the family share was said in the question, so it is not swept".into());
+            }
+            if sw.field != "value" || sw.low < SHARE_RANGE.0 || sw.high > SHARE_RANGE.1 {
+                return Err(format!("a family sweep runs over value within {} to {}", SHARE_RANGE.0, SHARE_RANGE.1));
+            }
+        } else if let Some(sw) = &s.sweep {
             let sh = s.shocks.iter().find(|x| x.kind.name() == sw.shock).ok_or_else(|| format!("the sweep names no shock {:?}", sw.shock))?;
             if sh.said {
                 return Err(format!("the {} shock was said in the question, so it is not swept", sw.shock));
@@ -246,6 +323,9 @@ impl Scenario {
     pub fn to_text(&self) -> String {
         let mut o = String::from("fabgym-scenario 1\n");
         let _ = writeln!(o, "question\t{}", self.question);
+        if let Some(f) = &self.family {
+            let _ = writeln!(o, "family\tshare\t{}\t{}", f.share, if f.said { "said" } else { "assumed" });
+        }
         for sh in &self.shocks {
             let t = if sh.said { "said" } else { "assumed" };
             let _ = match &sh.kind {
@@ -261,6 +341,8 @@ impl Scenario {
                     Change::Cap(n) => writeln!(o, "candidate\t{}\tcap\t{n}", c.name),
                     Change::Spare(g, n) => writeln!(o, "candidate\t{}\tspare\t{g}\t{n}", c.name),
                     Change::Demand(v) => writeln!(o, "candidate\t{}\tdemand\t{v}", c.name),
+                    Change::Floor(fl) => writeln!(o, "candidate\t{}\tfloor\t{}", c.name, fl.key()),
+                    Change::FamilyPolicy(p) => writeln!(o, "candidate\t{}\tpolicy\t{}", c.name, p.key()),
                 };
             }
         }
@@ -330,6 +412,8 @@ impl Scenario {
                     Change::Cap(n) => d.cap = Some(*n),
                     Change::Spare(g, n) => d.spare.push((g.clone(), *n)),
                     Change::Demand(v) => d.demand *= v,
+                    // floors and family policies are built by the scorer (score::family_arm)
+                    Change::Floor(_) | Change::FamilyPolicy(_) => {}
                 }
             }
         }

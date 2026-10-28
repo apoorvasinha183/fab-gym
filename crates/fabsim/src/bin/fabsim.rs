@@ -757,13 +757,36 @@ fn main() {
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
-            let mut p = fabsim::score::Protocol { threads: arg(&args, "--threads", 4) as usize, ..Default::default() };
+            let parsed = fabsim::scenario::Scenario::parse(&text);
+            let two = parsed.as_ref().map(|s| s.family.is_some()).unwrap_or(false);
+            // a two-family question runs months (docs/ASK-FAMILIES.md); the overrides are for smoke runs
+            let mut p = if two { fabsim::score::Protocol::families() } else { fabsim::score::Protocol::default() };
+            p.threads = arg(&args, "--threads", 4) as usize;
+            p.warmup_days = argf(&args, "--warmup", p.warmup_days);
+            p.window_days = argf(&args, "--window", p.window_days);
             if let Some(r) = args.iter().position(|a| a == "--seeds").and_then(|i| args.get(i + 1)) {
                 let (a, b) = r.split_once("..").expect("--seeds A..B");
                 p.seeds = (a.parse::<u64>().unwrap()..b.parse::<u64>().unwrap()).collect();
             }
             let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
-            match fabsim::scenario::Scenario::parse(&text).and_then(|sc| fabsim::score::score(&shop, &sc, &p)) {
+            let ctx = if two {
+                let mut layout = fabsim::layout::Config::realistic();
+                if let Some(i) = args.iter().position(|a| a == "--layout-iters").and_then(|i| args.get(i + 1)) {
+                    layout.iters = i.parse().unwrap();
+                    layout.restarts = 1;
+                }
+                let cache = args.iter().position(|a| a == "--layout-cache").and_then(|i| args.get(i + 1)).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/ask/layouts"));
+                Some(fabsim::score::FamilyContext {
+                    from_route: "part_3".into(),
+                    b_route: "part_E3".into(),
+                    areas: Some(fabsim::smt2020::areas(&dir).expect("areas load")),
+                    layout,
+                    cache: Some(cache),
+                })
+            } else {
+                None
+            };
+            match parsed.and_then(|sc| fabsim::score::score_with(&shop, &sc, &p, ctx.as_ref())) {
                 Ok(r) => println!("{}", r.to_json()),
                 Err(e) => {
                     eprintln!("refused: {e}");

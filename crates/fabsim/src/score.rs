@@ -4,9 +4,14 @@ use std::fmt::Write as _;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-use crate::engine::RunOptions;
+use std::path::PathBuf;
+
+use crate::engine::{run, Decision, RunOptions, RunResult};
+use crate::layout::Config;
+use crate::money::{money, PriceGrid};
 use crate::policy::{run_with, Policy};
-use crate::scenario::{CandidateSpec, Scenario};
+use crate::scenario::{CandidateSpec, Change, FloorKind, Scenario};
+use crate::twofam::{apply_policy, b_cap, b_first, contested, copy_groups, lay_out_copies, policy_groups, two_family_shop, EngLots, Policy as FamPolicy};
 use crate::shop::Shop;
 use crate::uq::{crossover, paired, verdict, Crossover, Interval, Verdict, REAL_FAB_EFFECT};
 use crate::window::{score as window_score, with_probes, Window, WindowScore};
@@ -17,6 +22,13 @@ pub struct Protocol {
     pub window_days: f64,
     pub seeds: Vec<u64>,
     pub threads: usize,
+}
+
+impl Protocol {
+    /// docs/ASK-FAMILIES.md: 120 days of warm-up, a 120-day window, seeds 0 to 9.
+    pub fn families() -> Protocol {
+        Protocol { warmup_days: 120.0, window_days: 120.0, seeds: (0..10).collect(), threads: 4 }
+    }
 }
 
 impl Default for Protocol {
@@ -74,6 +86,10 @@ pub struct SweepResult {
 
 #[derive(Clone, Debug)]
 pub struct Report {
+    /// a two-family question (docs/ASK-FAMILIES.md)
+    pub families: bool,
+    /// today and each candidate as run, for a two-family question (empty otherwise)
+    pub arms: Vec<ArmOut>,
     pub scenario: Scenario,
     pub protocol: Protocol,
     pub alpha_each: f64,
@@ -146,6 +162,9 @@ fn cand_result(c: &CandidateSpec, rule: Policy, base: &[WindowScore], cand: &[Wi
 }
 
 pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String> {
+    if sc.family.is_some() {
+        return Err("a two-family question needs its family context (score_with)".into());
+    }
     sc.check(shop)?;
     if p.seeds.len() < 2 {
         return Err("at least two seeds".into());
@@ -175,7 +194,221 @@ pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String>
             Some(SweepResult { shock: sw.shock.clone(), field: sw.field.clone(), points, by_point, crossovers })
         }
     };
-    Ok(Report { scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
+    Ok(Report { families: false, arms: vec![], scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
+}
+
+// ------------------------------------------------------------------ two families (docs/ASK-FAMILIES.md)
+
+/// What a two-family question is built on.
+#[derive(Clone, Debug)]
+pub struct FamilyContext {
+    /// family A's route that family B copies, and family B's route name
+    pub from_route: String,
+    pub b_route: String,
+    /// each group's area; without them floors get their copies but no layout
+    pub areas: Option<Vec<(String, String)>>,
+    pub layout: Config,
+    /// laid-out shops kept here by hash
+    pub cache: Option<PathBuf>,
+}
+
+/// One arm of a two-family question, ready to run.
+#[derive(Clone, Debug)]
+pub struct ArmShop {
+    pub shop: Shop,
+    pub rule: Policy,
+    pub bfirst: bool,
+    pub tools_added: usize,
+    pub metres_added: f64,
+    /// (copy, area) for copies: the original's area in the halls, "P3 wing" in a wing
+    pub extra_areas: Vec<(String, String)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ArmOut {
+    pub name: String,
+    pub rule: Policy,
+    pub bfirst: bool,
+    pub extra_areas: Vec<(String, String)>,
+    pub shop_text: String,
+}
+
+fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bool) -> Result<(Shop, usize, f64), String> {
+    let Some(areas) = &ctx.areas else {
+        let s = copy_groups(two, picks, "B")?;
+        return Ok((s, picks.iter().map(|p| p.1).sum(), 0.0));
+    };
+    let key = crate::hash::sha256_hex(
+        format!("{}|{picks:?}|{wing}|{}|{}|{}", two.to_text(), ctx.layout.iters, ctx.layout.restarts, ctx.layout.seed).as_bytes(),
+    );
+    if let Some(dir) = &ctx.cache {
+        if let (Ok(t), Ok(info)) = (std::fs::read_to_string(dir.join(format!("{key}.shop.txt"))), std::fs::read_to_string(dir.join(format!("{key}.info")))) {
+            let mut it = info.split_whitespace();
+            if let (Some(a), Some(b)) = (it.next().and_then(|x| x.parse().ok()), it.next().and_then(|x| x.parse().ok())) {
+                return Ok((Shop::parse(&t)?, a, b));
+            }
+        }
+    }
+    let (s, info) = lay_out_copies(two, areas, &ctx.layout, picks, wing, "B")?;
+    if let Some(dir) = &ctx.cache {
+        let _ = std::fs::create_dir_all(dir);
+        let _ = std::fs::write(dir.join(format!("{key}.shop.txt")), s.to_text());
+        let _ = std::fs::write(dir.join(format!("{key}.info")), format!("{} {}", info.tools_added, info.metres_added));
+    }
+    Ok((s, info.tools_added, info.metres_added))
+}
+
+/// Today (no candidate) or a candidate of a two-family question as a shop: family B at the share (or the swept
+/// share), the floor laid out, the policy applied, then the shocks and the candidate's other changes.
+pub fn family_arm(
+    base: &Shop,
+    sc: &Scenario,
+    cand: Option<&CandidateSpec>,
+    swept: Option<f64>,
+    p: &Protocol,
+    ctx: &FamilyContext,
+) -> Result<ArmShop, String> {
+    let fam = sc.family.as_ref().ok_or("not a two-family question")?;
+    let family_swept = sc.sweep.as_ref().is_some_and(|s| s.shock == "family");
+    let share = if family_swept { swept.unwrap_or(fam.share) } else { fam.share };
+    let e = EngLots { scale: share, ..EngLots::published(&ctx.b_route, (p.warmup_days + p.window_days) * 1440.0, 1) };
+    let two = two_family_shop(base, &ctx.from_route, &e)?;
+    let changes: &[Change] = cand.map(|c| c.changes.as_slice()).unwrap_or(&[]);
+    let floor = changes.iter().find_map(|c| if let Change::Floor(f) = c { Some(*f) } else { None }).unwrap_or(FloorKind::Share);
+    let pol = changes.iter().find_map(|c| if let Change::FamilyPolicy(p) = c { Some(*p) } else { None }).unwrap_or(FamPolicy::Today);
+    let picks: Vec<(String, usize)> =
+        if floor == FloorKind::Share { vec![] } else { contested(&two, "B", 3).into_iter().map(|g| (g, 1)).collect() };
+    let wing = floor == FloorKind::Wing;
+    let (laid, tools_added, metres_added) = laid_out(&two, ctx, &picks, wing)?;
+    let extra_areas = match &ctx.areas {
+        None => vec![],
+        Some(areas) => picks
+            .iter()
+            .map(|(g, _)| {
+                let a = if wing { "P3 wing".to_string() } else { areas.iter().find(|x| x.0 == *g).map(|x| x.1.clone()).unwrap_or_default() };
+                (format!("{g}@B"), a)
+            })
+            .collect(),
+    };
+    let groups = policy_groups(&laid, "B", 3);
+    let raw = crate::measure::raw_processing_days(base, 20, 0).get(&ctx.from_route).copied().ok_or("no raw processing time for the route")?;
+    let with_pol = apply_policy(&laid, pol, "B", &groups, b_cap(&e, raw));
+    let (dials, rule) = sc.arm(cand, if family_swept { None } else { swept });
+    let shop = dials.apply(&with_pol)?;
+    Ok(ArmShop { shop, rule, bfirst: pol == FamPolicy::BFirst, tools_added, metres_added, extra_areas })
+}
+
+/// One run of an arm: the window's scores, and money, family A's wafers, family B's lots and cycle time.
+#[derive(Clone, Debug)]
+struct FamRun {
+    w: WindowScore,
+    money: f64,
+    a_wafers: f64,
+    b_lots: f64,
+    b_cycle: f64,
+}
+
+fn run_arm(a: &ArmShop, seed: u64, w: &Window) -> RunResult {
+    let o = RunOptions { seed, until: Some(w.to), record: false };
+    if a.bfirst {
+        let mut pick = |d: &Decision| b_first(d, "B");
+        run(&a.shop, &o, Some(&mut pick))
+    } else {
+        run_with(&a.shop, &o, a.rule)
+    }
+}
+
+const FAM_MEASURES: [(&str, bool, fn(&FamRun) -> f64); 4] = [
+    ("money", true, |r| r.money),
+    ("a_wafers", true, |r| r.a_wafers),
+    ("b_lots", true, |r| r.b_lots),
+    ("b_cycle_days", false, |r| r.b_cycle),
+];
+
+fn fam_cand(name: &str, rule: Policy, base: &[FamRun], cand: &[FamRun], alpha: f64) -> CandResult {
+    let mut measures = vec![];
+    let mut push = |key: &'static str, higher: bool, b: Vec<f64>, x: Vec<f64>| {
+        let interval = paired(&b, &x, alpha);
+        let v = if interval.lo.is_nan() || interval.hi.is_nan() { Verdict::CannotSay } else { verdict(&interval, higher) };
+        measures.push(Measure { key, higher_is_better: higher, base: b, cand: x, interval, verdict: v });
+    };
+    for &(k, h, f) in FAM_MEASURES.iter() {
+        push(k, h, base.iter().map(f).collect(), cand.iter().map(f).collect());
+    }
+    for &(k, h, f) in MEASURES.iter() {
+        push(k, h, base.iter().map(|r| f(&r.w)).collect(), cand.iter().map(|r| f(&r.w)).collect());
+    }
+    CandResult { name: name.to_string(), rule, measures }
+}
+
+fn fam_point(base: &Shop, sc: &Scenario, p: &Protocol, ctx: &FamilyContext, swept: Option<f64>, alpha: f64) -> Result<(Vec<CandResult>, Vec<(String, ArmShop)>), String> {
+    let w = Window { from: p.warmup_days * 1440.0, to: (p.warmup_days + p.window_days) * 1440.0 };
+    let mut arms: Vec<(String, ArmShop)> = vec![("today".into(), family_arm(base, sc, None, swept, p, ctx)?)];
+    for c in &sc.candidates {
+        arms.push((c.name.clone(), family_arm(base, sc, Some(c), swept, p, ctx)?));
+    }
+    let probed: Vec<ArmShop> = arms.iter().map(|(_, a)| ArmShop { shop: with_probes(&a.shop, &w), ..a.clone() }).collect();
+    let central = PriceGrid::preregistered("B").remove(0);
+    let jobs: Vec<(usize, u64)> = (0..probed.len()).flat_map(|a| p.seeds.iter().map(move |&s| (a, s))).collect();
+    let runs = par_map(jobs, p.threads, |&(a, seed)| -> Result<FamRun, String> {
+        let arm = &probed[a];
+        let r = run_arm(arm, seed, &w);
+        let m = money(&arm.shop, &r, &w, &central, arm.tools_added, arm.metres_added);
+        let days = (w.to - w.from) / 1440.0;
+        let a_w: f64 = r
+            .lots
+            .iter()
+            .filter(|l| arm.shop.family_of(&l.route) != "B" && l.done.is_some_and(|d| d > w.from && d <= w.to))
+            .map(|l| l.size as f64)
+            .sum();
+        Ok(FamRun { w: window_score(&r, &w)?, money: m.per_day, a_wafers: a_w / days, b_lots: m.b_lots as f64, b_cycle: m.b_cycle_days.unwrap_or(f64::NAN) })
+    });
+    let runs: Vec<FamRun> = runs.into_iter().collect::<Result<_, _>>()?;
+    let n = p.seeds.len();
+    let of = |a: usize| &runs[a * n..(a + 1) * n];
+    let cands = sc.candidates.iter().enumerate().map(|(i, c)| fam_cand(&c.name, arms[i + 1].1.rule, of(0), of(i + 1), alpha)).collect();
+    Ok((cands, arms))
+}
+
+/// Score a scenario; a two-family question needs its context (docs/ASK-FAMILIES.md).
+pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyContext>) -> Result<Report, String> {
+    if sc.family.is_none() {
+        return score(shop, sc, p);
+    }
+    let ctx = fam.ok_or("a two-family question needs its family context")?;
+    sc.check(shop)?;
+    if p.seeds.len() < 2 {
+        return Err("at least two seeds".into());
+    }
+    let alpha = 0.05 / sc.candidates.len().max(1) as f64;
+    let (candidates, arms) = fam_point(shop, sc, p, ctx, None, alpha)?;
+    let best = candidates
+        .iter()
+        .filter(|c| c.measure("money").verdict == Verdict::Better)
+        .max_by(|a, b| a.measure("money").interval.lo.total_cmp(&b.measure("money").interval.lo))
+        .map(|c| c.name.clone());
+    let sweep = match &sc.sweep {
+        None => None,
+        Some(sw) => {
+            let points = sw.points();
+            let by_point = points.iter().map(|&x| fam_point(shop, sc, p, ctx, Some(x), alpha).map(|r| r.0)).collect::<Result<Vec<_>, _>>()?;
+            let crossovers = sc
+                .candidates
+                .iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    let pts: Vec<(f64, Interval)> = points.iter().zip(&by_point).map(|(x, r)| (*x, r[i].measure("money").interval.clone())).collect();
+                    (c.name.clone(), crossover(&pts))
+                })
+                .collect();
+            Some(SweepResult { shock: sw.shock.clone(), field: sw.field.clone(), points, by_point, crossovers })
+        }
+    };
+    let arms = arms
+        .into_iter()
+        .map(|(name, a)| ArmOut { name, rule: a.rule, bfirst: a.bfirst, extra_areas: a.extra_areas, shop_text: a.shop.to_text() })
+        .collect();
+    Ok(Report { families: true, arms, scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
 }
 
 // ------------------------------------------------------------------ JSON
@@ -259,6 +492,10 @@ impl Report {
         let sc = &self.scenario;
         let p = &self.protocol;
         let mut o = String::from("{\"model\":\"SMT2020\",");
+        let _ = write!(o, "\"families\":{},", self.families);
+        if let Some(f) = &sc.family {
+            let _ = write!(o, "\"family\":{{\"share\":{},\"said\":{}}},", num(f.share), f.said);
+        }
         let _ = write!(o, "\"question\":{},\"shocks\":[", js(&sc.question));
         for (i, sh) in sc.shocks.iter().enumerate() {
             if i > 0 {
@@ -294,9 +531,20 @@ impl Report {
                 if i > 0 {
                     o.push(',');
                 }
-                let _ = write!(o, "{{\"candidate\":{},\"on\":\"reward\",\"text\":{}}}", js(n), js(&crossover_text(c)));
+                let _ = write!(o, "{{\"candidate\":{},\"on\":{},\"text\":{}}}", js(n), js(if self.families { "money" } else { "reward" }), js(&crossover_text(c)));
             }
             o.push_str("]}");
+        }
+        if self.families {
+            o.push_str(",\"arms\":[");
+            for (i, a) in self.arms.iter().enumerate() {
+                if i > 0 {
+                    o.push(',');
+                }
+                let ex: Vec<String> = a.extra_areas.iter().map(|(g, ar)| format!("[{},{}]", js(g), js(ar))).collect();
+                let _ = write!(o, "{{\"name\":{},\"rule\":{},\"bfirst\":{},\"extra_areas\":[{}],\"shop\":{}}}", js(&a.name), js(a.rule.name()), a.bfirst, ex.join(","), js(&a.shop_text));
+            }
+            o.push(']');
         }
         let _ = write!(o, ",\"real_fab\":{}}}", js(REAL_FAB_EFFECT));
         o

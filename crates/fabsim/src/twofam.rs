@@ -336,6 +336,21 @@ pub enum Policy {
 impl Policy {
     pub const ALL: [Policy; 5] = [Policy::Today, Policy::BFirst, Policy::Cap, Policy::Reserve, Policy::Qualify];
 
+    /// The word a scenario uses (docs/ASK-FAMILIES.md).
+    pub fn key(self) -> &'static str {
+        match self {
+            Policy::Today => "today",
+            Policy::BFirst => "bfirst",
+            Policy::Cap => "cap",
+            Policy::Reserve => "reserve",
+            Policy::Qualify => "qualify",
+        }
+    }
+
+    pub fn from_key(k: &str) -> Option<Policy> {
+        Policy::ALL.into_iter().find(|p| p.key() == k)
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Policy::Today => "P0 today",
