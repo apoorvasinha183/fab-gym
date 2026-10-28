@@ -196,3 +196,14 @@ fn two_families_score_deterministically_with_money_and_shops() {
         }
     }
 }
+
+// Found in the browser: the hoist's start marks "no bay" with the largest 64-bit number, which a 32-bit build (the
+// page's WebAssembly) cannot read as a usize. A bay too large for the platform reads as "no bay".
+#[test]
+fn the_no_bay_marker_reads_on_any_width() {
+    assert_eq!(fabsim::shop::read_bay("18446744073709551615"), Ok(usize::MAX));
+    assert_eq!(fabsim::shop::read_bay("4294967295"), Ok(usize::try_from(4294967295u64).unwrap_or(usize::MAX)));
+    assert_eq!(fabsim::shop::read_bay("7"), Ok(7));
+    assert!(fabsim::shop::read_bay("seven").is_err());
+    assert!(fabsim::shop::read_bay("-1").is_err());
+}
