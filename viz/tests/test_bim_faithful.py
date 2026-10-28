@@ -95,7 +95,7 @@ class Faithful(unittest.TestCase):
     # ---------------------------------------------------------------- doors, openings, hatches
     def test_doors_fill_openings(self):
         doors = self.f.by_type("IfcDoor")
-        self.assertEqual(len(doors), 278)
+        self.assertEqual(len(doors), 282)     # 278, and an entry door to each of the four gowning rooms
         for d in doors:
             fills = d.FillsVoids
             self.assertEqual(len(fills), 1, d.Name)
@@ -346,6 +346,52 @@ class Faithful(unittest.TestCase):
             sb, db = self.box(shower[0]), self.box(door[0])
             gap = max(0.0, max(sb[0], db[0]) - min(sb[3], db[3])) + max(0.0, max(sb[1], db[1]) - min(sb[4], db[4]))
             self.assertLess(gap, 3.0, r["id"])
+            # the entry door (docs/BIM-FAITHFUL.md, "The gowning rooms' way in"): in the end wall away from the spine
+            entry = [d for d in self.f.by_type("IfcDoor") if self.B[d.GlobalId]["key"] == f"permit/door/{r['id']}/in"]
+            self.assertEqual(len(entry), 1, r["id"])
+            eb = self.box(entry[0])
+            far = y1 if y0 > 0 else y0
+            self.assertLess(abs((eb[1] + eb[4]) / 2 - (far - 0.1 if y0 > 0 else far + 0.1)), 0.11, r["id"])
+            self.assertGreaterEqual(eb[0], x0 - TOL, r["id"])
+            self.assertLessEqual(eb[3], x1 + TOL, r["id"])
+            host = entry[0].FillsVoids[0].RelatingOpeningElement.VoidsElements[0].RelatingBuildingElement
+            hb = self.box(host)
+            self.assertTrue(hb[0] >= x0 - TOL and hb[3] <= x1 + TOL and abs((hb[1] + hb[4]) / 2 - (eb[1] + eb[4]) / 2) < 0.11, r["id"])
+            hw = {d["key"]: d["hardware"] for d in self.P["arch"]["doors"]}
+            self.assertEqual(hw[f"permit/door/{r['id']}/in"], "HW-9", r["id"])
+            self.assertEqual(self.P["arch"]["hardware_sets"]["HW-9"]["name"], "Gowning entry door")
+            out = (eb[0], far if y0 > 0 else far - 1.2, z0, eb[3], far + 1.2 if y0 > 0 else far, z0 + 2.1)
+            lifts = [l["box"] for l in self.P["lifts"] if l["building"] == r["building"]]
+            self.assertEqual(len(lifts), 1, r["id"])
+            lb = lifts[0]
+            self.assertFalse(G.boxes_overlap((out[:3], out[3:]), (lb[:3], lb[3:])), r["id"])
+            if r["id"].endswith("GW1"):
+                dx = max(0.0, lb[0] - eb[3], eb[0] - lb[3])
+                dy = max(0.0, lb[1] - eb[4], eb[1] - lb[4])
+                self.assertLessEqual(math.hypot(dx, dy), 3.0, r["id"])
+
+    def test_passageway_discharge(self):
+        # docs/BIM-FAITHFUL.md, "The passageway's discharge": every exit passageway discharges outdoors
+        walls = {w.Name: w for w in self.f.by_type("IfcWall")}
+        spaces = list(self.f.by_type("IfcSpace"))
+        passages = [x for x in self.P["exits"] if x["kind"] == "exit passageway"]
+        self.assertTrue(passages)
+        vest = [sp for sp in spaces if sp.Name == "Exit passageway P2-XP15S discharge vestibule"]
+        self.assertEqual(len(vest), 1)
+        for x in passages:
+            ext = [d for d in self.f.by_type("IfcDoor") if self.B[d.GlobalId]["key"] == f"permit/door/{x['id']}/ext"]
+            self.assertEqual(len(ext), 1, x["id"])
+            db = self.box(ext[0])
+            host = ext[0].FillsVoids[0].RelatingOpeningElement.VoidsElements[0].RelatingBuildingElement
+            self.assertRegex(host.Name or "", r"Phase \d fab, (north|south) wall", x["id"])
+            for t in [e for e in self.P["exits"] if e["kind"] == "facade stair" and e["building"] == x["building"]
+                      and e["side"] == x["side"]]:
+                encl = [self.box(w) for n, w in walls.items() if n == f"Stair enclosure {t['id']}"]
+                self.assertTrue(encl, t["id"])
+                tx0, tx1 = min(b[0] for b in encl), max(b[3] for b in encl)
+                self.assertTrue(db[3] <= tx0 - 0.3 + TOL or db[0] >= tx1 + 0.3 - TOL, (x["id"], t["id"], db[0], db[3], tx0, tx1))
+            mine = [self.box(sp) for sp in spaces if (sp.Name or "").startswith(f"Exit passageway {x['id']}")]
+            self.assertTrue(any(b[0] - TOL <= db[0] and db[3] <= b[3] + TOL for b in mine), x["id"])
 
     def test_facade_and_parapets(self):
         facade = [w for w in self.of("IfcWall", pre="SOLIDWALL") if re.match(r"Phase \d fab, (north|south|east|west) wall", w.Name or "")]

@@ -150,6 +150,41 @@ Each door's near edge is then 2.5 m from the core's east end, inside the 2.10 m 
 The schematic and design development sets keep the old doors. Their stairs were blocks (LOD 200), and the fault
 belongs to the detail.
 
+### The passageway's discharge (decided 28 Oct by quiz)
+
+An exit passageway runs from its spine stair to an outside door in the facade, 3.0 m east of the stair's mid line.
+Passageway P2-XP15S's door landed behind facade stair P2-FS16S: the tower stands outside the facade from x 498.25,
+and the door spanned x 498.2 to 499.4. An exit passageway should discharge outdoors.
+
+From the construction documents on, where a facade stair's tower stands across a passageway's outside door:
+
+- the door moves along the facade to the nearer side of the tower that is clear, 0.3 m from the tower's wall;
+- the passageway's last 2.4 m widens to that side as a **discharge vestibule**, with its own walls (1 h, like the
+  passageway's) and its own space, "Exit passageway ... discharge vestibule";
+- the passageway's wall on that side stops at the vestibule's cross wall.
+
+Every other passageway keeps its door. Only P2-XP15S changes in this layout; its door moves west to x 496.75 to
+497.95.
+
+### The gowning rooms' way in (decided 28 Oct by quiz)
+
+Each gowning room had one door, to the fab, beside the air shower. The clean floor has no support corridor; people
+reach it by the stairs, which open onto the spine, and by the passenger lift at the west end, which comes up from the
+support floor.
+
+From the construction documents on, each gowning room gets a second door, the **entry door**:
+
+- in the room's end wall away from the spine (the north end of GW1, the south end of GW2), 0.3 m in from the
+  fab-side wall;
+- in GW1 it opens beside the passenger lift's landing (P1-L1 and P2-L1 stand against GW1's north end), so a person
+  coming up from the support floor steps out of the lift and into the gowning room;
+- hardware set HW-9, "Gowning entry door": lever passage set, closer, card reader outside.
+
+The way in is then: lift, entry door, benches and lockers, air shower, fab door. The spine is still open to the bays
+and the stairs still open onto it: zoning the spine away from the bays is not part of this change.
+
+The schematic and design development sets keep the old passageway door and the single gowning door.
+
 ## The model to glTF
 
 `viz/bim/gltf.py --all --ifc <ifc> --out <glb>` (the default, structure only, is unchanged).
@@ -207,6 +242,10 @@ belongs to the detail.
   - instances never overlap each other.
 - **Fit-out:** toilet partitions and mirrors in every toilet core, gowning fit-out in every gowning room, a ladder
   under each hatch.
+- **Discharge:** every exit passageway's outside door is in a facade wall, clear of every facade stair tower by
+  0.3 m, and inside the x span of the passageway or its discharge vestibule. P2-XP15S has a vestibule.
+- **Gowning:** every gowning room has its fab door and an entry door in its end wall away from the spine, hardware
+  HW-9; the 1.2 m outside the entry door is clear of the lift; GW1's entry door is within 3 m of its building's lift.
 - **Facade and parapets:** facade panels in 1.2 m modules; parapets with copings.
 - **Trusses and bracing:** chords and webs in every truss; X bracing.
 - **Inside the box:** every element's geometry (IfcOpenShell) inside its box to 1 mm.
@@ -259,9 +298,9 @@ Made while building, 28 Oct 2026, before the code was committed:
    tower stands on top, up to 0.6 m above the box (the furnace's pole), as in the film. So the tower is a separate
    object, and the test checks the body.
 
-Found and left for the founder (not changed here):
+Found while building and fixed after the founder's quiz (28 Oct; see "Changes the faithful model makes to the design"):
 
-- **Exit passageway P2-XP15S** discharges through its outside door into facade stair P2-FS16S's tower: the tower
-  stands across that part of the facade. An exit passageway should discharge outdoors.
-- **The gowning rooms** have one door, to the fab. The clean floor's stairs and lifts open straight onto the spine,
-  so nobody passes a gowning room on the way in.
+8. **Exit passageway P2-XP15S** discharged through its outside door into facade stair P2-FS16S's tower. Its door
+   moves west of the tower, through a discharge vestibule.
+9. **The gowning rooms** had one door, to the fab. Each gains an entry door at its end away from the spine, beside
+   the lift in GW1. The door count goes from 278 to 282.
