@@ -128,8 +128,31 @@ class Learned:
         return int(a)
 
 
+class Written:
+    """A rule written as a Rust function (an E2 winner, or one Muse Spark Open writes), played in the sandbox by
+    `fabrule env` through the same episode code."""
+
+    def __init__(self, path, fabrule=str(ROOT / "target" / "release" / "fabrule"), cache=str(ROOT / "target" / "fabrule-cache")):
+        self.path, self.fabrule, self.cache = str(path), fabrule, cache
+
+    def play_episode(self, seed, shop, warmup_days, window_days, defects):
+        import subprocess
+        cmd = [self.fabrule, "env", self.path, str(shop), "--seed", str(seed), "--warmup", str(warmup_days),
+               "--window", str(window_days), "--cache", self.cache]
+        if defects:
+            cmd += ["--defects", ",".join(str(x) for x in defects)]
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        if p.returncode != 0:
+            raise RuntimeError(f"fabrule env refused: {p.stdout.strip() or p.stderr.strip()}")
+        d = json.loads(p.stdout.strip().splitlines()[-1])
+        return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": d["picked_other"],
+                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "faults": d["faults"]}
+
+
 def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None):
     """One episode on one seed; the window's score and what the policy did."""
+    if hasattr(policy, "play_episode"):
+        return policy.play_episode(seed, shop, warmup_days, window_days, defects)
     from agent.fabgym_env import FabGymEnv
     env = FabGymEnv(shop, fabsim=fabsim, seeds=[seed], warmup_days=warmup_days, window_days=window_days, defects=defects)
     try:
@@ -255,7 +278,7 @@ def main():
             p.add_argument("--workers", type=int, default=4)
             p.add_argument("--n-steps", type=int, default=2048)
         else:
-            p.add_argument("--policy", action="append", default=[], help="NAME=policy.zip; today's rule is always in")
+            p.add_argument("--policy", action="append", default=[], help="NAME=policy.zip (PPO) or NAME=rule.rs (a written rule); today's rule is always in")
     a = ap.parse_args()
     defects = tuple(float(x) for x in a.defects.split(",")) if a.defects else None
     common = dict(shop=a.shop, fabsim=a.fabsim, warmup_days=a.warmup, window_days=a.window, defects=defects)
@@ -266,7 +289,7 @@ def main():
         pols = {"today": Today()}
         for spec in a.policy:
             n, path = spec.split("=", 1)
-            pols[n] = Learned(path)
+            pols[n] = Written(path) if path.endswith(".rs") else Learned(path)
         print(json.dumps(contest(pols, _seeds(a.seeds), a.out, **common), indent=1))
 
 

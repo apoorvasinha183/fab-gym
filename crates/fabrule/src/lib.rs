@@ -441,7 +441,8 @@ impl Rule {
 
     /// The rule's pick for one decision, or None for a fault (out of fuel, a trap, an index out of range,
     /// too many candidates).
-    fn decide(&mut self, d: &Decision) -> Option<usize> {
+    /// The rule's pick for one decision (the candidate with the smallest key), or None on a fault.
+    pub fn decide(&mut self, d: &Decision) -> Option<usize> {
         let n = d.candidates.len();
         if n == 0 || n > MAX_CANDIDATES {
             return None;
@@ -490,8 +491,8 @@ impl Rule {
         }
     }
 
-    pub fn run(&mut self, shop: &Shop, opts: &RunOptions) -> RuleRun {
-        let (mut decisions, mut faults) = (0u64, 0u64);
+    /// Number the shop's families as a rule sees them; `run` does this itself.
+    pub fn prepare(&mut self, shop: &Shop) {
         // families numbered from 1 in the order the shop's `family` records first name them
         self.families.clear();
         for (_, f) in &shop.families {
@@ -500,6 +501,11 @@ impl Rule {
                 self.families.insert(f.clone(), n);
             }
         }
+    }
+
+    pub fn run(&mut self, shop: &Shop, opts: &RunOptions) -> RuleRun {
+        let (mut decisions, mut faults) = (0u64, 0u64);
+        self.prepare(shop);
         let result = {
             let mut pick = |d: &Decision| {
                 decisions += 1;

@@ -44,6 +44,7 @@ fn fail(stage: &str, error: &str) -> ExitCode {
 
 fn usage() -> ExitCode {
     eprintln!("usage: fabrule score RULE.rs (--shop FILE | --smt2020 DIR) [--scenario FILE] (--train A..B | --held-out) [--threads N] [--cache DIR]");
+    eprintln!("       fabrule env RULE.rs (SHOP | SMT2020_DIR) [--seed S] [--warmup D] [--window D] [--defects H,L,R] [--cache DIR]");
     eprintln!("       fabrule trace RULE.rs [--real] [--data D] [--plan P] [--seed S] [--day N] [--hours H] --out FILE");
     ExitCode::from(64)
 }
@@ -117,10 +118,55 @@ fn trace(args: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `fabrule env RULE.rs SHOP`: the rule plays one episode through fabsim's episode code (docs/RL-DEFECTS.md).
+fn env(args: &[String]) -> ExitCode {
+    use fabsim::gym::{done_json, episode, load_shop};
+    use fabsim::window::Window;
+    let (Some(rule_path), Some(src)) = (args.get(1), args.get(2)) else { return usage() };
+    let num = |name: &str, d: f64| flag(args, name).map(|v| v.parse::<f64>().unwrap_or(d)).unwrap_or(d);
+    let seed = flag(args, "--seed").and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+    let (warmup, window) = (num("--warmup", 1.0), num("--window", 3.0));
+    let cache = flag(args, "--cache").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("target/fabrule-cache"));
+    let shop = match load_shop(std::path::Path::new(src), flag(args, "--defects").as_deref()) {
+        Ok(s) => s,
+        Err(e) => return fail("shop", &e),
+    };
+    let text = match std::fs::read_to_string(rule_path) {
+        Ok(t) => t,
+        Err(e) => return fail("rule", &format!("{rule_path}: {e}")),
+    };
+    let wasm = match compile(&text, &cache) {
+        Ok(w) => w,
+        Err(e) => return fail("compile", &e),
+    };
+    let mut rule = match fabrule::Rule::load(&wasm) {
+        Ok(r) => r,
+        Err(e) => return fail("load", &e),
+    };
+    rule.prepare(&shop);
+    let (mut faults, mut other) = (0u64, 0u64);
+    let w = Window { from: warmup * 1440.0, to: (warmup + window) * 1440.0 };
+    let mut ask = |d: &fabsim::engine::Decision, _ord: &[usize], _reward: f64| -> Option<usize> {
+        let k = rule.decide(d);
+        match k {
+            None => faults += 1,
+            Some(i) if i != d.default => other += 1,
+            _ => {}
+        }
+        k
+    };
+    let e = episode(&shop, seed, w, &mut ask);
+    println!("{}", done_json(&e, &format!(",\"faults\":{faults},\"picked_other\":{other}")));
+    ExitCode::SUCCESS
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(|s| s.as_str()) == Some("trace") {
         return trace(&args);
+    }
+    if args.first().map(|s| s.as_str()) == Some("env") {
+        return env(&args);
     }
     if args.first().map(|s| s.as_str()) != Some("score") || args.len() < 2 {
         return usage();
