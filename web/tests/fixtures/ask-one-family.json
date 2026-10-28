@@ -1,0 +1,401 @@
+{
+ "model": "SMT2020",
+ "families": false,
+ "question": "Polisher group Planar_FE_79 is down for a shift tomorrow morning. Which dispatch rule should we run?",
+ "shocks": [
+  {
+   "kind": "outage",
+   "value": "Outage { group: \"Planar_FE_79\", from_hours: 30.0, hours: 8.0 }",
+   "said": true
+  }
+ ],
+ "warmup_days": 1,
+ "window_days": 2,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "alpha_each": 0.016666666666666666,
+ "guarantee": "paired t intervals at level 0.0167 each (Bonferroni over 3 candidates), so all hold at once with probability at least 95%; exact if the per-seed differences are normal, asymptotic otherwise",
+ "candidates": [
+  {
+   "name": "fifo",
+   "rule": "fifo",
+   "measures": {
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -422.2752232562367,
+      -393.4028191875105,
+      -372.41550601008777
+     ],
+     "candidate": [
+      -557.5353451051841,
+      -545.4633305082035,
+      -517.8237718310667
+     ],
+     "mean": -144.24296633020643,
+     "lo": -181.605295930644,
+     "hi": -106.88063672976887,
+     "verdict": "worse"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      44974,
+      45064,
+      45691
+     ],
+     "candidate": [
+      34001,
+      33543,
+      34488
+     ],
+     "mean": -11232.333333333334,
+     "lo": -12447.517291541963,
+     "hi": -10017.149375124705,
+     "verdict": "worse"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      99,
+      115,
+      122
+     ],
+     "candidate": [
+      105,
+      111,
+      125
+     ],
+     "mean": 1.6666666666666667,
+     "lo": -20.994685486707528,
+     "hi": 24.328018820040864,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      52127.52232562367,
+      50840.28191875105,
+      49441.55060100878
+     ],
+     "candidate": [
+      66253.53451051841,
+      65646.33305082035,
+      64282.37718310666
+     ],
+     "mean": 14590.96329968731,
+     "lo": 12811.14624281348,
+     "hi": 16370.78035656114,
+     "verdict": "worse"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      69.5435438150358,
+      67.69077123923891,
+      64.92510638989137
+     ],
+     "candidate": [
+      116.91456341375562,
+      117.4247975151066,
+      111.83433747930874
+     ],
+     "mean": 48.00475898800162,
+     "lo": 41.31320489712781,
+     "hi": 54.69631307887543,
+     "verdict": "worse"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      671,
+      522,
+      981
+     ],
+     "candidate": [
+      571,
+      367,
+      964
+     ],
+     "mean": -90.66666666666667,
+     "lo": -397.45692004916157,
+     "hi": 216.1235867158282,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2275.3337853927546,
+      2255.825274782068,
+      2254.9997995655945
+     ],
+     "candidate": [
+      2272.777910478739,
+      2254.7052005437977,
+      2253.064283439121
+     ],
+     "mean": -1.8704884262530566,
+     "lo": -5.050503680909809,
+     "hi": 1.3095268284036965,
+     "verdict": "no clear effect"
+    }
+   }
+  },
+  {
+   "name": "spt",
+   "rule": "spt",
+   "measures": {
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -422.2752232562367,
+      -393.4028191875105,
+      -372.41550601008777
+     ],
+     "candidate": [
+      -580.0363044963622,
+      -563.6241211430929,
+      -564.3665884980184
+     ],
+     "mean": -173.31115522787948,
+     "lo": -249.72259698633474,
+     "hi": -96.89971346942421,
+     "verdict": "worse"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      44974,
+      45064,
+      45691
+     ],
+     "candidate": [
+      32492,
+      32093,
+      32690
+     ],
+     "mean": -12818,
+     "lo": -14104.70525115947,
+     "hi": -11531.29474884053,
+     "verdict": "worse"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      99,
+      115,
+      122
+     ],
+     "candidate": [
+      103,
+      120,
+      115
+     ],
+     "mean": 0.6666666666666666,
+     "lo": -28.736770062791898,
+     "hi": 30.070103396125234,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      52127.52232562367,
+      50840.28191875105,
+      49441.55060100878
+     ],
+     "candidate": [
+      68303.63044963621,
+      68362.41211430929,
+      67936.65884980184
+     ],
+     "mean": 17397.782189454618,
+     "lo": 12255.34843709084,
+     "hi": 22540.215941818395,
+     "verdict": "worse"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      69.5435438150358,
+      67.69077123923891,
+      64.92510638989137
+     ],
+     "candidate": [
+      126.13005745962614,
+      127.80808048043367,
+      124.6925521868495
+     ],
+     "mean": 58.82375622758108,
+     "lo": 50.23283850537433,
+     "hi": 67.41467394978783,
+     "verdict": "worse"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      671,
+      522,
+      981
+     ],
+     "candidate": [
+      450,
+      273,
+      525
+     ],
+     "mean": -308.6666666666667,
+     "lo": -875.5101866059065,
+     "hi": 258.17685327257306,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2275.3337853927546,
+      2255.825274782068,
+      2254.9997995655945
+     ],
+     "candidate": [
+      2267.834602525495,
+      2250.319572469459,
+      2259.450271059083
+     ],
+     "mean": -2.851471228793192,
+     "lo": -31.121801986036306,
+     "hi": 25.418859528449925,
+     "verdict": "no clear effect"
+    }
+   }
+  },
+  {
+   "name": "critical-ratio",
+   "rule": "cr",
+   "measures": {
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -422.2752232562367,
+      -393.4028191875105,
+      -372.41550601008777
+     ],
+     "candidate": [
+      -630.6485303102065,
+      -670.3543109995888,
+      -630.7221992377754
+     ],
+     "mean": -247.87716403124526,
+     "lo": -404.46440069656484,
+     "hi": -91.28992736592568,
+     "verdict": "worse"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      44974,
+      45064,
+      45691
+     ],
+     "candidate": [
+      33714,
+      32671,
+      33416
+     ],
+     "mean": -11976,
+     "lo": -14726.639358322327,
+     "hi": -9225.360641677673,
+     "verdict": "worse"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      99,
+      115,
+      122
+     ],
+     "candidate": [
+      73,
+      47,
+      73
+     ],
+     "mean": -47.666666666666664,
+     "lo": -140.54357183944094,
+     "hi": 45.21023850610761,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      52127.52232562367,
+      50840.28191875105,
+      49441.55060100878
+     ],
+     "candidate": [
+      70364.85303102066,
+      71735.43109995888,
+      70372.21992377753
+     ],
+     "mean": 20021.04973645786,
+     "lo": 13198.940323640694,
+     "hi": 26843.159149275023,
+     "verdict": "worse"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      69.5435438150358,
+      67.69077123923891,
+      64.92510638989137
+     ],
+     "candidate": [
+      125.2266471454363,
+      131.74147917105483,
+      126.35663141688569
+     ],
+     "mean": 60.38844542973692,
+     "lo": 41.48686317864159,
+     "hi": 79.29002768083225,
+     "verdict": "worse"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      671,
+      522,
+      981
+     ],
+     "candidate": [
+      380,
+      337,
+      501
+     ],
+     "mean": -318.6666666666667,
+     "lo": -978.5702770346202,
+     "hi": 341.23694370128686,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2275.3337853927546,
+      2255.825274782068,
+      2254.9997995655945
+     ],
+     "candidate": [
+      2314.525889913118,
+      2315.538812556163,
+      2313.7011792565986
+     ],
+     "mean": 52.53567399515426,
+     "lo": 1.4555871081020157,
+     "hi": 103.6157608822065,
+     "verdict": "worse"
+    }
+   }
+  }
+ ],
+ "best": null,
+ "real_fab": "Real-fab effect: cannot say",
+ "fixture": "A smoke run (3 seeds, 1 day of warm-up, 2 days scored, a quick layout), kept for the page's tests. Not a result."
+}

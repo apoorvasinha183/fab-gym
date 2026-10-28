@@ -1,0 +1,872 @@
+{
+ "model": "SMT2020",
+ "families": true,
+ "family": {
+  "share": 2,
+  "said": true
+ },
+ "question": "Prototype orders double next quarter. Do we give them their own wing or put them first in line?",
+ "shocks": [],
+ "warmup_days": 1,
+ "window_days": 2,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "alpha_each": 0.0125,
+ "guarantee": "paired t intervals at level 0.0125 each (Bonferroni over 4 candidates), so all hold at once with probability at least 95%; exact if the per-seed differences are normal, asymptotic otherwise",
+ "candidates": [
+  {
+   "name": "own-wing",
+   "rule": "today",
+   "measures": {
+    "money": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1099,
+      1286.5,
+      1374
+     ],
+     "mean": -213.5,
+     "lo": -324.2525004331791,
+     "hi": -102.74749956682095,
+     "verdict": "worse"
+    },
+    "a_wafers": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1300,
+      1487.5,
+      1575
+     ],
+     "mean": -12.5,
+     "lo": -123.25250043317905,
+     "hi": 98.25250043317905,
+     "verdict": "no clear effect"
+    },
+    "b_lots": {
+     "higher_is_better": true,
+     "today": [
+      0,
+      0,
+      0
+     ],
+     "candidate": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "lo": 0,
+     "hi": 0,
+     "verdict": "no clear effect"
+    },
+    "b_cycle_days": {
+     "higher_is_better": false,
+     "today": [
+      null,
+      null,
+      null
+     ],
+     "candidate": [
+      null,
+      null,
+      null
+     ],
+     "mean": null,
+     "lo": null,
+     "hi": null,
+     "verdict": "no clear effect"
+    },
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -455.01446058018837,
+      -433.08744534408504,
+      -406.3185287441438
+     ],
+     "candidate": [
+      -452.57851164378894,
+      -439.19597935790966,
+      -409.34567266686383
+     ],
+     "mean": -2.2332430000484087,
+     "lo": -24.36882707316359,
+     "hi": 19.902341073066776,
+     "verdict": "no clear effect"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      45449,
+      45108,
+      46034
+     ],
+     "candidate": [
+      45800,
+      44609,
+      46027
+     ],
+     "mean": -51.666666666666664,
+     "lo": -2234.7147937328973,
+     "hi": 2131.3814603995643,
+     "verdict": "no clear effect"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      104,
+      119,
+      129
+     ],
+     "candidate": [
+      104,
+      119,
+      126
+     ],
+     "mean": -1,
+     "lo": -9.860200034654323,
+     "hi": 7.860200034654323,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      55901.44605801883,
+      55208.744534408506,
+      53531.852874414384
+     ],
+     "candidate": [
+      55657.851164378895,
+      55819.59793579097,
+      53534.56726668638
+     ],
+     "mean": 123.32430000484116,
+     "lo": -2126.483487203942,
+     "hi": 2373.132087213624,
+     "verdict": "no clear effect"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      73.79891226388105,
+      73.43541438468809,
+      69.77258488214935
+     ],
+     "candidate": [
+      72.91421549918633,
+      75.07847914428608,
+      69.78673465577124
+     ],
+     "mean": 0.25750592284172075,
+     "lo": -6.297068700031623,
+     "hi": 6.812080545715064,
+     "verdict": "no clear effect"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      737,
+      454,
+      936
+     ],
+     "candidate": [
+      724,
+      451,
+      919
+     ],
+     "mean": -11,
+     "lo": -47.88795432121711,
+     "hi": 25.88795432121711,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2328.97730427779,
+      2307.73065506703,
+      2306.5737630501703
+     ],
+     "candidate": [
+      2328.4245767329976,
+      2307.9866808247216,
+      2308.4811127836547
+     ],
+     "mean": 0.5368826487944413,
+     "lo": -5.8771423624810515,
+     "hi": 6.950907660069935,
+     "verdict": "no clear effect"
+    }
+   }
+  },
+  {
+   "name": "b-first",
+   "rule": "today",
+   "measures": {
+    "money": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1325,
+      1475,
+      1562.5
+     ],
+     "mean": -12.5,
+     "lo": -204.32895781556022,
+     "hi": 179.32895781556022,
+     "verdict": "no clear effect"
+    },
+    "a_wafers": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1325,
+      1475,
+      1562.5
+     ],
+     "mean": -12.5,
+     "lo": -204.32895781556022,
+     "hi": 179.32895781556022,
+     "verdict": "no clear effect"
+    },
+    "b_lots": {
+     "higher_is_better": true,
+     "today": [
+      0,
+      0,
+      0
+     ],
+     "candidate": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "lo": 0,
+     "hi": 0,
+     "verdict": "no clear effect"
+    },
+    "b_cycle_days": {
+     "higher_is_better": false,
+     "today": [
+      null,
+      null,
+      null
+     ],
+     "candidate": [
+      null,
+      null,
+      null
+     ],
+     "mean": null,
+     "lo": null,
+     "hi": null,
+     "verdict": "no clear effect"
+    },
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -455.01446058018837,
+      -433.08744534408504,
+      -406.3185287441438
+     ],
+     "candidate": [
+      -453.2934679457961,
+      -439.48351513657826,
+      -405.1639057283561
+     ],
+     "mean": -1.1734847141044231,
+     "lo": -24.355364535658826,
+     "hi": 22.00839510744998,
+     "verdict": "no clear effect"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      45449,
+      45108,
+      46034
+     ],
+     "candidate": [
+      45604,
+      44805,
+      46562
+     ],
+     "mean": 126.66666666666667,
+     "lo": -2002.5012423123692,
+     "hi": 2255.8345756457024,
+     "verdict": "no clear effect"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      104,
+      119,
+      129
+     ],
+     "candidate": [
+      106,
+      118,
+      125
+     ],
+     "mean": -1,
+     "lo": -16.346316625244818,
+     "hi": 14.346316625244816,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      55901.44605801883,
+      55208.744534408506,
+      53531.852874414384
+     ],
+     "candidate": [
+      55929.34679457961,
+      55748.35151365783,
+      53016.39057283561
+     ],
+     "mean": 17.34847141044156,
+     "lo": -2681.627612081715,
+     "hi": 2716.3245549025983,
+     "verdict": "no clear effect"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      73.79891226388105,
+      73.43541438468809,
+      69.77258488214935
+     ],
+     "candidate": [
+      73.58479097611561,
+      74.65463878628434,
+      68.31715635862156
+     ],
+     "mean": -0.15010846989899088,
+     "lo": -6.996995465639212,
+     "hi": 6.696778525841229,
+     "verdict": "no clear effect"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      737,
+      454,
+      936
+     ],
+     "candidate": [
+      709,
+      456,
+      888
+     ],
+     "mean": -24.666666666666668,
+     "lo": -153.40238856871255,
+     "hi": 104.06905523537922,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2328.97730427779,
+      2307.73065506703,
+      2306.5737630501703
+     ],
+     "candidate": [
+      2328.1671879934365,
+      2308.618712773037,
+      2308.189364457698
+     ],
+     "mean": 0.5645142763936141,
+     "lo": -5.803204178366463,
+     "hi": 6.93223273115369,
+     "verdict": "no clear effect"
+    }
+   }
+  },
+  {
+   "name": "copies",
+   "rule": "today",
+   "measures": {
+    "money": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1156.5,
+      1381.5,
+      1431.5
+     ],
+     "mean": -143.5,
+     "lo": -335.3289578155602,
+     "hi": 48.328957815560216,
+     "verdict": "no clear effect"
+    },
+    "a_wafers": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1237.5,
+      1462.5,
+      1512.5
+     ],
+     "mean": -62.5,
+     "lo": -254.32895781556022,
+     "hi": 129.32895781556022,
+     "verdict": "no clear effect"
+    },
+    "b_lots": {
+     "higher_is_better": true,
+     "today": [
+      0,
+      0,
+      0
+     ],
+     "candidate": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "lo": 0,
+     "hi": 0,
+     "verdict": "no clear effect"
+    },
+    "b_cycle_days": {
+     "higher_is_better": false,
+     "today": [
+      null,
+      null,
+      null
+     ],
+     "candidate": [
+      null,
+      null,
+      null
+     ],
+     "mean": null,
+     "lo": null,
+     "hi": null,
+     "verdict": "no clear effect"
+    },
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -455.01446058018837,
+      -433.08744534408504,
+      -406.3185287441438
+     ],
+     "candidate": [
+      -455.99720829132843,
+      -438.0762713337931,
+      -414.147515011774
+     ],
+     "mean": -4.6001866561594325,
+     "lo": -22.195382447803713,
+     "hi": 12.995009135484846,
+     "verdict": "no clear effect"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      45449,
+      45108,
+      46034
+     ],
+     "candidate": [
+      45753,
+      44953,
+      46070
+     ],
+     "mean": 61.666666666666664,
+     "lo": -1117.8201355916776,
+     "hi": 1241.153468925011,
+     "verdict": "no clear effect"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      104,
+      119,
+      129
+     ],
+     "candidate": [
+      99,
+      117,
+      121
+     ],
+     "mean": -5,
+     "lo": -20.346316625244818,
+     "hi": 10.346316625244816,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      55901.44605801883,
+      55208.744534408506,
+      53531.852874414384
+     ],
+     "candidate": [
+      55499.72082913284,
+      55507.62713337931,
+      53514.751501177394
+     ],
+     "mean": -39.981334384057845,
+     "lo": -1834.803987935214,
+     "hi": 1754.8413191670984,
+     "verdict": "no clear effect"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      73.79891226388105,
+      73.43541438468809,
+      69.77258488214935
+     ],
+     "candidate": [
+      72.78174654663017,
+      74.08754984100635,
+      69.69579097179604
+     ],
+     "mean": -0.1472747237619719,
+     "lo": -4.428280539636719,
+     "hi": 4.133731092112776,
+     "verdict": "no clear effect"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      737,
+      454,
+      936
+     ],
+     "candidate": [
+      651,
+      475,
+      954
+     ],
+     "mean": -15.666666666666666,
+     "lo": -327.34483437114415,
+     "hi": 296.0115010378108,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2328.97730427779,
+      2307.73065506703,
+      2306.5737630501703
+     ],
+     "candidate": [
+      2328.6399024546863,
+      2308.237928406179,
+      2308.240164562377
+     ],
+     "mean": 0.6120910094171753,
+     "lo": -4.5340684904860264,
+     "hi": 5.758250509320376,
+     "verdict": "no clear effect"
+    }
+   }
+  },
+  {
+   "name": "copies-b-first",
+   "rule": "today",
+   "measures": {
+    "money": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1206.5,
+      1344,
+      1456.5
+     ],
+     "mean": -131,
+     "lo": -300.17723888022414,
+     "hi": 38.17723888022414,
+     "verdict": "no clear effect"
+    },
+    "a_wafers": {
+     "higher_is_better": true,
+     "today": [
+      1300,
+      1487.5,
+      1612.5
+     ],
+     "candidate": [
+      1287.5,
+      1425,
+      1537.5
+     ],
+     "mean": -50,
+     "lo": -219.17723888022414,
+     "hi": 119.17723888022414,
+     "verdict": "no clear effect"
+    },
+    "b_lots": {
+     "higher_is_better": true,
+     "today": [
+      0,
+      0,
+      0
+     ],
+     "candidate": [
+      0,
+      0,
+      0
+     ],
+     "mean": 0,
+     "lo": 0,
+     "hi": 0,
+     "verdict": "no clear effect"
+    },
+    "b_cycle_days": {
+     "higher_is_better": false,
+     "today": [
+      null,
+      null,
+      null
+     ],
+     "candidate": [
+      null,
+      null,
+      null
+     ],
+     "mean": null,
+     "lo": null,
+     "hi": null,
+     "verdict": "no clear effect"
+    },
+    "reward": {
+     "higher_is_better": true,
+     "today": [
+      -455.01446058018837,
+      -433.08744534408504,
+      -406.3185287441438
+     ],
+     "candidate": [
+      -455.10112407158203,
+      -435.61209965180103,
+      -414.19210518642353
+     ],
+     "mean": -3.4949647471297944,
+     "lo": -23.870297891548706,
+     "hi": 16.880368397289114,
+     "verdict": "no clear effect"
+    },
+    "moves": {
+     "higher_is_better": true,
+     "today": [
+      45449,
+      45108,
+      46034
+     ],
+     "candidate": [
+      45419,
+      45496,
+      46026
+     ],
+     "mean": 116.66666666666667,
+     "lo": -1086.683474043035,
+     "hi": 1320.0168073763684,
+     "verdict": "no clear effect"
+    },
+    "lots_finished": {
+     "higher_is_better": true,
+     "today": [
+      104,
+      119,
+      129
+     ],
+     "candidate": [
+      103,
+      114,
+      123
+     ],
+     "mean": -4,
+     "lo": -17.53417911041793,
+     "hi": 9.53417911041793,
+     "verdict": "no clear effect"
+    },
+    "wait_lot_hours": {
+     "higher_is_better": false,
+     "today": [
+      55901.44605801883,
+      55208.744534408506,
+      53531.852874414384
+     ],
+     "candidate": [
+      55810.1124071582,
+      54961.209965180096,
+      53719.21051864236
+     ],
+     "mean": -50.50352528702206,
+     "lo": -1177.4468268973312,
+     "hi": 1076.439776323287,
+     "verdict": "no clear effect"
+    },
+    "wait_per_move_minutes": {
+     "higher_is_better": false,
+     "today": [
+      73.79891226388105,
+      73.43541438468809,
+      69.77258488214935
+     ],
+     "candidate": [
+      73.7270028937117,
+      72.4826929380782,
+      70.0289538764729
+     ],
+     "mean": -0.2560872741518949,
+     "lo": -3.4544274232797245,
+     "hi": 2.9422528749759347,
+     "verdict": "no clear effect"
+    },
+    "breaches": {
+     "higher_is_better": false,
+     "today": [
+      737,
+      454,
+      936
+     ],
+     "candidate": [
+      669,
+      489,
+      940
+     ],
+     "mean": -9.666666666666666,
+     "lo": -279.9794161434531,
+     "hi": 260.6460828101197,
+     "verdict": "no clear effect"
+    },
+    "mean_wip": {
+     "higher_is_better": false,
+     "today": [
+      2328.97730427779,
+      2307.73065506703,
+      2306.5737630501703
+     ],
+     "candidate": [
+      2327.109384985078,
+      2309.462476707018,
+      2308.1287734400953
+     ],
+     "mean": 0.47297091240034206,
+     "lo": -9.907262689805236,
+     "hi": 10.85320451460592,
+     "verdict": "no clear effect"
+    }
+   }
+  }
+ ],
+ "best": null,
+ "arms": [
+  {
+   "name": "today",
+   "rule": "today",
+   "bfirst": false,
+   "extra_areas": [],
+   "shop": "(shop text left out of the fixture)"
+  },
+  {
+   "name": "own-wing",
+   "rule": "today",
+   "bfirst": false,
+   "extra_areas": [
+    [
+     "TF_FE_103@B",
+     "P3 wing"
+    ],
+    [
+     "TF_FE_3@B",
+     "P3 wing"
+    ],
+    [
+     "TF_FE_113@B",
+     "P3 wing"
+    ]
+   ],
+   "shop": "(shop text left out of the fixture)"
+  },
+  {
+   "name": "b-first",
+   "rule": "today",
+   "bfirst": true,
+   "extra_areas": [],
+   "shop": "(shop text left out of the fixture)"
+  },
+  {
+   "name": "copies",
+   "rule": "today",
+   "bfirst": false,
+   "extra_areas": [
+    [
+     "TF_FE_103@B",
+     "TF"
+    ],
+    [
+     "TF_FE_3@B",
+     "TF"
+    ],
+    [
+     "TF_FE_113@B",
+     "TF"
+    ]
+   ],
+   "shop": "(shop text left out of the fixture)"
+  },
+  {
+   "name": "copies-b-first",
+   "rule": "today",
+   "bfirst": true,
+   "extra_areas": [
+    [
+     "TF_FE_103@B",
+     "TF"
+    ],
+    [
+     "TF_FE_3@B",
+     "TF"
+    ],
+    [
+     "TF_FE_113@B",
+     "TF"
+    ]
+   ],
+   "shop": "(shop text left out of the fixture)"
+  }
+ ],
+ "real_fab": "Real-fab effect: cannot say",
+ "fixture": "A smoke run (3 seeds, 1 day of warm-up, 2 days scored, a quick layout), kept for the page's tests. Not a result."
+}
