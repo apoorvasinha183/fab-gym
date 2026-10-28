@@ -140,7 +140,9 @@ fn pheromone_follows_the_stated_rule() {
     for _ in 0..200 {
         ants.update(&[best.clone()]);
     }
-    assert_eq!(ants.tau_tools[0][1], TAU_MAX);
+    // one depositor settles where evaporation equals its deposit: 0.4 / 0.2 = 2; unchosen pheromone falls to the floor
+    assert!((ants.tau_tools[0][1] - DEPOSITS[0] / RHO).abs() < 1e-9, "{}", ants.tau_tools[0][1]);
+    assert!(ants.tau_tools[0][1] <= TAU_MAX);
     assert_eq!(ants.tau_tools[0][0], TAU_MIN);
 }
 
@@ -188,7 +190,9 @@ fn the_search_is_seeded_and_keeps_its_best() {
     // the kept individual opens each later generation unchanged
     for k in 1..h1.generations.len() {
         let prev = &h1.generations[k - 1];
-        let top = prev.iter().max_by(|a, b| a.fitness.total_cmp(&b.fitness)).unwrap();
+        // ties go to the earlier individual, as the search ranks them
+        let m = prev.iter().map(|i| i.fitness).fold(f64::NEG_INFINITY, f64::max);
+        let top = prev.iter().find(|i| i.fitness == m).unwrap();
         assert_eq!(&h1.generations[k][0], top);
     }
     let d = Settings::default();

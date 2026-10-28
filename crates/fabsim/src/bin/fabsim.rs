@@ -9,6 +9,8 @@
 //!                                                (docs/LEAN-LONG.md); the overrides are for
 //!                                                smoke runs only; --reference reads the
 //!                                                files as the reference compile does
+//!   fabsim evolve [DIR] [--share S] [--threads T] [--sweep D] [--out O] (smoke: --population --generations --iters ...)
+//!                                                floor and rules evolved together (docs/EVOLVE.md)
 //!   fabsim two-families [DIR] [--threads T] [--out O] [--days N --warmup W --seeds K --iters I]
 //!                                                the pre-registered two-family sweep
 //!                                                (docs/TWO-FAMILIES-SWEEP.md); overrides are for
@@ -73,6 +75,221 @@ fn bench(args: &[String]) {
             moves as f64 / total
         );
     }
+}
+
+fn argf(args: &[String], flag: &str, default: f64) -> f64 {
+    args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(|v| v.parse().unwrap()).unwrap_or(default)
+}
+
+fn evolve_cmd(args: &[String]) {
+    use fabsim::engine::{run, Decision, RunOptions};
+    use fabsim::evolve::{picks, search, Floor, Settings, Space};
+    use fabsim::gp::{self, Expr};
+    use fabsim::layout::Config as LayoutConfig;
+    use fabsim::money::{money, PriceGrid};
+    use fabsim::shop::Shop;
+    use fabsim::twofam::{apply_policy, b_cap, b_first, contested, lay_out, lay_out_copies, loads, policy_groups, two_family_shop, EngLots, LayoutInfo, Policy, Strategy};
+    use fabsim::uq::{paired, verdict, Verdict};
+    use fabsim::window::Window;
+    use std::collections::HashMap;
+    use std::fmt::Write as _;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let threads = arg(args, "--threads", 4) as usize;
+    let share = argf(args, "--share", 4.0);
+    let seed = arg(args, "--seed", 1);
+    let pop = arg(args, "--population", 16) as usize;
+    let gens = arg(args, "--generations", 12) as usize;
+    let sdays = argf(args, "--search-days", 240.0);
+    let days = argf(args, "--days", 300.0);
+    let warmup = argf(args, "--warmup", 120.0);
+    let nheld = arg(args, "--seeds", 10);
+    let iters = arg(args, "--iters", 20000) as usize;
+    let full_iters = arg(args, "--full-iters", 0) as usize;
+    let get = |f: &str| args.iter().position(|a| a == f).and_then(|i| args.get(i + 1)).cloned();
+    let out = PathBuf::from(get("--out").unwrap_or_else(|| format!("results/evolve-x{share}")));
+    let sweep = get("--sweep").map(PathBuf::from);
+    let preregistered = pop == 16 && gens == 12 && sdays == 240.0 && days == 300.0 && warmup == 120.0 && nheld == 10 && iters == 20000 && full_iters == 0;
+    let t0 = Instant::now();
+
+    let base = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let areas = fabsim::smt2020::areas(&dir).expect("areas load");
+    let raw = fabsim::measure::raw_processing_days(&base, 20, 0)["part_3"];
+    let e = EngLots { scale: share, ..EngLots::published("part_E3", days * 1440.0, 1) };
+    let shop = two_family_shop(&base, "part_3", &e).expect("two families");
+    let all = loads(&shop, None);
+    let groups = contested(&shop, "B", 12);
+    let space = Space::new(groups.clone(), groups.iter().map(|g| all[g]).collect(), 8);
+    let avg_lots = e.lots_per_day() * raw;
+    let central = PriceGrid::preregistered("B").remove(0);
+    let mut cfg_search = LayoutConfig::realistic();
+    cfg_search.iters = iters;
+    cfg_search.restarts = 1;
+    let mut cfg_full = LayoutConfig::realistic();
+    if full_iters > 0 {
+        cfg_full.iters = full_iters;
+        cfg_full.restarts = 1;
+    }
+    eprintln!("evolve x{share}: candidates {groups:?}; cap base {avg_lots:.1} lots; population {pop}, generations {gens}, {threads} threads");
+
+    type Laid = Arc<(Shop, LayoutInfo)>;
+    let cache: Mutex<HashMap<(Vec<usize>, bool), Laid>> = Mutex::new(HashMap::new());
+    let lay = |f: &Floor| -> Laid {
+        let any = f.tools.iter().any(|&t| t > 0);
+        let key = (f.tools.clone(), f.wing && any);
+        if let Some(x) = cache.lock().unwrap().get(&key) {
+            return x.clone();
+        }
+        let x = Arc::new(lay_out_copies(&shop, &areas, &cfg_search, &picks(&space, f), key.1, "B").expect("layout"));
+        cache.lock().unwrap().insert(key, x.clone());
+        x
+    };
+    let ws = Window { from: warmup * 1440.0, to: sdays * 1440.0 };
+    let with_cap = |s: &Shop, f: &Floor| {
+        let mut s = s.clone();
+        if let Some(m) = space.caps[f.cap] {
+            s.famcaps.push(("B".to_string(), (m * avg_lots).ceil() as i64));
+        }
+        s
+    };
+    let eval = |f: &Floor, rule: &Expr, sd: u64| -> f64 {
+        let laid = lay(f);
+        let s = with_cap(&laid.0, f);
+        let fam = gp::family_numbers(&s);
+        let mut pick = |d: &Decision| gp::choose(rule, d, &fam);
+        let r = run(&s, &RunOptions { seed: sd, until: Some(ws.to), record: false }, Some(&mut pick));
+        money(&s, &r, &ws, &central, laid.1.tools_added, laid.1.metres_added).per_day
+    };
+    let set = Settings { population: pop, generations: gens, seed, threads, ..Settings::default() };
+    let hist = search(&eval, &space, &set);
+    eprintln!("search done in {:.0} s, {} floors laid out", t0.elapsed().as_secs_f64(), cache.lock().unwrap().len());
+    std::fs::create_dir_all(out.join("rules")).unwrap();
+    let mut tsv = String::from("generation\tindividual\tfitness\tcopies\twing\tcap\trule\n");
+    for (g, gen) in hist.generations.iter().enumerate() {
+        for (i, ind) in gen.iter().enumerate() {
+            let cp: Vec<String> = picks(&space, &ind.floor).iter().map(|(g, t)| format!("{g}x{t}")).collect();
+            let cap = space.caps[ind.floor.cap].map(|m| m.to_string()).unwrap_or("none".into());
+            let _ = writeln!(tsv, "{g}\t{i}\t{}\t{}\t{}\t{cap}\t{}", ind.fitness, cp.join(","), ind.floor.wing, ind.rule.to_rust().replace('\n', " "));
+        }
+    }
+    std::fs::write(out.join("history.tsv"), tsv).unwrap();
+
+    // the claim: the three best distinct individuals, laid out in full, on the held-out seeds
+    let mut every: Vec<&fabsim::evolve::Individual> = hist.generations.iter().flatten().collect();
+    every.sort_by(|a, b| b.fitness.total_cmp(&a.fitness));
+    let mut top: Vec<&fabsim::evolve::Individual> = vec![];
+    for ind in every {
+        if !top.iter().any(|t| t.floor == ind.floor && t.rule == ind.rule) {
+            top.push(ind);
+        }
+        if top.len() == 3 {
+            break;
+        }
+    }
+    enum Chooser { Today, BFirst, Tree(Expr) }
+    struct Arm { label: String, shop: Shop, chooser: Chooser, tools: usize, metres: f64 }
+    let mut arms: Vec<Arm> = vec![];
+    let (y, yi) = lay_out(&shop, &areas, &cfg_full, &Strategy::Share, "B").expect("yardstick");
+    arms.push(Arm { label: "yardstick: D1 share, P0 today".into(), shop: y, chooser: Chooser::Today, tools: yi.tools_added, metres: yi.metres_added });
+    // the sweep's best cell at this share, rebuilt
+    if let Some(dir) = &sweep {
+        let text = std::fs::read_to_string(dir.join("runs.tsv")).expect("the sweep's runs.tsv");
+        let mut sums: HashMap<(String, String), (f64, usize)> = HashMap::new();
+        for line in text.lines().skip(1) {
+            let f: Vec<&str> = line.split('\t').collect();
+            if f[0].parse::<f64>().unwrap() == share {
+                let m: f64 = f[8].parse().unwrap();
+                let e = sums.entry((f[1].to_string(), f[2].to_string())).or_insert((0.0, 0));
+                e.0 += m;
+                e.1 += 1;
+            }
+        }
+        let best = sums.iter().max_by(|a, b| (a.1 .0 / a.1 .1 as f64).total_cmp(&(b.1 .0 / b.1 .1 as f64))).map(|(k, _)| k.clone()).expect("the sweep has this share");
+        let strat = match best.0.as_str() {
+            "D1 share" => Strategy::Share,
+            "D2 wing" => Strategy::Wing { groups: 3, tools: 1 },
+            _ => Strategy::Copies { groups: 3, tools: 1 },
+        };
+        let p = Policy::ALL.into_iter().find(|p| p.label() == best.1).expect("a policy label");
+        let (s, info) = lay_out(&shop, &areas, &cfg_full, &strat, "B").expect("sweep layout");
+        let g = policy_groups(&s, "B", 3);
+        let s = apply_policy(&s, p, "B", &g, b_cap(&e, raw));
+        arms.push(Arm { label: format!("sweep's best: {} {}", best.0, best.1), shop: s, chooser: if p == Policy::BFirst { Chooser::BFirst } else { Chooser::Today }, tools: info.tools_added, metres: info.metres_added });
+    }
+    let nref = arms.len();
+    for (k, ind) in top.iter().enumerate() {
+        let (s, info) = lay_out_copies(&shop, &areas, &cfg_full, &picks(&space, &ind.floor), ind.floor.wing && ind.floor.tools.iter().any(|&t| t > 0), "B").expect("layout");
+        let s = with_cap(&s, &ind.floor);
+        std::fs::write(out.join("rules").join(format!("evolved-{}.rs", k + 1)), ind.rule.to_rust() + "\n").unwrap();
+        arms.push(Arm { label: format!("evolved #{}", k + 1), shop: s, chooser: Chooser::Tree(ind.rule.clone()), tools: info.tools_added, metres: info.metres_added });
+    }
+    let wh = Window { from: warmup * 1440.0, to: days * 1440.0 };
+    let seeds: Vec<u64> = (2000..2000 + nheld).collect();
+    let jobs: Vec<(usize, u64)> = (0..arms.len()).flat_map(|a| seeds.iter().map(move |&s| (a, s))).collect();
+    let next = AtomicUsize::new(0);
+    let res: Mutex<Vec<(f64, f64, f64)>> = Mutex::new(vec![(0.0, 0.0, 0.0); jobs.len()]);
+    std::thread::scope(|sc| {
+        for _ in 0..threads.max(1) {
+            sc.spawn(|| loop {
+                let j = next.fetch_add(1, Ordering::SeqCst);
+                let Some(&(a, sd)) = jobs.get(j) else { break };
+                let arm = &arms[a];
+                let o = RunOptions { seed: sd, until: Some(wh.to), record: false };
+                let r = match &arm.chooser {
+                    Chooser::Today => run(&arm.shop, &o, None),
+                    Chooser::BFirst => {
+                        let mut p = |d: &Decision| b_first(d, "B");
+                        run(&arm.shop, &o, Some(&mut p))
+                    }
+                    Chooser::Tree(t) => {
+                        let fam = gp::family_numbers(&arm.shop);
+                        let mut p = |d: &Decision| gp::choose(t, d, &fam);
+                        run(&arm.shop, &o, Some(&mut p))
+                    }
+                };
+                let m = money(&arm.shop, &r, &wh, &central, arm.tools, arm.metres);
+                let ndays = (wh.to - wh.from) / 1440.0;
+                let a_w: f64 = r.lots.iter().filter(|l| arm.shop.family_of(&l.route) != "B" && l.done.is_some_and(|d| d > wh.from && d <= wh.to)).map(|l| l.size as f64).sum::<f64>() / ndays;
+                res.lock().unwrap()[j] = (m.per_day, a_w, m.b_cycle_days.unwrap_or(f64::NAN));
+            });
+        }
+    });
+    let res = res.into_inner().unwrap();
+    let col = |a: usize, k: usize| -> Vec<f64> { (0..seeds.len()).map(|i| { let r = res[a * seeds.len() + i]; [r.0, r.1, r.2][k] }).collect() };
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    let ncomp = (nref * top.len()).max(1) as f64;
+    let alpha = 0.05 / ncomp;
+    let word = |v: Verdict| match v { Verdict::Better => "better", Verdict::Worse => "worse", Verdict::CannotSay => "no clear effect" };
+    let mut md = String::new();
+    let _ = writeln!(md, "On the SMT2020 model, with a layout of our own design; not a real fab. Family B at x{share}. Search: population {pop}, {gens} generations, training seeds 3000..3002, {sdays} days scored from day {warmup}; layouts at {iters} optimiser moves. Claim: the three best distinct individuals laid out at the full setting, {} held-out seeds ({}..{}), {days} days, window days {warmup} to {days}; paired, Bonferroni over {ncomp} comparisons (each at level {alpha:.4}). Money a day at the central prices, in wafers of family-A margin; every price assumed. Run on {} {}. Real-fab effect: cannot say.{}\n",
+        seeds.len(), seeds[0], seeds[seeds.len() - 1], std::env::consts::OS, std::env::consts::ARCH, if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
+    let _ = writeln!(md, "| arm | money a day | family A wafers a day | family B cycle days | copies | cap | wing |\n|---|---|---|---|---|---|---|");
+    for (a, arm) in arms.iter().enumerate() {
+        let (cp, cap, wing) = if a >= nref {
+            let ind = top[a - nref];
+            (picks(&space, &ind.floor).iter().map(|(g, t)| format!("{g}×{t}")).collect::<Vec<_>>().join(", "), space.caps[ind.floor.cap].map(|m| format!("{m}× load")).unwrap_or("none".into()), ind.floor.wing.to_string())
+        } else {
+            (String::from("as the cell"), String::from("as the cell"), String::from("-"))
+        };
+        let _ = writeln!(md, "| {} | {:.2} | {:.2} | {:.2} | {cp} | {cap} | {wing} |", arm.label, mean(&col(a, 0)), mean(&col(a, 1)), mean(&col(a, 2)));
+    }
+    let _ = writeln!(md, "\n### Each evolved individual minus each reference (money a day)\n");
+    for k in 0..top.len() {
+        for r in 0..nref {
+            let iv = paired(&col(r, 0), &col(nref + k, 0), alpha);
+            let _ = writeln!(md, "- evolved #{} minus {}: {:+.2} ({:+.2} to {:+.2}), {}", k + 1, arms[r].label, iv.mean, iv.lo, iv.hi, word(verdict(&iv, true)));
+        }
+    }
+    let _ = writeln!(md, "\n### The evolved rules\n");
+    for (k, ind) in top.iter().enumerate() {
+        let _ = writeln!(md, "evolved #{} (training money {:.2} a day):\n\n```rust\n{}\n```\n", k + 1, ind.fitness, ind.rule.to_rust());
+    }
+    let best_by_gen: Vec<String> = hist.generations.iter().map(|g| format!("{:.1}", g.iter().map(|i| i.fitness).fold(f64::NEG_INFINITY, f64::max))).collect();
+    let _ = writeln!(md, "Best training money by generation: {}", best_by_gen.join(", "));
+    std::fs::write(out.join("claim.md"), md).unwrap();
+    eprintln!("done in {:.0} s; wrote {}", t0.elapsed().as_secs_f64(), out.display());
 }
 
 fn two_families(args: &[String]) {
@@ -533,6 +750,7 @@ fn main() {
         }
         Some("lean-long") => lean_long(&args[1..]),
         Some("two-families") => two_families(&args[1..]),
+        Some("evolve") => evolve_cmd(&args[1..]),
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),

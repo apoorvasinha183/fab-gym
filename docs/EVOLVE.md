@@ -76,3 +76,12 @@ two-wafers note); nothing here claims to reproduce that paper.
    no copies and no cap leaves the shop's records unchanged.
 5. **The loop:** on a toy shop, the same seed gives the same history on 1 and 3 threads; the best training fitness
    never falls from one generation to the next (the best is kept whole).
+
+## Changes
+
+- 28 Oct, test 3: the test expected the best choice's pheromone to reach the ceiling of 5 after many updates by the
+  best floor alone. Under the stated rule it settles where evaporation equals the deposit, 0.4 / 0.2 = 2 (the
+  ceiling binds only when the four depositors agree, 1.0 / 0.2 = 5). The test now checks the fixed point.
+- 28 Oct, test 5: on the toy shop many individuals tie (spare capacity, so every floor without copies earns the same).
+  The search ranks ties by position, earlier first; the test took the last of the tied and now takes the first.
+

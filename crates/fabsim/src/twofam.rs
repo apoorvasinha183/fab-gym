@@ -266,6 +266,19 @@ pub fn lay_out(
             (contested(shop, family, *groups).into_iter().map(|g| (g, *tools)).collect(), false)
         }
     };
+    lay_out_copies(shop, areas, cfg, &picks, wing, family)
+}
+
+/// Lay out the shop with the named copies (group, tools), in a wing on a further phase or in the halls.
+pub fn lay_out_copies(
+    shop: &Shop,
+    areas: &[(String, String)],
+    cfg: &Config,
+    picks: &[(String, usize)],
+    wing: bool,
+    family: &str,
+) -> Result<(Shop, LayoutInfo), String> {
+    let picks: Vec<(String, usize)> = picks.iter().filter(|p| p.1 > 0).cloned().collect();
     let mut s = copy_groups(shop, &picks, family)?;
     let mut areas = areas.to_vec();
     let mut metres = 0.0;

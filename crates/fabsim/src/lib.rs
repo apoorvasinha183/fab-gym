@@ -3,6 +3,8 @@
 
 pub mod dials;
 pub mod engine;
+pub mod evolve;
+pub mod gp;
 pub mod hash;
 pub mod layout;
 pub mod measure;
