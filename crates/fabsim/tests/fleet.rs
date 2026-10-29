@@ -303,3 +303,71 @@ fn the_fleet_trace_holds_the_track_and_the_vehicles_in_its_window() {
     assert_eq!(js.matches('[').count(), js.matches(']').count());
     assert!(js.contains("SMT2020") && js.contains("\"offsets\""));
 }
+
+// ---- the drawn rails are the true track (decided by quiz 29 Oct: the two-rail bay loop) ----
+
+/// The realistic campus with its ports and each bay's two rails, laid out here (a quick optimiser).
+fn campus_drawn() -> Option<Shop> {
+    use fabsim::layout::{Config, Problem};
+    let dir = common::smt2020_dir()?;
+    let base = fabsim::smt2020::load(&dir).unwrap();
+    let areas = fabsim::smt2020::areas(&dir).unwrap();
+    let mut cfg = Config::realistic();
+    cfg.iters = 3000;
+    cfg.restarts = 1;
+    let p = Problem::new(&base, &areas, &cfg).unwrap();
+    let c = p.pack(&p.optimise());
+    let mut s = base;
+    s.oht = Some(p.oht(&c));
+    s.ports = p.ports(&c);
+    s.bayrails = p.bayrails(&c);
+    Some(s)
+}
+
+#[test]
+fn every_bay_has_a_rail_over_each_wall_and_ports_sit_under_them() {
+    let Some(s) = campus_drawn() else { return };
+    assert!(!s.bayrails.is_empty());
+    for (g, p) in &s.ports {
+        let b = s.bayrails.iter().find(|b| b.bay == p.bay).unwrap_or_else(|| panic!("{g}: a bay with rails"));
+        assert!((p.x - b.x[0]).abs() < 1e-9 || (p.x - b.x[1]).abs() < 1e-9, "{g}: its port under one of its bay's two rails");
+        assert!(p.y > 0.0 && p.y < b.far);
+    }
+    let back = Shop::parse(&s.to_text()).unwrap();
+    assert_eq!(back.bayrails, s.bayrails);
+}
+
+#[test]
+fn the_drawn_track_reaches_every_port_and_never_beats_the_aisles() {
+    let Some(s) = campus_drawn() else { return };
+    let t = Track::from_shop(&s);
+    let o = s.oht.as_ref().unwrap();
+    let all: Vec<usize> = s.groups.iter().flat_map(|g| t.ports_of(&g.name).to_vec()).collect();
+    assert_eq!(all.len(), s.ports.len());
+    for (i, &a) in all.iter().enumerate().step_by(5) {
+        for &b in all.iter().skip(i % 3).step_by(9) {
+            let d = t.dist(a, b);
+            assert!(d.is_finite(), "port {a} reaches port {b}");
+            assert!(d + 1e-6 >= o.distance(&t.place(a), &t.place(b)));
+        }
+    }
+    // a bay loop goes in along one wall's rail and out along the other's
+    let n0 = t.nodes()[all[0]];
+    let same_bay: Vec<usize> = all.iter().copied().filter(|&n| t.nodes()[n].bay == n0.bay).collect();
+    let xs: std::collections::BTreeSet<i64> = same_bay.iter().map(|&n| (t.nodes()[n].x * 1000.0).round() as i64).collect();
+    assert!(xs.len() <= 2);
+}
+
+#[test]
+fn a_fleet_runs_on_the_drawn_track() {
+    let Some(s) = campus_drawn() else { return };
+    let sh = with(s, fleet(160, 2));
+    let t = Track::from_shop(&sh);
+    let r = go(&sh, 0, 1.0, true);
+    let f = r.fleet.unwrap();
+    assert!(f.delivered > 10_000, "{} delivered in a day", f.delivered);
+    for h in &f.hoists {
+        let n = &t.nodes()[h.stop];
+        assert!(n.tool.is_some() || n.stocker, "hoists at tool ports and stockers only");
+    }
+}
