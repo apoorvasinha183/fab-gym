@@ -749,6 +749,36 @@ fn variant_cmd(args: &[String]) {
     println!("{md}");
 }
 
+/// The fleet in a window (docs/FLEET.md), for the viewers: the layout's shop with a fleet of `--vehicles`, run on
+/// `--seed` to the window's end, and the track with every vehicle's stretches and hoists in the window as JSON.
+fn fleet_trace(args: &[String]) {
+    use fabsim::fleet::FleetTrace;
+    use fabsim::shop::Fleet;
+    use fabsim::track::Track;
+    let data = PathBuf::from(flag(args, "--data", "data/layout-real-dd"));
+    let plan = flag(args, "--plan", "optimised");
+    let mut shop = Shop::parse(&std::fs::read_to_string(data.join(format!("{plan}.shop.txt"))).expect("run fabsim layout first")).unwrap();
+    let vehicles = arg(args, "--vehicles", 160) as usize;
+    let f = Fleet { vehicles, gap: 3.0, hoist: 1.0, ports: 2, cross: 60.0, controller: flag(args, "--controller", "nearest").to_string() };
+    let cross = f.cross;
+    shop.fleet = Some(f);
+    let seed = arg(args, "--seed", 3000);
+    let from = flag(args, "--day", "1").parse::<f64>().expect("--day is a number") * 1440.0;
+    let to = from + arg(args, "--minutes", 60) as f64;
+    let r = run(&shop, &RunOptions { seed, until: Some(to), record: true }, None);
+    let fo = r.fleet.as_ref().unwrap();
+    let o = shop.oht.as_ref().unwrap();
+    let t = Track::with_ports(o, &shop.ports, cross);
+    let tr = FleetTrace::new(o, &t, fo, from, to);
+    let out = PathBuf::from(flag(args, "--out", "")).to_str().filter(|s| !s.is_empty()).map(PathBuf::from).unwrap_or_else(|| data.join(format!("fleet-{vehicles}.json")));
+    std::fs::write(&out, tr.to_json()).unwrap();
+    println!(
+        "wrote {}: {} nodes, {} stretches, {} stays and {} hoists in the window; whole run: wait {:.2} min, delivery {:.2} min, {} detours",
+        out.display(), tr.nodes.len(), tr.edges.len(), tr.entries.len(), tr.hoists.len(),
+        fo.wait_sum / fo.wait_n.max(1) as f64, fo.deliver_sum / fo.delivered.max(1) as f64, fo.detours
+    );
+}
+
 fn layout_score(args: &[String]) {
     use fabsim::uq::{paired, verdict, Verdict};
     use fabsim::window::{score, with_probes, Window};
@@ -886,6 +916,7 @@ fn main() {
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),
         Some("variant") => variant_cmd(&args[1..]),
+        Some("fleet-trace") => fleet_trace(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

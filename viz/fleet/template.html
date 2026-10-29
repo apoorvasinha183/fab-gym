@@ -1,0 +1,176 @@
+<title>Rails and Vehicles</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a plan-view instrument: one wide canvas of the fab from above, controls in a strip, counts beside it; a single dark look by choice. */
+:root {
+  --bg: #0b1020; --panel: #121933; --line: #263159; --ink: #e8ecf8; --dim: #96a0c4;
+  --lane: #5b78e6; --bay: #34478f; --empty: #f2f4fb; --loaded: #ff9d42; --hoist: #6fe3ff; --held: #ff6b6b; --spur: #ffd75e;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; }
+main { max-width: 1400px; margin: 0 auto; display: grid; gap: 14px; }
+h1 { font-size: 22px; margin: 0; font-weight: 600; text-wrap: balance; }
+.sub { color: var(--dim); font-size: 14px; max-width: 90ch; margin: 4px 0 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button, .btn { font: 600 13px var(--sans); color: var(--ink); background: transparent; border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.btn { border: 1px solid var(--line); border-radius: 7px; }
+.btn:hover, .seg button:hover { background: #1b2448; }
+.seg button[aria-pressed="true"]:hover { background: var(--ink); }
+label.ctl { display: inline-flex; gap: 8px; align-items: center; color: var(--dim); font-size: 13px; }
+input[type=range] { accent-color: var(--loaded); }
+#clock { font: 600 14px var(--mono); font-variant-numeric: tabular-nums; min-width: 12ch; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hoist); outline-offset: 2px; }
+.stage { display: grid; grid-template-columns: 1fr 240px; gap: 14px; }
+.cv { background: #070b18; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; position: relative; }
+canvas { display: block; width: 100%; height: 560px; touch-action: none; cursor: grab; }
+canvas:active { cursor: grabbing; }
+.hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--dim); pointer-events: none; }
+.side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.card h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; font-weight: 600; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; padding: 2px 0; }
+.row b { font: 600 15px var(--mono); font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+.note { font-size: 13px; color: var(--dim); }
+.truth { font-size: 12.5px; color: var(--dim); }
+@media (max-width: 900px) { .stage { grid-template-columns: 1fr; } canvas { height: 420px; } }
+</style>
+<main>
+  <header>
+    <h1>Rails and Vehicles</h1>
+    <p class="sub">An hour of the fleet on today's US building, from the simulator's own trace (simulated day 2, seed 3000). The rails here are the ones the simulator moves vehicles on: one-way loops, a load port for each of the 1,043 tools, stocker ports on short spurs. Vehicles never pass one another, and one stopped to hoist holds up the vehicles behind it.</p>
+  </header>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Fleet size" id="fleets"></div>
+    <button class="btn" id="play">Pause</button>
+    <label class="ctl" for="scrub">time <input id="scrub" type="range" min="0" max="1000" value="0"></label>
+    <span id="clock">day 1 00:00</span>
+    <label class="ctl" for="rate">speed <input id="rate" type="range" min="1" max="30" value="4"><span id="rateOut">4 min/s</span></label>
+    <div class="seg" role="group" aria-label="View">
+      <button id="vAll" aria-pressed="true">Whole fab</button>
+      <button id="vEnd">Phase 1, west end</button>
+      <button id="vBay">One bay up close</button>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="cv"><canvas id="c" aria-label="Plan of the fab from above with the rails and the vehicles moving on them"></canvas><span class="hint">scroll to zoom · drag to move</span></div>
+    <div class="side">
+      <div class="card"><h2>Now</h2>
+        <div class="row"><span><i class="dot" style="background:var(--empty)"></i>moving empty</span><b id="nEmpty">0</b></div>
+        <div class="row"><span><i class="dot" style="background:var(--loaded)"></i>moving with a lot</span><b id="nLoaded">0</b></div>
+        <div class="row"><span><i class="dot" style="background:var(--hoist)"></i>hoisting at a port</span><b id="nHoist">0</b></div>
+        <div class="row"><span><i class="dot" style="background:var(--held)"></i>held up behind another</span><b id="nHeld">0</b></div>
+        <div class="row"><span><i class="dot" style="background:#3a4466"></i>parked, waiting for work</span><b id="nIdle">0</b></div>
+      </div>
+      <div class="card"><h2>Key</h2>
+        <div class="row"><span><i class="dot" style="background:var(--lane)"></i>spine loops, one way</span></div>
+        <div class="row"><span><i class="dot" style="background:var(--bay)"></i>bay loops, one way</span></div>
+        <div class="row"><span><i class="dot" style="background:var(--spur)"></i>stocker spurs</span></div>
+        <p class="note" style="margin:6px 0 0">Held up means a vehicle is still on a stretch after it would have left at full speed: queued behind a hoist, a full stretch, or a merge.</p>
+      </div>
+      <div class="card"><h2>Assumed</h2>
+        <p class="note" style="margin:0">2.5 m/s everywhere, 3 m between vehicles, 60 s to load and 60 s to unload (cited from Yang 2023), crossovers every 60 m, nearest idle vehicle. The rails' shape is our own design.</p>
+      </div>
+    </div>
+  </div>
+  <p class="truth">On the SMT2020 model, a published research model of a wafer fab, with a gigafab-style layout of our own design; not a real fab. Built by <code>fabsim fleet-trace</code> and <code>viz/fleet/page.py</code> (docs/FLEET.md).</p>
+</main>
+<script type="application/json" id="d">{{DATA}}</script>
+<script>
+const D = JSON.parse(document.getElementById("d").textContent);
+const N = D.track.nodes, E = D.track.edges, P = D.plan, SPEED = 150; // metres a minute
+const cv = document.getElementById("c"), cx = cv.getContext("2d");
+let W = 0, H = 0, dpr = 1, view = { x: 250, y: 0, s: 2 }, fi = D.fleets.length - 1, t = D.fleets[fi].from, playing = true, rate = 4, last = 0;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { lane: css("--lane"), bay: css("--bay"), empty: css("--empty"), loaded: css("--loaded"), hoist: css("--hoist"), held: css("--held"), spur: css("--spur") };
+// per fleet: entries and hoists sorted by start, for a quick look-up of what overlaps a moment
+for (const f of D.fleets) { f.entries.sort((a, b) => a[2] - b[2]); f.hoists.sort((a, b) => a[4] - b[4]); f.maxStay = f.entries.reduce((m, e) => Math.max(m, (e[3] ?? f.to) - e[2]), 1); }
+function size() { const r = cv.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1); W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+const sx = x => (x - view.x) * view.s + W / 2, sy = y => H / 2 - (y - view.y) * view.s;
+function fit(x0, x1, y0, y1) { view.x = (x0 + x1) / 2; view.y = (y0 + y1) / 2; view.s = Math.min(W / (x1 - x0), H / (y1 - y0)) * 0.94; draw(); }
+function whole() { const xs = P.fabs.flatMap(f => [f[0], f[1]]), ys = P.fabs.flatMap(f => [f[2], f[3]]); fit(Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)); }
+function rect(x0, x1, y0, y1) { const a = sx(x0), b = sx(x1), c = sy(y1), d = sy(y0); return [a, c, b - a, d - c]; }
+function lower(arr, k, tt) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m][k] < tt) lo = m + 1; else hi = m; } return lo; }
+function draw() {
+  cx.fillStyle = "#070b18"; cx.fillRect(0, 0, W, H);
+  for (const f of P.fabs) { cx.fillStyle = "#0e1530"; cx.strokeStyle = "#2a3462"; cx.lineWidth = 1; const r = rect(f[0], f[1], f[2], f[3]); cx.fillRect(...r); cx.strokeRect(...r); }
+  cx.strokeStyle = "#1c2550"; cx.lineWidth = 1;
+  for (const b of P.bays) cx.strokeRect(...rect(b[0], b[1], b[2], b[3]));
+  cx.fillStyle = "#1a2246";
+  for (const tl of P.tools) cx.fillRect(...rect(tl[0], tl[1], tl[2], tl[3]));
+  // the rails
+  const lane = i => N[i][2] === "lane";
+  for (const e of E) {
+    const a = N[e[0]], b = N[e[1]];
+    const spur = a[2] === "spur" || b[2] === "spur";
+    cx.strokeStyle = spur ? C.spur : lane(e[0]) && lane(e[1]) ? C.lane : C.bay;
+    cx.lineWidth = lane(e[0]) && lane(e[1]) ? Math.max(1.2, view.s * 0.35) : Math.max(0.8, view.s * 0.18);
+    cx.beginPath(); cx.moveTo(sx(a[0]), sy(a[1])); cx.lineTo(sx(b[0]), sy(b[1])); cx.stroke();
+  }
+  if (view.s > 3) {
+    cx.fillStyle = "#8ea0e8";
+    for (const n of N) if (n[2] === "port") { cx.beginPath(); cx.arc(sx(n[0]), sy(n[1]), Math.max(1.2, view.s * 0.18), 0, 7); cx.fill(); }
+    // direction on the spine lanes
+    cx.fillStyle = C.lane;
+    for (const e of E) {
+      const a = N[e[0]], b = N[e[1]];
+      if (!(lane(e[0]) && lane(e[1])) || e[2] < 6) continue;
+      const mx = sx((a[0] + b[0]) / 2), my = sy((a[1] + b[1]) / 2), ang = Math.atan2(sy(b[1]) - sy(a[1]), sx(b[0]) - sx(a[0])), k = Math.max(4, view.s * 0.9);
+      cx.save(); cx.translate(mx, my); cx.rotate(ang); cx.beginPath(); cx.moveTo(k, 0); cx.lineTo(-k, -k * 0.7); cx.lineTo(-k, k * 0.7); cx.fill(); cx.restore();
+    }
+  }
+  // the vehicles at time t
+  const f = D.fleets[fi];
+  const seen = new Set(); let nE = 0, nL = 0, nH = 0, nX = 0;
+  const vs = Math.max(2.5, view.s * 0.8);
+  for (let i = lower(f.hoists, 4, t - 2); i < f.hoists.length && f.hoists[i][4] <= t; i++) {
+    const h = f.hoists[i]; if (h[5] < t) continue;
+    const n = N[h[1]]; seen.add(h[0]); nH++;
+    cx.fillStyle = C.hoist; cx.fillRect(sx(n[0]) - vs / 2, sy(n[1]) - vs / 2, vs, vs);
+    cx.strokeStyle = C.hoist; cx.lineWidth = 1; cx.beginPath(); cx.arc(sx(n[0]), sy(n[1]), vs * 1.4, 0, 7); cx.stroke();
+  }
+  for (let i = lower(f.entries, 2, t - f.maxStay); i < f.entries.length && f.entries[i][2] <= t; i++) {
+    const en = f.entries[i], out = en[3] ?? f.to; if (out <= t || seen.has(en[0])) continue;
+    const e = E[en[1]], a = N[e[0]], b = N[e[1]], free = e[2] / SPEED, k = Math.min(1, (t - en[2]) / free);
+    const held = t - en[2] > free + 0.02;
+    const x = a[0] + (b[0] - a[0]) * k, y = a[1] + (b[1] - a[1]) * k;
+    seen.add(en[0]);
+    if (held) nX++; else if (en[4]) nL++; else nE++;
+    cx.fillStyle = en[4] ? C.loaded : C.empty; cx.fillRect(sx(x) - vs / 2, sy(y) - vs / 2, vs, vs);
+    if (held) { cx.strokeStyle = C.held; cx.lineWidth = Math.max(1, vs * 0.3); cx.strokeRect(sx(x) - vs / 2, sy(y) - vs / 2, vs, vs); }
+  }
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  set("nEmpty", nE); set("nLoaded", nL); set("nHoist", nH); set("nHeld", nX); set("nIdle", Math.max(0, f.vehicles - seen.size));
+  const m = Math.floor(t) % 1440; set("clock", `day ${Math.floor(t / 1440) + 1} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  document.getElementById("scrub").value = Math.round(1000 * (t - f.from) / (f.to - f.from));
+}
+function tick(now) {
+  const f = D.fleets[fi];
+  if (playing) { t += Math.min(0.1, (now - last) / 1000) * rate; if (t > f.to) t = f.from; draw(); }
+  last = now; requestAnimationFrame(tick);
+}
+// controls
+const fleets = document.getElementById("fleets");
+D.fleets.forEach((f, i) => { const b = document.createElement("button"); b.textContent = `${f.vehicles} vehicles`; b.setAttribute("aria-pressed", i === fi); b.onclick = () => { fi = i; [...fleets.children].forEach((x, j) => x.setAttribute("aria-pressed", j === i)); draw(); }; fleets.appendChild(b); });
+document.getElementById("play").onclick = e => { playing = !playing; e.target.textContent = playing ? "Pause" : "Play"; };
+document.getElementById("scrub").oninput = e => { const f = D.fleets[fi]; t = f.from + (f.to - f.from) * e.target.value / 1000; draw(); };
+document.getElementById("rate").oninput = e => { rate = +e.target.value; document.getElementById("rateOut").textContent = `${rate} min/s`; };
+const views = { vAll: whole, vEnd: () => fit(-6, 70, -70, 70), vBay: () => { const b = P.bays[0]; fit(b[0] - 6, b[1] + 6, 0, b[3] + 4); } };
+for (const id in views) document.getElementById(id).onclick = () => { for (const k in views) document.getElementById(k).setAttribute("aria-pressed", k === id); views[id](); };
+cv.addEventListener("wheel", e => { e.preventDefault(); const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const wx = view.x + (mx - W / 2) / view.s, wy = view.y - (my - H / 2) / view.s, k = Math.exp(-e.deltaY * 0.0015);
+  view.s = Math.min(80, Math.max(0.5, view.s * k)); view.x = wx - (mx - W / 2) / view.s; view.y = wy + (my - H / 2) / view.s; draw(); }, { passive: false });
+let drag = null;
+cv.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener("pointermove", e => { if (!drag) return; view.x = drag.vx - (e.clientX - drag.x) / view.s; view.y = drag.vy + (e.clientY - drag.y) / view.s; draw(); });
+cv.addEventListener("pointerup", () => drag = null);
+addEventListener("resize", () => { size(); draw(); });
+if (matchMedia("(prefers-reduced-motion: reduce)").matches) { playing = false; document.getElementById("play").textContent = "Play"; }
+size(); whole(); t = D.fleets[fi].from + 20; draw();
+requestAnimationFrame(n => { last = n; tick(n); });
+</script>

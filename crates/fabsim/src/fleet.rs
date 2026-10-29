@@ -230,3 +230,94 @@ impl FleetState {
         self.edge_q[e].len() < self.cap[e] && t + 1e-12 >= self.last_in[e] + self.headway
     }
 }
+
+/// A node for the viewers, in campus metres: x east along the campus, y north (the north lane at +spine/2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TraceNode {
+    pub x: f64,
+    pub y: f64,
+    /// "lane", "port" (a tool's load port), "stop" (a group's stop, without ports) or "spur" (a stocker port)
+    pub kind: &'static str,
+}
+
+/// The track and what the fleet did on it in a window, for the 2D page and the game (docs/FLEET.md).
+#[derive(Clone, Debug, PartialEq)]
+pub struct FleetTrace {
+    pub from: f64,
+    pub to: f64,
+    pub spine: f64,
+    /// each phase's west end along the campus
+    pub offsets: Vec<f64>,
+    pub nodes: Vec<TraceNode>,
+    pub edges: Vec<(usize, usize, f64)>,
+    pub vehicles: usize,
+    pub entries: Vec<Entry>,
+    pub hoists: Vec<HoistRec>,
+}
+
+impl FleetTrace {
+    pub fn new(o: &crate::shop::Oht, t: &Track, f: &FleetOut, from: f64, to: f64) -> FleetTrace {
+        let mut offsets = vec![0.0];
+        for k in 1..o.lengths.len() {
+            offsets.push(offsets[k - 1] + o.lengths[k - 1] + o.bridge);
+        }
+        let nodes = t
+            .nodes()
+            .iter()
+            .map(|n| {
+                let d = o.spine / 2.0 + n.y;
+                TraceNode {
+                    x: offsets[n.phase] + n.x,
+                    y: if n.side == 0 { d } else { -d },
+                    kind: if n.spur { "spur" } else if n.tool.is_some() { "port" } else if n.group.is_some() { "stop" } else { "lane" },
+                }
+            })
+            .collect();
+        FleetTrace {
+            from,
+            to,
+            spine: o.spine,
+            offsets,
+            nodes,
+            edges: t.edges().iter().map(|e| (e.from, e.to, e.len)).collect(),
+            vehicles: f.vehicles,
+            entries: f.entries.iter().filter(|e| e.t_in <= to && e.t_out >= from).cloned().collect(),
+            hoists: f.hoists.iter().filter(|h| h.t0 <= to && h.t1 >= from).cloned().collect(),
+        }
+    }
+
+    pub fn to_json(&self) -> String {
+        use std::fmt::Write as _;
+        let r = |x: f64| if x.is_finite() { format!("{:.3}", x).trim_end_matches('0').trim_end_matches('.').to_string() } else { "null".into() };
+        let mut s = String::new();
+        let _ = write!(
+            s,
+            "{{\"model\":\"SMT2020\",\"what\":\"The overhead track and the fleet on the SMT2020 model, a gigafab-style layout of our own design; not a real fab. One-way loops, a port per tool, stocker spurs; vehicle numbers assumed or cited (docs/FLEET.md).\",\"from\":{},\"to\":{},\"spine\":{},\"offsets\":[{}],\"vehicles\":{},",
+            r(self.from),
+            r(self.to),
+            r(self.spine),
+            self.offsets.iter().map(|&x| r(x)).collect::<Vec<_>>().join(","),
+            self.vehicles
+        );
+        s.push_str("\"nodes\":[");
+        for (i, n) in self.nodes.iter().enumerate() {
+            let _ = write!(s, "{}[{},{},\"{}\"]", if i > 0 { "," } else { "" }, r(n.x), r(n.y), n.kind);
+        }
+        s.push_str("],\"edges\":[");
+        for (i, e) in self.edges.iter().enumerate() {
+            let _ = write!(s, "{}[{},{},{}]", if i > 0 { "," } else { "" }, e.0, e.1, r(e.2));
+        }
+        // [vehicle, edge, t_in, t_out, loaded]
+        s.push_str("],\"entries\":[");
+        for (i, e) in self.entries.iter().enumerate() {
+            let _ = write!(s, "{}[{},{},{},{},{}]", if i > 0 { "," } else { "" }, e.vehicle, e.edge, r(e.t_in), r(e.t_out), e.loaded as u8);
+        }
+        // [vehicle, node, lot, up, t0, t1]
+        s.push_str("],\"hoists\":[");
+        for (i, h) in self.hoists.iter().enumerate() {
+            let _ = write!(s, "{}[{},{},{},{},{},{}]", if i > 0 { "," } else { "" }, h.vehicle, h.stop, h.lot, h.up as u8, r(h.t0), r(h.t1));
+        }
+        s.push_str("]}\n");
+        s
+    }
+}
