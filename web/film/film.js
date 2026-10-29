@@ -122,7 +122,7 @@ function waferTexture(seed, good = true) {
   return t;
 }
 function wafer(seed = 3, radius = 1.5) {
-  const m = new THREE.MeshPhysicalMaterial({ map: waferTexture(seed), metalness: 0.55, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 0.6, iridescenceIOR: 1.6 });
+  const m = new THREE.MeshPhysicalMaterial({ map: waferTexture(seed), metalness: 0.5, roughness: 0.28, clearcoat: 0.35, clearcoatRoughness: 0.2, iridescence: 0.6, iridescenceIOR: 1.6 });
   const geo = new THREE.CylinderGeometry(radius, radius, 0.03, 128);
   const side = std(0x9aa3ad, 0.3, 0.9);
   const w = new THREE.Mesh(geo, [side, m, side]);
@@ -445,7 +445,7 @@ SCN.loop = () => {
   const scene = baseScene(0x07090f, [15, 40]);
   const cam = camera(30, 0, 3.2, 5.2, 0, 0.1, 0);
   scene.add(new THREE.HemisphereLight(0x8fb0d0, 0x050505, 0.6));
-  sun(scene, 0xffffff, 1.6, 3, 8, 4, 5);
+  sun(scene, 0xffffff, 1.0, 3, 8, 4, 5);
   const w = wafer(9, 1.5); scene.add(w);
   const layers = new THREE.Group(); scene.add(layers);
   const COLORS = [0x7cc576, 0xd9a95a, 0x5fb0d9, 0xa98be8, 0xe07b4f, 0x9aa7b5];
@@ -453,12 +453,12 @@ SCN.loop = () => {
   const beam = mesh(new THREE.ConeGeometry(1.4, 3, 64, 1, true), new THREE.MeshBasicMaterial({ color: 0xa98be8, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }), 0, 1.6, 0, false); beam.rotation.x = Math.PI; scene.add(beam);
   const mask = mesh(new THREE.BoxGeometry(3.2, 0.04, 3.2), std(0x222a33, 0.3, 0.8, { transparent: true, opacity: 0.8 }), 0, 3.1, 0); scene.add(mask);
   const plasma = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xd46ab0, size: 0.04, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); scene.add(plasma);
-  const water = mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshPhysicalMaterial({ color: 0x9fd6ff, transmission: 1, roughness: 0.02, thickness: 0.05, transparent: true, opacity: 0.6 }), 0, 0.5, 0, false); water.rotation.x = -Math.PI / 2; scene.add(water);
-  const scan = mesh(new THREE.BoxGeometry(3.2, 0.01, 0.03), glow(0x4fe3a3, 6), 0, 0.4, 0, false); scene.add(scan);
+  const water = mesh(new THREE.PlaneGeometry(3.2, 3.2), std(0x6fbfff, 0.35, 0, { transparent: true, opacity: 0.28, depthWrite: false }), 0, 0.5, 0, false); water.rotation.x = -Math.PI / 2; scene.add(water);
+  const scan = mesh(new THREE.BoxGeometry(3.0, 0.006, 0.012), glow(0x4fe3a3, 1.2), 0, 0.12, 0, false); scene.add(scan);
   const tower = new THREE.Group(); scene.add(tower);
   for (let i = 0; i < 60; i++) { const f = mesh(new THREE.BoxGeometry(0.9, 0.04, 0.9), std(COLORS[i % 6], 0.3, 0.5), 0, i * 0.045, 0); f.visible = false; tower.add(f); }
   const stageOf = (t) => (t < 12 ? [Math.floor(t / 2) % 6, (t % 2) / 2, 1] : t < 18 ? [Math.floor((t - 12) / 1) % 6, (t - 12) % 1, 2] : [-1, 0, 3]);
-  return { scene, camera: cam, focus: 5.5, bloom: 1.0, update(t) {
+  return { scene, camera: cam, focus: 5.5, bloom: 0.35, update(t) {
     const [st, u, lap] = stageOf(t);
     w.rotation.y = t * 0.2;
     beam.visible = st === 1; mask.visible = st === 1;
