@@ -870,6 +870,54 @@ fn bound_cmd(args: &[String]) {
     }
 }
 
+/// Regret B and D (docs/LONG-RESCORE.md) on one seed:
+/// `fabsim regret audit SHOP --seed N --warmup D --window D --picks FILE [--defects H,L,R] [--samples 300] [--horizon 1440] --out FILE`
+/// `fabsim regret switch SHOP --seed N --warmup D --window D [--defects H,L,R] [--shift 720] --out FILE`
+fn regret_cmd(args: &[String]) {
+    use fabsim::policy::Policy;
+    use std::fmt::Write as _;
+    let what = args.first().map(|s| s.as_str()).unwrap_or("");
+    let src = args.get(1).expect("a shop");
+    let defects = args.iter().position(|a| a == "--defects").and_then(|i| args.get(i + 1)).map(|s| s.as_str());
+    let shop = fabsim::gym::load_shop(std::path::Path::new(src), defects).expect("the shop loads");
+    let seed = arg(args, "--seed", 0);
+    let from = argf(args, "--warmup", 130.0) * 1440.0;
+    let to = from + argf(args, "--window", 60.0) * 1440.0;
+    let out = PathBuf::from(flag(args, "--out", "regret.json"));
+    let t0 = Instant::now();
+    let mut j = format!("{{\"model\":\"SMT2020\",\"seed\":{seed},\"from\":{from},\"to\":{to},\"defects\":{},", defects.map(|d| format!("\"{d}\"")).unwrap_or("null".into()));
+    match what {
+        "audit" => {
+            let text = std::fs::read_to_string(flag(args, "--picks", "")).expect("--picks FILE");
+            let picks: Vec<u32> = text.lines().filter_map(|l| l.trim().parse().ok()).collect();
+            let n = arg(args, "--samples", 300) as usize;
+            let horizon = argf(args, "--horizon", 1440.0);
+            let a = fabsim::regret::audit(&shop, seed, from, to, &picks, n, horizon);
+            let _ = write!(j, "\"kind\":\"audit\",\"horizon\":{horizon},\"picks\":{},\"mean_regret\":{},\"samples\":[", picks.len(), a.mean_regret);
+            for (i, x) in a.samples.iter().enumerate() {
+                let _ = write!(j, "{}{{\"k\":{},\"t\":{},\"chosen\":{},\"regret\":{},\"values\":{:?}}}", if i > 0 { "," } else { "" }, x.k, x.t, x.chosen, x.regret, x.values);
+            }
+            j.push_str("]");
+            println!("audit seed {seed}: {} samples, mean regret {:.4} a pick over {horizon} min ({:.0} s)", a.samples.len(), a.mean_regret, t0.elapsed().as_secs_f64());
+        }
+        "switch" => {
+            let lib = [Policy::Today, Policy::Fifo, Policy::Spt, Policy::CriticalRatio, Policy::Random];
+            let shift = argf(args, "--shift", 720.0);
+            let d = fabsim::regret::switching(&shop, seed, from, to, shift, &lib);
+            let _ = write!(j, "\"kind\":\"switch\",\"shift\":{shift},\"library\":{:?},\"value_gain\":{},\"sequence\":{:?},\"shifts\":[",
+                lib.iter().map(|p| p.name()).collect::<Vec<_>>(), d.value_gain, d.sequence.iter().map(|p| p.name()).collect::<Vec<_>>());
+            for (i, x) in d.shifts.iter().enumerate() {
+                let _ = write!(j, "{}{{\"start\":{},\"chosen\":{},\"gains\":{:?}}}", if i > 0 { "," } else { "" }, x.start, x.chosen, x.gains);
+            }
+            j.push_str("]");
+            println!("switch seed {seed}: gain {:.2} over the window ({:.0} s)", d.value_gain, t0.elapsed().as_secs_f64());
+        }
+        _ => panic!("fabsim regret audit|switch ..."),
+    }
+    j.push_str("}\n");
+    std::fs::write(&out, j).unwrap();
+}
+
 fn layout_score(args: &[String]) {
     use fabsim::uq::{paired, verdict, Verdict};
     use fabsim::window::{score, with_probes, Window};
@@ -1011,6 +1059,7 @@ fn main() {
         Some("track") => track_cmd(&args[1..]),
         Some("follow") => follow_cmd(&args[1..]),
         Some("bound") => bound_cmd(&args[1..]),
+        Some("regret") => regret_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
@@ -1111,6 +1160,9 @@ fn env_cmd(args: &[String]) {
     };
     let e = episode(&shop, seed, w, &mut ask);
     drop(ask);
+    if let Some(p) = args.iter().position(|a| a == "--picks").and_then(|i| args.get(i + 1)) {
+        fabsim::gym::write_picks(&e, std::path::Path::new(p)).expect("write the picks");
+    }
     let tag = rule.map(|p| format!(",\"policy\":\"{}\"", p.name())).unwrap_or_default();
     let _ = writeln!(out, "{}", done_json(&e, &tag));
     let _ = out.flush();

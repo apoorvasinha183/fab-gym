@@ -2254,17 +2254,19 @@ pub struct Player {
     window: Option<(f64, f64)>,
     asked: u64,
     picks: Vec<u32>,
+    /// for each counted pick: when, and how many lots there were to choose from
+    seen: Vec<(f64, u32)>,
 }
 
 impl Player {
     /// A built-in rule (the random rule seeded by `seed`, as `policy::run_with` seeds it).
     pub fn rule(shop: &Shop, policy: crate::policy::Policy, seed: u64) -> Player {
-        Player { base: Some(crate::policy::Rule::new(shop, policy, seed)), log: None, force: None, window: None, asked: 0, picks: vec![] }
+        Player { base: Some(crate::policy::Rule::new(shop, policy, seed)), log: None, force: None, window: None, asked: 0, picks: vec![], seen: vec![] }
     }
 
     /// Picks recorded earlier, replayed in order; past their end, today's rule.
     pub fn replay(picks: Vec<u32>) -> Player {
-        Player { base: None, log: Some(std::sync::Arc::new(picks)), force: None, window: None, asked: 0, picks: vec![] }
+        Player { base: None, log: Some(std::sync::Arc::new(picks)), force: None, window: None, asked: 0, picks: vec![], seen: vec![] }
     }
 
     /// Force the `at`-th counted pick to candidate `pick`.
@@ -2312,7 +2314,23 @@ impl Player {
             i = d.default;
         }
         self.picks.push(i as u32);
+        self.seen.push((d.t, d.candidates.len() as u32));
         i
+    }
+
+    /// For each counted pick: when it was made and how many lots there were to choose from.
+    pub fn seen(&self) -> &[(f64, u32)] {
+        &self.seen
+    }
+
+    /// The same player from here on, but with the `at`-th pick forced to `pick` and today's rule after it; the picks
+    /// before `at` replay `before`.
+    pub fn branch(&self, before: &[u32], at: u64, pick: usize) -> Player {
+        let mut p = self.clone();
+        p.log = Some(std::sync::Arc::new(before.to_vec()));
+        p.force = Some((at, pick));
+        p.base = None;
+        p
     }
 }
 
@@ -2352,6 +2370,10 @@ impl<'a> Stepper<'a> {
     /// The picks the player made so far.
     pub fn picks(&self) -> &[u32] {
         self.sim.player.as_ref().map(|p| p.picks.as_slice()).unwrap_or(&[])
+    }
+
+    pub fn player(&self) -> Option<&Player> {
+        self.sim.player.as_ref()
     }
 
     pub fn player_mut(&mut self) -> Option<&mut Player> {

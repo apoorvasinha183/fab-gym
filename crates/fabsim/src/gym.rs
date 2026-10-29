@@ -16,6 +16,18 @@ pub struct Episode {
     pub fallbacks: u64,
     /// the window's reward less the rewards already paid at each question
     pub last_reward: f64,
+    /// the pick played at each decision asked, in order (docs/LONG-RESCORE.md): replayed, they give the same run
+    pub picks: Vec<u32>,
+}
+
+/// Write an episode's picks, one a line, for the foresight audit (`fabsim regret audit`).
+pub fn write_picks(e: &Episode, path: &std::path::Path) -> std::io::Result<()> {
+    let mut s = String::with_capacity(e.picks.len() * 3);
+    for p in &e.picks {
+        s.push_str(&p.to_string());
+        s.push('\n');
+    }
+    std::fs::write(path, s)
 }
 
 /// The order a decision's candidates are shown in: the engine's pick first, then the rest as listed, at most K.
@@ -43,6 +55,7 @@ pub fn families(shop: &Shop) -> Vec<String> {
 pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision, &[usize], f64) -> Option<usize>) -> Episode {
     let shop = with_probes(shop, &w);
     let (mut asked, mut fallbacks) = (0u64, 0u64);
+    let mut picks: Vec<u32> = vec![];
     let mut prev: Option<f64> = None;
     let mut paid = 0.0f64;
     let r = {
@@ -56,18 +69,20 @@ pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision,
             prev = Some(value);
             paid += reward;
             let ord = order(d);
-            match ask(d, &ord, reward) {
+            let i = match ask(d, &ord, reward) {
                 Some(i) if i < d.candidates.len() => i,
                 _ => {
                     fallbacks += 1;
                     d.default
                 }
-            }
+            };
+            picks.push(i as u32);
+            i
         };
         run(&shop, &RunOptions { seed, until: Some(w.to), record: false }, Some(&mut chooser))
     };
     let sc = score(&r, &w).expect("the window scores");
-    Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks }
+    Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks, picks }
 }
 
 fn num(x: f64) -> String {

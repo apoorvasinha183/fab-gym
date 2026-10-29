@@ -15,6 +15,7 @@ pub mod money;
 pub mod pl;
 pub mod policy;
 pub mod pyrandom;
+pub mod regret;
 pub mod scenario;
 pub mod score;
 pub mod shop;

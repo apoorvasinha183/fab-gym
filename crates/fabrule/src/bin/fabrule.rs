@@ -156,6 +156,11 @@ fn env(args: &[String]) -> ExitCode {
         k
     };
     let e = episode(&shop, seed, w, &mut ask);
+    if let Some(p) = flag(args, "--picks") {
+        if let Err(err) = fabsim::gym::write_picks(&e, std::path::Path::new(&p)) {
+            return fail("picks", &err.to_string());
+        }
+    }
     println!("{}", done_json(&e, &format!(",\"faults\":{faults},\"picked_other\":{other}")));
     ExitCode::SUCCESS
 }
