@@ -43,8 +43,17 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
 1. **This plan.**
 2. **The decision as a fab.** A signed answer becomes a variant: the candidate's changes (copies by group and area,
    policy, capital from the price sheet) and the changed shop; the realistic layout re-packed with the copies.
+   Built 29 Oct: `fabsim variant` keeps today's US plan (1.6 m chases, cross aisles) block for block and puts one copy
+   of each of TF_FE_103, Planar_FE_79 and LithoMet_BE_18 right after its original; $20.1M once on the central price
+   sheet; 42 bays and the hall lengths unchanged; hoist travel +0.14% at the two-family flows
+   (`results/layout-real-dd-copies/`).
 3. **Plans, BIM and bill of materials for the variant**, through the same pipeline as today's fab, with a difference
    sheet (tools, floor area, travel, capital, code checks rerun).
+   Built 29 Oct: the variant through the design-development and construction-document stages and the bill of
+   materials (`data/layout-real-dd-copies/`), and `viz/variant/diff.py` writes the difference (sheet X-001, JSON, note
+   in `results/layout-real-dd-copies/difference/`): 3 tools added, 18 moved along their wall, 0 of 279 and 0 of 292
+   verdicts change (the P2 chase travel goes from 67.3 to 70.3 ft against 75), 12 bill of materials lines, 14 of 37 and
+   18 of 73 sheets.
 4. **The variant in the film and the game**: the game loads the variant building; the walkthrough gains a shot of the
    copies.
 5. **The colleague**: the character, the chat panel, "show me" walking you there, places taken from the layout, the

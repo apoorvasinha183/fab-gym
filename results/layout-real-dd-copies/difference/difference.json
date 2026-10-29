@@ -1,0 +1,395 @@
+{
+ "bom": [
+  {
+   "after": 176610.0,
+   "before": 176611.0,
+   "change": -1.0,
+   "class": "IfcBuildingElementPart",
+   "material": "pedestal",
+   "section": "architecture",
+   "size": "",
+   "type": "raised floor pedestals",
+   "unit": "each"
+  },
+  {
+   "after": 96.0,
+   "before": 48.0,
+   "change": 48.0,
+   "class": "IfcDuctSegment",
+   "material": "galvanised",
+   "section": "mechanical",
+   "size": "500\u00d7600 mm",
+   "type": "exhaust_general_m3h",
+   "unit": "m"
+  },
+  {
+   "after": 0,
+   "before": 48.0,
+   "change": -48.0,
+   "class": "IfcDuctSegment",
+   "material": "galvanised",
+   "section": "mechanical",
+   "size": "\u00d8500 mm",
+   "type": "exhaust_general_m3h",
+   "unit": "m"
+  },
+  {
+   "after": 0,
+   "before": 314.6,
+   "change": -314.6,
+   "class": "IfcPipeSegment",
+   "material": "pipe_drain",
+   "section": "piping",
+   "size": "\u00d850 mm",
+   "type": "drain_slurry_lpm",
+   "unit": "m"
+  },
+  {
+   "after": 555.8,
+   "before": 241.2,
+   "change": 314.6,
+   "class": "IfcPipeSegment",
+   "material": "pipe_drain",
+   "section": "piping",
+   "size": "\u00d865 mm",
+   "type": "drain_slurry_lpm",
+   "unit": "m"
+  },
+  {
+   "after": 480.0,
+   "before": 528.0,
+   "change": -48.0,
+   "class": "IfcPipeSegment",
+   "material": "stainless",
+   "section": "piping",
+   "size": "\u00d8100 mm",
+   "type": "pcw_lpm",
+   "unit": "m"
+  },
+  {
+   "after": 240.0,
+   "before": 192.0,
+   "change": 48.0,
+   "class": "IfcPipeSegment",
+   "material": "stainless",
+   "section": "piping",
+   "size": "\u00d8125 mm",
+   "type": "pcw_lpm",
+   "unit": "m"
+  },
+  {
+   "after": 1727.2,
+   "before": 1722.1,
+   "change": 5.1,
+   "class": "IfcPipeSegment",
+   "material": "stainless",
+   "section": "piping",
+   "size": "\u00d8400 mm",
+   "type": "tool drop",
+   "unit": "m"
+  },
+  {
+   "after": 638.0,
+   "before": 637.0,
+   "change": 1.0,
+   "class": "IfcSensor",
+   "material": "device",
+   "section": "fire",
+   "size": "",
+   "type": "gassensor",
+   "unit": "each"
+  },
+  {
+   "after": 150.0,
+   "before": 149.0,
+   "change": 1.0,
+   "class": "IfcBuildingElementProxy",
+   "material": "tool",
+   "section": "process equipment",
+   "size": "",
+   "type": "deposition",
+   "unit": "each"
+  },
+  {
+   "after": 58.0,
+   "before": 57.0,
+   "change": 1.0,
+   "class": "IfcBuildingElementProxy",
+   "material": "tool",
+   "section": "process equipment",
+   "size": "",
+   "type": "metrology",
+   "unit": "each"
+  },
+  {
+   "after": 35.0,
+   "before": 34.0,
+   "change": 1.0,
+   "class": "IfcBuildingElementProxy",
+   "material": "tool",
+   "section": "process equipment",
+   "size": "",
+   "type": "polisher",
+   "unit": "each"
+  }
+ ],
+ "capital": {
+  "bridge": 0,
+  "depreciation_day": 10767.123287671233,
+  "floor": 600000,
+  "qualify": 1500000,
+  "tools": 18000000,
+  "total": 20100000,
+  "upkeep_day": 4931.506849315068
+ },
+ "checks": {
+  "cd": {
+   "changed": [
+    {
+     "after": {
+      "verdict": "met",
+      "why": "chase_travel_ft 70.3 (computed along each chase to its open ends and doors) <= 75"
+     },
+     "before": {
+      "verdict": "met",
+      "why": "chase_travel_ft 67.3 (computed along each chase to its open ends and doors) <= 75"
+     },
+     "cite": [
+      "IBC 415.11.3.3"
+     ],
+     "rule": "service.corridor_travel",
+     "scope": "P2"
+    }
+   ],
+   "only_today": [],
+   "only_variant": [],
+   "today": 292,
+   "variant": 292,
+   "verdicts_today": {
+    "cannot say": 17,
+    "met": 273,
+    "not met": 2
+   },
+   "verdicts_variant": {
+    "cannot say": 17,
+    "met": 273,
+    "not met": 2
+   }
+  },
+  "dd": {
+   "changed": [
+    {
+     "after": {
+      "verdict": "met",
+      "why": "chase_travel_ft 70.3 (computed along each chase to its open ends and doors) <= 75"
+     },
+     "before": {
+      "verdict": "met",
+      "why": "chase_travel_ft 67.3 (computed along each chase to its open ends and doors) <= 75"
+     },
+     "cite": [
+      "IBC 415.11.3.3"
+     ],
+     "rule": "service.corridor_travel",
+     "scope": "P2"
+    }
+   ],
+   "only_today": [],
+   "only_variant": [],
+   "today": 279,
+   "variant": 279,
+   "verdicts_today": {
+    "cannot say": 16,
+    "met": 263
+   },
+   "verdicts_variant": {
+    "cannot say": 16,
+    "met": 263
+   }
+  }
+ },
+ "copies": [
+  {
+   "area": "TF",
+   "copy": "TF_FE_103@B",
+   "original": "TF_FE_103",
+   "tools": 1
+  },
+  {
+   "area": "Planar",
+   "copy": "Planar_FE_79@B",
+   "original": "Planar_FE_79",
+   "tools": 1
+  },
+  {
+   "area": "Litho_Met",
+   "copy": "LithoMet_BE_18@B",
+   "original": "LithoMet_BE_18",
+   "tools": 1
+  }
+ ],
+ "floor": {
+  "bays": [
+   42,
+   42
+  ],
+  "footprint_m2": [
+   64708.0,
+   64708.0
+  ],
+  "lengths": [
+   [
+    255.8,
+    182.4
+   ],
+   [
+    255.8,
+    182.4
+   ]
+  ]
+ },
+ "sheets": {
+  "cd": {
+   "changed": [
+    "A-112.svg",
+    "A-122.svg",
+    "A-301.svg",
+    "E-110.svg",
+    "E-601.svg",
+    "E-602.svg",
+    "FA-101.svg",
+    "FP-201.svg",
+    "G-101.svg",
+    "G-102.svg",
+    "M-101.svg",
+    "M-201.svg",
+    "M-401.svg",
+    "M-601.svg",
+    "M-602.svg",
+    "PP-101.svg",
+    "PP-110.svg",
+    "PP-301.svg"
+   ],
+   "total": 73
+  },
+  "dd": {
+   "changed": [
+    "A-301.svg",
+    "E-601.svg",
+    "E-602.svg",
+    "FA-101.svg",
+    "FP-201.svg",
+    "G-101.svg",
+    "G-102.svg",
+    "M-101.svg",
+    "M-201.svg",
+    "M-401.svg",
+    "M-601.svg",
+    "M-602.svg",
+    "PP-101.svg",
+    "PP-301.svg"
+   ],
+   "total": 37
+  }
+ },
+ "sources": {
+  "today": {
+   "cd": "data/layout-real-dd/permit-cd/us",
+   "dd": "data/layout-real-dd/permit/us",
+   "layout": "results/layout-real-dd/layout.json",
+   "scene": "data/layout-real-dd/scene-optimised.json"
+  },
+  "variant": "results/layout-real-dd-copies/variant.json",
+  "variant_paths": {
+   "cd": "data/layout-real-dd-copies/permit-cd/us",
+   "dd": "data/layout-real-dd-copies/permit/us",
+   "layout": "results/layout-real-dd-copies/layout.json",
+   "scene": "data/layout-real-dd-copies/scene-optimised.json",
+   "variant": "results/layout-real-dd-copies/variant.json"
+  }
+ },
+ "tools": {
+  "moved": [
+   [
+    "Litho_REG_BE_63",
+    0
+   ],
+   [
+    "Litho_REG_BE_63",
+    1
+   ],
+   [
+    "Litho_REG_BE_63",
+    2
+   ],
+   [
+    "Litho_REG_BE_63",
+    3
+   ],
+   [
+    "Litho_REG_BE_63",
+    4
+   ],
+   [
+    "Litho_REG_BE_63",
+    5
+   ],
+   [
+    "Litho_REG_BE_63",
+    6
+   ],
+   [
+    "Litho_REG_BE_63",
+    7
+   ],
+   [
+    "Planar_FE_78",
+    0
+   ],
+   [
+    "Planar_FE_78",
+    1
+   ],
+   [
+    "Planar_FE_80",
+    0
+   ],
+   [
+    "Planar_FE_80",
+    1
+   ],
+   [
+    "TF_FE_131",
+    0
+   ],
+   [
+    "TF_FE_131",
+    1
+   ],
+   [
+    "TF_FE_131",
+    2
+   ],
+   [
+    "TF_FE_131",
+    3
+   ],
+   [
+    "TF_FE_131",
+    4
+   ],
+   [
+    "TF_FE_131",
+    5
+   ]
+  ],
+  "today": 1043,
+  "variant": 1046
+ },
+ "travel": {
+  "after": 4079508.255490309,
+  "before": 4073867.318687853,
+  "unit": "hoist metres a day at the two-family flows"
+ },
+ "truth": "On the SMT2020 model, a published research model of a wafer fab: a gigafab-style layout of our own design, not a real fab. Prices and placements assumed. NOT FOR CONSTRUCTION."
+}
