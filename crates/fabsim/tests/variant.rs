@@ -79,3 +79,22 @@ fn the_variant_is_the_same_on_every_run() {
     assert_eq!(a.plan, b.plan);
     assert_eq!(a.shop.to_text(), b.shop.to_text());
 }
+
+#[test]
+fn the_capital_is_the_price_sheets_for_copies_in_the_halls() {
+    use fabsim::pl::{capital, Added, Place, Sheet};
+    let Some((v, _, _)) = build() else { return };
+    let s = Sheet::central();
+    let want = capital(&Added { tools: v.copies.iter().map(|c| (c.area.clone(), c.tools)).collect(), place: Place::Halls }, &s);
+    assert_eq!(v.capital(&s), want);
+    assert!(want.total > 0.0 && want.bridge == 0.0, "copies in the halls need no bridge");
+}
+
+#[test]
+fn travel_is_measured_on_the_same_flows_before_and_after() {
+    let Some((v, _, _)) = build() else { return };
+    let (before, after) = v.travel();
+    assert!(before.is_finite() && before > 0.0 && after.is_finite() && after > 0.0);
+    // today's campus has no copies, so B's lots for the copied groups go to the originals there
+    assert_ne!(before, after);
+}
