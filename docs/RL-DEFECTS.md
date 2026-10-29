@@ -112,3 +112,8 @@ space is `Discrete(8)`, and an action on an empty slot is masked to the engine's
   contest through `fabrule env`, which shares the episode loop with `fabsim env` (moved into `fabsim::gym`), so
   every contestant is still scored by one piece of code. Test 9 added. E2's rules were bred for money a day with
   two families at ×4; here they play today's single-family fab with defects, which the card says.
+- 29 Oct, after the contest, at the founder's question on how the defect rates are justified: how often a finding
+  happens follows SMT2020's published rework rates; the three hold lengths are ours and assumed. Decided by quiz: a
+  Defect holds dial (off, ×0.5, ×1, ×2 of the three lengths) on the page's Try a change, and the held-out contest
+  rerun at ×0.5 (60, 120, 30) and ×2 (240, 480, 120) so the card says whether PPO's verdict holds. Test in
+  `crates/fabsim/tests/dials.rs`, before the code.

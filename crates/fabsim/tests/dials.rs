@@ -104,3 +104,24 @@ fn a_dialled_shop_runs_the_same_on_the_same_seed() {
     let o = RunOptions { seed: 7, until: Some(3000.0), record: true };
     assert_eq!(run(&s, &o, None).log_text(), run(&s, &o, None).log_text());
 }
+
+// Defect holds as a dial (docs/RL-DEFECTS.md; the founder, 29 Oct): None leaves the shop's own, 0 switches holds
+// off, k > 0 sets k times the assumed central lengths (tool 120 min, lookback 240 min, lots 60 min).
+#[test]
+fn defect_holds_dial() {
+    use fabsim::dials::DEFECTS_CENTRAL;
+    use fabsim::shop::Defects;
+    assert_eq!(DEFECTS_CENTRAL, (120.0, 240.0, 60.0));
+    let s = shop();
+    assert_eq!(s.defects, None);
+    assert_eq!(Dials { defects: None, ..Dials::default() }.apply(&s).unwrap().to_text(), s.to_text());
+    let on = Dials { defects: Some(1.0), ..Dials::default() }.apply(&s).unwrap();
+    assert_eq!(on.defects, Some(Defects { hold_tool_minutes: 120.0, lookback_minutes: 240.0, hold_lot_minutes: 60.0 }));
+    let twice = Dials { defects: Some(2.0), ..Dials::default() }.apply(&s).unwrap();
+    assert_eq!(twice.defects, Some(Defects { hold_tool_minutes: 240.0, lookback_minutes: 480.0, hold_lot_minutes: 120.0 }));
+    assert_eq!(Dials { defects: Some(0.0), ..Dials::default() }.apply(&on).unwrap().defects, None);
+    assert!(Dials { defects: Some(-1.0), ..Dials::default() }.apply(&s).is_err());
+    // the dialled shop runs the same on the same seed
+    let r = |sh: &Shop| run(sh, &RunOptions { seed: 3, until: Some(5000.0), record: true }, None).log_text();
+    assert_eq!(r(&twice), r(&twice));
+}
