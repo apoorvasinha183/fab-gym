@@ -175,3 +175,26 @@ test("the price sheet as shown: every item, its range and the word assumed", () 
   assert.ok(rows.some(r => /\$8,000/.test(r.central)), "the volume wafer price in dollars");
   assert.ok(rows.some(r => /\$40M/.test(r.central)), "millions written short");
 });
+
+// What each change buys as a floor × policy grid, with a period toggle (the founder, 29 Oct).
+test("the capital grid: 3 floors by 5 policies, today's fab as the base, profit scaled by the period", () => {
+  const pl = JSON.parse(readFileSync(join(ROOT, "results", "two-families", "pl.json"), "utf8"));
+  const d = U.withPl(summary, pl);
+  const g = U.capitalGrid(d, 4, "day");
+  assert.deepEqual(g.floors.map(f => f.floor), ["D1 share", "D2 wing", "D3 copies"]);
+  assert.deepEqual(g.policies, ["P0 today", "P1 family B first", "P2 family cap", "P3 reservation", "P4 qualification"]);
+  for (const f of g.floors) assert.equal(f.cells.length, 5);
+  assert.ok(g.floors[0].cells[0].base, "the shared floor with today's order is the base");
+  assert.equal(g.floors[0].capital, 0);
+  assert.ok(g.floors[1].capital > g.floors[2].capital && g.floors[2].capital > 0, "a wing costs more than copies");
+  const cap = g.floors[0].cells[2];
+  assert.equal(cap.verdict, "better");
+  const month = U.capitalGrid(d, 4, "month"), year = U.capitalGrid(d, 4, "year");
+  assert.ok(Math.abs(month.floors[0].cells[2].value - cap.value * 365 / 12) < 1e-6);
+  assert.ok(Math.abs(year.floors[0].cells[2].lo - cap.lo * 365) < 1e-6);
+  assert.equal(year.floors[0].cells[2].verdict, cap.verdict, "the period never changes a verdict");
+  assert.equal(month.unit, "a month");
+  // the best cell is marked
+  const best = g.floors.flatMap(f => f.cells).filter(c => c.best);
+  assert.equal(best.length, 1);
+});
