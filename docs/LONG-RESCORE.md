@@ -47,7 +47,13 @@ A new policy is scored by adding it to the same command with the same protocol n
   per decision and the registry kept.
 - **Changes while building:**
   - the first engine test used an empty window, which the scorer refuses, so it now builds the run by hand;
-  - the harness's built-in player was missing an import.
+  - the harness's built-in player was missing an import;
+  - E2's evolved rules 2 and 3 failed rustc (E0689, a method on a bare float literal): the rule exporter now writes
+    every constant as f64 (`gp.rs`, test `a_rule_of_constants_alone_names_its_number_type`), and the three rule files
+    were rewritten the same way. All three are constant keys, which never beat the default pick, so each plays
+    today's rule exactly (e2-2 checked on seed 0: 523,444 decisions, none picked otherwise, the same moves). e2-2 and
+    e2-3 are therefore not run again; e2-1 stands for all three;
+  - a contest now picks up the runs it already kept and records a policy that cannot play, then goes on.
 
 ## Regret, decided 29 Oct by quiz: A, B, C and D, in that order (C and A first, then B and D)
 
@@ -60,3 +66,33 @@ A new policy is scored by adding it to the same command with the same protocol n
   - The expected ceiling uses expected time down, so a run with less time down than expected can pass it. The
     earlier layout runs averaged 1,311.8 over days 60 to 150. A ceiling for each run from its own time down is the
     strict per-run version, to come with the runs' downtime. Saved: `results/long-rescore/ceiling.json`.
+
+## Results, long-v1 (29 to 30 Oct; `results/long-rescore/`)
+
+Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less than 1% in every measure.
+
+| policy | wafers a day | cycle time, days | reward | queue-time breaches |
+| --- | ---: | ---: | ---: | ---: |
+| today | 1,263 | 59.6 | -23,860 | 15,444 |
+| E2's evolved rules (= today) | 1,263 | 59.6 | -23,860 | 15,444 |
+| critical ratio | 1,058 | 76.1 | -33,944 | 2,747 |
+| shortest first | 668 | 130.2 | -39,892 | 3,475 |
+| PPO | 660 | 141.2 | -42,361 | 3,554 |
+| FIFO | 595 | 153.8 | -42,780 | 2,247 |
+| random | 587 | 156.3 | -43,051 | 2,037 |
+
+- Every policy but the evolved rules is worse than today's on every seed, by intervals far from zero.
+- PPO, trained on 3-day windows, loses about half the output over a long window: it was never scored where its
+  picks come back as cycle time.
+- Today's rule trades queue-time breaches for output: about six times the breaches of the others.
+- **Regret A** (best of this library on each seed, minus the policy's reward; `regret-ac.json`, `regret_ac.py`):
+  today's rule is the best on every seed, so its A is 0 and A only ranks the rest: critical ratio 10,085 (95% 9,685 to
+  10,485), shortest first 16,033, PPO 18,501, FIFO 18,921, random 19,191.
+- **Regret C** (expected ceiling 1,301.9 minus wafers a day): today's rule 38.9 (95% 17.8 to 59.9) with defects off,
+  33.6 (11.3 to 55.9) on; critical ratio 243.6; PPO 641.4. One run with defects off, two on, got more out than the
+  expected ceiling (less time down than expected on those seeds), so C is a bound on average only. A ceiling for
+  each run from its own time down is still to come.
+- **Speed** (wall seconds per decision, the simulation included): built-in rules 0.27 to 0.47 ms, the sandboxed
+  evolved rule 0.05 ms (its run counts every decision with today's rule), PPO 0.84 ms. The decision's own cost is a
+  small part of these, except PPO's network.
+

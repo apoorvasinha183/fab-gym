@@ -12,6 +12,15 @@ use crate::engine::{Player, RunOptions, Stepper};
 use crate::policy::Policy;
 use crate::shop::Shop;
 
+/// A copy of a run, sent to a worker thread. The run's two callback slots (`Hook`) are not thread-safe, but a copy's
+/// are always empty (`Hook`'s `Clone` gives `None`), and nothing else in it is tied to a thread.
+struct Copied<'a>(Stepper<'a>);
+// SAFETY: see above; the only parts that are not `Send` are the hooks, which a clone leaves empty.
+unsafe impl Send for Copied<'_> {}
+
+/// At most this many copies run at once (one heavy job, at most 4 workers).
+pub const WORKERS: usize = 4;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Sample {
     /// which counted pick of the window, and when
@@ -47,14 +56,25 @@ pub fn audit(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize
         main.advance(t - 1e-6);
         let base = main.value();
         let player = main.player().unwrap().clone();
-        let values: Vec<f64> = (0..cands as usize)
-            .map(|c| {
-                let mut b = main.clone();
-                b.set_player(Some(player.branch(&picks[..k], k as u64, c)));
-                b.advance(t + horizon);
-                b.value() - base
-            })
-            .collect();
+        // each lot on its own copy; the copies spread over at most WORKERS threads, the values kept in candidate order
+        let n_c = cands as usize;
+        let per = n_c.div_ceil(WORKERS).max(1);
+        let mut values = vec![0.0; n_c];
+        std::thread::scope(|sc| {
+            let player = &player;
+            for (w, chunk) in values.chunks_mut(per).enumerate() {
+                let own = Copied(main.clone());
+                sc.spawn(move || {
+                    let own = own;
+                    for (j, v) in chunk.iter_mut().enumerate() {
+                        let mut b = own.0.clone();
+                        b.set_player(Some(player.branch(&picks[..k], k as u64, w * per + j)));
+                        b.advance(t + horizon);
+                        *v = b.value() - base;
+                    }
+                });
+            }
+        });
         let chosen = (picks[k] as usize).min(values.len() - 1);
         let best = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         samples.push(Sample { k: k as u64, t, regret: best - values[chosen], values, chosen });
