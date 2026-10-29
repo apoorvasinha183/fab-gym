@@ -182,3 +182,14 @@ body.opening-on .ticker, body.opening-on .hint, body.opening-on .brand, body.ope
 .split-cards .verdicts { margin: 8px 0 0; }
 .split-cards .note.small { margin-top: 6px; }
 body.split .kpis, body.split .ticker, body.split .hint { display: none; }
+
+/* what each change buys, and the price sheet (docs/MONEY-PL.md) */
+.num-capital { margin: 18px 0 6px; }
+.num-capital h4 { margin: 0 0 8px; font-size: 14px; color: var(--ink, #E8F2F0); }
+.captab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.captab th { text-align: left; font-weight: 600; color: #A9C4C0; padding: 6px 8px; border-bottom: 1px solid #2C5560; }
+.captab td { padding: 5px 8px; border-bottom: 1px solid #16272D; color: #CFE3E0; }
+.captab td.v { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; }
+.captab .iv { color: #8FB3AE; }
+.num-capital details.sheet { margin-top: 10px; }
+.num-capital details.sheet summary { cursor: pointer; color: var(--accent, #7EE8D8); font-weight: 600; padding: 6px 0; }

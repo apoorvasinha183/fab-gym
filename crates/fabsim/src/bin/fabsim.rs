@@ -297,6 +297,68 @@ fn jnum(x: f64) -> String {
     if x.is_finite() { format!("{x}") } else { "null".into() }
 }
 
+/// The saved two-family sweep as a profit and loss in dollars (docs/MONEY-PL.md): every run and every cell at the
+/// central prices, and for the best cell at each share its verdict at each price's low and high. No rerun.
+fn pl_cmd(args: &[String]) {
+    use fabsim::pl::{price_sweep, sweep_inputs, Sheet};
+    use std::fmt::Write as _;
+    let dir = PathBuf::from(args.get(0).map(|s| s.as_str()).unwrap_or("results/two-families"));
+    let smt = PathBuf::from(args.get(1).map(|s| s.as_str()).unwrap_or("data/smt2020/hvlm"));
+    let inp = sweep_inputs(&dir, &smt).unwrap_or_else(|e| panic!("{e}"));
+    let central = Sheet::central();
+    let p = price_sweep(&inp, &central);
+    let iv = |i: &fabsim::uq::Interval| format!("{{\"mean\":{},\"lo\":{},\"hi\":{}}}", jnum(i.mean), jnum(i.lo), jnum(i.hi));
+    let opt = |x: Option<f64>| x.map(jnum).unwrap_or_else(|| "null".into());
+    let mut o = String::from("{\"model\":\"SMT2020\",\"note\":\"On the SMT2020 model, a published research model of a wafer fab. Every price is assumed. No real fab's prices or data are used.\",");
+    let _ = write!(o, "\"alpha_each\":{},\"npv_factor\":{},\"sheet\":[", jnum(p.alpha_each), jnum(fabsim::pl::npv_factor(&central)));
+    let items = Sheet::items();
+    for (k, it) in items.iter().enumerate() {
+        let _ = write!(o, "{}{{\"key\":\"{}\",\"label\":\"{}\",\"unit\":\"{}\",\"central\":{},\"low\":{},\"high\":{},\"assumed\":{}}}",
+            if k > 0 { "," } else { "" }, it.key, it.label, it.unit, jnum(it.central), jnum(it.low), jnum(it.high), it.assumed);
+    }
+    o.push_str("],\"today\":[");
+    for (k, t) in p.today.iter().enumerate() {
+        let _ = write!(o, "{}{{\"share\":{},\"revenue\":{},\"materials\":{},\"running\":{},\"cash\":{},\"depreciation\":{},\"profit\":{}}}",
+            if k > 0 { "," } else { "" }, t.share, jnum(t.revenue), jnum(t.materials), jnum(t.running), jnum(t.cash), jnum(t.depreciation), jnum(t.profit));
+    }
+    o.push_str("],\"cells\":[");
+    for (k, c) in p.cells.iter().enumerate() {
+        let _ = write!(o, "{}{{\"share\":{},\"strategy\":\"{}\",\"policy\":\"{}\",\"capital\":{},\"profit\":{},\"cash\":{},\"npv\":{{\"mean\":{},\"lo\":{},\"hi\":{}}},\"payback_days\":{{\"soonest\":{},\"latest\":{}}},\"verdict\":\"{}\"}}",
+            if k > 0 { "," } else { "" }, c.share, c.strategy, c.policy, jnum(c.capital), iv(&c.d_profit), iv(&c.d_cash),
+            jnum(c.npv.0), jnum(c.npv.1), jnum(c.npv.2), opt(c.payback.0), opt(c.payback.1), c.verdict);
+    }
+    // the best cell at each share (highest mean change in operating profit), checked at each price's low and high
+    o.push_str("],\"checks\":[");
+    let mut first = true;
+    for t in &p.today {
+        let Some(best) = p.cells.iter().filter(|c| c.share == t.share).max_by(|a, b| a.d_profit.mean.total_cmp(&b.d_profit.mean)) else { continue };
+        let _ = write!(o, "{}{{\"share\":{},\"strategy\":\"{}\",\"policy\":\"{}\",\"verdict\":\"{}\",\"items\":[", if first { "" } else { "," }, t.share, best.strategy, best.policy, best.verdict);
+        first = false;
+        let mut f2 = true;
+        for it in items.iter().filter(|i| i.low != i.high) {
+            let at = |v: f64| {
+                let q = price_sweep(&inp, &central.with(it.key, v));
+                let c = q.cells.into_iter().find(|c| c.share == best.share && c.strategy == best.strategy && c.policy == best.policy).unwrap();
+                (c.verdict, c.d_profit.mean)
+            };
+            let (lv, lm) = at(it.low);
+            let (hv, hm) = at(it.high);
+            let _ = write!(o, "{}{{\"key\":\"{}\",\"low\":{{\"verdict\":\"{lv}\",\"mean\":{}}},\"high\":{{\"verdict\":\"{hv}\",\"mean\":{}}}}}", if f2 { "" } else { "," }, it.key, jnum(lm), jnum(hm));
+            f2 = false;
+        }
+        o.push_str("]}");
+    }
+    o.push_str("]}\n");
+    let out = dir.join("pl.json");
+    std::fs::write(&out, o).unwrap();
+    let mut tsv = String::from("share\tstrategy\tpolicy\tseed\trevenue\tmaterials\trunning\tcash\tdepreciation\tprofit\n");
+    for r in &p.runs {
+        let _ = writeln!(tsv, "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", r.share, r.strategy, r.policy, r.seed, r.pl.revenue, r.pl.materials, r.pl.running, r.pl.cash, r.pl.depreciation, r.pl.profit);
+    }
+    std::fs::write(dir.join("pl-runs.tsv"), tsv).unwrap();
+    println!("wrote {} and pl-runs.tsv", out.display());
+}
+
 fn two_families(args: &[String]) {
     use fabsim::layout::Config as LayoutConfig;
     use fabsim::money::PriceGrid;
@@ -755,6 +817,7 @@ fn main() {
         }
         Some("lean-long") => lean_long(&args[1..]),
         Some("two-families") => two_families(&args[1..]),
+        Some("pl") => pl_cmd(&args[1..]),
         Some("evolve") => evolve_cmd(&args[1..]),
         Some("env") => env_cmd(&args[1..]),
         Some("layout") => layout(&args[1..]),

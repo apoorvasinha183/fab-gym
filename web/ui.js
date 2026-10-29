@@ -47,7 +47,7 @@
   // ---------------------------------------------------------------- the two-family sweep
   const STRATEGIES = ["D1 share", "D2 wing", "D3 copies"];
   const POLICIES = ["P0 today", "P1 family B first", "P2 family cap", "P3 reservation", "P4 qualification"];
-  const HIGHER = { money: true, a_wafers: true, b_cycle: false };
+  const HIGHER = { money: true, profit: true, a_wafers: true, b_cycle: false };
   function sweepRows(summary, share, metric) {
     const rows = [];
     for (const st of STRATEGIES) for (const po of POLICIES) {
@@ -60,7 +60,8 @@
         strategy: st, policy: po,
         mean: has ? m.mean : null, lo: has ? m.lo : null, hi: has ? m.hi : null,
         verdict: verdictOf(has ? m : null, HIGHER[metric]),
-        text: has ? `${signed(m.mean)} (${signed(m.lo)} to ${signed(m.hi)})` : "no prototype lot out",
+        text: !has ? "no prototype lot out" : metric === "profit" ? `${usd(m.mean, true)} (${usd(m.lo, true)} to ${usd(m.hi, true)})`
+          : `${signed(m.mean)} (${signed(m.lo)} to ${signed(m.hi)})`,
       });
     }
     return rows;
@@ -147,7 +148,54 @@
     return use;
   }
 
-  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, STRATEGIES, POLICIES };
+  // ---------------------------------------------------------------- money in dollars (docs/MONEY-PL.md)
+  // Dollars, short: $1.23M, $540k, $8,000; `sign` adds + to gains.
+  function usd(x, sign = false) {
+    if (x === null || x === undefined || !isFinite(x)) return "—";
+    const s = x < 0 ? "−" : sign && x > 0 ? "+" : "", a = Math.abs(x);
+    const t = a >= 1e6 ? `${+(a / 1e6).toFixed(a >= 1e8 ? 0 : 2)}M` : a >= 1e4 && sign ? `${Math.round(a / 1e3)}k` : Math.round(a).toLocaleString("en-US");
+    return `${s}$${t}`;
+  }
+  // The sweep's cells with the saved runs priced in dollars: each cell gains `profit` (the change in operating profit
+  // a day against the shared floor with today's order) and `pl` (capital, cash, net present value, payback).
+  function withPl(summary, pl) {
+    const out = { ...summary, plToday: {}, plNote: pl.note };
+    for (const t of pl.today) out.plToday[String(t.share)] = t;
+    out.cells = summary.cells.map((c) => {
+      const p = pl.cells.find((x) => x.share === c.share && x.strategy === c.strategy && x.policy === c.policy);
+      return p ? { ...c, profit: { ...p.profit, verdict: p.verdict }, pl: { capital: p.capital, cash: p.cash, npv: p.npv, payback_days: p.payback_days } } : c;
+    });
+    return out;
+  }
+  // The price sheet as the page shows it.
+  function sheetValue(v, unit) {
+    if (unit.startsWith("$")) {
+      const rest = unit.slice(1).trim();
+      const m = v >= 1e6 ? `$${+(v / 1e6).toFixed(2)}M` : `$${Math.round(v).toLocaleString("en-US")}`;
+      return rest ? `${m} ${rest}` : m;
+    }
+    if (unit.startsWith("share of the price")) return `${+(v * 100).toFixed(1)}% of the price a day`;
+    if (unit.startsWith("share of")) return `${+(v * 100).toFixed(1)}% ${unit.replace("share of ", "of ")}`;
+    if (unit === "a year") return `${+(v * 100).toFixed(1)}% a year`;
+    return `${+v.toFixed(2)} ${unit}`;
+  }
+  // "$4,000 a wafer" and "$15,000 a wafer" become "$4,000 to $15,000 a wafer"
+  function rangeText(lo, hi) {
+    const a = lo.split(" "), b = hi.split(" ");
+    let k = 0;
+    while (k < a.length - 1 && k < b.length - 1 && a[a.length - 1 - k] === b[b.length - 1 - k]) k++;
+    return k ? `${a.slice(0, a.length - k).join(" ")} to ${hi}` : `${lo} to ${hi}`;
+  }
+  function priceSheetRows(pl) {
+    return pl.sheet.map((it) => ({
+      key: it.key, label: it.label,
+      central: sheetValue(it.central, it.unit),
+      range: it.low === it.high ? "" : rangeText(sheetValue(it.low, it.unit), sheetValue(it.high, it.unit)),
+      note: it.assumed ? "assumed" : "",
+    }));
+  }
+
+  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, STRATEGIES, POLICIES };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabUI = api;
 })(typeof window !== "undefined" ? window : globalThis);

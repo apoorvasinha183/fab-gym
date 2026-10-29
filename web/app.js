@@ -1614,7 +1614,7 @@ async function backToToday() {
 // ------------------------------------------------------------------ the redesigned chrome (docs/FLOOR-UI.md)
 // The opening, the command bar (⌘K), lens chips, drawers for the tools, the numbers view and signing.
 
-const UI = { lens: "day", sweep: null, metric: "money", share: 4 };
+const UI = { lens: "day", sweep: null, metric: "profit", share: 4 };
 
 let VP = null; // the part of the window a scene is drawn in; null for all of it
 function floorPad() {
@@ -1832,7 +1832,7 @@ const FLOOR_WORDS = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "
 const POLICY_WORDS = { "P0 today": "today's order", "P1 family B first": "prototypes first", "P2 family cap": "prototypes capped at the door",
   "P3 reservation": "a tool kept for prototypes", "P4 qualification": "prototypes on half the tools" };
 const METRIC = {
-  money: { name: "Money a day", unit: "volume-wafer margins a day", higher: true, base: v => fmtN(v, 0) },
+  profit: { name: "Operating profit a day", unit: "dollars a day", higher: true, base: v => FabUI.usd(v), tick: v => FabUI.usd(v) },
   a_wafers: { name: "Volume wafers a day", unit: "wafers a day", higher: true, base: v => fmtN(v, 0) },
   b_cycle: { name: "Prototype cycle time", unit: "days", higher: false, base: v => fmtN(v, 1) },
 };
@@ -1845,7 +1845,10 @@ async function openNumbers() {
   closeOpening();
   $("numbers").hidden = false;
   if (!UI.sweep) {
-    try { UI.sweep = await fetch("data/two-families.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
+    try {
+      UI.sweep = await fetch("data/two-families.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))));
+      if (UI.sweep.pl) UI.sweep = FabUI.withPl(UI.sweep, UI.sweep.pl);
+    }
     catch (err) { $("num-lead").textContent = "The sweep's results are not in this build (run web/build.sh)."; return; }
   }
   drawNumbers();
@@ -1868,7 +1871,7 @@ function forestSVG(rows, m, xTitle) {
   // gridlines and ticks
   for (const t of ticks) {
     lines.push(`<line x1="${X(t)}" x2="${X(t)}" y1="${top - 4}" y2="${y + 2}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
-    lines.push(`<text x="${X(t)}" y="${y + 18}" fill="#A9C4C0" font-size="11" text-anchor="middle">${FabUI.tickLabel(t)}</text>`);
+    lines.push(`<text x="${X(t)}" y="${y + 18}" fill="#A9C4C0" font-size="11" text-anchor="middle">${(m.tick || FabUI.tickLabel)(t)}</text>`);
   }
   lines.push(`<line x1="${L}" x2="${W0 - R}" y1="${y + 2}" y2="${y + 2}" stroke="#2C5560"/>`);
   rows.forEach((r, i) => {
@@ -1911,7 +1914,7 @@ function linesSVG(lines, m, share) {
   if (si >= 0) out.push(`<rect x="${X(si) - 18}" y="${top}" width="36" height="${H - top - B}" fill="rgba(126,232,216,0.07)" rx="6"/>`);
   for (const t of ticks) {
     out.push(`<line x1="${L}" x2="${W0 - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
-    out.push(`<text x="${L - 8}" y="${Y(t) + 4}" fill="#A9C4C0" font-size="11" text-anchor="end">${FabUI.tickLabel(t)}</text>`);
+    out.push(`<text x="${L - 8}" y="${Y(t) + 4}" fill="#A9C4C0" font-size="11" text-anchor="end">${(m.tick || FabUI.tickLabel)(t)}</text>`);
   }
   shares.forEach((s, i) => out.push(`<text x="${X(i)}" y="${H - B + 18}" fill="#A9C4C0" font-size="11.5" text-anchor="middle">×${s}</text>`));
   out.push(`<line x1="${L}" x2="${L}" y1="${top}" y2="${H - B}" stroke="#2C5560"/><line x1="${L}" x2="${W0 - R}" y1="${H - B}" y2="${H - B}" stroke="#2C5560"/>`);
@@ -1923,7 +1926,7 @@ function linesSVG(lines, m, share) {
     for (const q of pts) if (q) {
       const [x, yv, p] = q;
       out.push(`<line x1="${x}" x2="${x}" y1="${Y(p.lo)}" y2="${Y(p.hi)}" stroke="${c}" stroke-width="2" opacity="0.6"/>`);
-      out.push(`<circle cx="${x}" cy="${yv}" r="3.5" fill="${c}"><title>${esc(POLICY_WORDS[l.policy])} at ×${p.share}: ${fmtN(p.mean)} (${fmtN(p.lo)} to ${fmtN(p.hi)})</title></circle>`);
+      out.push(`<circle cx="${x}" cy="${yv}" r="3.5" fill="${c}"><title>${esc(POLICY_WORDS[l.policy])} at ×${p.share}: ${(m.tick || fmtN)(p.mean)} (${(m.tick || fmtN)(p.lo)} to ${(m.tick || fmtN)(p.hi)})</title></circle>`);
     }
   });
   out.push(`<text x="${(L + W0 - R) / 2}" y="${H - 14}" fill="#E8F2F0" font-size="12" text-anchor="middle" font-weight="600">Prototype orders, times today's</text>`);
@@ -1946,8 +1949,8 @@ function drawNumbers() {
   const k = Math.round(0.05 / d.alpha_each);
   $("num-lead").textContent = `The two-family sweep on the SMT2020 model. Each change ran for ${d.days} simulated days after ${d.warmup} days of warm-up, on ${d.seeds.length} seeds, ` +
     `and is compared with today's fab on the same seeds. Today's fab means one shared floor and today's dispatch order. ` +
-    `Each interval is set at 1 − 0.05/${k}, so all ${k} hold together at 95%. Prices are assumed. What these changes would do in a real fab is unknown.`;
-  const base = d.baseline[String(share)] || {};
+    `Each interval is set at 1 − 0.05/${k}, so all ${k} hold together at 95%. Every price is assumed: see How money is counted below. What these changes would do in a real fab is unknown.`;
+  const base = { ...(d.baseline[String(share)] || {}), profit: d.plToday && d.plToday[String(share)] ? d.plToday[String(share)].profit : null };
   $("num-base").innerHTML = Object.entries(METRIC).map(([key, mm]) =>
     `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">Today's fab with ×${share} prototype orders: ${mm.name.toLowerCase()} (${mm.unit})</div></div>`).join("");
   // the forest: rows grouped by floor
@@ -1967,7 +1970,8 @@ function drawNumbers() {
   // the question being answered, when there is one
   const j = ASK.job;
   const qkey = UI.metric === "b_cycle" ? "b_cycle_days" : UI.metric;
-  if (j && j.stage === "done" && j.report && j.report.families) {
+  const priced = UI.metric !== "profit" || (j && j.report && j.report.candidates && j.report.candidates.some(c => c.measures && c.measures.profit));
+  if (j && j.stage === "done" && j.report && j.report.families && priced) {
     const qrows = FabAsk.resultRows(j.report).map(r => {
       const c = r.cells.find(x => x.key === qkey) || {};
       const has = c.mean !== null && c.mean !== undefined && c.lo !== null;
@@ -1978,7 +1982,46 @@ function drawNumbers() {
     $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}: each candidate compared with today's fab on ${j.report.seeds.length} paired seeds. The intervals hold together at 95%.</span></figcaption><svg role="img"></svg></figure>`;
     setSVG($("num-question").querySelector("svg"), q, `${m.name} for each candidate in your question`);
   } else $("num-question").innerHTML = "";
-  $("num-note").textContent = `Money a day is counted in volume-wafer margins, with each family A wafer earning 1. Every price is assumed (docs/TWO-FAMILIES-SWEEP.md). Simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.`;
+  $("num-note").textContent = `Operating profit a day is revenue less materials, running costs and depreciation, in dollars. Capital, payback and the five-year value count what a change buys: tools, their qualification, floor space and, for a wing, a building and a bridge. Every price is assumed. Simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.`;
+  drawCapital(d, share);
+}
+
+// what each change buys and when it pays back, at one share of prototype orders (docs/MONEY-PL.md)
+function paybackText(p) {
+  const words = x => (x < 1 ? "at once" : x < 60 ? `${Math.round(x)} days` : `${(x / 30.4).toFixed(x < 365 ? 0 : 1).replace(/\.0$/, "")} months`);
+  if (!p || p.soonest === null) return "never";
+  if (p.latest === null) return `${words(p.soonest)}, or never`;
+  return p.soonest === p.latest ? words(p.soonest) : `${words(p.soonest)} to ${words(p.latest)}`;
+}
+function drawCapital(d, share) {
+  const el = $("num-capital");
+  if (!d.pl) { el.innerHTML = ""; return; }
+  const rows = FabUI.sweepRows(d, share, "profit").map(r => {
+    const c = d.cells.find(x => x.share === share && x.strategy === r.strategy && x.policy === r.policy);
+    return { r, p: c && c.pl };
+  }).filter(x => x.p);
+  const U = FabUI.usd;
+  const body = rows.map(({ r, p }) => `<tr><td>${esc(FLOOR_WORDS[r.strategy])}, ${esc(POLICY_WORDS[r.policy])}</td>` +
+    `<td class="v">${p.capital ? U(p.capital) : "none"}</td><td class="v">${U(p.cash.mean, true)}</td>` +
+    `<td class="v">${p.capital ? paybackText(p.payback_days) : p.cash.lo > 0 ? "no capital needed" : "—"}</td>` +
+    `<td class="v">${U(p.npv.mean, true)} <span class="iv">(${U(p.npv.lo, true)} to ${U(p.npv.hi, true)})</span></td>` +
+    `<td><span class="pill ${r.verdict === "no clear effect" ? "unclear" : r.verdict}">${r.verdict}</span></td></tr>`).join("");
+  const ck = (d.pl.checks || []).find(x => x.share === share);
+  let check = "";
+  if (ck) {
+    const name = `${FLOOR_WORDS[ck.strategy].toLowerCase()} with ${POLICY_WORDS[ck.policy]}`;
+    const item = k => (d.pl.sheet.find(x => x.key === k) || {}).label || k;
+    const moves = ck.items.flatMap(it => [["low", it.low], ["high", it.high]].filter(([, v]) => v.verdict !== ck.verdict).map(([end, v]) => `${item(it.key)} at its ${end} value (${v.verdict})`));
+    check = `<p class="note">The best change here is the ${esc(name)}, ${esc(ck.verdict)} on operating profit. ` +
+      (moves.length ? `Its verdict changes with ${esc(moves.join("; "))}. Every other price can move to its low or high value and the verdict holds.`
+        : "Its verdict holds when any one price moves to its low or high value.") + "</p>";
+  }
+  const sheet = FabUI.priceSheetRows(d.pl).map(r => `<tr><td>${esc(r.label)}</td><td class="v">${esc(r.central)}</td><td class="v">${esc(r.range)}</td><td>${r.note}</td></tr>`).join("");
+  el.innerHTML = `<h4>What each change buys at ×${share} prototype orders</h4>` +
+    `<table class="captab"><thead><tr><th>Floor and policy</th><th>Capital</th><th>Change in cash a day</th><th>Pays back in</th><th>Value over 5 years</th><th>Profit</th></tr></thead><tbody>${body}</tbody></table>` +
+    check +
+    `<details class="sheet"><summary>How money is counted: the price sheet</summary><table class="captab"><thead><tr><th>Item</th><th>Used</th><th>Range tried</th><th></th></tr></thead><tbody>${sheet}</tbody></table>` +
+    `<p class="note small">Today's tools already run the prototype route, so only new tools are qualified. Copies in the halls use spare space there; a wing is a new building. The value over 5 years discounts each day's cash at 10% a year and subtracts the capital.</p></details>`;
 }
 
 // ------------------------------------------------------------------ the evidence: verdict cards and signing

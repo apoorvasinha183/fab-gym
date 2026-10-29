@@ -11,6 +11,7 @@ node -e '
 const fs = require("fs"); const U = require("./web/ui.js");
 const s = JSON.parse(fs.readFileSync("results/two-families/summary.json", "utf8"));
 s.baseline = U.baselineFromRuns(fs.readFileSync("results/two-families/runs.tsv", "utf8"));
+if (fs.existsSync("results/two-families/pl.json")) s.pl = JSON.parse(fs.readFileSync("results/two-families/pl.json", "utf8"));
 fs.writeFileSync("web/data/two-families.json", JSON.stringify(s));
 const ex = fs.readdirSync("agent/examples/ask").filter((f) => f.endsWith(".json")).sort()
   .map((f) => JSON.parse(fs.readFileSync("agent/examples/ask/" + f, "utf8"))).map((e) => ({ question: e.question, example: true }));
