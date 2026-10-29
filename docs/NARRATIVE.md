@@ -69,6 +69,10 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
 10. **The demo video**, as above.
 11. **Public**: the README labelling new work and what existed before 27 Oct, the NOTICE, the repository made
     public, the submission and the X post (the founder).
+4b. **The floor, P0 of the design review** (`web/design-review/`, decided 30 Oct by quiz, right after the supervisor):
+    one clock or a labelled replay for Follow a batch, Follow a batch on the front, the key and summary kept at every
+    width, plain units in Numbers, a visible Fit. The true building and its rails stay; the review's layering of track,
+    carriers and queues is applied to it.
 12. **If time permits (the founder, 30 Oct): a layout sandbox for the nerds.** A 2D space known to hold at least
     one full set of SMT2020's tools; people lay down bays, tools, rails and stockers and write their own scheduling
     rule, and the simulator scores the pair under the defined defect model on paired seeds (wafers a day, cycle time,
