@@ -107,3 +107,15 @@ test("the page opens on a question ready to ask", () => {
   assert.equal(without.canAsk, false);
   assert.equal(without.explore, "or explore the floor");
 });
+
+// Plain wording on the page (the founder, 29 Oct): short sentences, no "X, not Y", the model named every time.
+test("the page's words: no 'X, not Y' and no stacked labels", () => {
+  const html = readFileSync(join(ROOT, "web", "index.html"), "utf8");
+  const app = readFileSync(join(ROOT, "web", "app.js"), "utf8");
+  const ask = readFileSync(join(ROOT, "web", "ask.js"), "utf8");
+  for (const [name, src] of [["index.html", html], ["app.js", app], ["ask.js", ask]]) {
+    for (const bad of [", not a real", "not a real one", "Real-fab effect", "(written by us, not by a model)", "Hover a step."])
+      assert.ok(!src.includes(bad), `${name} still says "${bad}"`);
+  }
+  assert.match(html, /on the SMT2020 model/);
+});

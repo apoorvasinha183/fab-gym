@@ -143,7 +143,7 @@ test("the page carries the button, the panel and its wording", () => {
   assert.match(panel, /role="dialog"/);
   assert.match(panel, /aria-labelledby="/);
   for (const id of ["stages-close", "stages-loop", "stages-detail", "stages-strip", "stages-hall"]) assert.match(panel, new RegExp(`id="${id}"`));
-  for (const w of ["on the SMT2020 model", "not a real fab", "Illustration, not to scale"]) assert.ok(panel.includes(w), `panel lacks "${w}"`);
+  for (const w of ["on the SMT2020 model", "No real fab's data", "not to scale"]) assert.ok(panel.includes(w), `panel lacks "${w}"`);
   assert.ok(html.indexOf('src="stages.js"') > 0 && html.indexOf('src="stages.js"') < html.indexOf('src="app.js"'));
 });
 
