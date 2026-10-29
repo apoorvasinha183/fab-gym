@@ -156,3 +156,34 @@ test("the floor wires the panel, the fly to a hall and the hall card", () => {
   assert.match(tip, /FabStages\.byKey\(/);
   assert.match(tip, /st\.name/);
 });
+
+// The whole journey: sand to finished chip (the founder, 29 Oct: "from sand to how it comes to the fab, and then how
+// it gets processed and what comes out"). Only the fab's part is in the simulator; the rest is labelled outside it.
+test("the journey runs before the fab, in the fab, after the fab, each step told and drawn", () => {
+  const J = S.JOURNEY;
+  const acts = J.map(j => j.act);
+  assert.deepEqual([...new Set(acts)], ["before", "fab", "after"], "in that order");
+  for (const a of ["before", "after"]) assert.ok(acts.filter(x => x === a).length >= 3, `${a}: three steps or more`);
+  const keys = new Set();
+  for (const j of J) {
+    assert.ok(!keys.has(j.key), `${j.key} twice`); keys.add(j.key);
+    assert.ok(j.name && j.what && j.what.length <= 320, `${j.key}: name and what`);
+    assert.ok(Array.isArray(j.facts) && j.facts.length >= 1, `${j.key}: facts`);
+    assert.equal(j.inModel, j.act === "fab", `${j.key}: only the fab's steps are in the simulator`);
+    for (const t of [j.what, ...j.facts]) assert.ok(!/, not (a|an|the) /.test(t), `${j.key}: "X, not Y"`);
+    const svg = S.journeyPicture(j.key);
+    assert.match(svg, /^<svg [^>]*viewBox="0 0 160 100"/, j.key);
+    assert.match(svg, /role="img"/, j.key);
+    assert.match(svg, /aria-label="[^"]+"/, j.key);
+    assert.match(svg, /<\/svg>$/, j.key);
+    assert.ok(!/monospace/.test(svg), `${j.key}: one type family`);
+  }
+  assert.ok(J.some(j => j.key === "loop"), "the fab's loop is one of the steps");
+});
+
+test("the dialog shows the journey above the loop", () => {
+  const html = readFileSync(join(WEB, "index.html"), "utf8");
+  const panel = html.slice(html.indexOf('<section id="stages"'), html.indexOf("</section>", html.indexOf('<section id="stages"')));
+  for (const id of ["stages-journey", "journey-detail"]) assert.match(panel, new RegExp(`id="${id}"`));
+  assert.ok(panel.indexOf('id="stages-journey"') < panel.indexOf('id="stages-loop"'));
+});
