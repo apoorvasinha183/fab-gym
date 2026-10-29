@@ -124,11 +124,13 @@ class BuiltIn:
     def __init__(self, name, fabsim=str(FABSIM)):
         self.name, self.fabsim = name, fabsim
 
-    def play_episode(self, seed, shop, warmup_days, window_days, defects):
+    def play_episode(self, seed, shop, warmup_days, window_days, defects, picks=None):
         cmd = [self.fabsim, "env", str(shop), "--seed", str(seed), "--warmup", str(warmup_days), "--window", str(window_days),
                "--auto", self.name]
         if defects:
             cmd += ["--defects", ",".join(str(x) for x in defects)]
+        if picks:
+            cmd += ["--picks", str(picks)]
         p = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         if p.returncode != 0:
             raise RuntimeError(f"fabsim env refused: {p.stdout.strip() or p.stderr.strip()}")
@@ -156,12 +158,14 @@ class Written:
     def __init__(self, path, fabrule=str(ROOT / "target" / "release" / "fabrule"), cache=str(ROOT / "target" / "fabrule-cache")):
         self.path, self.fabrule, self.cache = str(path), fabrule, cache
 
-    def play_episode(self, seed, shop, warmup_days, window_days, defects):
+    def play_episode(self, seed, shop, warmup_days, window_days, defects, picks=None):
         import subprocess
         cmd = [self.fabrule, "env", self.path, str(shop), "--seed", str(seed), "--warmup", str(warmup_days),
                "--window", str(window_days), "--cache", self.cache]
         if defects:
             cmd += ["--defects", ",".join(str(x) for x in defects)]
+        if picks:
+            cmd += ["--picks", str(picks)]
         p = subprocess.run(cmd, capture_output=True, text=True)
         if p.returncode != 0:
             raise RuntimeError(f"fabrule env refused: {p.stdout.strip() or p.stderr.strip()}")
@@ -171,12 +175,14 @@ class Written:
                 "pick_ns": d.get("pick_ns", float("nan"))}
 
 
-def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None):
-    """One episode on one seed; the window's score and what the policy did."""
+def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None, picks=None):
+    """One episode on one seed; the window's score and what the policy did. `picks`: a file for the pick made at
+    each decision asked, one a line (regret B, `fabsim regret audit --picks`)."""
     if hasattr(policy, "play_episode"):
-        return policy.play_episode(seed, shop, warmup_days, window_days, defects)
+        return policy.play_episode(seed, shop, warmup_days, window_days, defects, picks=picks)
     from agent.fabgym_env import FabGymEnv
-    env = FabGymEnv(shop, fabsim=fabsim, seeds=[seed], warmup_days=warmup_days, window_days=window_days, defects=defects)
+    env = FabGymEnv(shop, fabsim=fabsim, seeds=[seed], warmup_days=warmup_days, window_days=window_days, defects=defects,
+                    picks=picks)
     try:
         obs, info = env.reset(options={"episode_seed": seed})
         picked_other, by_group, done, steps = 0, {}, env.last.get("done", False), 0

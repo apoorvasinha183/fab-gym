@@ -45,8 +45,9 @@ def scale(field, v):
 class FabGymEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, shop, fabsim=str(FABSIM), seeds=(100,), warmup_days=1.0, window_days=3.0, defects=None):
+    def __init__(self, shop, fabsim=str(FABSIM), seeds=(100,), warmup_days=1.0, window_days=3.0, defects=None, picks=None):
         self.shop, self.fabsim = str(shop), str(fabsim)
+        self.picks = picks  # a file for the episode's picks, one a line (regret B)
         self.seeds = list(seeds)
         self.warmup_days, self.window_days = warmup_days, window_days
         self.defects = defects
@@ -63,6 +64,8 @@ class FabGymEnv(gym.Env):
         cmd = [self.fabsim, "env", self.shop, "--seed", str(seed), "--warmup", str(self.warmup_days), "--window", str(self.window_days)]
         if self.defects:
             cmd += ["--defects", ",".join(str(x) for x in self.defects)]
+        if self.picks:
+            cmd += ["--picks", str(self.picks)]
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
 
     def _read(self):
