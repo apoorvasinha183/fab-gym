@@ -87,3 +87,22 @@ fn the_audit_by_kind_tries_one_lot_of_each_kind_and_never_says_more_than_the_ful
         }
     }
 }
+
+#[test]
+fn a_capped_audit_lies_between_the_audit_by_kind_and_the_full_audit() {
+    // one lot of each kind and the policy's pick, then lots spread evenly over the rest, at most `max` tried
+    use fabsim::regret::{audit_by_kind, audit_capped};
+    let shop = toy();
+    let picks = picks_of(&shop, Policy::Fifo, 2);
+    let full = audit(&shop, 2, FROM, TO, &picks, 12, 240.0);
+    let kind = audit_by_kind(&shop, 2, FROM, TO, &picks, 12, 240.0);
+    let cap = audit_capped(&shop, 2, FROM, TO, &picks, 12, 240.0, 3);
+    for ((f, k), c) in full.samples.iter().zip(&kind.samples).zip(&cap.samples) {
+        assert!(c.tried.len() <= f.values.len().min(3.max(k.tried.len())), "at most the cap, or the kinds if more");
+        assert!(k.tried.iter().all(|i| c.tried.contains(i)), "every kind's lot is tried");
+        assert!(k.regret <= c.regret + 1e-9 && c.regret <= f.regret + 1e-9);
+    }
+    // a cap above every choice is the full audit
+    let all = audit_capped(&shop, 2, FROM, TO, &picks, 12, 240.0, 10_000);
+    assert_eq!(all.samples.iter().map(|s| s.regret).collect::<Vec<_>>(), full.samples.iter().map(|s| s.regret).collect::<Vec<_>>());
+}
