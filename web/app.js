@@ -1676,18 +1676,21 @@ async function chromeSetup() {
     } else if (e.key === "Escape") {
       if (!$("numbers").hidden) $("numbers").hidden = true;
       else if (!$("results").hidden) $("results").hidden = true;
+      else if (!$("glossary").hidden) $("glossary").hidden = true;
       else if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
     }
   });
   document.querySelectorAll("[data-close]").forEach(b => (b.onclick = () => {
     const id = b.dataset.close;
-    if (id === "numbers" || id === "results") $(id).hidden = true;
+    if (id === "numbers" || id === "results" || id === "glossary") $(id).hidden = true;
     else { openDrawer(id, false); fit(); }
   }));
   $("panel-open").onclick = () => { openDrawer("panel", $("panel").hidden); fit(); };
   $("ask-open").onclick = () => { showTab("ask"); fit(); $("ask-q").focus(); };
   $("numbers-open").onclick = () => openNumbers();
   $("results-open").onclick = () => openResults();
+  $("glossary-open").onclick = () => openGlossary();
+  glossarySetup();
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
     FLOW.secs = 0;
@@ -1852,6 +1855,7 @@ function fmtN(v, d = 1) { return v === null || v === undefined ? "—" : Number(
 async function openNumbers() {
   closeOpening();
   $("results").hidden = true;
+  $("glossary").hidden = true;
   $("numbers").hidden = false;
   if (!UI.sweep) {
     try {
@@ -2085,6 +2089,7 @@ function logAsk(j) {
 async function openResults() {
   closeOpening();
   $("numbers").hidden = true;
+  $("glossary").hidden = true;
   $("results").hidden = false;
   if (!RESULTS.saved) {
     try { RESULTS.saved = await fetch("data/results.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
@@ -2108,6 +2113,96 @@ function drawResults() {
       ${e.files.length ? `<h4>Files</h4><p class="files">${e.files.map(f => `<code>${esc(f)}</code>`).join(" ")}</p>` : ""}
       <p class="note small">${esc(e.note)}</p></div></details>`).join("")
     : `<p class="note">No results in this build (run web/build.sh).</p>`;
+}
+
+// ------------------------------------------------------------------ the Glossary tab: every term in plain English
+const GL = { term: null, order: "az" };
+const GL_SOURCE = { published: "Published", assumed: "Assumed by us", choice: "Our choice", standard: "Standard method" };
+
+function openGlossary(term) {
+  closeOpening();
+  for (const id of ["numbers", "results"]) $(id).hidden = true;
+  $("glossary").hidden = false;
+  if (term) GL.term = term;
+  if (!GL.term) GL.term = FabGlossary.find("")[0].term;
+  drawGlossaryIndex();
+  drawGlossaryArticle();
+  $("gl-search").focus();
+}
+
+function drawGlossaryIndex() {
+  const terms = FabGlossary.find($("gl-search").value);
+  const item = t => `<button type="button" class="gl-item${t.term === GL.term ? " on" : ""}" data-term="${esc(t.term)}">${esc(t.term)}</button>`;
+  let html = "";
+  if (GL.order === "topic") {
+    const topics = [...new Set(FabGlossary.TERMS.map(t => t.topic))];
+    for (const tp of topics) {
+      const ts = terms.filter(t => t.topic === tp);
+      if (ts.length) html += `<div class="gl-head">${esc(tp)}</div>` + ts.map(item).join("");
+    }
+  } else {
+    let letter = "";
+    for (const t of terms) {
+      const L = t.term[0].toUpperCase();
+      if (L !== letter) { letter = L; html += `<div class="gl-head">${esc(/[A-Z]/.test(L) ? L : "#")}</div>`; }
+      html += item(t);
+    }
+  }
+  $("gl-index").innerHTML = html || `<p class="note">No term matches.</p>`;
+}
+
+function drawGlossaryArticle() {
+  const t = FabGlossary.TERMS.find(x => x.term === GL.term);
+  if (!t) { $("gl-article").innerHTML = ""; return; }
+  const link = name => `<button type="button" class="gl-see" data-term="${esc(name)}">${esc(name)}</button>`;
+  $("gl-article").innerHTML = `<div class="gl-topic">${esc(t.topic)}</div><h3>${esc(t.term)}</h3>` +
+    (t.aliases && t.aliases.length ? `<p class="gl-aka">Also: ${t.aliases.map(esc).join(", ")}</p>` : "") +
+    `<p class="gl-meaning">${esc(t.meaning)}</p>` +
+    `<h4>In this fab</h4><p>${esc(t.here)}</p>` +
+    `<h4>Example</h4><p>${esc(t.example)}</p>` +
+    `<h4>Where it comes from</h4><p><span class="gl-src ${t.source.kind}">${GL_SOURCE[t.source.kind]}</span> ${esc(t.source.text)}` +
+    (t.source.range ? `<br><span class="note">Range tried: ${esc(t.source.range)}</span>` : "") + `</p>` +
+    `<h4>See also</h4><p class="gl-links">${t.see.map(link).join(" ")}</p>`;
+  $("gl-article").scrollTop = 0;
+}
+
+function glossarySetup() {
+  $("gl-search").oninput = drawGlossaryIndex;
+  $("gl-index").onclick = e => { const b = e.target.closest("[data-term]"); if (b) { GL.term = b.dataset.term; drawGlossaryIndex(); drawGlossaryArticle(); } };
+  $("gl-article").onclick = e => { const b = e.target.closest("[data-term]"); if (b) { GL.term = b.dataset.term; drawGlossaryIndex(); drawGlossaryArticle(); } };
+  document.querySelectorAll(".gl-order button").forEach(b => (b.onclick = () => {
+    GL.order = b.dataset.o;
+    document.querySelectorAll(".gl-order button").forEach(x => x.classList.toggle("on", x === b));
+    drawGlossaryIndex();
+  }));
+  // technical words in the page's notes open their article
+  document.addEventListener("click", e => { const b = e.target.closest("button.gl"); if (b) { e.preventDefault(); openGlossary(b.dataset.term); } });
+  const wrap = el => {
+    if (!el || el.dataset.glText === el.textContent) return;
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => (n.parentElement.closest("button, code, svg, .gl") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const seen = new Set();
+    for (const n of nodes) {
+      const segs = FabGlossary.linkify(n.nodeValue).map(s => (s.term && seen.has(s.term) ? { text: s.text } : s));
+      if (!segs.some(s => s.term)) continue;
+      const frag = document.createDocumentFragment();
+      for (const s of segs) {
+        if (!s.term) { frag.appendChild(document.createTextNode(s.text)); continue; }
+        seen.add(s.term);
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "gl"; b.dataset.term = s.term; b.textContent = s.text; b.title = `What is “${s.term}”?`;
+        frag.appendChild(b);
+      }
+      n.parentNode.replaceChild(frag, n);
+    }
+    el.dataset.glText = el.textContent;
+  };
+  for (const id of ["lens-note", "num-lead", "num-note", "cmp-what", "cmp-note", "long-lead", "long-note", "num-capital", "ask-result", "res-list"]) {
+    const el = $(id);
+    if (!el) continue;
+    new MutationObserver(() => wrap(el)).observe(el, { childList: true, characterData: true, subtree: true });
+  }
 }
 
 // ------------------------------------------------------------------ the evidence: verdict cards and signing

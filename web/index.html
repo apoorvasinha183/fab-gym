@@ -173,6 +173,7 @@
   <span class="sep" aria-hidden="true"></span>
   <button id="numbers-open" type="button" class="ghost">Numbers</button>
   <button id="results-open" type="button" class="ghost">Results</button>
+  <button id="glossary-open" type="button" class="ghost">Glossary</button>
   <button id="panel-open" type="button" class="ghost">Try a change</button>
   <button id="ask-open" type="button" class="askbtn">Ask the fab</button>
 </footer>
@@ -226,12 +227,28 @@
   <div id="res-list"></div>
 </section>
 
+<section id="glossary" class="card numbers glossary" role="dialog" aria-modal="true" aria-labelledby="glossary-title" hidden>
+  <div class="numbers-head">
+    <h2 id="glossary-title">Glossary</h2>
+    <button type="button" class="icon close" data-close="glossary" aria-label="Close">✕</button>
+  </div>
+  <div class="gl-wrap">
+    <nav class="gl-side" aria-label="Terms">
+      <input id="gl-search" type="search" placeholder="Search terms…" aria-label="Search terms" autocomplete="off">
+      <div class="seg gl-order" role="group" aria-label="Order"><button type="button" data-o="az" class="on">A to Z</button><button type="button" data-o="topic">By topic</button></div>
+      <div id="gl-index" class="gl-index"></div>
+    </nav>
+    <article id="gl-article" class="gl-article" aria-live="polite"></article>
+  </div>
+</section>
+
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>
 <div id="tip" class="tip" hidden></div>
 <div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit · T to tilt · ⌘K to ask</div>
 
 <script src="ui.js"></script>
 <script src="stages.js"></script>
+<script src="glossary.js"></script>
 <script src="ask.js"></script>
 <script src="app.js"></script>
 </body>

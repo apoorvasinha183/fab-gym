@@ -210,3 +210,30 @@ details.res summary .h { grid-column: 2 / 4; color: #A9C4C0; font-size: 12.5px; 
 .res-scroll { max-height: 340px; overflow: auto; }
 .res-body .files code { display: inline-block; margin: 2px 6px 2px 0; font-size: 11.5px; color: #A9C4C0; }
 @media (max-width: 640px) { details.res summary { grid-template-columns: 1fr; } details.res summary .kind, details.res summary .h { grid-row: auto; grid-column: auto; } }
+
+/* the Glossary tab: a wiki, index and article */
+.glossary { width: min(1080px, calc(100vw - 32px)); }
+.gl-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 18px; min-height: 60vh; }
+.gl-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.gl-side input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #2C5560; background: #0B1418; color: #E8F2F0; }
+.gl-index { overflow: auto; max-height: 62vh; padding-right: 4px; }
+.gl-head { margin: 10px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent, #7EE8D8); text-transform: uppercase; }
+.gl-item { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 4px 8px; border-radius: 6px; color: #CFE3E0; font: inherit; font-size: 13px; cursor: pointer; }
+.gl-item:hover { background: rgba(126, 232, 216, 0.08); }
+.gl-item.on { background: rgba(126, 232, 216, 0.16); color: #E8F2F0; font-weight: 600; }
+.gl-article { overflow: auto; max-height: 68vh; padding: 4px 6px 12px; color: #CFE3E0; font-size: 14px; line-height: 1.55; }
+.gl-article h3 { margin: 2px 0 4px; font-size: 22px; color: #E8F2F0; }
+.gl-article h4 { margin: 16px 0 4px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #8FB3AE; }
+.gl-article p { margin: 0; max-width: 70ch; }
+.gl-topic { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent, #7EE8D8); }
+.gl-aka { color: #8FB3AE; font-size: 12.5px; margin-bottom: 8px !important; }
+.gl-meaning { font-size: 16px; color: #E8F2F0; margin-top: 8px !important; }
+.gl-src { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; margin-right: 6px; }
+.gl-src.published { background: rgba(79, 227, 163, 0.16); color: #4FE3A3; }
+.gl-src.assumed { background: rgba(255, 200, 87, 0.16); color: #FFC857; }
+.gl-src.choice { background: rgba(127, 156, 255, 0.16); color: #9DB2FF; }
+.gl-src.standard { background: rgba(169, 196, 192, 0.16); color: #CFE3E0; }
+.gl-see { background: none; border: 1px solid #2C5560; border-radius: 999px; padding: 2px 10px; margin: 2px 4px 2px 0; color: var(--accent, #7EE8D8); font: inherit; font-size: 12.5px; cursor: pointer; }
+button.gl { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: help; text-decoration: underline dotted rgba(126, 232, 216, 0.7); text-underline-offset: 3px; }
+button.gl:hover { color: var(--accent, #7EE8D8); }
+@media (max-width: 720px) { .gl-wrap { grid-template-columns: 1fr; } .gl-index { max-height: 30vh; } }
