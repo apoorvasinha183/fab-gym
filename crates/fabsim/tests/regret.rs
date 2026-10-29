@@ -67,3 +67,23 @@ fn switching_keeps_the_best_rule_of_each_shift() {
     s.advance(TO);
     assert!((only.value_gain - (s.value() - v0)).abs() < 1e-6);
 }
+
+#[test]
+fn the_audit_by_kind_tries_one_lot_of_each_kind_and_never_says_more_than_the_full_audit() {
+    // lots of one route, step, size, priority and batch shape are one kind; the policy's own pick stands for its kind
+    use fabsim::regret::audit_by_kind;
+    let shop = toy();
+    let picks = picks_of(&shop, Policy::Fifo, 2);
+    let full = audit(&shop, 2, FROM, TO, &picks, 12, 240.0);
+    let kind = audit_by_kind(&shop, 2, FROM, TO, &picks, 12, 240.0);
+    assert_eq!(kind.samples.len(), full.samples.len());
+    for (f, k) in full.samples.iter().zip(&kind.samples) {
+        assert_eq!((f.k, f.t), (k.k, k.t), "the same picks are sampled");
+        assert_eq!(k.lots, f.values.len(), "the lots there were to choose from");
+        assert!(k.values.len() <= f.values.len() && !k.values.is_empty());
+        assert!(k.regret >= 0.0 && k.regret <= f.regret + 1e-9, "fewer tries never find more regret");
+        if k.values.len() == f.values.len() {
+            assert!((k.regret - f.regret).abs() < 1e-9, "every lot its own kind: the full audit");
+        }
+    }
+}
