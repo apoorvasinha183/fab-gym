@@ -318,11 +318,6 @@ details.advanced summary { cursor: pointer; color: var(--muted2); font-size: 13p
 /* Flows controls under the views */
 .flow-ctl { position: fixed; z-index: 5; top: 150px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; align-items: center; }
 .flow-ctl[hidden] { display: none; }
-/* the Rails lens (docs/FLEET.md) has its own key and clock; the live floor's key, numbers and time bar step aside */
-.rails-key { display: none; }
-body.rails-on .rails-key { display: block; }
-body.rails-on #key, body.rails-on .kpis, body.rails-on footer.bar { display: none; }
-.rails-clock { font-size: 12px; color: var(--muted2); font-variant-numeric: tabular-nums; margin-left: 6px; }
 .flow-ctl > button { padding: 5px 12px; font-size: 12px; }
 .lenses button:disabled { opacity: 0.4; cursor: not-allowed; }
 /* the controls hint fades after a first look */

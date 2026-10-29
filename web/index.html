@@ -27,20 +27,12 @@
   <button type="button" data-lens="heat" aria-pressed="false">Waiting heat</button>
   <button type="button" data-lens="proto" aria-pressed="false">Prototype lots</button>
   <button type="button" data-lens="flows" aria-pressed="false">Flows</button>
-  <button type="button" data-lens="rails" aria-pressed="false">Rails</button>
 </nav>
 <div id="lens-note" class="lens-note" aria-live="polite"></div>
 <div id="flow-ctl" class="flow-ctl" hidden>
   <button type="button" id="flow-play">Pause</button>
   <button type="button" id="flow-restart">Restart</button>
   <div class="seg" id="flow-route" role="group" aria-label="Product"><button type="button" data-r="3" class="on">Product 3</button><button type="button" data-r="4">Product 4</button></div>
-</div>
-
-<div id="rails-ctl" class="flow-ctl" hidden>
-  <button type="button" id="rails-play">Pause</button>
-  <button type="button" id="rails-restart">Restart</button>
-  <div class="seg" id="rails-fleet" role="group" aria-label="Fleet size"></div>
-  <span id="rails-clock" class="rails-clock"></span>
 </div>
 
 <section class="card kpis" aria-label="How the fab is doing">
@@ -233,18 +225,6 @@
   <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
 </section>
 
-<section id="rails-key" class="card key rails-key" aria-label="What the marks on the rails mean">
-  <ul class="legend">
-    <li><i class="sw" style="background:#5b78e6"></i>spine rails, one way</li><li><i class="sw" style="background:#3a4ea0"></i>bay rails, over each row of tools</li>
-    <li><i class="sw" style="background:#4a4220;outline:1px solid #ffd75e"></i>stocker</li><li><i class="sw" style="background:#8ea0e8"></i>a tool's port</li>
-  </ul>
-  <ul class="legend">
-    <li><i class="sw" style="background:#f2f4fb"></i>going to fetch a lot</li><li><i class="sw" style="background:#ff9d42"></i>carrying a lot</li>
-    <li><i class="sw" style="background:#6fe3ff"></i>hoisting at a port</li><li><i class="sw" style="outline:2px solid #ff6b6b"></i>held up behind another</li>
-  </ul>
-  <p class="key-note" id="rails-note"></p>
-</section>
-
 <footer class="card bar pill">
   <button id="play" class="icon" aria-label="Play or pause">❚❚</button>
   <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
@@ -282,7 +262,7 @@
 <script src="stages.js"></script>
 <script src="glossary.js"></script>
 <script src="ask.js"></script>
-<script src="rails.js"></script>
+<script src="building.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

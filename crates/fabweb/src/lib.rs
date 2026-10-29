@@ -5,6 +5,9 @@
 //! trace  [lot, step, tool, arrive, start, end] per started step,
 //! states [tool, time, state] per tool state change (0 productive, 1 standby, 2 maintenance,
 //!        3 breakdown, 4 setup).
+//! With a fleet (docs/LIVE-REAL.md), two flat f32 arrays more:
+//! fleet entries [vehicle, stretch, in, out (-1 while on it), loaded] per stay on a stretch,
+//! fleet hoists  [vehicle, node, lot, up, start, end] per hoist.
 
 use std::cell::RefCell;
 use std::fmt::Write as _;
@@ -22,6 +25,16 @@ struct State {
     quick: String,
     trace: Vec<f64>,
     states: Vec<f64>,
+    fleet_e: Vec<f32>,
+    fleet_h: Vec<f32>,
+}
+
+/// The fleet's stays and hoists as flat arrays for the page (empty without a fleet).
+pub fn fleet_arrays(res: &RunResult) -> (Vec<f32>, Vec<f32>) {
+    let Some(f) = &res.fleet else { return (vec![], vec![]) };
+    let e = f.entries.iter().flat_map(|x| [x.vehicle as f32, x.edge as f32, x.t_in as f32, if x.t_out.is_finite() { x.t_out as f32 } else { -1.0 }, x.loaded as u8 as f32]).collect();
+    let h = f.hoists.iter().flat_map(|x| [x.vehicle as f32, x.stop as f32, x.lot as f32, x.up as u8 as f32, x.t0 as f32, x.t1 as f32]).collect();
+    (e, h)
 }
 
 /// A dispatch rule the page offers.
@@ -261,6 +274,9 @@ pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, dow
                 [s.tool_index as f64, s.time, code]
             })
             .collect();
+        let (fe, fh) = fleet_arrays(&res);
+        st.fleet_e = fe;
+        st.fleet_h = fh;
         st.json = summary(&shop, &res);
         st.res = Some(res);
         0
@@ -345,4 +361,21 @@ pub extern "C" fn fg_states_ptr() -> *const f64 {
 #[no_mangle]
 pub extern "C" fn fg_states_len() -> usize {
     ST.with(|st| st.borrow().states.len())
+}
+
+#[no_mangle]
+pub extern "C" fn fg_fleet_entries_ptr() -> *const f32 {
+    ST.with(|st| st.borrow().fleet_e.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn fg_fleet_entries_len() -> usize {
+    ST.with(|st| st.borrow().fleet_e.len())
+}
+#[no_mangle]
+pub extern "C" fn fg_fleet_hoists_ptr() -> *const f32 {
+    ST.with(|st| st.borrow().fleet_h.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn fg_fleet_hoists_len() -> usize {
+    ST.with(|st| st.borrow().fleet_h.len())
 }

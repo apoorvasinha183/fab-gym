@@ -35,9 +35,12 @@ let TARGET_ASPECT = 1.8;
 const sim = { e: null, groups: [], tools: [], routes: [], lots: [] };
 
 async function loadSim() {
+  // the real building (docs/LIVE-REAL.md): when its data is here, today's fab is the US building with its fleet
+  try { BUILDING = await fetch("data/building.json").then(r => (r.ok ? r.json() : null)); } catch { BUILDING = null; }
+  sim.baseUrl = BUILDING ? "data/shop-real.txt" : "data/shop.txt";
   const [wasm, shopText, areasText] = await Promise.all([
     fetch("fabweb.wasm").then(r => r.arrayBuffer()),
-    fetch("data/shop.txt").then(r => r.text()),
+    fetch(sim.baseUrl).then(r => (r.ok ? r.text() : fetch("data/shop.txt").then(x => x.text()))),
     fetch("data/areas.tsv").then(r => r.text()),
   ]);
   const { instance } = await WebAssembly.instantiate(wasm, {});
@@ -70,7 +73,9 @@ function simulate(opts) {
   const j = readJson();
   const trace = new Float64Array(e.memory.buffer, e.fg_trace_ptr(), e.fg_trace_len()).slice();
   const states = new Float64Array(e.memory.buffer, e.fg_states_ptr(), e.fg_states_len()).slice();
-  return { j, trace, states, secs };
+  const fleetE = e.fg_fleet_entries_len ? new Float32Array(e.memory.buffer, e.fg_fleet_entries_ptr(), e.fg_fleet_entries_len()).slice() : new Float32Array(0);
+  const fleetH = e.fg_fleet_hoists_len ? new Float32Array(e.memory.buffer, e.fg_fleet_hoists_ptr(), e.fg_fleet_hoists_len()).slice() : new Float32Array(0);
+  return { j, trace, states, secs, fleetE, fleetH };
 }
 
 // ------------------------------------------------------------------ the layout
@@ -269,7 +274,8 @@ function prepare(run, halls, hallOfGroup) {
     while (k < qe.length && qe[k][0] <= t) { w += qe[k][2]; k++; }
     waitSeries.push(w);
   }
-  return { j, trace, states, nT, nG, qe, trips, starts, done, waitSeries, toolGroup, secs: run.secs };
+  const real = G && G.real ? realPrepare(run, j, trace) : null;
+  return { j, trace, states, nT, nG, qe, trips, starts, done, waitSeries, toolGroup, secs: run.secs, real, lotHot, lotB };
 }
 
 // playback cursor: state of every tool and queue at time t, moved forward cheaply
@@ -305,6 +311,7 @@ const cv = document.getElementById("floor");
 const ctx = cv.getContext("2d");
 const view = { x: 0, y: 0, s: 4 }; // screen = (world - view) * s
 let G = null; // geometry
+let BUILDING = null; // the real building (docs/LIVE-REAL.md), when its data is here
 let HALLS_L = null;
 let P = null, cur = null;
 let t = 0, playing = true, speed = 60; // fab minutes per second
@@ -633,12 +640,12 @@ function hazard(X, Y, w, h) {
 function draw(clear = true) {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (UI.lens === "rails") { drawRails(); return; }
   if (clear) drawSky();
   if (!G || !P) return;
   updateTilt();
   const s = view.s;
   board();
+  if (G.real) { drawReal(s); return; }
   drawFloorBody(s);
 }
 
@@ -834,10 +841,7 @@ const $ = id => document.getElementById(id);
 let lensShown = "";
 function lensNote() {
   let txt = "";
-  $("flow-ctl").hidden = UI.lens !== "flows";
-  $("rails-ctl").hidden = UI.lens !== "rails";
-  document.body.classList.toggle("rails-on", UI.lens === "rails");
-  if (UI.lens === "rails" && !$("rails-note").textContent) $("rails-note").textContent = FabRails.NOTE;
+  $("flow-ctl").hidden = UI.lens !== "flows" || !!(G && G.real);
   // the prototype view needs prototype lots in the fab
   let np = 0;
   for (const tr of cur.active) if (tr[6]) np++;
@@ -845,9 +849,8 @@ function lensNote() {
   const pb = document.querySelector('.lenses [data-lens="proto"]');
   const off = np === 0 && UI.lens !== "proto";
   if (pb.disabled !== off) { pb.disabled = off; pb.title = off ? "No prototype lots in this run. Ask a question about prototypes, then show an answer on the floor." : ""; }
-  if (UI.lens === "rails") txt = railsNote();
-  else if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
-  else if (UI.lens === "flows") txt = flowNote();
+  if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
+  else if (UI.lens === "flows") txt = G && G.real ? realFollowNote() : flowNote();
   else if (UI.lens === "proto") {
     let n = 0;
     for (const tr of cur.active) if (tr[6]) n++;
@@ -922,11 +925,6 @@ function frame(now) {
   stepFly(now);
   if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
   if (UI.lens === "flows" && !FLOW.paused) FLOW.secs += dt;
-  if (UI.lens === "rails" && RAILS.data && !RAILS.paused) {
-    const f = RAILS.data.fleets[RAILS.fi];
-    RAILS.t += dt * RAILS.rate;
-    if (RAILS.t > f.to) RAILS.t = f.from;
-  }
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -945,6 +943,7 @@ function frame(now) {
 
 function groupAt(mx, my) {
   if (!G) return null;
+  if (G.real) return realGroupAt(mx, my);
   const [ux, uy] = untilt(mx, my);
   const wx = ux / view.s + view.x, wy = uy / view.s + view.y;
   for (let i = 0; i < HALLS_L.length; i++) {
@@ -976,17 +975,10 @@ function showTip(h) {
 }
 
 function setupInput() {
-  let drag = null, railsDrag = null;
-  cv.addEventListener("mousedown", e => { if (UI.lens === "rails") { railsDrag = { x: e.clientX, y: e.clientY }; cv.classList.add("drag"); return; } splitPick(e.clientX); const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y, scene: SPLIT.active }; cv.classList.add("drag"); });
-  addEventListener("mouseup", () => { drag = null; railsDrag = null; cv.classList.remove("drag"); });
+  let drag = null;
+  cv.addEventListener("mousedown", e => { splitPick(e.clientX); const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y, scene: SPLIT.active }; cv.classList.add("drag"); });
+  addEventListener("mouseup", () => { drag = null; cv.classList.remove("drag"); });
   addEventListener("mousemove", e => {
-    if (railsDrag && RAILS.view) {
-      RAILS.view.x -= (e.clientX - railsDrag.x) / RAILS.view.s;
-      RAILS.view.y += (e.clientY - railsDrag.y) / RAILS.view.s;
-      railsDrag = { x: e.clientX, y: e.clientY };
-      return;
-    }
-    if (UI.lens === "rails") return;
     if (drag) {
       if (SPLIT.on) useScene(drag.scene);
       const [ux, uy] = untilt(e.clientX, e.clientY);
@@ -1004,7 +996,6 @@ function setupInput() {
   cv.addEventListener("mouseleave", () => { hover = null; $("tip").hidden = true; });
   cv.addEventListener("wheel", e => {
     e.preventDefault();
-    if (UI.lens === "rails") { if (RAILS.view) FabRails.zoom(RAILS.view, innerWidth, innerHeight, e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); return; }
     splitPick(e.clientX);
     const k = Math.exp(-e.deltaY * 0.0015);
     const [ux, uy] = untilt(e.clientX, e.clientY);
@@ -1421,6 +1412,7 @@ function stagesSetup() {
 // move the view so hall i fills the middle of the floor, and outline it for a few seconds
 function flyToHall(i) {
   if (!G || !HALLS_L[i]) return;
+  if (G.real) { realFlyTo(HALLS_L[i].areas || []); return; }
   const H = HALLS_L[i], p = G.pos[i];
   const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
@@ -1449,6 +1441,7 @@ function drawFlash() {
   if (!f) return;
   const now = performance.now();
   if (now > f.until) { ST.flash = null; return; }
+  if (G.real) { realFlash(f, now); return; }
   const H = HALLS_L[f.i], p = G.pos[f.i], s = view.s;
   const [X, Y] = W(p.x, p.y);
   const a = 0.55 + 0.45 * Math.sin(now / 180);
@@ -1490,6 +1483,7 @@ function setFloor(run) {
   HALLS_L.routes = run.j.routes;
   TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - 48) / (innerHeight - 220)));
   G = placeHalls(HALLS_L, flows);
+  if (BUILDING && run.fleetE && run.fleetE.length && FabBuilding.fits(BUILDING, groups.map(g => [g.name, g.count]))) G = realGeometry(BUILDING);
   const sel = $("down-group");
   sel.length = 1;
   groups
@@ -1670,7 +1664,7 @@ async function showArm(j, k) {
 async function backToToday() {
   for (const g of ASK.extra) delete sim.area[g];
   ASK.extra = [];
-  const text = await fetch("data/shop.txt").then(r => r.text());
+  const text = await fetch(sim.baseUrl || "data/shop.txt").then(r => r.text());
   await loadShopText(text);
   $("rule").value = "0";
   const run = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
@@ -1800,62 +1794,239 @@ async function chromeSetup() {
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
     FLOW.secs = 0;
-    if (UI.lens === "rails") railsLoad();
     document.querySelectorAll(".lenses button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
   }));
   document.querySelectorAll("#num-metric button").forEach(b => (b.onclick = () => { UI.metric = b.dataset.m; drawNumbers(); }));
   document.querySelectorAll("#num-share button").forEach(b => (b.onclick = () => { UI.share = +b.dataset.s; drawNumbers(); }));
 }
 
-// The Rails view (docs/FLEET.md): today's US building from above, on the simulator's own track (the rails the plans,
-// the BIM and the game draw), with an hour of the fleet replayed from the simulator's trace (web/data/fleet.json,
-// written by build.sh from `fabsim fleet-trace`). Drag and scroll move this view; the floor keeps its own.
-const RAILS = { data: null, loading: false, failed: false, fi: 0, t: 0, rate: 4, paused: false, view: null, now: null };
+// ------------------------------------------------------------------ the real building (docs/LIVE-REAL.md)
+// When the run is today's US building with its fleet, the floor is that building in metres, north up, in the same
+// 2.5D look: the halls with their walls, the bays, every tool raised at its place in the colour of its state, the
+// drawn rails, which are the simulator's track, the stockers, and every vehicle as the simulator moved it, carrying
+// its lot. Zoomed in, a tool working on a lot shows its 25 wafers done one by one over the step.
 
-async function railsLoad() {
-  if (RAILS.data || RAILS.loading) return;
-  RAILS.loading = true;
-  try {
-    RAILS.data = FabRails.prep(await fetch("data/fleet.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))));
-  } catch {
-    RAILS.failed = true;
-    RAILS.loading = false;
-    return;
+function realGeometry(B) {
+  const xs = B.fabs.flatMap(f => [f[0], f[1]]), ys = B.fabs.flatMap(f => [f[2], f[3]]);
+  const X0 = Math.min(...xs), X1 = Math.max(...xs), Y0 = Math.min(...ys), Y1 = Math.max(...ys);
+  return { real: true, B, X0, Y1, L: X1 - X0, bottom: Y1 - Y0 };
+}
+// metres on the plan to the floor's world (north up on the screen)
+function rw(x, y) { return [x - G.X0, G.Y1 - y]; }
+
+function realPrepare(run, j, trace) {
+  const B = G.B;
+  const names = j.groups.map(g => g[0]);
+  const boxOf = FabBuilding.toolBoxes(B, names, j.tools);
+  const toolOfBox = new Int32Array(B.tools.length).fill(-1);
+  boxOf.forEach((b, k) => { if (b >= 0) toolOfBox[b] = k; });
+  let nv = 0;
+  for (let i = 0; i < run.fleetE.length; i += 5) nv = Math.max(nv, run.fleetE[i] + 1);
+  for (let i = 0; i < run.fleetH.length; i += 6) nv = Math.max(nv, run.fleetH[i] + 1);
+  const F = FabBuilding.prepFleet(run.fleetE, run.fleetH, nv, j.until);
+  // each tool's steps in start order, for the wafers drawn at a tool
+  const steps = Array.from({ length: j.tools.length }, () => []);
+  for (let r = 0; r < trace.length / 6; r++) steps[trace[r * 6 + 2]].push([trace[r * 6 + 4], trace[r * 6 + 5], trace[r * 6]]);
+  for (const a of steps) a.sort((x, y) => x[0] - y[0]);
+  // each group's middle, for its label and its queue
+  const mid = j.groups.map(() => [0, 0, 0]);
+  B.tools.forEach((b, i) => { const k = toolOfBox[i]; if (k < 0) return; const g = j.tools[k], m = mid[g]; m[0] += (b[1] + b[2]) / 2; m[1] += (b[3] + b[4]) / 2; m[2]++; });
+  // the lot to follow in Flows: the one the fleet carries most in the run
+  const moves = new Map();
+  for (const c of F.carries) for (const x of c) moves.set(x[2], (moves.get(x[2]) || 0) + 1);
+  let follow = -1, most = 0;
+  for (const [lot, n] of moves) if (n > most || (n === most && lot < follow)) { follow = lot; most = n; }
+  return { boxOf, toolOfBox, F, steps, mid, follow, vehicles: nv };
+}
+
+function stepAt(list, tt) {
+  let lo = 0, hi = list.length;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (list[m][0] <= tt) lo = m + 1; else hi = m; }
+  const k = lo - 1;
+  return k >= 0 && list[k][1] > tt ? list[k] : null;
+}
+
+const REAL_LOOK = { rail: "rgba(126, 232, 216, 0.55)", spine: "rgba(126, 232, 216, 0.85)", bay: "rgba(126, 232, 216, 0.10)",
+  bridge: "#10232A", stocker: "#8a6a2c", stockerTop: "#d9a12b", side: "#0C1A1F", wafer: "#F4E7C6", waferOff: "rgba(244, 231, 198, 0.22)" };
+
+// a raised box: its footprint in metres, h metres tall; front faces darker, the top in `top`, an optional inset panel
+function block(x0, x1, y0, y1, h, top, panel, edge) {
+  const [ax, ay] = rw(x0, y1), [bx, by] = rw(x1, y0);
+  const C = [S(ax, ay), S(bx, ay), S(bx, by), S(ax, by)];
+  const hz = TILT.on ? h * view.s * 0.55 : 0;
+  screenSpace();
+  for (let i = 0; i < 4; i++) {
+    const [px, py] = C[i], [qx, qy] = C[(i + 1) % 4];
+    if (-(qx - px) <= 0 || !hz) continue;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(qx, qy); ctx.lineTo(qx, qy - hz); ctx.lineTo(px, py - hz); ctx.closePath();
+    ctx.fillStyle = REAL_LOOK.side; ctx.fill();
   }
-  RAILS.fi = RAILS.data.fleets.length - 1;
-  RAILS.t = RAILS.data.fleets[RAILS.fi].from;
-  // fit the buildings into the floor left free by the panels: the key at the left, the tabs at the right, the bars on top
-  const L = 360, Rt = innerWidth - 110, T = 215, B = innerHeight - 24;
-  RAILS.view = FabRails.fit(RAILS.data, Rt - L, B - T);
-  RAILS.view.x -= ((L + Rt) / 2 - innerWidth / 2) / RAILS.view.s;
-  RAILS.view.y += ((T + B) / 2 - innerHeight / 2) / RAILS.view.s;
-  const seg = $("rails-fleet");
-  seg.innerHTML = "";
-  RAILS.data.fleets.forEach((f, i) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = `${f.vehicles} vehicles`;
-    b.classList.toggle("on", i === RAILS.fi);
-    b.onclick = () => { RAILS.fi = i; seg.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i)); };
-    seg.appendChild(b);
-  });
-  $("rails-play").onclick = () => { RAILS.paused = !RAILS.paused; $("rails-play").textContent = RAILS.paused ? "Play" : "Pause"; };
-  $("rails-restart").onclick = () => { RAILS.t = RAILS.data.fleets[RAILS.fi].from; };
-  RAILS.loading = false;
+  ctx.beginPath(); C.forEach(([x, y], i) => (i ? ctx.lineTo(x, y - hz) : ctx.moveTo(x, y - hz))); ctx.closePath();
+  ctx.fillStyle = top; ctx.fill();
+  if (edge) { ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke(); }
+  if (panel) {
+    const cx = (C[0][0] + C[2][0]) / 2, cy = (C[0][1] + C[2][1]) / 2 - hz;
+    ctx.beginPath(); C.forEach(([x, y], i) => { const X = cx + (x - cx) * 0.55, Y = cy + (y - hz - cy) * 0.55; i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }); ctx.closePath();
+    ctx.fillStyle = panel; ctx.fill();
+  }
+  floorSpace();
+  return hz;
 }
 
-function drawRails() {
-  if (!RAILS.data) { drawSky(); return; }
-  RAILS.now = FabRails.draw(ctx, innerWidth, innerHeight, RAILS.view, RAILS.data, RAILS.fi, RAILS.t);
-  const m = Math.floor(RAILS.t) % 1440;
-  $("rails-clock").textContent = `Simulated day ${Math.floor(RAILS.t / 1440) + 1}, ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+function drawReal(s) {
+  const B = G.B, R = P.real;
+  if (!R) return;
+  const detail = FabUI.zoomDetail(s);
+  const wallH = Math.max(5, 2.2 * s * TILT.k);
+  const halls = B.fabs.filter(f => f[5] === "fab");
+  if (TILT.on) for (const f of halls) { const [x, y] = rw(f[0], f[3]); hallWalls(x, y, f[1] - f[0], f[3] - f[2], wallH, false); }
+  for (const f of B.fabs) {
+    const [X, Y] = W(...rw(f[0], f[3]));
+    const w = (f[1] - f[0]) * s, h = (f[3] - f[2]) * s;
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(X + 0.6 * s, Y + 0.8 * s, w, h);
+    ctx.fillStyle = f[5] === "fab" ? pattern("hall") : REAL_LOOK.bridge; ctx.fillRect(X, Y, w, h);
+    ctx.strokeStyle = LOOK.wall; ctx.lineWidth = Math.max(1.5, 0.3 * s); ctx.strokeRect(X, Y, w, h);
+  }
+  ctx.strokeStyle = REAL_LOOK.bay; ctx.lineWidth = 1;
+  for (const b of B.bays) { const [X, Y] = W(...rw(b[0], b[3])); ctx.strokeRect(X, Y, (b[1] - b[0]) * s, (b[3] - b[2]) * s); }
+  // the rails: the spine pair brighter, the bays' rails over their walls of tools
+  const N = B.track.nodes, E = B.track.edges;
+  for (const e of E) {
+    const a = N[e[0]], b = N[e[1]];
+    const spine = Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(a[1]) < 3;
+    ctx.strokeStyle = spine ? REAL_LOOK.spine : REAL_LOOK.rail;
+    ctx.lineWidth = Math.max(spine ? 1.4 : 0.8, (spine ? 0.35 : 0.2) * s);
+    const [ax, ay] = W(...rw(a[0], a[1])), [bx, by] = W(...rw(b[0], b[1]));
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  }
+  // tools, back to front, each the colour of its state; stockers as gold blocks
+  const dimTools = UI.lens === "proto" || UI.lens === "flows";
+  const order = B.tools.map((b, i) => [S(...rw((b[1] + b[2]) / 2, (b[3] + b[4]) / 2))[1], i]).sort((x, y) => x[0] - y[0]);
+  if (dimTools) ctx.globalAlpha = 0.35;
+  const followTool = UI.lens === "flows" && R.follow >= 0 ? realToolOfLot(R, R.follow) : -1;
+  for (const [, i] of order) {
+    const b = B.tools[i], k = R.toolOfBox[i];
+    const st = k >= 0 ? cur.toolState[k] : 1;
+    let top = LOOK.body, panel = st === 1 ? null : STATE_COLORS[st];
+    if (UI.lens === "heat" && k >= 0) { const q = cur.queue[P.toolGroup[k]]; if (q > 0) top = FabUI.heatColor(Math.min(1, q / 30)); }
+    if (k === followTool) { ctx.globalAlpha = 1; top = LOOK.proto; }
+    block(b[1], b[2], b[3], b[4], b[7], top, panel, st === 1 ? STATE_COLORS[1] : null);
+    if (dimTools) ctx.globalAlpha = 0.35;
+  }
+  ctx.globalAlpha = 1;
+  for (const st of B.stockers) block(st[0], st[1], st[2], st[3], 4, REAL_LOOK.stockerTop, REAL_LOOK.stocker, null);
+  // wafers at a tool: the lot's 25 as a 5 by 5 grid on the working tool's panel, filled one by one over the step
+  if (s >= 8) {
+    screenSpace();
+    for (let i = 0; i < B.tools.length; i++) {
+      const k = R.toolOfBox[i];
+      if (k < 0 || cur.toolState[k] !== 0) continue;
+      const stp = stepAt(R.steps[k], t);
+      if (!stp) continue;
+      const b = B.tools[i], done = FabBuilding.wafersDone(stp[0], stp[1], t, 25);
+      const hz = TILT.on ? b[7] * view.s * 0.55 : 0;
+      const r = Math.min(5, Math.max(0.9, 0.055 * Math.min(b[2] - b[1], b[4] - b[3]) * s));
+      for (let w = 0; w < 25; w++) {
+        const u = 0.25 + 0.5 * ((w % 5) + 0.5) / 5, v = 0.25 + 0.5 * (Math.floor(w / 5) + 0.5) / 5;
+        const [X, Y] = S(...rw(b[1] + u * (b[2] - b[1]), b[3] + v * (b[4] - b[3])));
+        ctx.beginPath(); ctx.arc(X, Y - hz, r, 0, 2 * Math.PI);
+        ctx.fillStyle = w < done ? REAL_LOOK.wafer : "rgba(10, 20, 24, 0.55)"; ctx.fill();
+      }
+    }
+    floorSpace();
+  }
+  if (TILT.on) for (const f of halls) { const [x, y] = rw(f[0], f[3]); hallWalls(x, y, f[1] - f[0], f[3] - f[2], wallH, true); }
+  // labels and queues
+  if (detail.names) for (const l of B.labels) { const [X, Y] = W(...rw(l[1], l[2])); ctx.textBaseline = "middle"; plateText(l[0], X, Y, Math.min(22, Math.max(11, 1.6 * s)), 700, LOOK.section); }
+  if (detail.chips) {
+    R.mid.forEach((m, g) => {
+      const n = cur.queue[g];
+      if (!m[2] || n <= 0) return;
+      const [X, Y] = W(...rw(m[0] / m[2], m[1] / m[2]));
+      ctx.textBaseline = "top";
+      plateText(`${n} waiting`, X, Y, Math.min(16, Math.max(11, 1.2 * s)), 600, LOOK.sub);
+    });
+  }
+  // the fleet: each vehicle where the simulator had it, carrying its lot
+  const now = FabBuilding.vehicles(R.F, N, E, t);
+  R.now = now.counts;
+  const sz = Math.max(4, 1.1 * s);
+  for (const v of now.list) {
+    const [X, Y] = W(...rw(v.x, v.y));
+    const followed = UI.lens === "flows" && v.lot === R.follow && v.lot >= 0;
+    if (UI.lens === "flows" && !followed) ctx.globalAlpha = 0.25;
+    if (v.lot >= 0) drawLot(X, Y, followed ? sz * 1.8 : sz, P.lotHot[v.lot], P.lotB[v.lot]);
+    else { const [x, y] = T(X, Y); screenSpace(); ctx.fillStyle = "#8FB3AE"; ctx.fillRect(x - sz * 0.35, y - sz * 0.35, sz * 0.7, sz * 0.7); floorSpace(); }
+    if (v.state === "hoist" || v.state === "held") {
+      const [x, y] = T(X, Y);
+      screenSpace();
+      ctx.strokeStyle = v.state === "hoist" ? "#6fe3ff" : "#ff6b6b"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y - sz * 0.4, sz * 0.95, 0, 2 * Math.PI); ctx.stroke();
+      floorSpace();
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawFlash();
 }
 
-function railsNote() {
-  if (RAILS.failed) return "The fleet's trace is not in this copy of the page. Run web/build.sh after fabsim fleet-trace.";
-  if (!RAILS.data || !RAILS.now) return "Loading the rails…";
-  const c = RAILS.now.counts;
-  return `The simulator's own track and its vehicles. Now: ${c.loaded} carrying a lot, ${c.empty} fetching, ${c.hoist} hoisting, ${c.held} held up, ${c.idle} parked.`;
+function realToolOfLot(R, lot) {
+  for (let k = 0; k < R.steps.length; k++) { const st = stepAt(R.steps[k], t); if (st && st[2] === lot) return k; }
+  return -1;
+}
+
+function realFollowNote() {
+  const R = P && P.real;
+  if (!R || R.follow < 0) return "No lot rides the fleet in this run.";
+  const name = P.j.lots[R.follow] ? P.j.lots[R.follow][0] : `lot ${R.follow}`;
+  const k = realToolOfLot(R, R.follow);
+  const where = k >= 0 ? `in ${P.plain[P.toolGroup[k]]}, its wafers going through one by one` : "on the rails or waiting for a tool";
+  return `Following ${name}, the lot the fleet moves most in this run: drawn large, now ${where}. Everything else is dimmed.`;
+}
+
+function realGroupAt(mx, my) {
+  const R = P && P.real;
+  if (!R) return null;
+  const [ux, uy] = untilt(mx, my);
+  const wx = ux / view.s + view.x, wy = uy / view.s + view.y;
+  const x = wx + G.X0, y = G.Y1 - wy;
+  const B = G.B;
+  for (let i = 0; i < B.tools.length; i++) {
+    const b = B.tools[i];
+    if (x >= b[1] && x <= b[2] && y >= b[3] && y <= b[4] && R.toolOfBox[i] >= 0) return { g: P.toolGroup[R.toolOfBox[i]], mx, my };
+  }
+  return null;
+}
+
+function realBox(areas) {
+  const bays = G.B.bays.filter(b => areas.includes(b[4]));
+  if (!bays.length) return null;
+  const x0 = Math.min(...bays.map(b => b[0])), x1 = Math.max(...bays.map(b => b[1])), y0 = Math.min(...bays.map(b => b[2])), y1 = Math.max(...bays.map(b => b[3]));
+  return { bays, x0, x1, y0, y1 };
+}
+
+function realFlyTo(areas) {
+  const bx = realBox(areas);
+  if (!bx) return;
+  const pad = floorPad();
+  const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
+  updateTilt();
+  const [sx, sy] = untilt(pad.l + w / 2, pad.t + h / 2);
+  const [cx, cy] = rw((bx.x0 + bx.x1) / 2, (bx.y0 + bx.y1) / 2);
+  const to = { cx, cy, s: Math.min(40, Math.max(0.5, Math.min(w / (bx.x1 - bx.x0 + 20), h / (bx.y1 - bx.y0 + 20)))) };
+  const from = { cx: view.x + sx / view.s, cy: view.y + sy / view.s, s: view.s };
+  ST.fly = { from, to, sx, sy, t0: performance.now(), ms: 900 };
+  ST.flash = { areas, until: performance.now() + 4500 };
+}
+
+function realFlash(f, now) {
+  const bx = realBox(f.areas || (HALLS_L[f.i] && HALLS_L[f.i].areas) || []);
+  if (!bx) return;
+  const a = 0.55 + 0.45 * Math.sin(now / 180);
+  ctx.save();
+  ctx.strokeStyle = `rgba(240,166,60,${a.toFixed(3)})`;
+  ctx.lineWidth = Math.max(2, 0.4 * view.s);
+  for (const b of bx.bays) { const [X, Y] = W(...rw(b[0], b[3])); ctx.strokeRect(X, Y, (b[1] - b[0]) * view.s, (b[3] - b[2]) * view.s); }
+  ctx.restore();
 }
 
 // The Flows view: one wafer's whole route replayed on the track. A lot runs from hall to hall along the spine with
