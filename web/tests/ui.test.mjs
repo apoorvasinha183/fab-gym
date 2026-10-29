@@ -119,3 +119,33 @@ test("the page's words: no 'X, not Y' and no stacked labels", () => {
   }
   assert.match(html, /on the SMT2020 model/);
 });
+
+// The Flows view as one wafer's journey (the founder, 29 Oct: "make it an animation ... that highlights the movement
+// on the track ... It should progressively map so it fills the screen from no overlay").
+test("a route becomes its hall-to-hall trips, in route order", () => {
+  const hallOfGroup = { litho: 0, etch: 1, wet: 2, litho2: 0 };
+  const trips = U.journey(["litho", "litho2", "etch", "etch", "wet", "litho", "nowhere", "etch"], hallOfGroup);
+  // steps in the same hall make no trip; a group with no hall is skipped
+  assert.deepEqual(trips, [{ a: 0, b: 1, step: 2 }, { a: 1, b: 2, step: 4 }, { a: 2, b: 0, step: 5 }, { a: 0, b: 1, step: 7 }]);
+  assert.deepEqual(U.journey([], hallOfGroup), []);
+});
+
+test("the replay starts empty, starts slowly and ends with every trip drawn", () => {
+  const N = 300, T = 30;
+  assert.equal(U.journeyDone(N, 0, T), 0);
+  assert.ok(U.journeyDone(N, 1, T) < 1, "the first trip takes more than a second, so it can be followed");
+  let last = 0;
+  for (let s = 0.5; s <= T; s += 0.5) { const d = U.journeyDone(N, s, T); assert.ok(d >= last); last = d; }
+  assert.equal(U.journeyDone(N, T, T), N);
+  assert.equal(U.journeyDone(N, T + 99, T), N);
+});
+
+test("track use counts each stretch a trip passes, clockwise and wrapping round", () => {
+  const ring = 100, bins = 10;
+  // from 25 to 55: bins 2 (half), 3, 4, 5 (half); from 90 to 15 wraps: bins 9, 0, 1 (half)
+  const use = U.ringUse([[25, 55], [90, 15]], ring, bins);
+  assert.equal(use.length, bins);
+  assert.deepEqual(use.map(x => Math.round(x * 2) / 2), [1, 0.5, 0.5, 1, 1, 0.5, 0, 0, 0, 1]);
+  // a trip to the same point goes all the way round
+  assert.deepEqual(U.ringUse([[30, 30]], ring, bins), new Array(bins).fill(1));
+});
