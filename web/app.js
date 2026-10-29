@@ -823,14 +823,14 @@ const $ = id => document.getElementById(id);
 let lensShown = "";
 function lensNote() {
   let txt = "";
-  if (UI.lens === "heat") txt = "Each group glows with the lots waiting at it: the hotter, the longer the queue.";
-  else if (UI.lens === "flows") txt = "The 14 busiest links between halls, by the route steps that cross them; the dot marks the direction.";
+  if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
+  else if (UI.lens === "flows") txt = "The lines are the 14 busiest paths between halls, counted by the route steps that use them. The dot shows which way lots travel.";
   else if (UI.lens === "proto") {
     let n = 0;
     for (const tr of cur.active) if (tr[6]) n++;
     for (const q of cur.bQ || []) n += q;
-    txt = n ? `${n} prototype lot${n === 1 ? "" : "s"} in the fab now, drawn large and pink; everything else is dimmed.`
-      : "Today's fab runs no prototype lots. Ask a question about prototypes, then press “Show on the floor” on a candidate.";
+    txt = n ? (n === 1 ? "1 prototype lot is in the fab now. It is drawn large and pink, and everything else is dimmed." : `${n} prototype lots are in the fab now. They are drawn large and pink, and everything else is dimmed.`)
+      : "Today's fab has no prototype lots. To see some, ask a question about prototypes and press “Show on the floor” on one of the answers.";
   }
   if (txt !== lensShown) { $("lens-note").textContent = txt; lensShown = txt; }
 }
@@ -1126,14 +1126,14 @@ function renderCompare(o, base, chg, done, total) {
   }).join("");
   $("cmp-note").textContent = done < total
     ? `${done} of ${total} runs done…`
-    : `On the SMT2020 model, seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}, paired. 95% t intervals, each on its own. A first look: a claim is checked once on held-out seeds. Real-fab effect: cannot say.`;
+    : `Simulated on the SMT2020 model with seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}. Each run is paired with today's fab on the same seed, and each range is a 95% interval on its own. Treat this as a first look: a claim is made only after one more check on fresh seeds. What the change would do in a real fab is unknown.`;
 }
 
 let compareToken = 0;
 async function compare(o) {
   const token = ++compareToken;
   if (isToday(o)) {
-    $("cmp-what").textContent = "This is today's fab. Set a rule, an outage or the dials, then Simulate and compare.";
+    $("cmp-what").textContent = "This is today's fab. Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.";
     $("cmp-rows").innerHTML = "";
     $("cmp-note").textContent = "";
     showTab("change");
@@ -1185,14 +1185,14 @@ async function loadLong() {
   const ks = [...new Set(L.cells.map(c => c.k))];
   const caps = [...new Set(L.cells.map(c => c.cap))];
   const verdict = c => (/better/.test(c.verdict) ? "better" : /worse/.test(c.verdict) ? "worse" : "unclear");
-  $("long-lead").textContent = `Wafers out a day with a WIP cap, against no cap, over days ${L.warmup} to ${L.days} of ${L.days}-day runs. ${L.seeds.length} paired seeds per cell.`;
+  $("long-lead").textContent = `How many wafers come out a day with a cap on lots in the fab (WIP cap), compared with no cap. Measured from day ${L.warmup} to day ${L.days} of each run, with ${L.seeds.length} paired seeds in every cell.`;
   let g = `<div class="h">break­downs</div>` + caps.map(c => `<div class="h">cap ${c.toLocaleString()}</div>`).join("");
   for (const k of ks) {
     g += `<div class="r">×${k}</div>`;
     for (const cap of caps) {
       const w = cell("wafers_per_day", k, cap), ct = cell("cycle_days", k, cap);
       const v = verdict(w);
-      const title = `Breakdowns ×${k}, cap ${cap}: wafers out ${signed(w.mean)} a day (${signed(w.lo)} to ${signed(w.hi)}), ${v === "unclear" ? "no clear effect" : v}; cycle time ${signed(ct.mean)} days (${signed(ct.lo)} to ${signed(ct.hi)})`;
+      const title = `Breakdowns ×${k}, cap ${cap}. Wafers out: ${signed(w.mean)} a day (95%: ${signed(w.lo)} to ${signed(w.hi)}), ${v === "unclear" ? "no clear effect" : v}. Cycle time: ${signed(ct.mean)} days (${signed(ct.lo)} to ${signed(ct.hi)}).`;
       g += `<div class="c ${v}" title="${title}"><b>${signed(w.mean, 0)}</b><span>${signed(ct.mean, 0)} d</span></div>`;
     }
   }
@@ -1204,13 +1204,13 @@ async function loadLong() {
     const worst = ks.map(k => cell("wafers_per_day", k, cap)).find(c => verdict(c) === "worse");
     if (verdict(calm) !== "worse" && worst) {
       const ctc = cell("cycle_days", ks[0], cap);
-      lines.push(`A cap of <b>${cap.toLocaleString()} lots</b> costs no wafers on today's fab (${signed(calm.mean)} a day, 95% ${signed(calm.lo)} to ${signed(calm.hi)}) and cuts cycle time by ${Math.abs(ctc.mean).toFixed(0)} days. With breakdowns ×${worst.k} it costs <b>${Math.abs(worst.mean).toFixed(0)} wafers a day</b> (${Math.abs(worst.hi).toFixed(0)} to ${Math.abs(worst.lo).toFixed(0)}).`);
+      lines.push(`In today's fab, a cap of <b>${cap.toLocaleString()} lots</b> costs no wafers (${signed(calm.mean)} a day, 95%: ${signed(calm.lo)} to ${signed(calm.hi)}) and cuts cycle time by ${Math.abs(ctc.mean).toFixed(0)} days. When breakdowns are ×${worst.k}, the same cap costs <b>${Math.abs(worst.mean).toFixed(0)} wafers a day</b> (95%: ${Math.abs(worst.hi).toFixed(0)} to ${Math.abs(worst.lo).toFixed(0)}).`);
     }
   }
   const gains = caps.filter(cap => verdict(cell("wafers_per_day", ks[0], cap)) === "better");
-  if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model; why is not traced yet.`);
+  if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model. We have not yet traced why.`);
   $("long-finding").innerHTML = lines.join("<br><br>");
-  $("long-note").textContent = `Each cell: wafers out a day (cycle time in days below), cap minus no cap. Green better, red worse, grey no clear effect: 95% intervals for all ${L.cells.length / 3} cells at once (Bonferroni). Precomputed natively in ${Math.round(L.seconds)} s; the page's own runs go up to 14 days, too short for wafers to cross the fab. On the SMT2020 model. Real-fab effect: cannot say.`;
+  $("long-note").textContent = `Each cell shows wafers out a day with the cap minus without it, and the change in cycle time in days below. Green is better, red is worse and grey is no clear effect. The 95% intervals hold for all ${L.cells.length / 3} cells at once (Bonferroni). These runs were computed ahead of time in ${Math.round(L.seconds)} s. The page's own runs last at most 14 days, too short for a wafer to cross the fab. On the SMT2020 model. What a cap would do in a real fab is unknown.`;
   showTab("long", false);
 }
 
@@ -1418,7 +1418,7 @@ async function main() {
   setFloor(first);
   await loadLong();
   fit();
-  $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, here in your browser.`;
+  $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, right here in your browser.`;
   askSetup();
 }
 
@@ -1466,14 +1466,14 @@ async function askSetup() {
   let st;
   try { st = await api("/api/status"); } catch { st = null; }
   if (!st || st.error) {
-    $("ask-model").innerHTML = "The ask box needs the helper on this Mac. Start it with <code>python3 -m agent.helper</code> in the fab-gym folder, then open <b>http://127.0.0.1:8766</b>.";
+    $("ask-model").innerHTML = "The ask box needs the helper running on this Mac. In the fab-gym folder, run <code>python3 -m agent.helper</code>, then open <b>http://127.0.0.1:8766</b>.";
     $("ask-go").disabled = true; $("ask-run").disabled = true;
     return;
   }
   ASK.helper = true;
   $("ask-model").textContent = st.model_connected
-    ? `Questions go to ${st.model}. It writes a scenario; the simulator answers it.`
-    : "No model is connected yet: the example questions answer from recorded example answers (written by us, not by a model), and you can write a scenario by hand below.";
+    ? `Questions go to ${st.model}. It turns your question into a scenario, and the simulator runs it.`
+    : "No model is connected yet. The example questions use answers we wrote by hand, and you can write your own scenario below.";
   $("ask-examples").innerHTML = st.examples.map((e, i) => `<button type="button" data-i="${i}">${esc(e.question)}</button>`).join("");
   $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("ask-q").value = st.examples[+b.dataset.i].question; ask($("ask-q").value); }));
   if (!$("ask-text").value) $("ask-text").value = "fabgym-scenario 1\nquestion\tPrototype orders double. Their own wing?\nfamily\tshare\t2\tsaid\ncandidate\town-wing\tfloor\twing\n";
@@ -1518,10 +1518,10 @@ function follow(id) {
 
 function showScenario(j) {
   const s = FabAsk.scenarioLines(j.scenario);
-  const src = j.answer_source === "example" ? "a recorded example answer (written by us, not by a model)"
-    : j.answer_source === "model" ? "the model's answer, checked" : "your scenario";
+  const src = j.answer_source === "example" ? "an example answer we wrote by hand"
+    : j.answer_source === "model" ? "the model's answer, after checking" : "your scenario";
   $("ask-scenario").hidden = false;
-  $("ask-scenario").innerHTML = `<p class="note">The scenario, from ${src}:</p>
+  $("ask-scenario").innerHTML = `<p class="note">This scenario comes from ${src}:</p>
     <ul class="given">${s.given.map(g => `<li><span class="tag ${g.said ? "said" : "assumed"}">${g.said ? "said" : "assumed"}</span>${esc(g.text)}</li>`).join("") || "<li>Today's fab as it is.</li>"}</ul>
     <p class="note">Compared with today's fab:</p>
     <ul class="cands">${s.candidates.map(c => `<li><b>${esc(c.name)}</b>: ${esc(c.changes.join(", "))}</li>`).join("")}</ul>`;
@@ -1544,13 +1544,13 @@ function showResult(j) {
       (name === "today" ? "" : ` <button type="button" class="show sbs" data-arm="${i}">Side by side</button>`);
   };
   const head = r.families
-    ? `<p class="note">Each line: the candidate minus today's fab on the same seeds, with its 95% interval. Today: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
-    : `<p class="note">Each line: the candidate minus today's fab on the same seeds, with its 95% interval.</p>`;
+    ? `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval. Today's values: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
+    : `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval.</p>`;
   $("ask-result").innerHTML = `<p class="what">${esc(FabAsk.summaryLine(r))}</p>${head}` +
     (arms.length ? `<div class="arm"><div class="top"><b>today</b>${armBtn("today")}</div></div>` : "") +
     rows.map(row => `<div class="arm"><div class="top"><b>${esc(row.name)}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
       <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${fmt(c.lo)} to ${fmt(c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table></div>`).join("") +
-    `<p class="note small">${r.families ? "Money a day in wafers of volume margin; every price is assumed. " : ""}Intervals hold together at 95% across the candidates (Bonferroni). On the SMT2020 model, a published model of a fab. Real-fab effect: cannot say.</p>`;
+    `<p class="note small">${r.families ? "Money a day is counted in volume-wafer margins, and every price is assumed. " : ""}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated on the SMT2020 model, a published research model of a wafer fab. What these changes would do in a real fab is unknown.</p>`;
   $("ask-result").querySelectorAll("button.show:not(.sbs)").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
   $("ask-result").querySelectorAll("button.sbs").forEach(b => (b.onclick = () => sideBySide(j, +b.dataset.arm)));
   {
@@ -1589,7 +1589,7 @@ async function showArm(j, k) {
     setFloor(run);
     fit();
     ASK.onFloor = arm.name;
-    $("runnote").innerHTML = `On the floor: <b>${esc(arm.name)}</b>, seed 0, the first 3 days${rc.exact ? "" : " (its rule is not in the page's simulator, so today's rule is shown)"}. Prototype lots are pink. <button type="button" class="link" id="back-today">Back to today's fab</button>`;
+    $("runnote").innerHTML = `On the floor: <b>${esc(arm.name)}</b>, seed 0, first 3 days.${rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so it uses today's rule."} Prototype lots are pink. <button type="button" class="link" id="back-today">Back to today's fab</button>`;
     $("back-today").onclick = backToToday;
   } catch (err) {
     $("runnote").textContent = "Could not show it: " + err.message;
@@ -1605,7 +1605,7 @@ async function backToToday() {
   const run = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
   setFloor(run);
   fit();
-  $("runnote").textContent = `Today's fab: simulated 3 days (${run.j.moves.toLocaleString()} moves) in ${run.secs.toFixed(2)} s, here in your browser.`;
+  $("runnote").textContent = `Today's fab: simulated 3 days (${run.j.moves.toLocaleString()} moves) in ${run.secs.toFixed(2)} s, right here in your browser.`;
 }
 
 
@@ -1643,7 +1643,7 @@ function askFrom(q) {
   fit();
   $("ask-q").value = q;
   if (ASK.helper) ask(q);
-  else stage("Asking needs the helper on this Mac: run python3 -m agent.helper in the fab-gym folder.");
+  else stage("To ask a question, start the helper on this Mac. In the fab-gym folder, run python3 -m agent.helper.");
 }
 
 async function chromeSetup() {
@@ -1828,12 +1828,12 @@ function drawNumbers() {
   document.querySelectorAll("#num-metric button").forEach(b => b.classList.toggle("on", b.dataset.m === UI.metric));
   document.querySelectorAll("#num-share button").forEach(b => b.classList.toggle("on", +b.dataset.s === share));
   const k = Math.round(0.05 / d.alpha_each);
-  $("num-lead").textContent = `The two-family sweep on the SMT2020 model: ${d.days} simulated days after ${d.warmup} days of warm-up, ` +
-    `${d.seeds.length} paired seeds, every change against today's fab (shared floor, today's order). Each interval is at level 1 − 0.05/${k}, ` +
-    `so all ${k} hold together at 95%. Prices are assumed. Real-fab effect: cannot say.`;
+  $("num-lead").textContent = `The two-family sweep on the SMT2020 model. Each change ran for ${d.days} simulated days after ${d.warmup} days of warm-up, on ${d.seeds.length} seeds, ` +
+    `and is compared with today's fab on the same seeds. Today's fab means one shared floor and today's dispatch order. ` +
+    `Each interval is set at 1 − 0.05/${k}, so all ${k} hold together at 95%. Prices are assumed. What these changes would do in a real fab is unknown.`;
   const base = d.baseline[String(share)] || {};
   $("num-base").innerHTML = Object.entries(METRIC).map(([key, mm]) =>
-    `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">Today's fab at ×${share}: ${mm.name.toLowerCase()} (${mm.unit})</div></div>`).join("");
+    `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">Today's fab with ×${share} prototype orders: ${mm.name.toLowerCase()} (${mm.unit})</div></div>`).join("");
   // the forest: rows grouped by floor
   const rows = [];
   let last = null;
@@ -1842,11 +1842,11 @@ function drawNumbers() {
     rows.push({ ...r, label: POLICY_WORDS[r.policy] });
   }
   const f = forestSVG(rows, m, `Change against today's fab, ${m.unit}`);
-  $("num-forest-t").innerHTML = `${esc(m.name)}: every change at ×${share} prototype orders<span>Dot: mean of the paired differences. Bar: its interval. Green better, red worse, grey no clear effect.</span>`;
+  $("num-forest-t").innerHTML = `${esc(m.name)}: every change at ×${share} prototype orders<span>Each dot is the average paired difference and each bar is its interval. Green is better, red is worse and grey is no clear effect.</span>`;
   setSVG($("num-forest"), f, `${m.name}, every change against today at ×${share}`);
   const ls = FabUI.sweepLines(d, UI.metric);
   setSVG($("num-lines"), linesSVG(ls, m, share), `${m.name} on the shared floor across prototype orders`);
-  $("num-lines-t").innerHTML = `${esc(m.name)} on the shared floor as prototype orders grow<span>Each policy against today's order at the same share; bars are the intervals.</span>`;
+  $("num-lines-t").innerHTML = `${esc(m.name)} on the shared floor as prototype orders grow<span>Each line is one policy compared with today's order at the same share of prototype orders. The bars are the intervals.</span>`;
   $("num-lines-key").innerHTML = ls.map((l, i) => `<span><i style="background:${LINE_COLORS[i]}"></i>${esc(POLICY_WORDS[l.policy])}</span>`).join("");
   // the question being answered, when there is one
   const j = ASK.job;
@@ -1859,10 +1859,10 @@ function drawNumbers() {
         text: has ? `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})` : "no prototype lot out" };
     });
     const q = forestSVG(qrows, m, `Change against today's fab, ${m.unit}`);
-    $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}, each candidate against today on ${j.report.seeds.length} paired seeds (intervals hold together at 95%).</span></figcaption><svg role="img"></svg></figure>`;
+    $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}: each candidate compared with today's fab on ${j.report.seeds.length} paired seeds. The intervals hold together at 95%.</span></figcaption><svg role="img"></svg></figure>`;
     setSVG($("num-question").querySelector("svg"), q, `${m.name} for each candidate in your question`);
   } else $("num-question").innerHTML = "";
-  $("num-note").textContent = `Money a day is counted in volume-wafer margins: family A earns 1 a wafer; every price is assumed (docs/TWO-FAMILIES-SWEEP.md). On the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published model of a fab, not a real fab.`;
+  $("num-note").textContent = `Money a day is counted in volume-wafer margins, with each family A wafer earning 1. Every price is assumed (docs/TWO-FAMILIES-SWEEP.md). Simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.`;
 }
 
 // ------------------------------------------------------------------ the evidence: verdict cards and signing
@@ -1870,7 +1870,7 @@ function drawNumbers() {
 function verdictCards(rows) {
   const best = rows.find(r => r.best) || rows[0];
   if (!best) return "";
-  return `<p class="note">${esc(best.name)} against today's fab:</p><div class="verdicts">${best.cells.map(c => {
+  return `<p class="note">${esc(best.name)} compared with today's fab:</p><div class="verdicts">${best.cells.map(c => {
     const v = c.mean === null ? "no clear effect" : c.verdict;
     return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
       `<div class="iv">${c.lo === null || c.mean === null ? "" : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
@@ -1886,7 +1886,7 @@ function signBox(j) {
   const box = document.createElement("div");
   if (j.card) { box.innerHTML = signedCard(j.card); return box; }
   box.className = "sign";
-  box.innerHTML = `<h4>Sign this answer</h4><p class="note">The model proposed, the simulator scored; a person signs. Your name, the time and a SHA-256 of the question, the scenario and the report are kept with it on this Mac.</p>` +
+  box.innerHTML = `<h4>Sign this answer</h4><p class="note">The model proposed this answer and the simulator scored it. Now a person signs it. Your name, the time and a SHA-256 fingerprint of the question, scenario and report are saved with it on this Mac.</p>` +
     `<form><label class="sr" for="sign-name">Your name</label><input id="sign-name" placeholder="Your name" autocomplete="name"><button class="primary" style="width:auto;margin:0">Sign</button></form><p class="note" id="sign-msg"></p>`;
   box.querySelector("form").onsubmit = async e => {
     e.preventDefault();
@@ -1962,9 +1962,9 @@ async function sideBySide(j, k) {
     t = 0; playing = true; $("play").textContent = "❚❚";
     const row = FabAsk.resultRows(j.report).find(r => r.name === arms[k].name);
     $("split-cards").hidden = false;
-    $("split-cards").innerHTML = `<div class="split-head"><b>${esc(arms[k].name)}</b> against today's fab, ${j.report.seeds.length} paired seeds of the full run` +
+    $("split-cards").innerHTML = `<div class="split-head"><b>${esc(arms[k].name)}</b> compared with today's fab over ${j.report.seeds.length} paired seeds of the full run` +
       `<button type="button" class="link" id="split-leave">Leave side by side</button></div>` + (row ? verdictCards([row]).replace(/^<p class="note">.*?<\/p>/, "") : "") +
-      `<p class="note small">The halves replay seed 0 for 3 days in your browser${scenes[1].rc.exact ? "" : " (its rule is not in the page's simulator, so today's rule plays)"}; the cards are the helper's scored run. On the SMT2020 model.</p>`;
+      `<p class="note small">Both halves replay seed 0 for 3 days in your browser.${scenes[1].rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so its half uses today's rule."} The cards come from the helper's full scored run. On the SMT2020 model.</p>`;
     $("split-leave").onclick = () => leaveSplit(true);
     stage("");
   } catch (err) {

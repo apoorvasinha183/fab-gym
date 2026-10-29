@@ -74,9 +74,9 @@
   function summaryLine(report) {
     const what = report.families ? "money a day" : "the scorer's reward";
     const head = report.best
-      ? `Best on ${what}: ${report.best}, better than today's fab with all intervals holding together at 95%.`
+      ? `Best on ${what}: ${report.best}. It beats today's fab, with all intervals holding together at 95%.`
       : `No candidate is clearly better on ${what}, so today's fab stands.`;
-    return `${head} On the SMT2020 model, ${report.seeds.length} paired seeds. Real-fab effect: cannot say.`;
+    return `${head} Simulated on the SMT2020 model with ${report.seeds.length} paired seeds. What these changes would do in a real fab is unknown.`;
   }
 
   function familyB(j) {

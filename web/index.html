@@ -83,7 +83,7 @@
     <li><i class="dot hot"></i>a hot lot</li>
     <li><i class="dot proto"></i>a prototype lot (family B)</li>
   </ul>
-  <p class="note small">Every number comes from the simulator on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020). It is a published model, not a real fab.</p>
+  <p class="note small">Every number here is simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.</p>
 </aside>
 
 <section class="card compare drawer" id="compare" hidden>
@@ -100,7 +100,7 @@
       <button class="primary" type="submit" id="ask-go">Ask</button>
     </form>
     <div id="ask-examples" class="chips" aria-label="Example questions"></div>
-    <p class="note small" id="ask-model">Looking for the helper…</p>
+    <p class="note small" id="ask-model">Connecting to the helper…</p>
     <div id="ask-live" aria-live="polite">
       <p id="ask-stage" class="stage" hidden></p>
       <div id="ask-scenario" hidden></div>
@@ -121,7 +121,7 @@
     <p class="note small" id="long-note"></p>
   </div>
   <div id="pane-change" role="tabpanel" hidden aria-live="polite">
-    <p class="what" id="cmp-what">Set a rule, an outage or the dials, then Simulate and compare.</p>
+    <p class="what" id="cmp-what">Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.</p>
     <div id="cmp-rows"></div>
     <p class="note small" id="cmp-note"></p>
   </div>
@@ -132,7 +132,7 @@
     <h2 id="stages-title">How a chip is made</h2>
     <button id="stages-close" class="icon" type="button" aria-label="Close">✕</button>
   </div>
-  <p class="stages-lead">A wafer goes round the same loop again and again, once for every layer of the chip. Pick a stage to see what it does to the silicon, then go to its hall.</p>
+  <p class="stages-lead">A wafer goes round the same loop many times, once for each layer of the chip. Pick a stage to see what it does to the wafer, then press Show its hall to find it on the floor.</p>
   <div class="stages-body">
     <svg id="stages-loop" viewBox="0 0 540 540" role="group" aria-label="The loop of stages around a wafer"></svg>
     <div id="stages-detail" class="stages-detail">
@@ -149,9 +149,9 @@
       </div>
     </div>
     <div id="stages-strip" class="stages-strip" aria-label="Route steps"></div>
-    <div id="stages-readout" class="note">Hover a step.</div>
+    <div id="stages-readout" class="note">Hover over a square to see its step.</div>
   </div>
-  <p class="note small">Illustration, not to scale: the drawings are generic steps of our own. The model holds steps, tools and times, not chemistry. Every count here is on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published model, not a real fab.</p>
+  <p class="note small">The drawings are our own simple sketches and are not to scale. The model itself holds only steps, tools and times, with no chemistry. Every count here is on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.</p>
 </section>
 
 <section class="card ticker" aria-label="Floor log"><ol id="ticker"></ol></section>
@@ -185,7 +185,7 @@
   </form>
   <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
   <button id="open-explore" type="button" class="link explore">or explore the floor</button>
-  <p class="fine">Agents propose, the simulator scores, a person signs. A published model of a fab, not a real one.</p>
+  <p class="fine">Agents propose changes, the simulator scores them, and a person signs off. Everything runs on the SMT2020 model, a published research model of a wafer fab.</p>
 </section>
 
 <section id="numbers" class="card numbers" role="dialog" aria-modal="true" aria-labelledby="numbers-title" hidden>
