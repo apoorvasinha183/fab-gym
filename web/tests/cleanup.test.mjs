@@ -79,8 +79,8 @@ test("5. detail grows with zoom: names, then chips, then queue belts", () => {
 
 test("6. the views", () => {
   const lenses = between(html, '<nav class="lenses"', "</nav>").match(/>([^<]+)<\/button>/g).map(s => s.slice(1, -9));
-  // Rails added 29 Oct by quiz (docs/FLEET.md): the fleet shown on the floor page
-  assert.deepEqual(lenses, ["Live", "Waiting heat", "Prototype lots", "Flows", "Rails"]);
+  // a Rails lens came and went on 29 Oct: Live shows the real building and its rails (docs/LIVE-REAL.md)
+  assert.deepEqual(lenses, ["Live", "Waiting heat", "Prototype lots", "Flows"]);
 });
 
 test("7. the hover card stays inside the screen and off the cursor", () => {
