@@ -275,3 +275,31 @@ fn lots_are_hoisted_at_tool_ports_and_stocker_spurs_only() {
     }
     assert!(stops.len() > 300, "hoists spread over the tools' ports: {} stops used", stops.len());
 }
+
+// ---- the track and fleet for the viewers (the 2D page and the game) ----
+
+#[test]
+fn the_fleet_trace_holds_the_track_and_the_vehicles_in_its_window() {
+    let Some(s) = campus() else { return };
+    let sh = with(s, fleet(160, 2));
+    let o = sh.oht.as_ref().unwrap();
+    let t = Track::with_ports(o, &sh.ports, 60.0);
+    let r = go(&sh, 3000, 1.0, true);
+    let f = r.fleet.as_ref().unwrap();
+    let (from, to) = (600.0, 660.0);
+    let tr = fabsim::fleet::FleetTrace::new(o, &t, f, from, to);
+    assert_eq!(tr.edges.len(), t.edges().len());
+    assert_eq!(tr.nodes.len(), t.nodes().len());
+    assert_eq!(tr.vehicles, 160);
+    assert!(!tr.entries.is_empty() && !tr.hoists.is_empty());
+    for e in &tr.entries {
+        assert!(e.t_in <= to && e.t_out >= from, "every entry kept overlaps the window");
+    }
+    for h in &tr.hoists {
+        assert!(h.t0 <= to && h.t1 >= from, "every hoist kept overlaps the window");
+    }
+    let js = tr.to_json();
+    assert!(js.starts_with('{') && js.trim_end().ends_with('}'));
+    assert_eq!(js.matches('[').count(), js.matches(']').count());
+    assert!(js.contains("SMT2020") && js.contains("\"offsets\""));
+}
