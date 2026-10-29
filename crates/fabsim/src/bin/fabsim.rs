@@ -845,6 +845,31 @@ fn follow_cmd(args: &[String]) {
     );
 }
 
+/// Regret option C (docs/LONG-RESCORE.md): the capacity ceiling of a shop, its bottleneck and the next groups.
+fn bound_cmd(args: &[String]) {
+    use std::fmt::Write as _;
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let shop = if dir.is_dir() { fabsim::smt2020::load(&dir).expect("SMT2020 loads") } else { Shop::parse(&std::fs::read_to_string(&dir).unwrap()).unwrap() };
+    let c = fabsim::bound::capacity(&shop);
+    let mut g = c.groups.clone();
+    g.sort_by(|a, b| a.wafers_per_day.total_cmp(&b.wafers_per_day));
+    let mut j = format!(
+        "{{\"model\":\"SMT2020\",\"wafers_per_day\":{},\"strict_wafers_per_day\":{},\"released_per_day\":{},\"bottleneck\":\"{}\",\"groups\":[",
+        c.wafers_per_day, c.strict_wafers_per_day, c.released_per_day, c.bottleneck
+    );
+    for (i, x) in g.iter().enumerate() {
+        let _ = write!(j, "{}{{\"name\":\"{}\",\"minutes_per_wafer\":{},\"available_minutes_per_day\":{},\"wafers_per_day\":{}}}", if i > 0 { "," } else { "" }, x.name, x.minutes_per_wafer, x.available_minutes_per_day, x.wafers_per_day);
+    }
+    j.push_str("]}\n");
+    if let Some(out) = args.iter().position(|a| a == "--out").and_then(|i| args.get(i + 1)) {
+        std::fs::write(out, &j).unwrap();
+    }
+    println!("ceiling {:.1} wafers a day (strict {:.1}), released {:.1}; bottleneck {}", c.wafers_per_day, c.strict_wafers_per_day, c.released_per_day, c.bottleneck);
+    for x in g.iter().take(6) {
+        println!("  {:<18} {:>8.1} wafers a day ({:.2} tool-min a wafer, {:.0} tool-min a day)", x.name, x.wafers_per_day, x.minutes_per_wafer, x.available_minutes_per_day);
+    }
+}
+
 fn layout_score(args: &[String]) {
     use fabsim::uq::{paired, verdict, Verdict};
     use fabsim::window::{score, with_probes, Window};
@@ -985,6 +1010,7 @@ fn main() {
         Some("fleet-trace") => fleet_trace(&args[1..]),
         Some("track") => track_cmd(&args[1..]),
         Some("follow") => follow_cmd(&args[1..]),
+        Some("bound") => bound_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

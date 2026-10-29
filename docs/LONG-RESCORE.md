@@ -48,3 +48,15 @@ A new policy is scored by adding it to the same command with the same protocol n
 - **Changes while building:**
   - the first engine test used an empty window, which the scorer refuses, so it now builds the run by hand;
   - the harness's built-in player was missing an import.
+
+## Regret, decided 29 Oct by quiz: A, B, C and D, in that order (C and A first, then B and D)
+
+- **C, the capacity ceiling** (`fabsim::bound`, `fabsim bound`; tests `crates/fabsim/tests/bound.rs`). SMT2020's
+  high-volume model:
+  - **expected ceiling 1,301.9 wafers a day**, set by Planar_FE_77 (2.17 tool-minutes a wafer, 2,824 tool-minutes
+    a day after expected time down), with Planar_FE_79 at 1,311.8 and TF_FE_103 at 1,385.9 close behind;
+  - **strict ceiling** (no time down) **1,429.9**, set by what is released.
+  - Today's rule gets 1,246 out on seed 0 over days 130 to 190: about 56 below the expected ceiling.
+  - The expected ceiling uses expected time down, so a run with less time down than expected can pass it. The
+    earlier layout runs averaged 1,311.8 over days 60 to 150. A ceiling for each run from its own time down is the
+    strict per-run version, to come with the runs' downtime. Saved: `results/long-rescore/ceiling.json`.
