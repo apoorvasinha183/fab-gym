@@ -237,3 +237,30 @@ details.res summary .h { grid-column: 2 / 4; color: #A9C4C0; font-size: 12.5px; 
 button.gl { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: help; text-decoration: underline dotted rgba(126, 232, 216, 0.7); text-underline-offset: 3px; }
 button.gl:hover { color: var(--accent, #7EE8D8); }
 @media (max-width: 720px) { .gl-wrap { grid-template-columns: 1fr; } .gl-index { max-height: 30vh; } }
+
+/* what each change buys: the floor × policy grid */
+.cg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.cg-head h4 { margin: 0; }
+.capgrid { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.capgrid th { font-size: 12px; font-weight: 600; color: #A9C4C0; text-align: center; padding: 2px 4px; }
+.capgrid th.cg-floor { text-align: left; color: #E8F2F0; font-size: 13px; width: 150px; }
+.capgrid th.cg-floor span { display: block; font-weight: 400; font-size: 11.5px; color: #8FB3AE; }
+.capgrid td { position: relative; border-radius: 8px; padding: 8px 6px; text-align: center; vertical-align: middle; background: #12232A; border: 1px solid #1E363D; }
+.capgrid td b { display: block; font-family: ui-monospace, Menlo, monospace; font-size: 14px; color: #E8F2F0; }
+.capgrid td span { display: block; font-size: 11px; color: #A9C4C0; margin-top: 2px; min-height: 1em; }
+.capgrid td.cg { cursor: pointer; }
+.capgrid td.cg:hover, .capgrid td.cg:focus { outline: 2px solid rgba(126, 232, 216, 0.5); outline-offset: 0; }
+.capgrid td.better { background: rgba(79, 227, 163, 0.16); border-color: rgba(79, 227, 163, 0.45); }
+.capgrid td.better b { color: #4FE3A3; }
+.capgrid td.worse { background: rgba(255, 98, 98, 0.12); border-color: rgba(255, 98, 98, 0.35); }
+.capgrid td.worse b { color: #FF8A8A; }
+.capgrid td.unclear { background: rgba(143, 179, 174, 0.08); }
+.capgrid td.picked { outline: 2px solid #7EE8D8; }
+.capgrid td.best { box-shadow: inset 0 0 0 2px #4FE3A3; }
+.capgrid td .star { position: absolute; top: 3px; right: 5px; font-style: normal; font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #4FE3A3; }
+.capgrid td.cg-base { background: transparent; border-style: dashed; }
+.capgrid td.cg-base b { font-family: inherit; font-size: 12px; color: #A9C4C0; }
+.cg-key .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 4px 0 8px; vertical-align: -1px; }
+.cg-key .sw.better { background: rgba(79, 227, 163, 0.6); } .cg-key .sw.worse { background: rgba(255, 98, 98, 0.55); } .cg-key .sw.unclear { background: rgba(143, 179, 174, 0.35); }
+.cg-detail { margin: 6px 0 4px; padding: 8px 12px; border-left: 3px solid #7EE8D8; background: rgba(126, 232, 216, 0.06); border-radius: 0 8px 8px 0; color: #CFE3E0; font-size: 13px; }
+@media (max-width: 720px) { .capgrid th.cg-floor { width: 92px; } .capgrid td b { font-size: 12px; } }

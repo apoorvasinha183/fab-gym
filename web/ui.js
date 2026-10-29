@@ -206,7 +206,33 @@
     };
   }
 
-  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, runEntry, STRATEGIES, POLICIES };
+  // What each change buys, as a floor × policy grid at one share: profit over the chosen period (a day, a month or a
+  // year), the verdict, payback and five-year value, with today's fab (the shared floor, today's order) as the base.
+  const PERIOD = { day: [1, "a day"], month: [365 / 12, "a month"], year: [365, "a year"] };
+  function capitalGrid(d, share, period) {
+    const [k, unit] = PERIOD[period] || PERIOD.day;
+    let best = null;
+    const floors = STRATEGIES.map((st) => {
+      let capital = 0;
+      const cells = POLICIES.map((po) => {
+        if (st === "D1 share" && po === "P0 today") return { policy: po, base: true };
+        const c = d.cells.find((x) => x.share === share && x.strategy === st && x.policy === po);
+        if (!c || !c.profit || !c.pl) return { policy: po, missing: true };
+        capital = c.pl.capital;
+        const cell = {
+          policy: po, value: c.profit.mean * k, lo: c.profit.lo * k, hi: c.profit.hi * k, verdict: c.profit.verdict,
+          capital: c.pl.capital, payback: c.pl.payback_days, npv: c.pl.npv, best: false,
+        };
+        if (cell.verdict === "better" && (!best || cell.value > best.value)) best = cell;
+        return cell;
+      });
+      return { floor: st, capital, cells };
+    });
+    if (best) best.best = true;
+    return { share, period, unit, policies: POLICIES.slice(), floors };
+  }
+
+  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, runEntry, capitalGrid, STRATEGIES, POLICIES };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabUI = api;
 })(typeof window !== "undefined" ? window : globalThis);

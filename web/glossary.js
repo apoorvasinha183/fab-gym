@@ -155,7 +155,7 @@
       here: "A dial on Try a change, and the subject of the 300-day study of whether a cap costs wafers when breakdowns rise.",
       source: std("A standard lean policy (CONWIP); the levels tried are our choice."), example: "A cap of 2,400 lots cuts cycle time and costs no wafers in today's fab.",
       see: ["WIP", "Family cap"] },
-    { term: "Move", topic: "Lots and tools", aliases: ["moves"],
+    { term: "Move", topic: "Lots and tools", aliases: ["moves"], link: false,
       meaning: "One finished step by one lot. Fabs count moves a day as a sign of how busy they are.",
       here: "Moves are one of the scores in Try a change and the RL contest.",
       source: std("Standard fab measure."), example: "First come, first served makes about 12,900 fewer moves in three days than today's rule.",
@@ -366,7 +366,8 @@
 
   // ---------------------------------------------------------------- words on the page link to their article
   // The longest name or alias that starts at a word boundary wins; each term is linked once per text.
-  const NAMES = TERMS.flatMap((t) => [t.term].concat(t.aliases || []).map((n) => ({ n, lower: norm(n), term: t.term })))
+  // A term whose name is also an everyday verb (link: false) is linked only by its other names.
+  const NAMES = TERMS.flatMap((t) => (t.link === false ? [] : [t.term]).concat(t.aliases || []).map((n) => ({ n, lower: norm(n), term: t.term })))
     .filter((x) => x.n.length >= 3)
     .sort((a, b) => b.n.length - a.n.length);
   const wordChar = (c) => /[A-Za-z0-9]/.test(c || "");

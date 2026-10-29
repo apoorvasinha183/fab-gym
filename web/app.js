@@ -2016,16 +2016,32 @@ function paybackText(p) {
 function drawCapital(d, share) {
   const el = $("num-capital");
   if (!d.pl) { el.innerHTML = ""; return; }
-  const rows = FabUI.sweepRows(d, share, "profit").map(r => {
-    const c = d.cells.find(x => x.share === share && x.strategy === r.strategy && x.policy === r.policy);
-    return { r, p: c && c.pl };
-  }).filter(x => x.p);
-  const U = FabUI.usd;
-  const body = rows.map(({ r, p }) => `<tr><td>${esc(FLOOR_WORDS[r.strategy])}, ${esc(POLICY_WORDS[r.policy])}</td>` +
-    `<td class="v">${p.capital ? U(p.capital) : "none"}</td><td class="v">${U(p.cash.mean, true)}</td>` +
-    `<td class="v">${p.capital ? paybackText(p.payback_days) : p.cash.lo > 0 ? "no capital needed" : "—"}</td>` +
-    `<td class="v">${U(p.npv.mean, true)} <span class="iv">(${U(p.npv.lo, true)} to ${U(p.npv.hi, true)})</span></td>` +
-    `<td><span class="pill ${r.verdict === "no clear effect" ? "unclear" : r.verdict}">${r.verdict}</span></td></tr>`).join("");
+  const U = FabUI.usd, period = UI.period || "day";
+  const g = FabUI.capitalGrid(d, share, period);
+  const short = { "P0 today": "Today's order", "P1 family B first": "Prototypes first", "P2 family cap": "Capped at the door",
+    "P3 reservation": "A tool kept for prototypes", "P4 qualification": "Half the tools" };
+  const pay = c => (!c.capital ? (c.verdict === "better" ? "no capital" : "") : paybackText(c.payback));
+  const cellHtml = (f, c, ci) => {
+    if (c.base) return `<td class="cg-base"><b>today's fab</b><span>the base</span></td>`;
+    if (c.missing) return `<td class="cg-na">—</td>`;
+    const v = c.verdict === "no clear effect" ? "unclear" : c.verdict;
+    return `<td class="cg ${v}${c.best ? " best" : ""}${UI.capPick === `${f.floor}|${c.policy}` ? " picked" : ""}" tabindex="0" data-k="${f.floor}|${c.policy}">` +
+      `<b>${U(c.value, true)}</b><span>${esc(pay(c))}</span>${c.best ? '<i class="star" title="best change here">best</i>' : ""}</td>`;
+  };
+  const head = `<tr><th></th>${g.policies.map(p => `<th>${esc(short[p])}</th>`).join("")}</tr>`;
+  const body = g.floors.map(f => `<tr><th class="cg-floor">${esc(FLOOR_WORDS[f.floor])}<span>${f.capital ? `costs ${U(f.capital)}` : "nothing to build"}</span></th>` +
+    f.cells.map((c, ci) => cellHtml(f, c, ci)).join("") + `</tr>`).join("");
+  // the detail line: the picked cell, else the best one
+  const all = g.floors.flatMap(f => f.cells.map(c => ({ f, c }))).filter(x => !x.c.base && !x.c.missing);
+  const pick = all.find(x => `${x.f.floor}|${x.c.policy}` === UI.capPick) || all.find(x => x.c.best) || all[0];
+  let detail = "";
+  if (pick) {
+    const { f, c } = pick;
+    detail = `<p class="cg-detail"><b>${esc(FLOOR_WORDS[f.floor])}, ${esc(POLICY_WORDS[c.policy])}</b>: ${U(c.value, true)} ${esc(g.unit)} ` +
+      `(95%: ${U(c.lo, true)} to ${U(c.hi, true)}), ${esc(c.verdict)}. ` +
+      (c.capital ? `Capital ${U(c.capital)}, pays back ${esc(paybackText(c.payback))}. ` : "Nothing to buy. ") +
+      `Value over 5 years ${U(c.npv.mean, true)} (${U(c.npv.lo, true)} to ${U(c.npv.hi, true)}).</p>`;
+  }
   const ck = (d.pl.checks || []).find(x => x.share === share);
   let check = "";
   if (ck) {
@@ -2037,11 +2053,20 @@ function drawCapital(d, share) {
         : "Its verdict holds when any one price moves to its low or high value.") + "</p>";
   }
   const sheet = FabUI.priceSheetRows(d.pl).map(r => `<tr><td>${esc(r.label)}</td><td class="v">${esc(r.central)}</td><td class="v">${esc(r.range)}</td><td>${r.note}</td></tr>`).join("");
-  el.innerHTML = `<h4>What each change buys at ×${share} prototype orders</h4>` +
-    `<table class="captab"><thead><tr><th>Floor and policy</th><th>Capital</th><th>Change in cash a day</th><th>Pays back in</th><th>Value over 5 years</th><th>Profit</th></tr></thead><tbody>${body}</tbody></table>` +
-    check +
+  el.innerHTML = `<div class="cg-head"><h4>What each change buys at ×${share} prototype orders</h4>` +
+    `<div class="seg cg-period" role="tablist" aria-label="Profit over">${[["day", "a day"], ["month", "a month"], ["year", "a year"]].map(([k, w]) =>
+      `<button type="button" role="tab" aria-selected="${k === period}" class="${k === period ? "on" : ""}" data-p="${k}">Profit ${w}</button>`).join("")}</div></div>` +
+    `<table class="capgrid"><thead>${head}</thead><tbody>${body}</tbody></table>` +
+    `<p class="note small cg-key"><span class="sw better"></span>better <span class="sw worse"></span>worse <span class="sw unclear"></span>no clear effect · each cell: change in operating profit ${esc(g.unit)} against today's fab, and payback · click a cell for its details</p>` +
+    detail + check +
     `<details class="sheet"><summary>How money is counted: the price sheet</summary><table class="captab"><thead><tr><th>Item</th><th>Used</th><th>Range tried</th><th></th></tr></thead><tbody>${sheet}</tbody></table>` +
     `<p class="note small">Today's tools already run the prototype route, so only new tools are qualified. Copies in the halls use spare space there; a wing is a new building. The value over 5 years discounts each day's cash at 10% a year and subtracts the capital.</p></details>`;
+  el.querySelectorAll(".cg-period button").forEach(b => (b.onclick = () => { UI.period = b.dataset.p; drawCapital(d, share); }));
+  el.querySelectorAll("td.cg").forEach(td => {
+    const go = () => { UI.capPick = td.dataset.k; drawCapital(d, share); };
+    td.onclick = go;
+    td.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
 }
 
 // ------------------------------------------------------------------ the Results tab: a log of every run
@@ -2186,7 +2211,7 @@ function glossarySetup() {
   document.addEventListener("click", e => { const b = e.target.closest("button.gl"); if (b) { e.preventDefault(); openGlossary(b.dataset.term); } });
   const wrap = el => {
     if (!el || el.dataset.glText === el.textContent) return;
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => (n.parentElement.closest("button, code, svg, .gl") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => (n.parentElement.closest("button, code, svg, .gl, table, h4") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     const seen = new Set();
