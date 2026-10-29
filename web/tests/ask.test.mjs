@@ -99,3 +99,23 @@ test("an arm's rule maps to the page's simulator", () => {
   assert.deepEqual(A.ruleCode({ rule: "today", bfirst: false }), { code: 0, exact: true });
   assert.deepEqual(A.ruleCode({ rule: "cr", bfirst: false }), { code: 0, exact: false });
 });
+
+// Answers in dollars (docs/MONEY-PL.md, deliverable 4): a report with operating profit shows it first, in dollars,
+// with each candidate's capital, payback and five-year value; an older report with only money a day still reads.
+test("a two-family answer in dollars, and an older one in margin units", () => {
+  const dollars = JSON.parse(JSON.stringify(fam));
+  for (const c of dollars.candidates) {
+    const m = c.measures.money;
+    c.measures.profit = { ...m, mean: m.mean === null ? null : m.mean * 6200, lo: m.lo === null ? null : m.lo * 6200, hi: m.hi === null ? null : m.hi * 6200 };
+    c.measures.cash = c.measures.profit;
+    c.pl = { capital: c.name.includes("wing") || c.name.includes("cop") ? 2e7 : 0, npv: { mean: 1e6, lo: -1e6, hi: 3e6 }, payback_days: { soonest: 40, latest: null } };
+  }
+  const rows = A.resultRows(dollars);
+  assert.equal(rows[0].cells[0].key, "profit");
+  assert.match(rows[0].cells[0].label, /Operating profit a day/);
+  assert.ok(rows.every(r => r.pl && "capital" in r.pl));
+  assert.match(A.summaryLine(dollars), /operating profit/);
+  const old = A.resultRows(fam);
+  assert.equal(old[0].cells[0].key, "money");
+  assert.equal(old[0].pl, null);
+});
