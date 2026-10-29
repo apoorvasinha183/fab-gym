@@ -99,7 +99,7 @@ test("one scrubber drives two runs", () => {
 test("the page opens on a question ready to ask", () => {
   const withHelper = U.openingState({ model_connected: false, examples: [{ question: "Q1" }, { question: "Q2" }] }, []);
   assert.deepEqual(withHelper.examples, ["Q1", "Q2"]);
-  assert.equal(withHelper.prompt, "Ask the fab a question");
+  assert.equal(withHelper.prompt, "So, what are we doing today?"); // the founder, 29 Oct, by quiz
   assert.equal(withHelper.explore, "or explore the floor");
   assert.equal(withHelper.canAsk, true);
   const without = U.openingState(null, [{ question: "Bundled" }]);
