@@ -96,3 +96,14 @@ Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less
   evolved rule 0.05 ms (its run counts every decision with today's rule), PPO 0.84 ms. The decision's own cost is a
   small part of these, except PPO's network.
 
+- **Regret D** (30 Oct; `results/long-rescore/regret-d/`, `regret_bd.sh`): from day 130, every 12-hour shift each of
+  today, FIFO, shortest first, critical ratio and random plays the shift on a copy, and the copy with the best
+  reward over that shift is kept, to day 190. Seeds 0 to 9.
+  - The kept path is **worse** than today's rule played throughout: by 2,184 reward with defects off (95% 1,602 to
+    2,767 worse) and 2,584 with them on (2,100 to 3,068 worse).
+  - Today's rule wins 791 of the 1,200 shifts and shortest first 375 (defects off). Shortest first wins a shift by
+    finishing short steps now, and the cost lands in later shifts.
+  - So a switcher that judges each shift by that shift alone is misled. The periodic supervisor (the founder's
+    thesis, a top-level rule every few hours) needs its choices scored over a horizon longer than the shift, with
+    the rule that follows playing on. D, as built, is not a hindsight bound; a D scored over a longer horizon is
+    still to build.
