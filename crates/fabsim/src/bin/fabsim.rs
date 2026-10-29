@@ -676,6 +676,7 @@ fn layout(args: &[String]) {
         let mut s = shop.clone();
         s.oht = Some(p.oht(c));
         s.ports = p.ports(c);
+        s.bayrails = p.bayrails(c);
         std::fs::write(data.join(format!("{name}.shop.txt")), s.to_text()).unwrap();
     }
     let lots: f64 = p.flows().iter().map(|f| f.2).sum();
@@ -726,6 +727,7 @@ fn variant_cmd(args: &[String]) {
     let mut ps = v.shop.clone();
     ps.oht = Some(v.problem.oht(&plain));
     ps.ports = v.problem.ports(&plain);
+    ps.bayrails = v.problem.bayrails(&plain);
     std::fs::write(data.join("plain.shop.txt"), ps.to_text()).unwrap();
     let s = Sheet::central();
     let cap = v.capital(&s);
@@ -768,7 +770,8 @@ fn fleet_trace(args: &[String]) {
     let r = run(&shop, &RunOptions { seed, until: Some(to), record: true }, None);
     let fo = r.fleet.as_ref().unwrap();
     let o = shop.oht.as_ref().unwrap();
-    let t = Track::with_ports(o, &shop.ports, cross);
+    let _ = cross;
+    let t = Track::from_shop(&shop);
     let tr = FleetTrace::new(o, &t, fo, from, to);
     let out = PathBuf::from(flag(args, "--out", "")).to_str().filter(|s| !s.is_empty()).map(PathBuf::from).unwrap_or_else(|| data.join(format!("fleet-{vehicles}.json")));
     std::fs::write(&out, tr.to_json()).unwrap();
@@ -777,6 +780,19 @@ fn fleet_trace(args: &[String]) {
         out.display(), tr.nodes.len(), tr.edges.len(), tr.entries.len(), tr.hoists.len(),
         fo.wait_sum / fo.wait_n.max(1) as f64, fo.deliver_sum / fo.delivered.max(1) as f64, fo.detours
     );
+}
+
+/// The track a fleet runs on (docs/FLEET.md), as segments on the campus plan, for checking against the drawings.
+fn track_cmd(args: &[String]) {
+    let data = PathBuf::from(flag(args, "--data", "data/layout-real-dd"));
+    let plan = flag(args, "--plan", "optimised");
+    let shop = Shop::parse(&std::fs::read_to_string(data.join(format!("{plan}.shop.txt"))).expect("run fabsim layout first")).unwrap();
+    let t = fabsim::track::Track::from_shop(&shop);
+    let segs = t.segments(shop.oht.as_ref().unwrap());
+    let body: Vec<String> = segs.iter().map(|s| format!("[{:.3},{:.3},{:.3},{:.3}]", s[0], s[1], s[2], s[3])).collect();
+    let out = PathBuf::from(flag(args, "--out", "track.json"));
+    std::fs::write(&out, format!("{{\"model\":\"SMT2020\",\"nodes\":{},\"runs\":[{}]}}\n", t.nodes().len(), body.join(","))).unwrap();
+    println!("wrote {}: {} nodes, {} stretches", out.display(), t.nodes().len(), segs.len());
 }
 
 fn layout_score(args: &[String]) {
@@ -917,6 +933,7 @@ fn main() {
         Some("layout-trace") => layout_trace(&args[1..]),
         Some("variant") => variant_cmd(&args[1..]),
         Some("fleet-trace") => fleet_trace(&args[1..]),
+        Some("track") => track_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

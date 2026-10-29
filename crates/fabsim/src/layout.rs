@@ -173,6 +173,10 @@ pub struct Plan {
     pub phases: Vec<[Vec<Block>; 2]>,
 }
 
+/// How far a load port stands in front of its tool (metres): the kit's etch port, as the drawings use it
+/// (viz/look/scene.py `port_v`); assumed for every kind.
+pub const PORT_V: f64 = 0.225;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bay {
     pub phase: usize,
@@ -663,17 +667,35 @@ impl Problem {
         self.lay(plan, true)
     }
 
-    /// Each tool's load port on the rail (docs/FLEET.md): the centre line of its bay, at the middle of the tool's depth
-    /// along the bay, grouped by tool group in the order the campus placed them.
+    /// The x of a bay's two rails, over wall 0's and wall 1's load ports, as the drawings put them (viz/look/scene.py:
+    /// the aisle's edge plus how far a port stands in front of its tool).
+    fn rails_x(&self, b: &Bay) -> [f64; 2] {
+        let cx = (b.x0 + b.x1) / 2.0;
+        let d = self.cfg.bay_aisle / 2.0 + PORT_V;
+        [cx - d, cx + d]
+    }
+
+    /// Each tool's load port (docs/FLEET.md): under the rail of its wall, at the middle of the tool along the bay,
+    /// grouped by tool group in the order the campus placed them.
     pub fn ports(&self, c: &Campus) -> Vec<(String, Place)> {
         let mut out = vec![];
         for g in 0..self.names.len() {
             for tb in c.tools.iter().filter(|t| t.group == g) {
                 let b = &c.bays[tb.bay];
-                out.push((self.names[g].clone(), Place { phase: tb.phase, side: tb.side, bay: tb.bay, x: (b.x0 + b.x1) / 2.0, y: (tb.y0 + tb.y1) / 2.0 }));
+                let wall = if (tb.x0 + tb.x1) / 2.0 < (b.x0 + b.x1) / 2.0 { 0 } else { 1 };
+                out.push((self.names[g].clone(), Place { phase: tb.phase, side: tb.side, bay: tb.bay, x: self.rails_x(b)[wall], y: (tb.y0 + tb.y1) / 2.0 }));
             }
         }
         out
+    }
+
+    /// Each bay's two rails and the depth where they join (docs/FLEET.md).
+    pub fn bayrails(&self, c: &Campus) -> Vec<crate::shop::BayRail> {
+        c.bays
+            .iter()
+            .enumerate()
+            .map(|(i, b)| crate::shop::BayRail { bay: i, phase: b.phase, side: b.side, x: self.rails_x(b), far: self.cfg.bay_depth })
+            .collect()
     }
 
     /// The OHT record for a campus, with the config's hoist numbers.

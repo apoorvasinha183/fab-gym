@@ -98,8 +98,8 @@ fn vehicles_never_pass_one_another() {
     let Some(s) = campus() else { return };
     let sh = with(s, fleet(60, 2));
     let o = sh.oht.as_ref().unwrap();
-    // the track the engine builds: with the tools' ports when the shop lists them
-    let t = Track::with_ports(o, &sh.ports, 60.0);
+    // the track the engine builds from the shop
+    let t = Track::from_shop(&sh);
     let r = go(&sh, 1, 1.0, true);
     let f = r.fleet.as_ref().unwrap();
     assert!(!f.entries.is_empty());
@@ -283,7 +283,7 @@ fn the_fleet_trace_holds_the_track_and_the_vehicles_in_its_window() {
     let Some(s) = campus() else { return };
     let sh = with(s, fleet(160, 2));
     let o = sh.oht.as_ref().unwrap();
-    let t = Track::with_ports(o, &sh.ports, 60.0);
+    let t = Track::from_shop(&sh);
     let r = go(&sh, 3000, 1.0, true);
     let f = r.fleet.as_ref().unwrap();
     let (from, to) = (600.0, 660.0);

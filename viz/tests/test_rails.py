@@ -8,6 +8,7 @@ simulator moves vehicles on (`fabsim track`), both as straight runs on the plan.
 """
 
 import json
+import math
 import subprocess
 import tempfile
 import unittest
@@ -18,14 +19,19 @@ FABSIM = ROOT / "target/release/fabsim"
 DATA = ROOT / "data/layout-real-dd"
 
 
+def snap(v):
+    """To the centimetre below, after a micrometre's nudge, so 25.825 and 25.82499999 land together."""
+    return math.floor((v + 1e-6) * 100) / 100
+
+
 def runs(segs):
     """Axis-aligned segments merged into maximal straight runs, as rounded tuples (direction dropped)."""
     lines = {}
     for (ax, ay), (bx, by) in segs:
         if abs(ay - by) < 1e-6:
-            k, lo, hi = ("h", round(ay, 2)), min(ax, bx), max(ax, bx)
+            k, lo, hi = ("h", snap(ay)), min(ax, bx), max(ax, bx)
         elif abs(ax - bx) < 1e-6:
-            k, lo, hi = ("v", round(ax, 2)), min(ay, by), max(ay, by)
+            k, lo, hi = ("v", snap(ax)), min(ay, by), max(ay, by)
         else:
             raise AssertionError(f"a rail that is not straight along the plan: {(ax, ay, bx, by)}")
         if hi - lo > 1e-6:

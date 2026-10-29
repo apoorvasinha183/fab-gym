@@ -197,6 +197,19 @@ pub struct Shop {
     /// (group, place): each tool's load port on the rail, in the order of the group's tools (docs/FLEET.md);
     /// read only by a fleet
     pub ports: Vec<(String, Place)>,
+    /// each bay's two rails, one over each wall's ports (docs/FLEET.md); read only by a fleet
+    pub bayrails: Vec<BayRail>,
+}
+
+/// A bay's rails (docs/FLEET.md): the bay, its phase and side, the x of the rail over wall 0's and wall 1's ports
+/// (along the spine, in its phase), and the depth of the far end where the two join.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BayRail {
+    pub bay: usize,
+    pub phase: usize,
+    pub side: usize,
+    pub x: [f64; 2],
+    pub far: f64,
 }
 
 /// The fleet (docs/FLEET.md): vehicles on the one-way track, the gap between them (metres), minutes to hoist a lot
@@ -500,6 +513,10 @@ impl Shop {
                         places: vec![],
                     });
                 }
+                "bayrail" => {
+                    need(7)?;
+                    s.bayrails.push(BayRail { bay: pi(f[1])?, phase: pi(f[2])?, side: pi(f[3])?, x: [pf(f[4])?, pf(f[5])?], far: pf(f[6])? });
+                }
                 "port" => {
                     need(7)?;
                     s.ports.push((f[1].to_string(), read_place(&f[2..])?));
@@ -538,7 +555,7 @@ impl Shop {
         if let Some(o) = &s.oht {
             o.check()?;
         }
-        if !s.ports.is_empty() && s.oht.is_none() {
+        if (!s.ports.is_empty() || !s.bayrails.is_empty()) && s.oht.is_none() {
             return Err("ports need a layout (an oht record)".into());
         }
         if let Some(f) = &s.fleet {
@@ -593,6 +610,9 @@ impl Shop {
         if self.oht.is_some() {
             for (g, p) in &self.ports {
                 let _ = writeln!(o, "port\t{g}\t{}", write_place(p));
+            }
+            for b in &self.bayrails {
+                let _ = writeln!(o, "bayrail\t{}\t{}\t{}\t{}\t{}\t{}", b.bay, b.phase, b.side, pyrepr(b.x[0]), pyrepr(b.x[1]), pyrepr(b.far));
             }
         }
         if let Some(f) = &self.fleet {

@@ -109,3 +109,16 @@ replay the fleet.
   - 80 vehicles: a lot waits 37 min for a vehicle and output falls by a quarter;
   - 120 vehicles: a 7.5 min wait, output as today;
   - 160 to 400 vehicles: about 1.2 min, with a delivery taking 5.5 min against today's 4.6.
+- 29 Oct, by quiz: the drawn rails are the true track (the founder: keep the drawings' presentation, do not
+  oversimplify). `Track::drawn` builds the rails the drawings show (viz/look/scene.py):
+  - two spine rails at +-2.2 m running the whole campus across the bridge, the north one east and the south one west;
+  - crossovers both ways where the drawings put them (about every 20 m, none within 7.5 m of a stocker);
+  - stockers every 60 m on the spine, their ports on the spine rails above them;
+  - in every bay a rail over each wall's load ports, joined at the far end: in along one, out along the other.
+
+  Each tool's port sits under its wall's rail (`bayrail` records, written by `fabsim layout` and `fabsim variant`;
+  the port's offset in front of a tool, 0.225 m, is the drawings' own). `viz/tests/test_rails.py` checks that the
+  scene's rails and the simulator's track are the same straight runs. Its first run differed only by rounding at
+  half a centimetre, so its rounding now snaps both sides the same way. The no-passing and trace tests, and
+  `fabsim fleet-trace`, build the track from the shop as the engine does. The spurs and the single centre loop
+  remain only for shops without bay rails.

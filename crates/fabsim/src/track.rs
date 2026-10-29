@@ -37,8 +37,10 @@ pub struct NodeAt {
     pub group: Option<usize>,
     /// a tool's load port (index into the shop's ports)
     pub tool: Option<usize>,
-    /// a bay's stocker spur
+    /// a bay's stocker spur (the track built without drawn rails)
     pub spur: bool,
+    /// a stocker's port, on a spine lane above the stocker (the drawn track)
+    pub stocker: bool,
 }
 
 pub struct Track {
@@ -72,6 +74,194 @@ impl Ord for Item {
 
 fn key(x: f64) -> i64 {
     (x * 1000.0).round() as i64
+}
+
+/// The drawn rails' constants (viz/look/scene.py): the spine rails at +-2.2 m from the spine's middle, a stocker on
+/// the spine every 60 m, a crossover every 20 m or so, none within 7.5 m of a stocker.
+pub const INTERBAY_Y: f64 = 2.2;
+pub const STOCKER_EVERY: f64 = 60.0;
+pub const CROSS_EVERY: f64 = 20.0;
+const CROSS_CLEAR: f64 = 7.5;
+
+/// Where the drawings put a phase's stockers and crossovers along its spine (x in the phase).
+pub fn stockers_and_crossovers(len: f64) -> (Vec<f64>, Vec<f64>) {
+    let n = ((len / STOCKER_EVERY).floor() as usize).max(1);
+    let st: Vec<f64> = (0..n).map(|j| (j as f64 + 0.5) * len / n as f64).collect();
+    let m = ((len / CROSS_EVERY).floor() as usize).max(2);
+    let cr = (0..=m).map(|i| 1.0 + i as f64 * (len - 2.0) / m as f64).filter(|x| st.iter().all(|s| (x - s).abs() > CROSS_CLEAR)).collect();
+    (st, cr)
+}
+
+impl Track {
+    /// The track a shop's fleet runs on: the drawn rails when the shop lists its bays' rails, else the track built
+    /// from its ports or its groups' places.
+    pub fn from_shop(shop: &crate::shop::Shop) -> Track {
+        let o = shop.oht.as_ref().expect("a track needs a layout");
+        if shop.bayrails.is_empty() {
+            Track::with_ports(o, &shop.ports, shop.fleet.as_ref().map(|f| f.cross).unwrap_or(60.0))
+        } else {
+            Track::drawn(o, &shop.ports, &shop.bayrails)
+        }
+    }
+
+    /// The drawn rails (viz/look/scene.py) as a one-way track:
+    /// - each spine rail runs the whole campus, across the bridges: the north one east, the south one west;
+    /// - crossovers join the two both ways where the drawings put them;
+    /// - a stocker's port is the point of each spine rail above it;
+    /// - a bay's loop leaves its spine rail along the rail over one wall's ports, crosses at the far end and returns
+    ///   along the other wall's rail: on the north side in along wall 0's rail, on the south side in along wall 1's.
+    pub fn drawn(o: &Oht, ports: &[(String, Place)], bays: &[crate::shop::BayRail]) -> Track {
+        let mut t = Track {
+            nodes: vec![],
+            edges: vec![],
+            out: vec![],
+            stops: HashMap::new(),
+            ports: HashMap::new(),
+            spurs: HashMap::new(),
+            lanes: HashMap::new(),
+            dist: vec![],
+            next: vec![],
+        };
+        let nph = o.lengths.len();
+        let lane_y = INTERBAY_Y - o.spine / 2.0; // depth from the spine's edge: inside the spine
+        let mut stock: HashMap<usize, Vec<f64>> = HashMap::new();
+        let mut cross: HashMap<usize, Vec<f64>> = HashMap::new();
+        let mut lane_x: HashMap<(usize, usize), Vec<f64>> = HashMap::new();
+        for ph in 0..nph {
+            let (st, cr) = stockers_and_crossovers(o.lengths[ph]);
+            for side in 0..2 {
+                let mut xs = vec![0.0, o.lengths[ph]];
+                xs.extend(&st);
+                xs.extend(&cr);
+                lane_x.insert((ph, side), xs);
+            }
+            stock.insert(ph, st);
+            cross.insert(ph, cr);
+        }
+        for b in bays {
+            let xs = lane_x.get_mut(&(b.phase, b.side)).unwrap();
+            xs.extend(b.x);
+        }
+        let mut lane_keys: Vec<(usize, usize)> = lane_x.keys().copied().collect();
+        lane_keys.sort();
+        for lk in &lane_keys {
+            let mut xs = lane_x[lk].clone();
+            xs.sort_by(|a, b| a.total_cmp(b));
+            xs.dedup_by(|a, b| key(*a) == key(*b));
+            let st = &stock[&lk.0];
+            let ids: Vec<(f64, usize)> = xs
+                .iter()
+                .map(|&x| {
+                    let is_st = st.iter().any(|s| key(*s) == key(x));
+                    (x, t.node(NodeAt { phase: lk.0, side: lk.1, x, y: lane_y, bay: usize::MAX, group: None, tool: None, spur: false, stocker: is_st }))
+                })
+                .collect();
+            for w in ids.windows(2) {
+                let (a, b) = if lk.1 == 0 { (w[0], w[1]) } else { (w[1], w[0]) };
+                t.edge(a.1, b.1, (b.0 - a.0).abs());
+            }
+            t.lanes.insert(*lk, ids);
+        }
+        for ph in 0..nph {
+            for &x in &cross[&ph] {
+                let (a, b) = (t.lane(ph, 0, x), t.lane(ph, 1, x));
+                t.edge(a, b, 2.0 * INTERBAY_Y);
+                t.edge(b, a, 2.0 * INTERBAY_Y);
+            }
+            if ph + 1 < nph {
+                let len = o.lengths[ph];
+                let (e0, w0n) = (t.lane(ph, 0, len), t.lane(ph + 1, 0, 0.0));
+                t.edge(e0, w0n, o.bridge.max(LEAST));
+                let (w1n, e1) = (t.lane(ph + 1, 1, 0.0), t.lane(ph, 1, len));
+                t.edge(w1n, e1, o.bridge.max(LEAST));
+            }
+        }
+        // the bay loops, with a stop at every tool's port
+        for b in bays {
+            let (win, wout) = if b.side == 0 { (0, 1) } else { (1, 0) };
+            let (xin, xout) = (b.x[win], b.x[wout]);
+            let mut on_in: Vec<(usize, f64)> = vec![];
+            let mut on_out: Vec<(usize, f64)> = vec![];
+            for (j, (_, p)) in ports.iter().enumerate() {
+                if p.bay == b.bay {
+                    if key(p.x) == key(xin) {
+                        on_in.push((j, p.y));
+                    } else {
+                        on_out.push((j, p.y));
+                    }
+                }
+            }
+            on_in.sort_by(|a, c| a.1.total_cmp(&c.1).then(a.0.cmp(&c.0)));
+            on_out.sort_by(|a, c| c.1.total_cmp(&a.1).then(a.0.cmp(&c.0)));
+            let rail = |t: &mut Track, x: f64, y: f64, tool: Option<usize>| {
+                t.node(NodeAt { phase: b.phase, side: b.side, x, y, bay: b.bay, group: None, tool, spur: false, stocker: false })
+            };
+            let (mut prev, mut py) = (t.lane(b.phase, b.side, xin), lane_y);
+            for &(j, y) in &on_in {
+                let n = rail(&mut t, xin, y, Some(j));
+                t.edge(prev, n, (y - py).abs().max(LEAST));
+                prev = n;
+                py = y;
+            }
+            let c_in = rail(&mut t, xin, b.far, None);
+            t.edge(prev, c_in, (b.far - py).abs().max(LEAST));
+            let c_out = rail(&mut t, xout, b.far, None);
+            t.edge(c_in, c_out, (xout - xin).abs().max(LEAST));
+            let (mut prev, mut py) = (c_out, b.far);
+            for &(j, y) in &on_out {
+                let n = rail(&mut t, xout, y, Some(j));
+                t.edge(prev, n, (py - y).abs().max(LEAST));
+                prev = n;
+                py = y;
+            }
+            let jout = t.lane(b.phase, b.side, xout);
+            t.edge(prev, jout, (py - lane_y).abs().max(LEAST));
+        }
+        let mut node_of_port = vec![usize::MAX; ports.len()];
+        for (n, a) in t.nodes.iter().enumerate() {
+            if let Some(j) = a.tool {
+                node_of_port[j] = n;
+            }
+        }
+        for (j, (g, _)) in ports.iter().enumerate() {
+            assert!(node_of_port[j] != usize::MAX, "port {j} of {g} is in no bay with rails");
+            t.ports.entry(g.clone()).or_default().push(node_of_port[j]);
+        }
+        for (g, v) in &t.ports {
+            t.stops.insert(g.clone(), v[0]);
+        }
+        // the stockers' ports, for lots sent to a stocker
+        for (n, a) in t.nodes.iter().enumerate() {
+            if a.stocker {
+                t.spurs.entry((a.phase, a.side)).or_default().push((a.x, n));
+            }
+        }
+        t.out = vec![vec![]; t.nodes.len()];
+        for (i, e) in t.edges.iter().enumerate() {
+            t.out[e.from].push(i);
+        }
+        t.routes();
+        t
+    }
+
+    /// Every stretch as a segment on the campus plan (x east, y north, metres), for checking against the drawings.
+    pub fn segments(&self, o: &Oht) -> Vec<[f64; 4]> {
+        let mut off = vec![0.0];
+        for k in 1..o.lengths.len() {
+            off.push(off[k - 1] + o.lengths[k - 1] + o.bridge);
+        }
+        let w = |n: &NodeAt| {
+            let d = o.spine / 2.0 + n.y;
+            (off[n.phase] + n.x, if n.side == 0 { d } else { -d })
+        };
+        self.edges
+            .iter()
+            .map(|e| {
+                let (a, b) = (w(&self.nodes[e.from]), w(&self.nodes[e.to]));
+                [a.0, a.1, b.0, b.1]
+            })
+            .collect()
+    }
 }
 
 impl Track {
@@ -154,7 +344,7 @@ impl Track {
             let mut xs = lane_x[lk].clone();
             xs.sort_by(|a, b| a.total_cmp(b));
             xs.dedup_by(|a, b| key(*a) == key(*b));
-            let ids: Vec<(f64, usize)> = xs.iter().map(|&x| (x, t.node(NodeAt { phase: lk.0, side: lk.1, x, y: 0.0, bay: usize::MAX, group: None, tool: None, spur: false }))).collect();
+            let ids: Vec<(f64, usize)> = xs.iter().map(|&x| (x, t.node(NodeAt { phase: lk.0, side: lk.1, x, y: 0.0, bay: usize::MAX, group: None, tool: None, spur: false, stocker: false }))).collect();
             for w in ids.windows(2) {
                 let (a, b) = if lk.1 == 0 { (w[0], w[1]) } else { (w[1], w[0]) };
                 t.edge(a.1, b.1, (b.0 - a.0).abs());
@@ -193,7 +383,7 @@ impl Track {
             let (mut prev, mut px, mut py) = (jin, xi, 0.0);
             for (i, p) in &g {
                 let (group, tool) = if ports.is_empty() { (Some(*i), None) } else { (None, Some(*i)) };
-                let n = t.node(NodeAt { phase: k.0, side: k.1, x: p.x, y: p.y, bay: k.2, group, tool, spur: false });
+                let n = t.node(NodeAt { phase: k.0, side: k.1, x: p.x, y: p.y, bay: k.2, group, tool, spur: false, stocker: false });
                 if ports.is_empty() {
                     t.stops.insert(o.places[*i].0.clone(), n);
                 }
@@ -204,7 +394,7 @@ impl Track {
             }
             t.edge(prev, jout, ((xo - px).abs() + py).max(LEAST));
             // the bay's stocker port, on a spur off the lane at the bay's downstream end
-            let sp = t.node(NodeAt { phase: k.0, side: k.1, x: xo, y: 0.0, bay: k.2, group: None, tool: None, spur: true });
+            let sp = t.node(NodeAt { phase: k.0, side: k.1, x: xo, y: 0.0, bay: k.2, group: None, tool: None, spur: true, stocker: false });
             t.edge(jout, sp, SPUR);
             t.edge(sp, jout, SPUR);
             t.spurs.entry((k.0, k.1)).or_default().push((xo, sp));

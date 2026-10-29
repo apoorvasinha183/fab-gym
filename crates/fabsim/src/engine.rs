@@ -1877,7 +1877,7 @@ pub fn run_vehicles<'c>(
         holds: vec![],
         fl: match (&shop.fleet, &shop.oht) {
             (Some(f), Some(o)) => {
-                let track = crate::track::Track::with_ports(o, &shop.ports, f.cross);
+                let track = crate::track::Track::from_shop(shop);
                 let stops = shop.groups.iter().map(|g| track.stop_of(&g.name)).collect();
                 let gports = shop.groups.iter().map(|g| track.ports_of(&g.name).to_vec()).collect();
                 Some(FleetState::new(track, o.speed, f.gap, f.hoist, f.vehicles, f.controller != "first", stops, gports))

@@ -236,7 +236,7 @@ impl FleetState {
 pub struct TraceNode {
     pub x: f64,
     pub y: f64,
-    /// "lane", "port" (a tool's load port), "stop" (a group's stop, without ports) or "spur" (a stocker port)
+    /// "lane", "port" (a tool's load port), "stop" (a group's stop, without ports), "spur" or "stocker" (a stocker's port)
     pub kind: &'static str,
 }
 
@@ -269,7 +269,7 @@ impl FleetTrace {
                 TraceNode {
                     x: offsets[n.phase] + n.x,
                     y: if n.side == 0 { d } else { -d },
-                    kind: if n.spur { "spur" } else if n.tool.is_some() { "port" } else if n.group.is_some() { "stop" } else { "lane" },
+                    kind: if n.spur { "spur" } else if n.stocker { "stocker" } else if n.tool.is_some() { "port" } else if n.group.is_some() { "stop" } else { "lane" },
                 }
             })
             .collect();
