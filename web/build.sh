@@ -22,6 +22,8 @@ fs.writeFileSync("web/data/examples.json", JSON.stringify(ex));
 if [ -f data/layout-real-dd/optimised.shop.txt ]; then
   cargo run --release -q --bin fabsim -- fleet-trace --vehicles 160 --day 1 --minutes 60
   python3 viz/fleet/building.py --out web/data
+  # one lot of product 3 from its release on day 20 to its finish: web/data/journey.json
+  cargo run --release -q --bin fabsim -- follow --out web/data/journey.json
 fi
 # the Results tab: every saved experiment with its settings and numbers
 node web/tools/results-build.js > web/data/results.json

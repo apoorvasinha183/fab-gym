@@ -842,6 +842,8 @@ let lensShown = "";
 function lensNote() {
   let txt = "";
   $("flow-ctl").hidden = UI.lens !== "flows" || !!(G && G.real);
+  $("journey-ctl").hidden = UI.lens !== "flows" || !(G && G.real);
+  if (JOURNEY.on && (UI.lens !== "flows" || !(G && G.real))) journeyStop();
   // the prototype view needs prototype lots in the fab
   let np = 0;
   for (const tr of cur.active) if (tr[6]) np++;
@@ -850,7 +852,7 @@ function lensNote() {
   const off = np === 0 && UI.lens !== "proto";
   if (pb.disabled !== off) { pb.disabled = off; pb.title = off ? "No prototype lots in this run. Ask a question about prototypes, then show an answer on the floor." : ""; }
   if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
-  else if (UI.lens === "flows") txt = G && G.real ? realFollowNote() : flowNote();
+  else if (UI.lens === "flows") txt = JOURNEY.on ? journeyNote() : G && G.real ? realFollowNote() : flowNote();
   else if (UI.lens === "proto") {
     let n = 0;
     for (const tr of cur.active) if (tr[6]) n++;
@@ -925,6 +927,7 @@ function frame(now) {
   stepFly(now);
   if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
   if (UI.lens === "flows" && !FLOW.paused) FLOW.secs += dt;
+  if (JOURNEY.on && !JOURNEY.paused && JOURNEY.P) { JOURNEY.p = Math.min(JOURNEY.P.total, JOURNEY.p + dt * JOURNEY.rate); journeyCamera(dt); }
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -1791,6 +1794,7 @@ async function chromeSetup() {
   $("down-group").addEventListener("change", outage);
   outage();
   glossarySetup();
+  journeySetup();
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
     FLOW.secs = 0;
@@ -1904,10 +1908,18 @@ function drawReal(s) {
   const order = B.tools.map((b, i) => [S(...rw((b[1] + b[2]) / 2, (b[3] + b[4]) / 2))[1], i]).sort((x, y) => x[0] - y[0]);
   if (dimTools) ctx.globalAlpha = 0.35;
   const followTool = UI.lens === "flows" && R.follow >= 0 ? realToolOfLot(R, R.follow) : -1;
+  const jr = JOURNEY.on ? journeyNow() : null;
+  if (jr) ctx.globalAlpha = 1;
   for (const [, i] of order) {
     const b = B.tools[i], k = R.toolOfBox[i];
     const st = k >= 0 ? cur.toolState[k] : 1;
     let top = LOOK.body, panel = st === 1 ? null : STATE_COLORS[st];
+    if (jr) {
+      // following one lot: the fab in grey, the tools it has used faintly lit, the one it is at in pink
+      const here = k === jr.tool, been = jr.visited.has(k);
+      block(b[1], b[2], b[3], b[4], b[7], here ? LOOK.proto : been ? "#3d5a5e" : "#283236", here && jr.kind === "work" ? "#c25aa6" : null, null);
+      continue;
+    }
     if (UI.lens === "heat" && k >= 0) { const q = cur.queue[P.toolGroup[k]]; if (q > 0) top = FabUI.heatColor(Math.min(1, q / 30)); }
     if (k === followTool) { ctx.globalAlpha = 1; top = LOOK.proto; }
     block(b[1], b[2], b[3], b[4], b[7], top, panel, st === 1 ? STATE_COLORS[1] : null);
@@ -1915,6 +1927,7 @@ function drawReal(s) {
   }
   ctx.globalAlpha = 1;
   for (const st of B.stockers) block(st[0], st[1], st[2], st[3], 4, REAL_LOOK.stockerTop, REAL_LOOK.stocker, null);
+  if (jr) { journeyDraw(jr, s); drawFlash(); return; }
   // wafers at a tool: the lot's 25 as a 5 by 5 grid on the working tool's panel, filled one by one over the step
   if (s >= 8) {
     screenSpace();
@@ -2027,6 +2040,134 @@ function realFlash(f, now) {
   ctx.lineWidth = Math.max(2, 0.4 * view.s);
   for (const b of bx.bays) { const [X, Y] = W(...rw(b[0], b[3])); ctx.strokeRect(X, Y, (b[1] - b[0]) * view.s, (b[3] - b[2]) * view.s); }
   ctx.restore();
+}
+
+// ------------------------------------------------------------------ one lot from start to finish (docs/LIVE-REAL.md)
+// In Flows on the real building: the whole fab in grey, one lot followed through every step of its route, released
+// to finished, from the native simulator's journey (web/data/journey.json, `fabsim follow`). Waits pass quickly,
+// work and moves slowly; the camera stays with the lot; the slider jumps to any step.
+const JOURNEY = { data: null, P: null, on: false, paused: false, rate: 4, p: 0, boxOf: null, loading: false };
+const JOURNEY_PACE = { wait: 0.8, work: 1.6, move: 2.4 };
+
+async function journeyStart() {
+  if (!JOURNEY.data && !JOURNEY.loading) {
+    JOURNEY.loading = true;
+    try { JOURNEY.data = await fetch("data/journey.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
+    catch { $("jr-label").textContent = "The journey is not in this copy of the page. Run web/build.sh."; JOURNEY.loading = false; return; }
+    JOURNEY.loading = false;
+  }
+  if (!JOURNEY.data || !G || !G.real) return;
+  JOURNEY.P = FabJourney.plan(JOURNEY.data, JOURNEY_PACE);
+  // the journey's tools are the engine's, numbered by group in the shop's order, as in today's run
+  JOURNEY.boxOf = P.real ? P.real.boxOf : null;
+  JOURNEY.on = true; JOURNEY.paused = false; JOURNEY.p = 0;
+  const n = JOURNEY.data.steps.length;
+  $("jr-step").max = String(n - 1);
+  for (const id of ["jr-play", "jr-rate", "jr-step-l"]) $(id).hidden = false;
+  $("follow-lot").textContent = "Stop following";
+  $("jr-play").textContent = "Pause";
+  const lot = journeyNow();
+  if (lot) { view.s = Math.max(view.s, 11); journeyCamera(1, true); }
+}
+
+function journeyStop() {
+  JOURNEY.on = false;
+  for (const id of ["jr-play", "jr-rate", "jr-step-l"]) $(id).hidden = true;
+  $("follow-lot").textContent = "Follow one lot, start to finish";
+  $("jr-label").textContent = "";
+}
+
+/** Where the followed lot is now: its step, what it is doing, the tool, its place on the plan, the tools it has used. */
+function journeyNow() {
+  const J = JOURNEY.data, a = FabJourney.at(JOURNEY.P, JOURNEY.p);
+  if (!a) return null;
+  const st = J.steps[a.step];
+  const visited = new Set();
+  for (let i = 0; i < a.step; i++) visited.add(J.steps[i][2]);
+  const N = G.B.track.nodes, E = G.B.track.edges;
+  let pos = null, how = a.kind;
+  if (a.kind === "move") {
+    const w = FabJourney.where(J, N, E, a.t);
+    if (w) { pos = [w.x, w.y]; how = w.state === "hoist" ? (w.up ? "up" : "down") : "rail"; }
+  }
+  // a step in a holding group (lots resting between steps; no tool drawn) shows the lot where it was set down
+  const resting = a.kind !== "move" && (G.B.holding || []).includes(st[1]);
+  const tool = a.kind === "move" || resting ? -1 : st[2];
+  if (!pos) {
+    const n = a.kind === "wait" || resting ? FabJourney.lastDrop(J, a.t) : -1;
+    if (n >= 0) pos = [N[n][0], N[n][1]];
+    else if (JOURNEY.boxOf && JOURNEY.boxOf[st[2]] >= 0) { const b = G.B.tools[JOURNEY.boxOf[st[2]]]; pos = [(b[1] + b[2]) / 2, (b[3] + b[4]) / 2]; }
+  }
+  return { ...a, how, st, tool, pos, visited, resting, boxOf: JOURNEY.boxOf };
+}
+
+function journeyCamera(dt, jump = false) {
+  const jr = journeyNow();
+  if (!jr || !jr.pos || drag_active()) return;
+  const pad = floorPad();
+  const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
+  updateTilt();
+  const [sx, sy] = untilt(pad.l + w / 2, pad.t + h / 2);
+  const [cx, cy] = rw(jr.pos[0], jr.pos[1]);
+  const tx = cx - sx / view.s, ty = cy - sy / view.s;
+  const k = jump ? 1 : Math.min(1, dt * (jr.kind === "move" ? 9 : 4));
+  view.x += (tx - view.x) * k;
+  view.y += (ty - view.y) * k;
+}
+function drag_active() { return document.querySelector("#floor.drag") !== null; }
+
+function journeyDraw(jr, s) {
+  // the followed tool's wafers, then the lot itself, large and pink
+  if (jr.tool >= 0 && jr.boxOf && jr.boxOf[jr.tool] >= 0 && jr.kind === "work") {
+    const b = G.B.tools[jr.boxOf[jr.tool]], done = FabBuilding.wafersDone(jr.st[4], jr.st[5], jr.t, JOURNEY.data.wafers || 25);
+    const hz = TILT.on ? b[7] * view.s * 0.55 : 0;
+    const r = Math.min(6, Math.max(1.2, 0.06 * Math.min(b[2] - b[1], b[4] - b[3]) * s));
+    screenSpace();
+    for (let w = 0; w < 25; w++) {
+      const u = 0.25 + 0.5 * ((w % 5) + 0.5) / 5, v = 0.25 + 0.5 * (Math.floor(w / 5) + 0.5) / 5;
+      const [X, Y] = S(...rw(b[1] + u * (b[2] - b[1]), b[3] + v * (b[4] - b[3])));
+      ctx.beginPath(); ctx.arc(X, Y - hz, r, 0, 2 * Math.PI);
+      ctx.fillStyle = w < done ? REAL_LOOK.wafer : "rgba(10, 20, 24, 0.6)"; ctx.fill();
+    }
+    floorSpace();
+  }
+  if (jr.pos && (jr.kind !== "work" || jr.resting)) {
+    // the lot as a pod, large and pink, in its own drawing (drawLot dims lots in Flows)
+    const [X, Y] = W(...rw(jr.pos[0], jr.pos[1]));
+    const [x, y] = T(X, Y), sz = Math.max(10, 1.8 * s), h = sz * 0.75, top = sz * 0.38;
+    screenSpace();
+    ctx.fillStyle = LOOK.bodyEdge; ctx.fillRect(x - sz / 2 - 1, y - h - top - 1, sz + 2, h + top + 2);
+    ctx.fillStyle = LOOK.protoTop; ctx.fillRect(x - sz / 2, y - h, sz, h);
+    ctx.fillStyle = LOOK.proto; ctx.fillRect(x - sz / 2, y - h - top, sz, top);
+    ctx.strokeStyle = LOOK.proto; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y - h / 2, Math.max(16, 2.4 * s), 0, 2 * Math.PI); ctx.stroke();
+    floorSpace();
+  }
+  const J = JOURNEY.data;
+  $("jr-step").value = String(jr.step);
+  const day = Math.floor(jr.t / 1440) + 1, m = Math.floor(jr.t % 1440);
+  const plainOf = name => P.plain[P.j.groups.findIndex(g => g[0] === name)] || name;
+  const next = J.steps[jr.step + 1];
+  const doing = jr.resting ? "resting between steps" : jr.kind === "wait" ? `waiting for a tool in ${plainOf(jr.st[1])}` : jr.kind === "work" ? `in ${plainOf(jr.st[1])}, its wafers going through` :
+    `${jr.how === "up" ? "hoisted up" : jr.how === "down" ? "set down" : jr.how === "rail" ? "on the rails" : "waiting for a vehicle"} from ${plainOf(jr.st[1])}${next ? ` to ${plainOf(next[1])}` : ""}`;
+  $("jr-label").textContent = `Step ${jr.step + 1} of ${J.steps.length} · ${doing} · day ${day} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+function journeyNote() {
+  const J = JOURNEY.data;
+  if (!J) return "";
+  const days = J.done !== null ? ((J.done - J.released) / 1440).toFixed(1) : "?";
+  return `Following ${J.lot} (${J.wafers} wafers of product 3) through its ${J.steps.length} steps, released day ${Math.floor(J.released / 1440) + 1}, finished ${days} days later. Grey: the rest of the fab. Lit: tools it has used.`;
+}
+
+function journeySetup() {
+  $("follow-lot").onclick = () => (JOURNEY.on ? journeyStop() : journeyStart());
+  $("jr-play").onclick = () => { JOURNEY.paused = !JOURNEY.paused; $("jr-play").textContent = JOURNEY.paused ? "Play" : "Pause"; };
+  document.querySelectorAll("#jr-rate button").forEach(b => (b.onclick = () => {
+    JOURNEY.rate = +b.dataset.k;
+    document.querySelectorAll("#jr-rate button").forEach(x => x.classList.toggle("on", x === b));
+  }));
+  $("jr-step").oninput = e => { if (JOURNEY.P) { JOURNEY.p = FabJourney.startOf(JOURNEY.P, +e.target.value); journeyCamera(1, true); } };
 }
 
 // The Flows view: one wafer's whole route replayed on the track. A lot runs from hall to hall along the spine with

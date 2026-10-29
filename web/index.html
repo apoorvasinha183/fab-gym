@@ -35,6 +35,14 @@
   <div class="seg" id="flow-route" role="group" aria-label="Product"><button type="button" data-r="3" class="on">Product 3</button><button type="button" data-r="4">Product 4</button></div>
 </div>
 
+<div id="journey-ctl" class="flow-ctl journey-ctl" hidden>
+  <button type="button" id="follow-lot">Follow one lot, start to finish</button>
+  <button type="button" id="jr-play" hidden>Pause</button>
+  <div class="seg" id="jr-rate" role="group" aria-label="Journey speed" hidden><button type="button" data-k="1">×1</button><button type="button" data-k="4" class="on">×4</button><button type="button" data-k="16">×16</button></div>
+  <label class="jr-step" id="jr-step-l" hidden><span class="sr">Step</span><input id="jr-step" type="range" min="0" max="0" value="0"></label>
+  <span id="jr-label" class="jr-label" aria-live="polite"></span>
+</div>
+
 <section class="card kpis" aria-label="How the fab is doing">
   <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
   <div class="kpi"><div class="v" id="k-wait">0</div><div class="l">lots waiting</div></div>
@@ -263,6 +271,7 @@
 <script src="glossary.js"></script>
 <script src="ask.js"></script>
 <script src="building.js"></script>
+<script src="journey.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

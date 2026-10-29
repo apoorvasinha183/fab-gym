@@ -519,6 +519,9 @@ struct Sim<'a, 'c> {
     ports: u32,
     from_tool: Option<u32>,
     vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+    /// one lot followed from start to finish (docs/LIVE-REAL.md): its steps and moves are kept without `record`
+    follow: Option<String>,
+    follow_lot: Option<u32>,
 }
 
 /// A defect finding: the tool that did the step, when, the step, the lot found, and the lots held with it.
@@ -1287,6 +1290,9 @@ impl<'a, 'c> Sim<'a, 'c> {
         };
         // with a fleet: at one of its first group's ports (spread over the tools by lot number), else a stocker spur
         let n_lot = self.lots.len();
+        if self.follow.as_deref() == Some(id.as_str()) {
+            self.follow_lot = Some(self.lots.len() as u32);
+        }
         let node = match &self.fl {
             None => 0,
             Some(f) => match self.routes[r].get(step).map(|st| st.group as usize) {
@@ -1571,10 +1577,12 @@ impl<'a, 'c> Sim<'a, 'c> {
         } else {
             fl.out.empty_m += len;
         }
+        let followed = self.follow_lot.is_some() && fl.veh[v as usize].job.as_ref().map(|j| j.lot) == self.follow_lot;
         let veh = &mut fl.veh[v as usize];
         veh.pos = Pos::Edge(e);
         veh.at_end = false;
-        if full {
+        veh.entry = usize::MAX;
+        if full || followed {
             veh.entry = fl.out.entries.len();
             fl.out.entries.push(Entry { vehicle: v, edge: e, t_in: t, t_out: f64::INFINITY, loaded });
         }
@@ -1586,8 +1594,8 @@ impl<'a, 'c> Sim<'a, 'c> {
         let fl = self.fl.as_mut().unwrap();
         let first = fl.edge_q[e].pop_front();
         debug_assert_eq!(first, Some(v), "vehicles leave a stretch in the order they entered");
-        if full {
-            let i = fl.veh[v as usize].entry;
+        let i = fl.veh[v as usize].entry;
+        if (full || self.follow_lot.is_some()) && i != usize::MAX {
             fl.out.entries[i].t_out = t;
         }
         let mut wake: Vec<u32> = std::mem::take(&mut fl.edge_wait[e]);
@@ -1625,7 +1633,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             fl.out.wait_max = fl.out.wait_max.max(w);
         }
         fl.veh[vi].mode = if up { Mode::HoistUp } else { Mode::HoistDown };
-        if full {
+        if full || Some(job.lot) == self.follow_lot {
             fl.veh[vi].hoist = fl.out.hoists.len();
             fl.out.hoists.push(HoistRec { vehicle: v, stop: n, lot: job.lot, up, t0: t, t1: t + fl.hoist });
         }
@@ -1679,6 +1687,12 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
     run_vehicles(shop, opts, chooser, None)
 }
 
+/// A run that follows one lot by its name (docs/LIVE-REAL.md): without `record`, it keeps only that lot's steps in
+/// `trace` and, with a fleet, only its moves and hoists, and it stops once the lot has left the fab.
+pub fn run_follow(shop: &Shop, opts: &RunOptions, lot: &str) -> RunResult {
+    run_inner(shop, opts, None, None, Some(lot.to_string()))
+}
+
 /// `run` with a vehicle controller (docs/FLEET.md): asked which idle vehicle takes each move, when the shop has a
 /// fleet. A pick that is not one of the idle vehicles is refused, counted, and the built-in pick used instead.
 pub fn run_vehicles<'c>(
@@ -1686,6 +1700,16 @@ pub fn run_vehicles<'c>(
     opts: &RunOptions,
     chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
     vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+) -> RunResult {
+    run_inner(shop, opts, chooser, vchooser, None)
+}
+
+fn run_inner<'c>(
+    shop: &Shop,
+    opts: &RunOptions,
+    chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
+    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+    follow: Option<String>,
 ) -> RunResult {
     let horizon = opts.until.unwrap_or(f64::INFINITY);
     // compile the shop into indexes
@@ -1887,6 +1911,8 @@ pub fn run_vehicles<'c>(
         ports: shop.fleet.as_ref().filter(|_| shop.oht.is_some()).map(|f| f.ports as u32).unwrap_or(0),
         from_tool: None,
         vchooser,
+        follow,
+        follow_lot: None,
     };
 
     // downs: given windows, maintenance calendars, breakdowns
@@ -1944,6 +1970,9 @@ pub fn run_vehicles<'c>(
 
     while let Some(HeapItem { t, ev, .. }) = sim.heap.pop() {
         if t > horizon {
+            break;
+        }
+        if sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some()) {
             break;
         }
         sim.now = t;
@@ -2037,6 +2066,10 @@ pub fn run_vehicles<'c>(
             }
             Ev::Begin(ti, batch, dur) => {
                 sim.set_state(ti, t, PRODUCTIVE, "");
+                if let Some(fl) = sim.follow_lot.filter(|f| !sim.full && batch.contains(f)) {
+                    let lot = &sim.lots[fl as usize];
+                    sim.trace.push(Trace { lot: fl, step: lot.step as u32, tool: ti, arrive: lot.arrived, start: t, end: t + dur });
+                }
                 if sim.full {
                     for &l in &batch {
                         let name = sim.tools[ti as usize].name.clone();
@@ -2091,7 +2124,8 @@ pub fn run_vehicles<'c>(
         }
     }
 
-    let end = if horizon.is_infinite() { sim.now } else { horizon };
+    let followed_done = sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some());
+    let end = if horizon.is_infinite() || followed_done { sim.now } else { horizon };
     for tool in &mut sim.tools {
         let x = end - tool.since;
         tool.minutes[tool.state as usize] += if x > 0.0 { x } else { 0.0 };

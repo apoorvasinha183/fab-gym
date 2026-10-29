@@ -795,6 +795,56 @@ fn track_cmd(args: &[String]) {
     println!("wrote {}: {} nodes, {} stretches", out.display(), t.nodes().len(), segs.len());
 }
 
+/// One lot from start to finish (docs/LIVE-REAL.md): the first lot of `--route` released on or after `--day` on the
+/// layout's shop with a fleet of `--vehicles`, followed until it leaves the fab; its steps, rail stays and hoists.
+fn follow_cmd(args: &[String]) {
+    use fabsim::shop::Fleet;
+    use std::fmt::Write as _;
+    let data = PathBuf::from(flag(args, "--data", "data/layout-real-dd"));
+    let mut shop = Shop::parse(&std::fs::read_to_string(data.join("optimised.shop.txt")).expect("run fabsim layout first")).unwrap();
+    let vehicles = arg(args, "--vehicles", 160) as usize;
+    shop.fleet = Some(Fleet { vehicles, gap: 3.0, hoist: 1.0, ports: 2, cross: 60.0, controller: "nearest".into() });
+    let route = flag(args, "--route", "part_3").to_string();
+    let day: f64 = flag(args, "--day", "20").parse().expect("--day is a number");
+    let rel = shop.releases.iter().find(|r| r.route == route && r.prefix.starts_with("Lot_")).expect("a plain release of that route");
+    let n = ((day * 1440.0 - rel.first) / rel.every).ceil().max(0.0) as i64;
+    let id = format!("{}.{}", rel.prefix, n);
+    let seed = arg(args, "--seed", 3000);
+    let days = arg(args, "--days", 150) as f64;
+    let t0 = Instant::now();
+    let r = fabsim::engine::run_follow(&shop, &RunOptions { seed, until: Some(days * 1440.0), record: false }, &id);
+    let li = r.lots.iter().position(|l| l.id == id).expect("the lot was released");
+    let lot = &r.lots[li];
+    let names: Vec<&str> = shop.groups.iter().map(|g| g.name.as_str()).collect();
+    let tool_group: Vec<usize> = shop.groups.iter().enumerate().flat_map(|(gi, g)| std::iter::repeat_n(gi, g.count)).collect();
+    let n4 = |x: f64| if x.is_finite() { format!("{x:.3}") } else { "null".into() };
+    let mut o = format!(
+        "{{\"model\":\"SMT2020\",\"what\":\"One lot followed from release to finish on today's US building with {vehicles} vehicles, seed {seed}; a gigafab-style layout of our own design on the SMT2020 model, not a real fab.\",\"lot\":\"{id}\",\"route\":\"{route}\",\"wafers\":{},\"released\":{},\"done\":{},\"route_steps\":{},\"steps\":[",
+        lot.size, n4(lot.release), lot.done.map(n4).unwrap_or("null".into()), shop.routes.iter().find(|x| x.name == route).map(|x| x.steps.len()).unwrap_or(0)
+    );
+    for (i, t) in r.trace.iter().enumerate() {
+        let _ = write!(o, "{}[{},\"{}\",{},{},{},{}]", if i > 0 { "," } else { "" }, t.step, names[tool_group[t.tool as usize]], t.tool, n4(t.arrive), n4(t.start), n4(t.end));
+    }
+    let f = r.fleet.as_ref().unwrap();
+    o.push_str("],\"entries\":[");
+    for (i, e) in f.entries.iter().enumerate() {
+        let _ = write!(o, "{}[{},{},{},{}]", if i > 0 { "," } else { "" }, e.edge, n4(e.t_in), n4(e.t_out), e.loaded as u8);
+    }
+    o.push_str("],\"hoists\":[");
+    for (i, h) in f.hoists.iter().enumerate() {
+        let _ = write!(o, "{}[{},{},{},{}]", if i > 0 { "," } else { "" }, h.stop, h.up as u8, n4(h.t0), n4(h.t1));
+    }
+    o.push_str("]}\n");
+    let out = PathBuf::from(flag(args, "--out", "web/data/journey.json"));
+    std::fs::write(&out, o).unwrap();
+    println!(
+        "wrote {}: {id}, {} steps of {}, released day {:.1}, {} after {:.1} days, {} rail stays and {} hoists ({:.1} s)",
+        out.display(), r.trace.len(), route, lot.release / 1440.0,
+        if lot.done.is_some() { "finished" } else { "not finished" }, lot.done.map(|d| (d - lot.release) / 1440.0).unwrap_or(f64::NAN),
+        f.entries.len(), f.hoists.len(), t0.elapsed().as_secs_f64()
+    );
+}
+
 fn layout_score(args: &[String]) {
     use fabsim::uq::{paired, verdict, Verdict};
     use fabsim::window::{score, with_probes, Window};
@@ -934,6 +984,7 @@ fn main() {
         Some("variant") => variant_cmd(&args[1..]),
         Some("fleet-trace") => fleet_trace(&args[1..]),
         Some("track") => track_cmd(&args[1..]),
+        Some("follow") => follow_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

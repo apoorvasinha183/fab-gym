@@ -41,3 +41,18 @@ the Live view becomes the real building, running the browser simulator with the 
   - which shops fit the building;
   - the page loads both data files, draws the building in the Live view, and has no Rails lens;
   - the build writes both files.
+
+## Follow one lot, start to finish (added 29 Oct, the founder: "Allow an option to slow down and follow one wafer, all
+the 583 phases, as a special option where it is highlighted and the others are shown in grey")
+
+- **The run.** `engine::run_follow` keeps one lot's steps and rail moves without recording the whole fab, and stops
+  when the lot leaves. `fabsim follow` writes `web/data/journey.json`: by default Lot_3.558 of product 3, released on
+  day 20 of today's US building with 160 vehicles, seed 3000. It took 528 of its route's 583 steps (the rest are
+  sampled checks it skipped) and finished 56.2 days later.
+- **The page.** In Flows on the building, "Follow one lot, start to finish":
+  - the fab turns grey, the tools the lot has used stay lit, and its current tool is pink with its wafers on top;
+  - between tools, the lot rides the rails as a pink pod; at a holding step it rests where it was set down;
+  - waits pass in 0.8 s, work in 1.6 s and moves in 2.4 s, at x1, x4 or x16;
+  - the camera follows, and the slider jumps to any step.
+- **Tests:** `crates/fabsim/tests/fleet.rs` (the followed lot) and `web/tests/journey.test.mjs`. The first test looked
+  for the route by a name the shop does not use (`r_3` for `part_3`); fixed before the code passed.

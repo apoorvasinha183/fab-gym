@@ -378,13 +378,13 @@ fn a_fleet_runs_on_the_drawn_track() {
 fn one_lot_is_followed_through_its_whole_route() {
     let Some(s) = campus() else { return };
     let sh = with(s, fleet(160, 2));
-    let rel = sh.releases.iter().find(|r| r.route == "r_3").expect("a release of product 3");
+    let rel = sh.releases.iter().find(|r| r.route == "part_3").expect("a release of product 3");
     let id = format!("{}.{}", rel.prefix, 3);
     let r = fabsim::engine::run_follow(&sh, &RunOptions { seed: 3000, until: Some(150.0 * DAY), record: false }, &id);
     let lot = r.lots.iter().position(|l| l.id == id).expect("the lot was released") as u32;
     assert!(r.lots[lot as usize].done.is_some(), "it finished within 150 days");
     assert!(!r.trace.is_empty() && r.trace.iter().all(|t| t.lot == lot), "only the followed lot's steps are kept");
-    let steps = sh.routes.iter().find(|x| x.name == "r_3").unwrap().steps.len();
+    let steps = sh.routes.iter().find(|x| x.name == "part_3").unwrap().steps.len();
     assert!(r.trace.len() >= steps * 8 / 10 && r.trace.len() <= steps + 50, "{} of the route's {steps} steps (some are sampled)", r.trace.len());
     for w in r.trace.windows(2) {
         assert!(w[1].start >= w[0].end - 1e-9, "one step after another");
