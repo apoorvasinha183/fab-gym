@@ -1157,7 +1157,10 @@ async function compare(o) {
       }));
     }
   }
-  try { await Promise.all(jobs); } catch (err) { if (token === compareToken) $("cmp-note").textContent = "Could not compare: " + err.message; }
+  try {
+    await Promise.all(jobs);
+    if (token === compareToken) logCompare(o, base, chg);
+  } catch (err) { if (token === compareToken) $("cmp-note").textContent = "Could not compare: " + err.message; }
 }
 
 // ------------------------------------------------------------------ tabs and the 300-day runs
@@ -1537,6 +1540,7 @@ function cellText(c) {
 }
 
 function showResult(j) {
+  logAsk(j);
   const r = j.report;
   const rows = FabAsk.resultRows(r);
   const arms = r.arms || [];
@@ -1669,17 +1673,19 @@ async function chromeSetup() {
       else { $("numbers").hidden = true; $("cmd-q").focus(); }
     } else if (e.key === "Escape") {
       if (!$("numbers").hidden) $("numbers").hidden = true;
+      else if (!$("results").hidden) $("results").hidden = true;
       else if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
     }
   });
   document.querySelectorAll("[data-close]").forEach(b => (b.onclick = () => {
     const id = b.dataset.close;
-    if (id === "numbers") $("numbers").hidden = true;
+    if (id === "numbers" || id === "results") $(id).hidden = true;
     else { openDrawer(id, false); fit(); }
   }));
   $("panel-open").onclick = () => { openDrawer("panel", $("panel").hidden); fit(); };
   $("ask-open").onclick = () => { showTab("ask"); fit(); $("ask-q").focus(); };
   $("numbers-open").onclick = () => openNumbers();
+  $("results-open").onclick = () => openResults();
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
     FLOW.secs = 0;
@@ -1843,6 +1849,7 @@ function fmtN(v, d = 1) { return v === null || v === undefined ? "—" : Number(
 
 async function openNumbers() {
   closeOpening();
+  $("results").hidden = true;
   $("numbers").hidden = false;
   if (!UI.sweep) {
     try {
@@ -2022,6 +2029,83 @@ function drawCapital(d, share) {
     check +
     `<details class="sheet"><summary>How money is counted: the price sheet</summary><table class="captab"><thead><tr><th>Item</th><th>Used</th><th>Range tried</th><th></th></tr></thead><tbody>${sheet}</tbody></table>` +
     `<p class="note small">Today's tools already run the prototype route, so only new tools are qualified. Copies in the halls use spare space there; a wing is a new building. The value over 5 years discounts each day's cash at 10% a year and subtracts the capital.</p></details>`;
+}
+
+// ------------------------------------------------------------------ the Results tab: a log of every run
+const RESULTS = { saved: null, page: [], askLogged: new Set() };
+
+function logCompare(o, base, chg) {
+  const seeds = COMPARE_SEEDS.filter(s => base.has(s) && chg.has(s));
+  const rows = METRICS.map(m => {
+    const d = seeds.map(s => chg.get(s)[m.key] - base.get(s)[m.key]);
+    const st = stats(d);
+    const v = st.lo > 0 ? (m.higher ? "better" : "worse") : st.hi < 0 ? (m.higher ? "worse" : "better") : "no clear effect";
+    const today = seeds.reduce((a, s) => a + base.get(s)[m.key], 0) / seeds.length;
+    return [m.name, Math.round(today).toLocaleString("en-US"), fmt(st.mean), `${fmt(st.lo)} to ${fmt(st.hi)}`, v];
+  });
+  const dials = Object.entries(o.dials || {}).filter(([k, v]) => v !== DEFAULT_DIALS[k]).map(([k, v]) => `${k} ${v === null ? "none" : v}`);
+  const settings = [
+    ["Change", describe(o)],
+    ["Dispatch rule", $("rule").selectedOptions[0] ? $("rule").selectedOptions[0].textContent : String(o.rule)],
+    ["Tool group down", o.downGroup >= 0 ? `${$("down-group").selectedOptions[0].textContent} from hour ${o.downAt} for ${o.downHours} h` : "none"],
+    ["Dials", dials.length ? dials.join(", ") : "as today"],
+    ["Seeds", `${seeds[0]} to ${seeds[seeds.length - 1]} (${seeds.length}), each paired with today's fab on the same seed`],
+    ["Days simulated", String(o.days)],
+    ["Where", "the simulator in this browser"],
+  ];
+  const head = rows.find(r => r[4] !== "no clear effect");
+  RESULTS.page.unshift(FabUI.runEntry({
+    kind: "what-if", title: `Try a change: ${describe(o)}`, question: "What does this change do against today's fab on the same seeds?",
+    settings, columns: ["Measure", "Today's fab", "Change", "95% interval", "Verdict"], rows,
+    headline: head ? `${head[0]}: ${head[2]} (${head[3]}), ${head[4]}.` : "No clear effect on any measure.",
+  }));
+  if (!$("results").hidden) drawResults();
+}
+
+function logAsk(j) {
+  if (!j || !j.report || RESULTS.askLogged.has(j.id)) return;
+  RESULTS.askLogged.add(j.id);
+  const r = j.report, sc = FabAsk.scenarioLines(j.scenario);
+  const rows = [];
+  for (const row of FabAsk.resultRows(r)) for (const c of row.cells)
+    rows.push([row.name, c.label, c.today === null ? "—" : fmt(c.today), c.mean === null ? "—" : fmt(c.mean), c.lo === null || c.mean === null ? "—" : `${fmt(c.lo)} to ${fmt(c.hi)}`, c.verdict]);
+  const settings = [["Question", j.question || "a written scenario"], ["Answer from", j.answer_source === "model" ? "the model, checked" : j.answer_source === "example" ? "an example answer we wrote by hand" : "a scenario written by hand"]]
+    .concat(sc.given.map(g => ["Given", `${g.text}${g.said ? "" : " (assumed)"}`]))
+    .concat(sc.candidates.map(c => [`Candidate: ${c.name}`, c.changes.join("; ")]))
+    .concat([["Seeds", `${r.seeds.length} paired seeds`], ["Where", "the helper on this Mac, the simulator run natively"]]);
+  RESULTS.page.unshift(FabUI.runEntry({
+    kind: "question", title: `Question: ${j.question || "a written scenario"}`, question: j.question || "",
+    settings, columns: ["Candidate", "Measure", "Today's fab", "Change", "95% interval", "Verdict"], rows, headline: FabAsk.summaryLine(r),
+  }));
+  if (!$("results").hidden) drawResults();
+}
+
+async function openResults() {
+  closeOpening();
+  $("numbers").hidden = true;
+  $("results").hidden = false;
+  if (!RESULTS.saved) {
+    try { RESULTS.saved = await fetch("data/results.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
+    catch (err) { RESULTS.saved = []; }
+  }
+  drawResults();
+  $("results").querySelector(".close").focus();
+}
+
+function drawResults() {
+  const all = RESULTS.page.concat(RESULTS.saved || []);
+  const KIND = { sweep: "sweep", search: "search", training: "training", contest: "contest", "what-if": "your change", question: "your question" };
+  const when = iso => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const table = (cols, rows) => `<div class="res-scroll"><table class="captab"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
+    rows.map(r => `<tr>${r.map((x, i) => `<td class="${i >= cols.length - 1 && /better|worse|no clear/.test(x) ? "" : /^[−+\-$\d]/.test(String(x)) ? "v" : ""}">${/^(better|worse|no clear effect)$/.test(x) ? `<span class="pill ${x === "no clear effect" ? "unclear" : x}">${x}</span>` : esc(String(x))}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`;
+  $("res-list").innerHTML = all.length ? all.map((e, i) => `<details class="res"${i === 0 ? " open" : ""}>
+    <summary><span class="kind">${esc(KIND[e.kind] || e.kind)}</span><span class="t">${esc(e.title)}</span><span class="w">${esc(when(e.when))}</span><span class="h">${esc(e.headline)}</span></summary>
+    <div class="res-body">${e.question ? `<p class="q">${esc(e.question)}</p>` : ""}
+      <h4>Settings in the simulator</h4>${table(["Setting", "Value"], e.settings)}
+      <h4>Numbers that came out</h4>${table(e.numbers.columns, e.numbers.rows)}
+      ${e.files.length ? `<h4>Files</h4><p class="files">${e.files.map(f => `<code>${esc(f)}</code>`).join(" ")}</p>` : ""}
+      <p class="note small">${esc(e.note)}</p></div></details>`).join("")
+    : `<p class="note">No results in this build (run web/build.sh).</p>`;
 }
 
 // ------------------------------------------------------------------ the evidence: verdict cards and signing

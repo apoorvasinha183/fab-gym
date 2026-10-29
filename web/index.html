@@ -171,6 +171,7 @@
   <button id="fit" class="icon" aria-label="Fit the whole fab">⤢</button>
   <span class="sep" aria-hidden="true"></span>
   <button id="numbers-open" type="button" class="ghost">Numbers</button>
+  <button id="results-open" type="button" class="ghost">Results</button>
   <button id="panel-open" type="button" class="ghost">Try a change</button>
   <button id="ask-open" type="button" class="askbtn">Ask the fab</button>
 </footer>
@@ -213,6 +214,15 @@
   <div id="num-capital" class="num-capital"></div>
   <div id="num-question"></div>
   <p class="note small" id="num-note"></p>
+</section>
+
+<section id="results" class="card numbers results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
+  <div class="numbers-head">
+    <h2 id="results-title">Results</h2>
+    <button type="button" class="icon close" data-close="results" aria-label="Close">✕</button>
+  </div>
+  <p class="lead">Every simulation and policy run, newest first. Open one to see the question it asked, the settings the simulator ran with and the numbers that came out. Runs made in this page are listed too.</p>
+  <div id="res-list"></div>
 </section>
 
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>

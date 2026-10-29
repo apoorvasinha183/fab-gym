@@ -17,4 +17,6 @@ const ex = fs.readdirSync("agent/examples/ask").filter((f) => f.endsWith(".json"
   .map((f) => JSON.parse(fs.readFileSync("agent/examples/ask/" + f, "utf8"))).map((e) => ({ question: e.question, example: true }));
 fs.writeFileSync("web/data/examples.json", JSON.stringify(ex));
 '
+# the Results tab: every saved experiment with its settings and numbers
+node web/tools/results-build.js > web/data/results.json
 echo "serve with: python3 -m http.server 8765 --bind 127.0.0.1 --directory web"

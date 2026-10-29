@@ -195,7 +195,18 @@
     }));
   }
 
-  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, STRATEGIES, POLICIES };
+  // ---------------------------------------------------------------- the Results tab: a run in the page as an entry
+  let runCount = 0;
+  function runEntry(o) {
+    runCount++;
+    return {
+      id: `page-${Date.now()}-${runCount}`, kind: o.kind, when: new Date().toISOString(), title: o.title, question: o.question || "",
+      settings: o.settings, headline: o.headline || "", numbers: { columns: o.columns, rows: o.rows }, files: [],
+      note: "On the SMT2020 model, a published research model of a wafer fab. No real fab's data is used. Run in this page; not saved to disk.",
+    };
+  }
+
+  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, runEntry, STRATEGIES, POLICIES };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabUI = api;
 })(typeof window !== "undefined" ? window : globalThis);
