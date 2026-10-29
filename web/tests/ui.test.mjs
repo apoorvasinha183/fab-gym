@@ -149,3 +149,29 @@ test("track use counts each stretch a trip passes, clockwise and wrapping round"
   // a trip to the same point goes all the way round
   assert.deepEqual(U.ringUse([[30, 30]], ring, bins), new Array(bins).fill(1));
 });
+
+// Money as a profit and loss in dollars (docs/MONEY-PL.md, test 8).
+test("the sweep's cells carry operating profit in dollars, with capital, payback and net present value", () => {
+  const pl = JSON.parse(readFileSync(join(ROOT, "results", "two-families", "pl.json"), "utf8"));
+  const d = U.withPl(summary, pl);
+  for (const c of d.cells) {
+    assert.ok(c.profit && "mean" in c.profit && "lo" in c.profit && "hi" in c.profit, c.label);
+    assert.ok(["better", "worse", "no clear effect"].includes(c.profit.verdict), c.label);
+    assert.ok(c.pl && c.pl.capital >= 0 && c.pl.npv && "payback_days" in c.pl, c.label);
+  }
+  for (const s of ["1", "2", "4", "8"]) assert.ok(Number.isFinite(d.plToday[s].profit), s);
+  const rows = U.sweepRows(d, 4, "profit");
+  assert.ok(rows.length > 0 && rows.every(r => r.mean !== undefined));
+});
+
+test("the price sheet as shown: every item, its range and the word assumed", () => {
+  const pl = JSON.parse(readFileSync(join(ROOT, "results", "two-families", "pl.json"), "utf8"));
+  const rows = U.priceSheetRows(pl);
+  assert.equal(rows.length, pl.sheet.length);
+  for (const r of rows) {
+    assert.ok(r.label && r.central && r.range !== undefined, r.label);
+    assert.match(r.note, /assumed/);
+  }
+  assert.ok(rows.some(r => /\$8,000/.test(r.central)), "the volume wafer price in dollars");
+  assert.ok(rows.some(r => /\$40M/.test(r.central)), "millions written short");
+});
