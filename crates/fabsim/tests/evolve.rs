@@ -199,3 +199,13 @@ fn the_search_is_seeded_and_keeps_its_best() {
     assert_eq!((d.population, d.generations, d.seeds.clone(), d.tournament), (16, 12, vec![3000, 3001, 3002], 3));
     assert_eq!((d.p_cross, d.p_mutate), (0.7, 0.2));
 }
+
+#[test]
+fn a_rule_of_constants_alone_names_its_number_type() {
+    // results/evolve-x4/rules/evolved-2.rs, `((60.0).max(1440.0)).max((1.0 * 60.0))`, failed rustc with E0689:
+    // a method on a bare float literal needs its type, so every constant is written as f64
+    use Expr::*;
+    let e = Max(Box::new(Max(Box::new(Const(60.0)), Box::new(Const(1440.0)))), Box::new(Mul(Box::new(Const(1.0)), Box::new(Const(-60.0)))));
+    let src = e.to_rust();
+    assert!(src.contains("60.0_f64") && src.contains("1440.0_f64") && src.contains("(-60.0_f64)"), "{src}");
+}
