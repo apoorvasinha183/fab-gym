@@ -108,7 +108,7 @@
   // ---------------------------------------------------------------- the opening
   function openingState(status, bundled) {
     const examples = status && status.examples ? status.examples.map((e) => e.question) : (bundled || []).map((e) => e.question);
-    return { prompt: "Ask the fab a question", explore: "or explore the floor", examples, canAsk: !!status };
+    return { prompt: "So, what are we doing today?", explore: "or explore the floor", examples, canAsk: !!status };
   }
 
   // ---------------------------------------------------------------- the Flows view: one wafer's journey
