@@ -30,14 +30,20 @@ pub struct Dials {
     pub spare: Vec<(String, usize)>,
     /// lots in progress made hot (priority 20), spread evenly over the lots sorted by id
     pub make_hot: usize,
+    /// defect holds (docs/RL-DEFECTS.md): None leaves the shop's own; 0 switches them off; k > 0 sets k times
+    /// DEFECTS_CENTRAL
+    pub defects: Option<f64>,
 }
+
+/// The assumed central defect hold lengths in minutes: the tool, the lookback, the lots it touched.
+pub const DEFECTS_CENTRAL: (f64, f64, f64) = (120.0, 240.0, 60.0);
 
 /// The priority a lot made hot gets.
 pub const HOT_PRIORITY: f64 = 20.0;
 
 impl Default for Dials {
     fn default() -> Dials {
-        Dials { breakdowns: 1.0, repair: 1.0, demand: 1.0, hot: 1.0, rework: 1.0, cap: None, outage: None, spare: vec![], make_hot: 0 }
+        Dials { breakdowns: 1.0, repair: 1.0, demand: 1.0, hot: 1.0, rework: 1.0, cap: None, outage: None, spare: vec![], make_hot: 0, defects: None }
     }
 }
 
@@ -50,12 +56,19 @@ impl Dials {
         pos(self.demand, "demand")?;
         nonneg(self.hot, "hot")?;
         nonneg(self.rework, "rework")?;
+        if let Some(k) = self.defects {
+            nonneg(k, "defects")?;
+        }
         if let Some(c) = self.cap {
             if c < 1 {
                 return Err(format!("cap must be at least 1 lot, got {c}"));
             }
         }
         let mut s = shop.clone();
+        if let Some(k) = self.defects {
+            let (t, l, r) = DEFECTS_CENTRAL;
+            s.defects = if k == 0.0 { None } else { Some(crate::shop::Defects { hold_tool_minutes: t * k, lookback_minutes: l * k, hold_lot_minutes: r * k }) };
+        }
         for g in &mut s.groups {
             if let Some((mttf, mttr)) = g.breakdown {
                 g.breakdown = if self.breakdowns == 0.0 {

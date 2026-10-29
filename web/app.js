@@ -62,7 +62,7 @@ function readJson() {
 function simulate(opts) {
   const e = sim.e;
   const d = opts.dials || DEFAULT_DIALS;
-  if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0) !== 0) throw new Error(readJson().error);
+  if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0, d.defects || 0) !== 0) throw new Error(readJson().error);
   const t0 = performance.now();
   const rc = e.fg_run(opts.seed, opts.days, opts.rule, opts.downGroup, opts.downAt * 60, opts.downHours);
   const secs = (performance.now() - t0) / 1000;
@@ -1013,8 +1013,8 @@ function setupInput() {
 
 // ------------------------------------------------------------------ dials and the comparison
 
-const DEFAULT_DIALS = { breakdowns: 1, repair: 1, demand: 1, hot: 1, rework: 1, cap: 0 };
-const DIAL_KEYS = ["breakdowns", "repair", "demand", "hot", "rework", "cap"];
+const DEFAULT_DIALS = { breakdowns: 1, repair: 1, demand: 1, hot: 1, rework: 1, cap: 0, defects: 0 };
+const DIAL_KEYS = ["breakdowns", "repair", "demand", "hot", "rework", "cap", "defects"];
 const CAP_NONE = 3600;
 const COMPARE_SEEDS = Array.from({ length: 10 }, (_, i) => 100 + i);
 
@@ -1030,6 +1030,7 @@ function showDials() {
   for (const k of DIAL_KEYS) {
     const o = $("o-" + k);
     if (k === "cap") o.textContent = d.cap ? `${d.cap.toLocaleString()} lots` : "none";
+    else if (k === "defects") o.textContent = d.defects ? `×${d.defects}: tool ${120 * d.defects / 60} h, lots ${60 * d.defects / 60} h` : "off";
     else o.textContent = d[k] === 0 && (k === "breakdowns" || k === "hot" || k === "rework") ? "none" : `×${d[k]}`;
     o.classList.toggle("moved", d[k] !== DEFAULT_DIALS[k]);
   }
@@ -1057,6 +1058,7 @@ function describe(o) {
   if (o.downGroup >= 0 && o.downHours > 0) parts.push(`${$("down-group").selectedOptions[0].textContent} down from hour ${o.downAt} for ${o.downHours} h`);
   const names = { breakdowns: "breakdowns", repair: "repair time", demand: "demand", hot: "hot lots", rework: "rework" };
   for (const k of Object.keys(names)) if (o.dials[k] !== 1) parts.push(`${names[k]} ×${o.dials[k]}`);
+  if (o.dials.defects) parts.push(`defect holds ×${o.dials.defects}`);
   if (o.dials.cap) parts.push(`WIP cap ${o.dials.cap.toLocaleString()} lots`);
   return parts.join(", ");
 }

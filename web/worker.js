@@ -31,7 +31,7 @@ onmessage = async ({ data: job }) => {
     await ready;
     if (job.load) { loadShop(job.load); postMessage({ id: job.id, loaded: true }); return; }
     const d = job.dials;
-    if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0) !== 0) {
+    if (e.fg_dials(d.breakdowns, d.repair, d.demand, d.hot, d.rework, d.cap || 0, d.defects || 0) !== 0) {
       throw new Error(JSON.parse(text(e.fg_json_ptr(), e.fg_json_len())).error);
     }
     const rc = e.fg_quick(job.seed, job.days, job.rule, job.downGroup, job.downAt * 60, job.downHours);

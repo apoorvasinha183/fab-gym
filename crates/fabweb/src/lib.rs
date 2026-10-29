@@ -112,12 +112,13 @@ pub extern "C" fn fg_t(p: f64, df: f64) -> f64 {
 }
 
 /// Set the dials for later runs; 0 on success, else the error is in the JSON buffer.
-/// `cap` <= 0 means no cap of the page's own (the shop's own cap stays).
+/// `cap` <= 0 means no cap of the page's own (the shop's own cap stays). `defects` is the defect holds dial: 0 off,
+/// k > 0 k times the assumed central hold lengths (docs/RL-DEFECTS.md).
 #[no_mangle]
-pub extern "C" fn fg_dials(breakdowns: f64, repair: f64, demand: f64, hot: f64, rework: f64, cap: f64) -> i32 {
+pub extern "C" fn fg_dials(breakdowns: f64, repair: f64, demand: f64, hot: f64, rework: f64, cap: f64, defects: f64) -> i32 {
     ST.with(|st| {
         let mut st = st.borrow_mut();
-        let d = Dials { breakdowns, repair, demand, hot, rework, cap: if cap > 0.0 { Some(cap as i64) } else { None }, ..Dials::default() };
+        let d = Dials { breakdowns, repair, demand, hot, rework, cap: if cap > 0.0 { Some(cap as i64) } else { None }, defects: Some(defects), ..Dials::default() };
         match st.shop.as_ref().map(|s| d.apply(s)) {
             Some(Err(e)) => {
                 st.json = format!("{{\"error\":{}}}", js(&e));
