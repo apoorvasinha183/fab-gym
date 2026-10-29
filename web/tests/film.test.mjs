@@ -56,3 +56,14 @@ test("the film page loads the vendored Three.js through an import map", () => {
   assert.ok(existsSync(join(ROOT, "web", "vendor", "three", "LICENSE")));
   assert.match(html, /src="script\.js"/);
 });
+
+// Fades between scenes (the full cut): black at each cut, clear in the middle, the cold open fading in from black.
+test("scenes fade through black at each cut and are clear in between", () => {
+  for (const s of F.SCENES) {
+    assert.ok(F.fade(s, 0) > 0.95, `${s.title}: black at its start`);
+    assert.ok(F.fade(s, s.d) > 0.95, `${s.title}: black at its end`);
+    assert.equal(F.fade(s, s.d / 2), 0, `${s.title}: clear in the middle`);
+    assert.equal(F.fade(s, s.still), 0, `${s.title}: its still is clear`);
+  }
+  for (let x = 0; x <= 1; x += 0.05) assert.ok(F.fade(F.SCENES[3], x) >= F.fade(F.SCENES[3], x + 0.05) - 1e-9, "fading in never darkens");
+});
