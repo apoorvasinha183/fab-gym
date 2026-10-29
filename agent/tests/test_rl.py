@@ -122,6 +122,17 @@ class TrainAndContest(unittest.TestCase):
             ms = float(r["act_ms"])
             self.assertTrue(ms == ms and 0.0 <= ms < 50.0, f"{r['contestant']}: act_ms {r['act_ms']}")
 
+    def test_every_kind_of_player_writes_its_picks_for_the_foresight_audit(self):
+        """docs/LONG-RESCORE.md, regret B: a Python player, a built-in rule and a fixed slot each write one pick a
+        decision asked, as `fabsim regret audit --picks` reads them."""
+        from agent import rl
+        for name, pol in {"today": rl.Today(), "fifo": rl.BuiltIn("fifo"), "slot": rl.Fixed(2)}.items():
+            path = self.tmp / f"{name}.picks"
+            got = rl.play(pol, seed=3, picks=str(path), **self.common)
+            lines = path.read_text().split()
+            self.assertEqual(len(lines), got["decisions"], name)
+            self.assertTrue(all(x.isdigit() for x in lines), name)
+
 
 if __name__ == "__main__":
     unittest.main()
