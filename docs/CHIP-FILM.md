@@ -1,130 +1,164 @@
 # From Sand to Chip: a short film in Three.js
 
-Script draft, 29 October 2026, for the founder to agree before anything is built. It animates the "How a chip is
-made" journey (`web/stages.js`): eleven steps, the fab's part on the SMT2020 model and the rest from general
-knowledge, labelled so on screen. No real fab, company or product is shown.
+Script draft 2, 29 October 2026. Direction agreed by the founder the same day: a semi-real look with explainer-style animation (a mining scene added), delivered as one MP4, with voice (Chatterbox on the Mac mini) and music (The Budding of Consciousness by Yoiyami, crossfading into New Sunrise by nene; both CC0 from OpenGameArt). The fab's part runs on the SMT2020 model; the steps before and after it are general knowledge and say so on screen. No real fab, company or product is shown.
 
-Running time about 2 minutes 30 seconds. Lines in quotes are the narration or captions; the rest is what we see.
+Running time 2:44, 13 scenes.
 
----
+## 0. Cold open (0:00, 8 s) · Opening
 
-## 0. Cold open (0:00–0:08)
+Black. A single grain of sand drifts in, lit from one side, slowly turning. The camera pushes in until the grain fills the screen and its surface turns out to be a lattice of glowing points.
 
-Black. A single grain of sand drifts in, lit from one side, slowly turning. The camera pushes in until the grain fills
-the screen and its surface turns out to be a lattice of glowing points.
+> This is a grain of sand. By the end of this film, it will be thinking.
 
-"This is a grain of sand. By the end of this film, it will be thinking."
+On screen: *Title: From Sand to Chip*
 
-Title: **From Sand to Chip**.
+Camera: slow push-in.
 
-## 1. Sand (0:08–0:20)
+Explainer: a powers-of-ten scale bar runs from 1 mm down to atoms as the camera pushes in.
 
-Pull back to a beach at dusk, low-poly dunes. Grains pour into a furnace that glows orange. Inside, oxygen atoms
-(red spheres) peel away from silicon atoms (grey spheres) and fly off with carbon (black spheres) as little puffs.
+## 1. The quarry (0:08, 14 s) · Before the fab
 
-"Most of the grains on a beach are quartz: silicon locked to oxygen. Heat them with carbon, hotter than lava, and the
-carbon steals the oxygen. Grey silicon is left behind."
+Dawn over an open-pit quartz quarry cut into stepped terraces. An excavator scoops white rock into a haul truck; the truck rolls to a crusher that turns the rock into gravel on a conveyor. A callout pops out of one pebble: a molecule, one silicon between two oxygens, labelled SiO₂.
 
-Caption: *about 99% pure. For a chip, that is filthy.*
+> A beach is mostly quartz, but chips start from something cleaner: quartz rock, dug out of the ground. It is silicon locked to oxygen.
 
-## 2. Purify (0:20–0:32)
+On screen: *quartz = SiO₂, silicon dioxide*
 
-The grey lump dissolves into a swirling gas inside a glass column. Impurity atoms (a few coloured specks) are filtered
-out at each pass, counted down on a little meter: 99% → 99.99% → 99.9999999%.
+Camera: wide drone shot, then follow the truck.
 
-"So the silicon becomes a gas, is distilled again and again, and freezes back into solid rods."
+Explainer: molecule pop-out with leader line; flow arrows along the conveyor.
 
-Caption: *one stray atom in a billion.*
+## 2. Smelt (0:22, 12 s) · Before the fab
 
-## 3. Grow a crystal (0:32–0:48)
+The gravel pours into an arc furnace glowing white-orange, with carbon in the mix. Cutaway: red oxygen atoms peel off grey silicon and fly away with black carbon as little puffs. Grey silicon pours out and cools.
 
-A crucible of molten silicon glows white-orange. A thin seed on a rod dips in, then rises slowly while turning. Close
-up: atoms snap into a perfect grid as they leave the melt. Pull back: a tall silver ingot rises out, about a person's
-height, beside a small human figure for scale.
+> Heat it with carbon, hotter than lava, and the carbon steals the oxygen. Grey silicon is left behind.
 
-"Now the atoms have to line up. A seed crystal touches the melt and is pulled up slowly while it spins. Atom by atom,
-the melt freezes onto it in perfect order: one giant crystal."
+On screen: *about 99% pure. For a chip, that is filthy.*
 
-Caption: *silicon melts at about 1,414 °C.*
+Camera: push into the furnace, then the atom cutaway.
 
-## 4. Slice and polish (0:48–1:00)
+Explainer: atom cutaway inset; temperature callout.
 
-The ingot lies on its side. A taut wire glints and passes through it; discs fall away in sequence. One disc tilts up
-to the camera and is polished until it reflects the scene like a mirror. It slides into a sealed box with 24 others.
+## 3. Purify (0:34, 12 s) · Before the fab
 
-"A diamond wire slices it into discs thinner than a coin, polished until they shine like mirrors."
+The grey lump dissolves into a swirling gas inside a glass column. Coloured specks of impurity are filtered out at each pass while a meter counts up: 99% → 99.99% → 99.9999999%.
 
-Caption: *at this scale, a speck of dust is a boulder.*
+> So the silicon becomes a gas, is distilled again and again, and freezes back into solid rods.
 
-## 5. Into the fab (1:00–1:10)
+On screen: *one stray atom in a billion.*
 
-The box rides an overhead track into a dark building with teal light seams: the same diorama the floor page draws.
-A label fades in at the door: **SMT2020 model · simulated**. From here on a teal border frames the picture.
+Camera: slow rise up the column.
 
-"The wafers enter the fab in lots of 25. From this moment on, the simulator follows every one of them."
+Explainer: a purity counter climbs to 99.9999999%; a grid of a billion marbles with one wrong colour.
 
-## 6. Layer by layer (1:10–1:46)
+## 4. Grow a crystal (0:46, 16 s) · Before the fab
 
-The heart of the film. One wafer, close up, goes round the loop; each stage is a two-second vignette, faster each lap.
+A crucible of molten silicon glows white-orange. A thin seed on a rod dips in, then rises slowly while turning. Close up, atoms snap into a perfect grid as they leave the melt. Pull back: a silver ingot as tall as the small human figure beside it.
 
-- Thin film: a mist settles into an even blanket.
-- Lithography: yellow-lit room; ultraviolet light through a mask projects a pattern onto the resist.
-- Etch: a violet plasma rains straight down and carves trenches.
-- Implant: a thin beam of atoms buries itself in the open silicon.
-- Wash: a sheet of water sweeps the surface clean.
-- Check: a scanning line passes over; a green tick.
+> Now the atoms have to line up. A seed crystal touches the melt and is pulled up slowly while it spins. Atom by atom, the melt freezes onto it in perfect order: one giant crystal.
 
-Lap one at full speed, lap two at double, then a time-lapse of floors stacking up like a building under construction,
-with a counter: *step 1 … 583*.
+On screen: *silicon melts at about 1,414 °C.*
 
-"Here is the trick: a chip is built like a city, one floor at a time. A film, a pattern printed with light, an etch, a
-dose of atoms, a wash, a check. Then the loop begins again."
+Camera: macro on the growth front, then a crane up.
 
-Caption: *583 steps on 105 groups of tools. A regular lot spends about 66 days here, most of it waiting in line.*
+Explainer: a human figure for scale beside the ingot; a temperature dial at 1,414 °C.
 
-## 7. A finished wafer (1:46–1:56)
+## 5. Slice and polish (1:02, 12 s) · Before the fab
 
-The wafer rises and turns to face us: a mosaic of identical dies catching the light like a stained-glass window. The
-camera dives into one die: streets of transistors, wires stacked in layers like floors of a building.
+The ingot lies on its side. A taut wire glints through it and discs fall away in sequence. One disc tilts to the camera and is polished until it mirrors the scene, then slides into a sealed box with 24 others.
 
-"Out comes a wafer tiled with identical chips, millions to billions of tiny switches in each."
+> A diamond wire slices it into discs thinner than a coin, polished until they shine like mirrors.
 
-The teal border fades: **leaving the simulator**.
+On screen: *at this scale, a speck of dust is a boulder.*
 
-## 8. Test every die (1:56–2:04)
+Camera: track along the ingot.
 
-A bed of fine needles lowers onto a die. Most light up green; one blinks red and gets a small dot.
+Explainer: split screen: a speck of dust beside a transistor, drawn to the same scale.
 
-"Not every die works. Needles finer than a hair put each one through a quick exam."
+## 6. Into the fab (1:14, 10 s) · In the fab · simulated
 
-Caption: *the share that passes is the yield. This simulator leaves yield out.*
+The box rides an overhead track into a dark building with teal light seams, the same diorama the floor page draws. At the door: SMT2020 model · simulated. From here a teal border frames the picture.
 
-## 9. Thin and cut (2:04–2:12)
+> The wafers enter the fab in lots of 25. From this moment on, the simulator follows every one of them.
 
-The wafer flips, is ground thinner, flips back. A laser line runs along the streets between dies; the grid gently
-separates like a chocolate bar breaking.
+On screen: *SMT2020 model · simulated*
 
-"Cut along the narrow streets between them, each die is finally on its own."
+Camera: follow the box through the door.
 
-## 10. Package (2:12–2:20)
+Explainer: a teal frame and the tag SMT2020 · simulated stay on screen until the wafer leaves.
+
+## 7. Layer by layer (1:24, 36 s) · In the fab · simulated
+
+One wafer, close up, goes round the loop, a two-second vignette per stage: film settles as a mist; UV light through a mask in a yellow room; a violet plasma carves trenches; a beam of atoms buries itself; a sheet of water sweeps it clean; a scanning line and a green tick. Lap two at double speed, then a time-lapse of floors stacking like a building, with a counter running to 583.
+
+> Here is the trick: a chip is built like a city, one floor at a time. A film, a pattern printed with light, an etch, a dose of atoms, a wash, a check. Then the loop begins again.
+
+On screen: *583 steps on 105 groups of tools. A regular lot spends about 66 days here, most of it waiting in line.*
+
+Camera: orbit the wafer, faster each lap.
+
+Explainer: each stage named by a callout as it happens; a step counter running to 583; a lap counter.
+
+## 8. A finished wafer (2:00, 10 s) · In the fab · simulated
+
+The wafer rises and turns to face us, a mosaic of identical dies catching the light like stained glass. The camera dives into one die: streets of transistors and wires stacked in layers. The teal border fades: leaving the simulator.
+
+> Out comes a wafer tiled with identical chips, millions to billions of tiny switches in each.
+
+On screen: *leaving the simulator*
+
+Camera: reveal, then a dive into one die.
+
+Explainer: a powers-of-ten zoom from the wafer into one die; a label with its transistor count.
+
+## 9. Test every die (2:10, 8 s) · After the fab
+
+A bed of fine needles lowers onto a die. Most dies light up green; one blinks red and gets a small dot.
+
+> Not every die works. Needles finer than a hair put each one through a quick exam.
+
+On screen: *the share that passes is the yield. This simulator leaves yield out.*
+
+Camera: top-down.
+
+Explainer: a pass and fail tally; a yield gauge marked not modelled.
+
+## 10. Thin and cut (2:18, 8 s) · After the fab
+
+The wafer flips, is ground thinner, flips back. A laser line runs along the streets between dies; the grid gently separates like a chocolate bar breaking.
+
+> Cut along the narrow streets between them, each die is finally on its own.
+
+Camera: low angle across the wafer.
+
+Explainer: the gaps between dies labelled streets.
+
+## 11. Package (2:26, 8 s) · After the fab
 
 One die settles onto a green board square; hair-thin gold wires arc from its edges; a black lid closes over it.
 
-"A bare die is tiny and fragile, so it gets a home that links it to the world."
+> A bare die is tiny and fragile, so it gets a home that links it to the world.
 
-## 11. Final test and ship (2:20–2:30)
+Camera: close three-quarter view.
 
-Chips line up on a tray, a light sweeps over them and they sort into three bins by speed. One chip lifts out, flies
-into a phone, and the phone's screen wakes up. The camera pulls back to the beach from the cold open.
+Explainer: an exploded view: die, wires and lid, each labelled.
 
-"Tested, sorted and shipped. The journey that began on a beach ends in your pocket."
+## 12. Final test and ship (2:34, 10 s) · After the fab
 
-End card: **Fab Gym** · *The fab's part runs on the SMT2020 model, a published research model of a wafer fab. The steps
-before and after it are general knowledge.*
+Chips line up on a tray; a light sweeps over them and they sort into three bins by speed. One chip lifts out, flies into a phone, and the phone's screen wakes up. Pull back to the beach from the cold open.
 
----
+> Tested, sorted and shipped. The journey that began on a beach ends in your pocket.
 
-## What has to be agreed
+On screen: *End card: Fab Gym · the fab's part runs on the SMT2020 model; the rest is general knowledge.*
 
-The look, how the film is delivered, the voice and any music, and the Three.js download (see the quiz). Then, in
-order: a storyboard of stills for each scene, the scenes built one at a time, a full cut, then any voice.
+Camera: follow the chip, then a wide pull-back.
+
+Explainer: a small chart of chips sorted into three bins by speed.
+
+## Then, in order
+
+1. Storyboard stills, one per scene in the agreed look, for a second sign-off.
+2. Scenes built one at a time, starting with Layer by layer.
+3. A full cut with captions, rendered to MP4.
+4. Voice and music laid in and mixed to the picture.
