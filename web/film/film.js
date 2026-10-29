@@ -640,6 +640,13 @@ function frame(key, t, opts = {}) {
   sc.overlay?.(t);
   const s = FS.SCENES.find((x) => x.key === key);
   if (opts.subs !== false) subtitle(s.say);
+  if (opts.fades) { const a = FS.fade(s, t); if (a > 0) { ui.fillStyle = `rgba(0,0,0,${a.toFixed(3)})`; ui.fillRect(0, 0, W, H); } }
+}
+// one composited frame (the 3D picture and the explainer layer) as a JPEG
+async function jpeg(width) {
+  const c = document.createElement("canvas"); c.width = width; c.height = Math.round((width * H) / W);
+  const g = c.getContext("2d"); g.drawImage(glCanvas, 0, 0, c.width, c.height); g.drawImage(uiCanvas, 0, 0, c.width, c.height);
+  return new Promise((r) => c.toBlob(r, "image/jpeg", 0.92));
 }
 async function save(folder, name, width = 1280) {
   const c = document.createElement("canvas"); c.width = width; c.height = Math.round((width * H) / W);
@@ -659,13 +666,18 @@ const q = new URLSearchParams(location.search), status = document.getElementById
       }
       status.textContent = "stills done"; document.title = "stills done";
     } else if (q.get("frames")) {
-      const [a, b] = q.get("frames").split("-").map(Number), fps = +(q.get("fps") || 30);
+      // the cut: every frame streamed to ffmpeg through film/serve.py (?pipe=name), or saved as files
+      const fps = +(q.get("fps") || 30), last = Math.round(FS.total() * fps) - 1;
+      const [a, b] = q.get("frames") === "all" ? [0, last] : q.get("frames").split("-").map(Number);
+      const pipe = q.get("pipe"), subs = q.get("subs") !== "0";
       for (let f = a; f <= b; f++) {
         const { scene, t } = FS.at(f / fps);
-        frame(scene.key, t, { subs: false });
-        await save("frames", `f${String(f).padStart(5, "0")}.jpg`, 1920);
-        if (f % 30 === 0) status.textContent = `frame ${f}`;
+        frame(scene.key, t, { subs, fades: true });
+        if (pipe) { const r = await fetch(`/pipe/${pipe}/frame`, { method: "POST", body: await jpeg(1920) }); if (!r.ok) throw new Error(`frame ${f}: ${r.status}`); }
+        else await save("frames", `f${String(f).padStart(5, "0")}.jpg`, 1920);
+        if (f % 30 === 0) { status.textContent = `frame ${f} of ${b}`; document.title = `${Math.round((100 * (f - a)) / (b - a + 1))}%`; }
       }
+      if (pipe) await fetch(`/pipe/${pipe}/end`, { method: "POST" });
       status.textContent = "frames done"; document.title = "frames done";
     } else {
       const key = q.get("scene") || "open", t = +(q.get("t") ?? FS.SCENES.find((s) => s.key === key).still);

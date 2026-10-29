@@ -312,7 +312,10 @@
   const startOf = (key) => { let t = 0; for (const s of SCENES) { if (s.key === key) return t; t += s.d; } return -1; };
   // the scene and the time inside it at film time T
   const at = (T) => { let t = 0; for (const s of SCENES) { if (T < t + s.d) return { scene: s, t: T - t }; t += s.d; } const s = SCENES[SCENES.length - 1]; return { scene: s, t: s.d }; };
-  const api = { SCENES, MUSIC, total, startOf, at };
+  // how dark a frame is at time t of scene s: through black at each cut (0.45 s each way), clear between
+  const FADE = 0.45;
+  const fade = (s, t) => Math.max(0, Math.min(1, Math.max(1 - t / FADE, 1 - (s.d - t) / FADE)));
+  const api = { SCENES, MUSIC, total, startOf, at, fade, FADE };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FilmScript = api;
 })(typeof window !== "undefined" ? window : globalThis);
