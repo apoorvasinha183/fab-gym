@@ -150,7 +150,7 @@ function rlContest(root, which) {
   const ppo = c.against_today.find((a) => a.name === "ppo");
   return {
     id: `rl-contest-defects-${which}`, kind: "contest", when: when(root, rel),
-    title: `Held-out contest, defects ${which}: today's rule, PPO and E2's best rule`,
+    title: `Held-out contest, defect holds ${{ on: "×1", off: "off" }[which] || which}: today's rule, PPO and E2's best rule`,
     question: "On seeds none of them trained on, does any learned or evolved policy beat today's dispatch rule?",
     settings: [["Seeds", seedsText(c.seeds)], ["Defect holds", c.defects ? `tool ${c.defects[0]} min, lookback ${c.defects[1]} min, lots ${c.defects[2]} min (assumed)` : "off"],
       ["Episode", `${c.warmup_days} day warm-up, ${c.window_days} days scored`], ["Contestants", ["today"].concat(c.against_today.map((a) => a.name)).join(", ")],
@@ -173,6 +173,8 @@ function buildResults(root) {
   add(() => rlTrain(root));
   add(() => rlContest(root, "on"));
   add(() => rlContest(root, "off"));
+  add(() => rlContest(root, "x0.5"));
+  add(() => rlContest(root, "x2"));
   return out.sort((a, b) => (a.when < b.when ? 1 : a.when > b.when ? -1 : 0));
 }
 

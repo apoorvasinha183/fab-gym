@@ -1,0 +1,149 @@
+{
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9
+ ],
+ "alpha_each": 0.025,
+ "defects": [
+  240.0,
+  480.0,
+  120.0
+ ],
+ "warmup_days": 1.0,
+ "window_days": 3.0,
+ "against_today": [
+  {
+   "name": "ppo",
+   "measures": {
+    "reward": {
+     "mean": -154.87827924100512,
+     "lo": -162.95989180388924,
+     "hi": -146.796666678121,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "moves": {
+     "mean": -13369.9,
+     "lo": -13860.850144174126,
+     "hi": -12878.949855825873,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "lots_finished": {
+     "mean": 6.8,
+     "lo": 4.243358294346539,
+     "hi": 9.35664170565346,
+     "verdict": "better",
+     "higher_is_better": true
+    },
+    "wait_lot_hours": {
+     "mean": 16167.827924100513,
+     "lo": 15494.610969744053,
+     "hi": 16841.044878456974,
+     "verdict": "worse",
+     "higher_is_better": false
+    },
+    "breaches": {
+     "mean": -183.0,
+     "lo": -243.93390746348234,
+     "hi": -122.06609253651764,
+     "verdict": "better",
+     "higher_is_better": false
+    }
+   },
+   "picked_other_share": 0.8271497288285008,
+   "picked_other_top_groups": [
+    [
+     "WE_BE_16",
+     12368
+    ],
+    [
+     "Litho_BE_110",
+     9570
+    ],
+    [
+     "TF_BE_23",
+     8252
+    ],
+    [
+     "WE_BE_82",
+     7928
+    ],
+    [
+     "Implant_128",
+     6549
+    ],
+    [
+     "WE_BE_9",
+     6390
+    ],
+    [
+     "Planar_BE_75",
+     5755
+    ],
+    [
+     "Dielectric_BE_27",
+     5696
+    ]
+   ]
+  },
+  {
+   "name": "e2-best",
+   "measures": {
+    "reward": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "moves": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "lots_finished": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "wait_lot_hours": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    },
+    "breaches": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    }
+   },
+   "picked_other_share": 0.0,
+   "picked_other_top_groups": []
+  }
+ ],
+ "note": "On the SMT2020 model, a published model of a fab. Defect holds and their rates are assumed. Real-fab effect: cannot say.",
+ "today": {
+  "reward": -589.3132161395077,
+  "moves": 67816.9,
+  "lots_finished": 173.2,
+  "wait_lot_hours": 76251.32161395077,
+  "breaches": 1160.3
+ }
+}
