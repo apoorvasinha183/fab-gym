@@ -533,7 +533,7 @@ function drawBelt(points, phase, chevrons = true, small = false) {
 // X, Y are flat-picture coordinates; the caller is in floor space and stays there
 function drawLot(X, Y, sz, hot, proto) {
   const [x, y] = T(X, Y);
-  const dim = UI.lens === "proto" && !proto;
+  const dim = (UI.lens === "proto" && !proto) || (UI.lens === "flows" && !FLOW.wafer);
   if (dim) ctx.globalAlpha = 0.14;
   else if (UI.lens === "proto") sz *= 1.6;
   const h = sz * 0.75, top = sz * 0.38;
@@ -824,7 +824,7 @@ let lensShown = "";
 function lensNote() {
   let txt = "";
   if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
-  else if (UI.lens === "flows") txt = "The lines are the 14 busiest paths between halls, counted by the route steps that use them. The dot shows which way lots travel.";
+  else if (UI.lens === "flows") txt = flowNote();
   else if (UI.lens === "proto") {
     let n = 0;
     for (const tr of cur.active) if (tr[6]) n++;
@@ -897,6 +897,7 @@ function frame(now) {
   lastFrame = now;
   stepFly(now);
   if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
+  if (UI.lens === "flows") FLOW.secs += dt;
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -1430,6 +1431,7 @@ function setFloor(run) {
   const flows = hallFlows(HALLS_L, run.j.routes);
   HALLS_L.hallOfGroup = flows.hallOfGroup;
   HALLS_L.flows = flows.f;
+  HALLS_L.routes = run.j.routes;
   TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - 48) / (innerHeight - 220)));
   G = placeHalls(HALLS_L, flows);
   const sel = $("down-group");
@@ -1680,34 +1682,148 @@ async function chromeSetup() {
   $("numbers-open").onclick = () => openNumbers();
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
+    FLOW.secs = 0;
     document.querySelectorAll(".lenses button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
   }));
   document.querySelectorAll("#num-metric button").forEach(b => (b.onclick = () => { UI.metric = b.dataset.m; drawNumbers(); }));
   document.querySelectorAll("#num-share button").forEach(b => (b.onclick = () => { UI.share = +b.dataset.s; drawNumbers(); }));
 }
 
-// the busiest links between halls, as arcs over the floor (route steps that cross from one hall to the next)
+// The Flows view: one wafer's whole route replayed on the track. A lot runs from hall to hall along the spine with
+// a glowing tail; every stretch of track brightens each time it passes, so the map fills from nothing. Slow at first,
+// faster later (FabUI.journeyDone); after a pause it starts again.
+const FLOW = { secs: 0, T: 36, hold: 8, key: null, trips: [], route: "", steps: 0, sOf: [], fin: null, finMax: 1, feedFin: [], feedMax: 1 };
+const FLOW_BINS = 260;
+
+function flowSetup() {
+  const routes = HALLS_L.routes || [];
+  const key = HALLS_L;
+  if (FLOW.key === key) return FLOW.trips.length > 0;
+  FLOW.key = key;
+  const k = Math.max(0, routes.findIndex(([name]) => /(^|_)3$/.test(name)));
+  const [name, steps] = routes[k] || ["", []];
+  FLOW.route = name.replace(/^part_/, "product ");
+  FLOW.steps = steps.length;
+  FLOW.trips = FabUI.journey(steps, HALLS_L.hallOfGroup);
+  FLOW.sOf = HALLS_L.map((_, i) => G.s(i));
+  FLOW.fin = FabUI.ringUse(FLOW.trips.map(tr => [FLOW.sOf[tr.a], FLOW.sOf[tr.b]]), G.ring, FLOW_BINS);
+  FLOW.finMax = Math.max(1, ...FLOW.fin);
+  FLOW.feedFin = HALLS_L.map(() => 0);
+  for (const tr of FLOW.trips) { FLOW.feedFin[tr.a]++; FLOW.feedFin[tr.b]++; }
+  FLOW.feedMax = Math.max(1, ...FLOW.feedFin);
+  return FLOW.trips.length > 0;
+}
+
+function flowNow() {
+  const N = FLOW.trips.length, cyc = FLOW.T + FLOW.hold;
+  const secs = FLOW.secs % cyc;
+  const done = FabUI.journeyDone(N, secs, FLOW.T);
+  return { N, done, finished: done >= N };
+}
+
+function flowColor(f, a) {
+  // dim violet for a stretch passed once, bright pink-white for the busiest
+  const r = Math.round(150 + 105 * f), g = Math.round(90 + 140 * f * f), b = Math.round(200 + 45 * f);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 function drawFlows() {
-  const f = HALLS_L.flows;
-  if (!f) return;
-  const links = [...f.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
-  const max = links.length ? links[0][1] : 1;
-  const centre = i => { const p = G.pos[i], h = HALLS_L[i]; return S(p.x + h.w / 2, p.y + h.h / 2); };
-  screenSpace();
-  ctx.lineCap = "round";
-  for (const [key, n] of links) {
-    const [ax, ay] = centre(Math.floor(key / 100)), [bx, by] = centre(key % 100);
-    const lift = Math.min(160, 0.35 * Math.hypot(bx - ax, by - ay));
-    const mx = (ax + bx) / 2, my = (ay + by) / 2 - lift;
-    const w = 1.5 + 9 * (n / max);
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(mx, my, bx, by);
-    ctx.strokeStyle = "rgba(255, 138, 216, 0.16)"; ctx.lineWidth = w + 8; ctx.stroke();
-    ctx.strokeStyle = "rgba(255, 138, 216, 0.85)"; ctx.lineWidth = w; ctx.stroke();
-    // the direction: a dot two thirds of the way along
-    const u = 0.66, qx = (1 - u) * (1 - u) * ax + 2 * u * (1 - u) * mx + u * u * bx, qy = (1 - u) * (1 - u) * ay + 2 * u * (1 - u) * my + u * u * by;
-    ctx.beginPath(); ctx.arc(qx, qy, w * 0.7 + 2, 0, 2 * Math.PI); ctx.fillStyle = "#FFE3F5"; ctx.fill();
+  if (!flowSetup()) return;
+  const s = view.s, { N, done, finished } = flowNow();
+  const n = Math.floor(done), u = done - n;
+  // track use so far: the finished trips and the part of the current one already run
+  const pairs = FLOW.trips.slice(0, n).map(tr => [FLOW.sOf[tr.a], FLOW.sOf[tr.b]]);
+  const curTrip = !finished && n < N ? FLOW.trips[n] : null;
+  if (curTrip) {
+    const sa = FLOW.sOf[curTrip.a];
+    let d = FLOW.sOf[curTrip.b] - sa;
+    if (d <= 0) d += G.ring;
+    pairs.push([sa, sa + d * Math.min(1, u * 1.15)]);
   }
-  floorSpace();
+  const use = FabUI.ringUse(pairs, G.ring, FLOW_BINS);
+  const bw = G.ring / FLOW_BINS;
+  // each hall fills with pink by how often the wafer has come to it so far
+  const feed = HALLS_L.map(() => 0);
+  for (let k = 0; k < n; k++) { feed[FLOW.trips[k].a]++; feed[FLOW.trips[k].b]++; }
+  HALLS_L.forEach((h, i) => {
+    if (!feed[i]) return;
+    const p = G.pos[i], f = feed[i] / FLOW.feedMax, [X, Y] = W(p.x, p.y);
+    ctx.fillStyle = `rgba(255,138,216,${(0.06 + 0.42 * f).toFixed(3)})`;
+    ctx.fillRect(X, Y, h.w * s, h.h * s);
+  });
+  ctx.lineCap = "butt";
+  for (let i = 0; i < FLOW_BINS; i++) {
+    if (use[i] <= 0) continue;
+    const f = Math.sqrt(use[i] / FLOW.finMax);
+    const [x0, y0] = ringPoint(i * bw), [x1, y1] = ringPoint(Math.min((i + 1) * bw, G.ring - 1e-6));
+    const [X0, Y0] = W(x0, y0), [X1, Y1] = W(x1, y1);
+    if (Math.hypot(X1 - X0, Y1 - Y0) > bw * s * 1.5) continue; // a bin across a corner: skip the chord
+    ctx.beginPath(); ctx.moveTo(X0, Y0); ctx.lineTo(X1, Y1);
+    ctx.strokeStyle = flowColor(f, 0.25); ctx.lineWidth = Math.max(14, (3 + 10 * f) * s); ctx.stroke();
+    ctx.strokeStyle = flowColor(f, 0.95); ctx.lineWidth = Math.max(4, (1 + 4.5 * f) * s); ctx.stroke();
+  }
+  // the feeders into each hall, by trips in and out so far
+  HALLS_L.forEach((h, i) => {
+    if (!feed[i]) return;
+    const p = G.pos[i], by = p.belt === "top" ? G.yTop : G.yBot, f = Math.sqrt(feed[i] / FLOW.feedMax);
+    const [X0, Y0] = W(p.door.x, p.door.y), [X1, Y1] = W(p.door.x, by);
+    ctx.beginPath(); ctx.moveTo(X0, Y0); ctx.lineTo(X1, Y1);
+    ctx.strokeStyle = flowColor(f, 0.95); ctx.lineWidth = Math.max(3, (0.8 + 3.5 * f) * s); ctx.stroke();
+  });
+  // chevrons drifting clockwise along the lit track, so the direction reads at a glance
+  const phase = (FLOW.secs * 0.6) % 1, gapBins = 6, half = Math.max(3, 0.7 * s);
+  ctx.strokeStyle = "rgba(255,240,250,0.85)"; ctx.lineWidth = Math.max(1.5, 0.3 * s);
+  ctx.beginPath();
+  for (let i = 0; i < FLOW_BINS; i += gapBins) {
+    if (use[i] <= 0) continue;
+    const at = (i + phase * gapBins) * bw;
+    const [x, y] = ringPoint(at), [xn, yn] = ringPoint(at + 0.5);
+    const len = Math.hypot(xn - x, yn - y) || 1, dx = (xn - x) / len, dy = (yn - y) / len;
+    const [X, Y] = W(x, y);
+    ctx.moveTo(X - dx * half - dy * half, Y - dy * half + dx * half);
+    ctx.lineTo(X, Y);
+    ctx.lineTo(X - dx * half + dy * half, Y - dy * half - dx * half);
+  }
+  ctx.stroke();
+  if (!curTrip) return;
+  // the two halls of the current trip, outlined
+  for (const i of [curTrip.a, curTrip.b]) {
+    const p = G.pos[i], h = HALLS_L[i], [X, Y] = W(p.x, p.y);
+    ctx.strokeStyle = i === curTrip.b ? "rgba(255,138,216,0.95)" : "rgba(255,138,216,0.45)";
+    ctx.lineWidth = Math.max(2, 0.7 * s);
+    ctx.strokeRect(X, Y, h.w * s, h.h * s);
+  }
+  // the wafer: a comet with a fading tail along the track
+  const tr = [0, 1, curTrip.a, curTrip.b];
+  for (let k = 30; k >= 1; k--) {
+    const [x, y] = tripPoint(tr, Math.max(0, u - k * 0.009));
+    const [X, Y] = W(x, y);
+    ctx.beginPath(); ctx.arc(X, Y, Math.max(3, (2.4 - k * 0.06) * s), 0, 2 * Math.PI);
+    ctx.fillStyle = `rgba(255,${180 + Math.round(60 * (1 - k / 31))},240,${(0.6 * (1 - k / 31)).toFixed(3)})`; ctx.fill();
+  }
+  const [hx, hy] = tripPoint(tr, u);
+  const [HX, HY] = W(hx, hy);
+  ctx.beginPath(); ctx.arc(HX, HY, Math.max(14, 5 * s), 0, 2 * Math.PI); ctx.fillStyle = "rgba(255,138,216,0.3)"; ctx.fill();
+  FLOW.wafer = true;
+  drawLot(HX, HY, Math.max(10, 2.6 * s), false, true);
+  FLOW.wafer = false;
+}
+
+function flowNote() {
+  if (!flowSetup()) return "";
+  const { N, done, finished } = flowNow();
+  const name = i => HALLS_L[i].name;
+  if (!finished) {
+    const tr = FLOW.trips[Math.min(N - 1, Math.floor(done))];
+    return `One wafer of ${FLOW.route} rides the track from hall to hall, step ${tr.step + 1} of ${FLOW.steps}: ${name(tr.a)} to ${name(tr.b)}. ` +
+      `The track glows brighter each time the wafer passes, and the arrows show the way it runs.`;
+  }
+  const visits = HALLS_L.map(() => 0);
+  for (const tr of FLOW.trips) visits[tr.b]++;
+  const top = visits.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 3);
+  return `On its ${FLOW.steps} steps, one wafer of ${FLOW.route} makes ${N} trips between halls. It comes back to ${name(top[0][1])} ${top[0][0]} times, ` +
+    `${name(top[1][1])} ${top[1][0]} and ${name(top[2][1])} ${top[2][0]}: the pinker the hall, the more often the wafer returns. ` +
+    `On the SMT2020 model. The replay starts again in a moment.`;
 }
 
 // ------------------------------------------------------------------ the numbers

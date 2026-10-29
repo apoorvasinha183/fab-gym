@@ -110,7 +110,44 @@
     return { prompt: "Ask the fab a question", explore: "or explore the floor", examples, canAsk: !!status };
   }
 
-  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, STRATEGIES, POLICIES };
+  // ---------------------------------------------------------------- the Flows view: one wafer's journey
+  // A route's trips between halls, in route order. Steps in the same hall make no trip; a group with no hall is skipped.
+  function journey(steps, hallOfGroup) {
+    const out = [];
+    let prev = null;
+    steps.forEach((g, k) => {
+      const h = hallOfGroup[g];
+      if (h === undefined) return;
+      if (prev !== null && h !== prev) out.push({ a: prev, b: h, step: k });
+      prev = h;
+    });
+    return out;
+  }
+  // How many of N trips are drawn after `secs` of a replay lasting T seconds: slow at first so the first trips can be
+  // followed by eye, then faster until all N are drawn.
+  function journeyDone(N, secs, T) {
+    const u = Math.max(0, Math.min(1, secs / T));
+    return u >= 1 ? N : N * u * u;
+  }
+  // How much of each of `bins` equal stretches of a clockwise ring of length `ring` the trips [from, to] cover.
+  // A trip to its own starting point goes all the way round.
+  function ringUse(trips, ring, bins) {
+    const use = new Array(bins).fill(0), w = ring / bins;
+    const add = (lo, hi) => {
+      for (let i = Math.floor(lo / w); i < bins && i * w < hi; i++) {
+        const a = Math.max(lo, i * w), b = Math.min(hi, (i + 1) * w);
+        if (b > a) use[i] += (b - a) / w;
+      }
+    };
+    for (const [s0, s1] of trips) {
+      const a = ((s0 % ring) + ring) % ring, b = ((s1 % ring) + ring) % ring;
+      if (b > a) add(a, b);
+      else { add(a, ring); add(0, b); }
+    }
+    return use;
+  }
+
+  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, STRATEGIES, POLICIES };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabUI = api;
 })(typeof window !== "undefined" ? window : globalThis);
