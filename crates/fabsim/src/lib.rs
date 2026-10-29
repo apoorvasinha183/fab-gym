@@ -4,6 +4,7 @@
 pub mod dials;
 pub mod engine;
 pub mod evolve;
+pub mod fleet;
 pub mod gp;
 pub mod gym;
 pub mod hash;
@@ -18,6 +19,7 @@ pub mod score;
 pub mod shop;
 pub mod smt2020;
 pub mod sweep;
+pub mod track;
 pub mod twofam;
 pub mod uq;
 pub mod variant;

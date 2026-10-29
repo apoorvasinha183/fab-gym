@@ -18,6 +18,8 @@ use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 use std::fmt::Write as _;
 
 use crate::pyrandom::PyRandom;
+use crate::fleet::{Entry, FleetState, HoistRec, Job, Mode, Pos};
+pub use crate::fleet::{FleetOut, IdleVehicle, VehicleAsk};
 use crate::shop::{Oht, Per, Place, Shop};
 
 pub const STATES: [&str; 4] = ["productive", "standby", "scheduled down", "unscheduled down"];
@@ -232,6 +234,8 @@ pub struct RunResult {
     pub trace: Vec<Trace>,
     /// defect findings and the lots they held (docs/RL-DEFECTS.md); empty without a `defects` record
     pub holds: Vec<Hold>,
+    /// the fleet's results (docs/FLEET.md); None without a `fleet` record
+    pub fleet: Option<FleetOut>,
 }
 
 fn hx(x: f64) -> String {
@@ -342,6 +346,10 @@ enum Ev {
     UnholdFam(u32),
     /// a lot's defect hold may be over (docs/RL-DEFECTS.md)
     Unpark(u32),
+    /// the fleet (docs/FLEET.md): a vehicle reaches the end of its stretch, tries again, or ends a hoist
+    VehEnd(u32),
+    VehTry(u32),
+    Hoisted(u32),
 }
 
 /// A release or a listed lot held by its family's cap: (release, n, log row) or (lot, log row).
@@ -400,6 +408,9 @@ struct Tool {
     counts: Vec<f64>,
     /// on a defect hold until (docs/RL-DEFECTS.md)
     hold_until: f64,
+    /// with a fleet: finished lots waiting at its ports, and since when every port has been full
+    out: u32,
+    full_since: f64,
 }
 
 struct Lot {
@@ -419,6 +430,8 @@ struct Lot {
     inwip: bool,
     /// where the lot is, when the shop has a layout
     at: Place,
+    /// where the lot is on the track, with a fleet
+    node: usize,
     /// index into the family names
     fam: u32,
     /// defects (docs/RL-DEFECTS.md): when the lot last left a queue to start work, until when it is held,
@@ -501,6 +514,11 @@ struct Sim<'a, 'c> {
     /// per tool, the lots it finished lately: (lot, step, end)
     recent: Vec<VecDeque<(u32, usize, f64)>>,
     holds: Vec<Hold>,
+    // the fleet (docs/FLEET.md); with `fl` None nothing below changes a run
+    fl: Option<FleetState>,
+    ports: u32,
+    from_tool: Option<u32>,
+    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
 }
 
 /// A defect finding: the tool that did the step, when, the step, the lot found, and the lots held with it.
@@ -969,7 +987,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             let ti = self.group_tools[g as usize][k];
             {
                 let tool = &self.tools[ti as usize];
-                if tool.busy || tool.down != 0 {
+                if tool.busy || tool.down != 0 || (self.ports > 0 && tool.out >= self.ports) {
                     continue;
                 }
             }
@@ -1146,7 +1164,9 @@ impl<'a, 'c> Sim<'a, 'c> {
                 _ => lot.step += 1,
             }
             finished.push((l, step));
+            self.from_tool = Some(ti);
             self.move_on(l, t);
+            self.from_tool = None;
         }
         if let Some(d) = self.defects {
             if let Some((found, step)) = finding {
@@ -1188,6 +1208,10 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
             }
             break;
+        }
+        if self.fl.is_some() {
+            self.fleet_ask(l, t);
+            return;
         }
         let delay = match self.oht {
             None => {
@@ -1261,6 +1285,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             None => Place { phase: 0, side: 0, bay: 0, x: 0.0, y: 0.0 },
             Some(o) => self.routes[r].get(step).and_then(|st| self.place_of[st.group as usize]).unwrap_or(o.start),
         };
+        let node = self.fl.as_ref().map(|f| f.track.node_of(&at)).unwrap_or(0);
         self.lots.push(Lot {
             id,
             route: r as u32,
@@ -1277,6 +1302,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             entered: false,
             inwip: false,
             at,
+            node,
             fam: self.route_fam[r],
             last_start: f64::NEG_INFINITY,
             held_until: f64::NEG_INFINITY,
@@ -1331,9 +1357,297 @@ impl<'a, 'c> Sim<'a, 'c> {
     }
 }
 
+// ---------------------------------------------------------------------------- the fleet (docs/FLEET.md)
+
+impl<'a, 'c> Sim<'a, 'c> {
+    /// A lot's move becomes a request: it waits at its stop until a vehicle comes.
+    fn fleet_ask(&mut self, l: u32, t: f64) {
+        let g = self.routes[self.lots[l as usize].route as usize][self.lots[l as usize].step].group as usize;
+        let from_place = self.lots[l as usize].at;
+        // a stocker holds the lot at the spine end of the bay it came from, as without a fleet
+        let to_place = self.place_of[g].unwrap_or(Place { bay: usize::MAX, y: 0.0, ..from_place });
+        self.lots[l as usize].at = to_place;
+        let fl = self.fl.as_ref().unwrap();
+        let from = self.lots[l as usize].node;
+        let to = fl.stop_of_group[g].unwrap_or_else(|| fl.track.node_of(&to_place));
+        let tool = self.from_tool;
+        if let Some(ti) = tool {
+            self.tool_out(ti, true, t);
+        }
+        let fl = self.fl.as_mut().unwrap();
+        fl.out.asked += 1;
+        fl.pending.push_back(Job { lot: l, from, to, asked: t, tool });
+        self.fleet_assign(t);
+    }
+
+    fn tool_out(&mut self, ti: u32, up: bool, t: f64) {
+        let ports = self.ports;
+        let tool = &mut self.tools[ti as usize];
+        if up {
+            tool.out += 1;
+            if tool.out == ports {
+                tool.full_since = t;
+            }
+        } else {
+            if tool.out == ports {
+                self.fl.as_mut().unwrap().out.blocked_min += t - tool.full_since;
+            }
+            tool.out -= 1;
+        }
+    }
+
+    /// Requests are served oldest first, each by one idle vehicle the controller picks.
+    fn fleet_assign(&mut self, t: f64) {
+        loop {
+            let fl = self.fl.as_ref().unwrap();
+            let Some(job) = fl.pending.front() else { break };
+            let idle = fl.idle_for(job.from);
+            if idle.is_empty() {
+                break;
+            }
+            let default = fl.default_pick(&idle);
+            let mut refused = false;
+            let k = match self.vchooser.as_mut() {
+                Some(ch) => {
+                    let ask = VehicleAsk { lot: job.lot, from: job.from, to: job.to, asked: job.asked, now: t, idle: idle.clone() };
+                    let k = ch(&ask);
+                    if k < idle.len() {
+                        k
+                    } else {
+                        refused = true;
+                        default
+                    }
+                }
+                None => default,
+            };
+            let v = idle[k].vehicle;
+            let fl = self.fl.as_mut().unwrap();
+            fl.out.picks += 1;
+            if refused {
+                fl.out.refused += 1;
+            }
+            let job = fl.pending.pop_front().unwrap();
+            let start = match fl.veh[v as usize].pos {
+                Pos::Parked(n) | Pos::Node(n) => n,
+                Pos::Edge(e) => fl.track.edges()[e].to,
+            };
+            let free = fl.track.dist(start, job.from) / fl.speed;
+            let veh = &mut fl.veh[v as usize];
+            veh.mode = Mode::ToPick;
+            veh.target = job.from;
+            veh.job = Some(job);
+            veh.busy_since = t;
+            veh.leg_start = t;
+            veh.leg_free = free;
+            self.fleet_go(v, t);
+        }
+    }
+
+    /// Move a vehicle on as far as the track lets it now; it is woken again when what holds it clears.
+    fn fleet_go(&mut self, v: u32, t: f64) {
+        let vi = v as usize;
+        let fl = self.fl.as_mut().unwrap();
+        let mode = fl.veh[vi].mode;
+        if matches!(mode, Mode::Idle | Mode::HoistUp | Mode::HoistDown) {
+            return;
+        }
+        let target = fl.veh[vi].target;
+        let n = match fl.veh[vi].pos {
+            Pos::Parked(n) => {
+                if fl.node_held[n].is_some() {
+                    if !fl.node_wait[n].contains(&v) {
+                        fl.node_wait[n].push(v);
+                    }
+                    return;
+                }
+                fl.node_held[n] = Some(v);
+                fl.veh[vi].pos = Pos::Node(n);
+                n
+            }
+            Pos::Node(n) => n,
+            Pos::Edge(e) => {
+                if !fl.veh[vi].at_end || fl.edge_q[e].front() != Some(&v) {
+                    return;
+                }
+                let n = fl.track.edges()[e].to;
+                if fl.node_held[n].is_some_and(|h| h != v) {
+                    if !fl.node_wait[n].contains(&v) {
+                        fl.node_wait[n].push(v);
+                    }
+                    return;
+                }
+                if n != target {
+                    let e2 = fl.track.next(n, target).expect("the track reaches every stop");
+                    if !fl.can_enter(e2, t) {
+                        self.fleet_wait(v, e2, t);
+                        return;
+                    }
+                    self.fleet_leave(v, e, t);
+                    self.fleet_enter(v, e2, t);
+                    return;
+                }
+                self.fleet_leave(v, e, t);
+                let fl = self.fl.as_mut().unwrap();
+                fl.node_held[n] = Some(v);
+                fl.veh[vi].pos = Pos::Node(n);
+                n
+            }
+        };
+        if n == target {
+            self.fleet_hoist(v, n, t);
+            return;
+        }
+        let fl = self.fl.as_mut().unwrap();
+        let e2 = fl.track.next(n, target).expect("the track reaches every stop");
+        if !fl.can_enter(e2, t) {
+            self.fleet_wait(v, e2, t);
+            return;
+        }
+        self.fleet_release(n, t);
+        self.fleet_enter(v, e2, t);
+    }
+
+    fn fleet_wait(&mut self, v: u32, e: usize, t: f64) {
+        let fl = self.fl.as_mut().unwrap();
+        if fl.edge_q[e].len() >= fl.cap[e] {
+            if !fl.edge_wait[e].contains(&v) {
+                fl.edge_wait[e].push(v);
+            }
+        } else {
+            let at = fl.last_in[e] + fl.headway;
+            self.at(at.max(t), Ev::VehTry(v));
+        }
+    }
+
+    fn fleet_enter(&mut self, v: u32, e: usize, t: f64) {
+        let full = self.full;
+        let fl = self.fl.as_mut().unwrap();
+        let len = fl.track.edges()[e].len;
+        let end = (t + len / fl.speed).max(fl.last_end[e] + fl.headway);
+        fl.last_end[e] = end;
+        fl.last_in[e] = t;
+        fl.edge_q[e].push_back(v);
+        let loaded = fl.veh[v as usize].mode == Mode::Loaded;
+        if loaded {
+            fl.out.loaded_m += len;
+        } else {
+            fl.out.empty_m += len;
+        }
+        let veh = &mut fl.veh[v as usize];
+        veh.pos = Pos::Edge(e);
+        veh.at_end = false;
+        if full {
+            veh.entry = fl.out.entries.len();
+            fl.out.entries.push(Entry { vehicle: v, edge: e, t_in: t, t_out: f64::INFINITY, loaded });
+        }
+        self.at(end, Ev::VehEnd(v));
+    }
+
+    fn fleet_leave(&mut self, v: u32, e: usize, t: f64) {
+        let full = self.full;
+        let fl = self.fl.as_mut().unwrap();
+        let first = fl.edge_q[e].pop_front();
+        debug_assert_eq!(first, Some(v), "vehicles leave a stretch in the order they entered");
+        if full {
+            let i = fl.veh[v as usize].entry;
+            fl.out.entries[i].t_out = t;
+        }
+        let mut wake: Vec<u32> = std::mem::take(&mut fl.edge_wait[e]);
+        if let Some(&h) = fl.edge_q[e].front() {
+            if fl.veh[h as usize].at_end {
+                wake.push(h);
+            }
+        }
+        for w in wake {
+            self.at(t, Ev::VehTry(w));
+        }
+    }
+
+    fn fleet_release(&mut self, n: usize, t: f64) {
+        let fl = self.fl.as_mut().unwrap();
+        fl.node_held[n] = None;
+        let wake: Vec<u32> = std::mem::take(&mut fl.node_wait[n]);
+        for w in wake {
+            self.at(t, Ev::VehTry(w));
+        }
+    }
+
+    fn fleet_hoist(&mut self, v: u32, n: usize, t: f64) {
+        let full = self.full;
+        let fl = self.fl.as_mut().unwrap();
+        let vi = v as usize;
+        let held = (t - fl.veh[vi].leg_start - fl.veh[vi].leg_free).max(0.0);
+        fl.out.held_min += held;
+        let up = fl.veh[vi].mode == Mode::ToPick;
+        let job = fl.veh[vi].job.clone().unwrap();
+        if up {
+            let w = t - job.asked;
+            fl.out.wait_sum += w;
+            fl.out.wait_n += 1;
+            fl.out.wait_max = fl.out.wait_max.max(w);
+        }
+        fl.veh[vi].mode = if up { Mode::HoistUp } else { Mode::HoistDown };
+        if full {
+            fl.veh[vi].hoist = fl.out.hoists.len();
+            fl.out.hoists.push(HoistRec { vehicle: v, stop: n, lot: job.lot, up, t0: t, t1: t + fl.hoist });
+        }
+        let end = t + fl.hoist;
+        self.at(end, Ev::Hoisted(v));
+    }
+
+    fn fleet_hoisted(&mut self, v: u32, t: f64) {
+        let vi = v as usize;
+        let fl = self.fl.as_mut().unwrap();
+        let Pos::Node(n) = fl.veh[vi].pos else { unreachable!("a hoist happens at a stop") };
+        let job = fl.veh[vi].job.clone().unwrap();
+        if fl.veh[vi].mode == Mode::HoistUp {
+            let free = fl.track.dist(n, job.to) / fl.speed;
+            let veh = &mut fl.veh[vi];
+            veh.mode = Mode::Loaded;
+            veh.target = job.to;
+            veh.leg_start = t;
+            veh.leg_free = free;
+            if let Some(ti) = job.tool {
+                self.tool_out(ti, false, t);
+                let g = self.tools[ti as usize].group;
+                self.dispatch(g, t);
+            }
+            self.fleet_go(v, t);
+            return;
+        }
+        // set down: the lot joins its next group's queue and the vehicle parks off the track
+        let d = t - job.asked;
+        fl.out.delivered += 1;
+        fl.out.deliver_sum += d;
+        fl.out.deliver_least = fl.out.deliver_least.min(d);
+        fl.out.busy_min += t - fl.veh[vi].busy_since;
+        let veh = &mut fl.veh[vi];
+        veh.mode = Mode::Idle;
+        veh.job = None;
+        veh.pos = Pos::Parked(n);
+        self.transports += 1;
+        self.transport_minutes += d;
+        self.lots[job.lot as usize].node = job.to;
+        self.fleet_release(n, t);
+        self.arrive(job.lot, t);
+        self.fleet_assign(t);
+    }
+}
+
 /// Run a shop. With a chooser, every time a free tool could start work it is handed a
 /// decision and returns the index of the candidate to start.
 pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decision) -> usize>) -> RunResult {
+    run_vehicles(shop, opts, chooser, None)
+}
+
+/// `run` with a vehicle controller (docs/FLEET.md): asked which idle vehicle takes each move, when the shop has a
+/// fleet. A pick that is not one of the idle vehicles is refused, counted, and the built-in pick used instead.
+pub fn run_vehicles<'c>(
+    shop: &Shop,
+    opts: &RunOptions,
+    chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
+    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+) -> RunResult {
     let horizon = opts.until.unwrap_or(f64::INFINITY);
     // compile the shop into indexes
     let gidx: HashMap<&str, u32> = shop.groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i as u32)).collect();
@@ -1399,6 +1713,8 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                 minutes: [0.0; 4],
                 counts: vec![0.0; g.pm_pieces.len()],
                 hold_until: f64::NEG_INFINITY,
+                out: 0,
+                full_since: 0.0,
             });
         }
         group_tools.push(ids);
@@ -1520,6 +1836,17 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         defects: shop.defects,
         recent: if shop.defects.is_some() { (0..ntools_for_defects).map(|_| VecDeque::new()).collect() } else { vec![] },
         holds: vec![],
+        fl: match (&shop.fleet, &shop.oht) {
+            (Some(f), Some(o)) => {
+                let track = crate::track::Track::new(o, f.cross);
+                let stops = shop.groups.iter().map(|g| track.stop_of(&g.name)).collect();
+                Some(FleetState::new(track, o.speed, f.gap, f.hoist, f.vehicles, f.controller != "first", stops))
+            }
+            _ => None,
+        },
+        ports: shop.fleet.as_ref().filter(|_| shop.oht.is_some()).map(|f| f.ports as u32).unwrap_or(0),
+        from_tool: None,
+        vchooser,
     };
 
     // downs: given windows, maintenance calendars, breakdowns
@@ -1705,6 +2032,12 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
                 sim.at(t + next, Ev::Break(ti));
             }
             Ev::Wake(g) => sim.dispatch(g, t),
+            Ev::VehEnd(v) => {
+                sim.fl.as_mut().unwrap().veh[v as usize].at_end = true;
+                sim.fleet_go(v, t);
+            }
+            Ev::VehTry(v) => sim.fleet_go(v, t),
+            Ev::Hoisted(v) => sim.fleet_hoisted(v, t),
             Ev::Unpark(l) => sim.unpark(l, t),
             Ev::Up(ti) => {
                 sim.tools[ti as usize].down = 0;
@@ -1763,5 +2096,22 @@ pub fn run(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decis
         until: end,
         decisions: sim.decisions,
         trace: std::mem::take(&mut sim.trace),
+        fleet: sim.fl.take().map(|mut f| {
+            for tool in &sim.tools {
+                if sim.ports > 0 && tool.out >= sim.ports {
+                    f.out.blocked_min += end - tool.full_since;
+                }
+            }
+            for v in &f.veh {
+                if v.mode != Mode::Idle {
+                    f.out.busy_min += end - v.busy_since;
+                }
+            }
+            f.out.open = f.out.asked - f.out.delivered;
+            if f.out.deliver_least.is_infinite() {
+                f.out.deliver_least = 0.0;
+            }
+            f.out
+        }),
     }
 }

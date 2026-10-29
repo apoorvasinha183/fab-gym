@@ -192,6 +192,20 @@ pub struct Shop {
     pub reserves: Vec<(String, String, usize)>,
     /// holds on top of rework (docs/RL-DEFECTS.md); None leaves every run as it was
     pub defects: Option<Defects>,
+    /// a finite fleet on a one-way track (docs/FLEET.md); needs `oht`; None leaves every run as it was
+    pub fleet: Option<Fleet>,
+}
+
+/// The fleet (docs/FLEET.md): vehicles on the one-way track, the gap between them (metres), minutes to hoist a lot
+/// up or down, finished lots a tool may hold before it stops, metres between crossovers, and the vehicle controller.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Fleet {
+    pub vehicles: usize,
+    pub gap: f64,
+    pub hoist: f64,
+    pub ports: usize,
+    pub cross: f64,
+    pub controller: String,
 }
 
 /// A rework is a finding: the tool that did the step is held, and so are the lots it touched just before.
@@ -483,6 +497,11 @@ impl Shop {
                         places: vec![],
                     });
                 }
+                "fleet" => {
+                    need(7)?;
+                    let n = |x: &str| x.parse::<usize>().map_err(|_| format!("line {}: fleet wants whole numbers of vehicles and ports", no + 2));
+                    s.fleet = Some(Fleet { vehicles: n(f[1])?, gap: pf(f[2])?, hoist: pf(f[3])?, ports: n(f[4])?, cross: pf(f[5])?, controller: f[6].to_string() });
+                }
                 "ohtphase" | "ohtstart" | "place" => {
                     let o = s.oht.as_mut().ok_or_else(|| format!("line {}: {} before oht", no + 2, f[0]))?;
                     match f[0] {
@@ -511,6 +530,16 @@ impl Shop {
         }
         if let Some(o) = &s.oht {
             o.check()?;
+        }
+        if let Some(f) = &s.fleet {
+            if s.oht.is_none() {
+                return Err("a fleet needs a layout (an oht record)".into());
+            }
+            // written so that a NaN fails too
+            let ok = f.vehicles > 0 && f.ports > 0 && f.gap > 0.0 && f.hoist >= 0.0 && f.cross >= 0.0 && ["nearest", "first"].contains(&f.controller.as_str());
+            if !ok {
+                return Err("fleet wants vehicles and ports above zero, gap > 0, hoist and cross >= 0, and a controller nearest or first".into());
+            }
         }
         Ok(s)
     }
@@ -549,6 +578,9 @@ impl Shop {
                     }
                 }
             }
+        }
+        if let Some(f) = &self.fleet {
+            let _ = writeln!(o, "fleet\t{}\t{}\t{}\t{}\t{}\t{}", f.vehicles, pyrepr(f.gap), pyrepr(f.hoist), f.ports, pyrepr(f.cross), f.controller);
         }
         for g in &self.groups {
             let _ = writeln!(
