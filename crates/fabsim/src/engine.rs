@@ -2256,17 +2256,20 @@ pub struct Player {
     picks: Vec<u32>,
     /// for each counted pick: when, and how many lots there were to choose from
     seen: Vec<(f64, u32)>,
+    /// counted picks whose candidates are sorted into kinds (`keep_kinds`), and each one's kinds
+    kinds_at: Option<std::sync::Arc<std::collections::HashSet<u64>>>,
+    kinds: Vec<(u64, Vec<u32>)>,
 }
 
 impl Player {
     /// A built-in rule (the random rule seeded by `seed`, as `policy::run_with` seeds it).
     pub fn rule(shop: &Shop, policy: crate::policy::Policy, seed: u64) -> Player {
-        Player { base: Some(crate::policy::Rule::new(shop, policy, seed)), log: None, force: None, window: None, asked: 0, picks: vec![], seen: vec![] }
+        Player { base: Some(crate::policy::Rule::new(shop, policy, seed)), log: None, force: None, window: None, asked: 0, picks: vec![], seen: vec![], kinds_at: None, kinds: vec![] }
     }
 
     /// Picks recorded earlier, replayed in order; past their end, today's rule.
     pub fn replay(picks: Vec<u32>) -> Player {
-        Player { base: None, log: Some(std::sync::Arc::new(picks)), force: None, window: None, asked: 0, picks: vec![], seen: vec![] }
+        Player { base: None, log: Some(std::sync::Arc::new(picks)), force: None, window: None, asked: 0, picks: vec![], seen: vec![], kinds_at: None, kinds: vec![] }
     }
 
     /// Force the `at`-th counted pick to candidate `pick`.
@@ -2315,7 +2318,21 @@ impl Player {
         }
         self.picks.push(i as u32);
         self.seen.push((d.t, d.candidates.len() as u32));
+        if self.kinds_at.as_ref().is_some_and(|at| at.contains(&k)) {
+            self.kinds.push((k, kinds_of(&d.candidates)));
+        }
         i
+    }
+
+    /// Sort the candidates of these counted picks into kinds (regret B by kind, `regret::audit_by_kind`).
+    pub fn keep_kinds(mut self, at: std::collections::HashSet<u64>) -> Player {
+        self.kinds_at = Some(std::sync::Arc::new(at));
+        self
+    }
+
+    /// For each counted pick named in `keep_kinds`: its candidates' kinds, numbered from 0 in order of first use.
+    pub fn kinds(&self) -> &[(u64, Vec<u32>)] {
+        &self.kinds
     }
 
     /// For each counted pick: when it was made and how many lots there were to choose from.
@@ -2332,6 +2349,26 @@ impl Player {
         p.base = None;
         p
     }
+}
+
+/// Candidates of one kind: lots or batches of the same route, step, size, priority, number of lots, family and setup
+/// change. For the reward's measure (lots finished, lot-hours waiting) two lots of one kind are the same choice, up to
+/// any random draw tied to a lot. Numbered from 0 in order of first use.
+pub fn kinds_of(cands: &[Candidate]) -> Vec<u32> {
+    let mut seen: Vec<(&str, &str, usize, i64, u64, usize, &str, bool)> = vec![];
+    cands
+        .iter()
+        .map(|c| {
+            let key = (c.kind, c.route.as_str(), c.step, c.size_wafers, c.priority.to_bits(), c.lots.len(), c.family.as_str(), c.setup_change);
+            match seen.iter().position(|x| *x == key) {
+                Some(i) => i as u32,
+                None => {
+                    seen.push(key);
+                    (seen.len() - 1) as u32
+                }
+            }
+        })
+        .collect()
 }
 
 /// A run that can be advanced to a time, copied, and finished (docs/LONG-RESCORE.md, regret options B and D). Advanced

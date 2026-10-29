@@ -26,7 +26,10 @@ pub struct Sample {
     /// which counted pick of the window, and when
     pub k: u64,
     pub t: f64,
-    /// each lot's gain over the horizon, in candidate order; the policy's pick; best minus the policy's
+    /// how many lots (or batches) there were to choose from, and which of them were tried, in candidate order
+    pub lots: usize,
+    pub tried: Vec<usize>,
+    /// each tried lot's gain over the horizon, in the order of `tried`; the policy's pick among them; best minus it
     pub values: Vec<f64>,
     pub chosen: usize,
     pub regret: f64,
@@ -39,45 +42,96 @@ pub struct Audit {
     pub horizon: f64,
 }
 
-/// B: `picks` are the policy's counted picks in the window [from, to] on `seed`; `n` evenly spaced of them are audited.
+/// B: `picks` are the policy's counted picks in the window [from, to] on `seed`; `n` evenly spaced of them are audited,
+/// every lot tried.
 pub fn audit(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize, horizon: f64) -> Audit {
+    audit_with(shop, seed, from, to, picks, n, horizon, None)
+}
+
+/// B by kind: as `audit`, but one lot of each kind is tried (`engine::kinds_of`), the policy's own pick standing for
+/// its kind. Fewer tries can only miss a better lot, so its regret is never above the full audit's.
+pub fn audit_by_kind(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize, horizon: f64) -> Audit {
+    audit_with(shop, seed, from, to, picks, n, horizon, Some(0))
+}
+
+/// B capped: one lot of each kind and the policy's pick, then lots spread evenly over the rest, at most `max` tried in
+/// all (or the kinds, if there are more of them). Its regret lies between the audit by kind and the full audit.
+#[allow(clippy::too_many_arguments)]
+pub fn audit_capped(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize, horizon: f64, max: usize) -> Audit {
+    audit_with(shop, seed, from, to, picks, n, horizon, Some(max))
+}
+
+#[allow(clippy::too_many_arguments)]
+/// `cap`: None tries every lot; Some(m), one of each kind and the policy's pick, filled evenly up to m.
+fn audit_with(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize, horizon: f64, cap: Option<usize>) -> Audit {
+    let by_kind = cap.is_some();
     let opts = RunOptions { seed, until: Some(to + horizon), record: false };
-    // a first pass finds when each pick comes and how many lots it chose from
-    let mut first = Stepper::new(shop, &opts, Some(Player::replay(picks.to_vec()).window(from, to)));
+    let n = n.min(picks.len());
+    let ks: Vec<usize> = (0..n).map(|i| ((i as f64 + 0.5) * picks.len() as f64 / n as f64) as usize).collect();
+    // a first pass finds when each pick comes and how many lots it chose from (and, by kind, their kinds)
+    let mut player = Player::replay(picks.to_vec()).window(from, to);
+    if by_kind {
+        player = player.keep_kinds(ks.iter().map(|&k| k as u64).collect());
+    }
+    let mut first = Stepper::new(shop, &opts, Some(player));
     first.advance(to);
     let seen: Vec<(f64, u32)> = first.player().map(|p| p.seen().to_vec()).unwrap_or_default();
-    let len = seen.len().min(picks.len());
-    let n = n.min(len);
-    let ks: Vec<usize> = (0..n).map(|i| ((i as f64 + 0.5) * len as f64 / n as f64) as usize).collect();
+    let kinds: std::collections::HashMap<u64, Vec<u32>> = first.player().map(|p| p.kinds().iter().cloned().collect()).unwrap_or_default();
+    let ks: Vec<usize> = ks.into_iter().filter(|&k| k < seen.len()).collect();
     let mut main = Stepper::new(shop, &opts, Some(Player::replay(picks.to_vec()).window(from, to)));
     let mut samples = vec![];
     for &k in &ks {
         let (t, cands) = seen[k];
+        let lots = cands as usize;
+        let chosen_lot = (picks[k] as usize).min(lots - 1);
+        // the lots tried: all, or the first of each kind with the policy's pick standing for its own
+        let tried: Vec<usize> = match kinds.get(&(k as u64)).filter(|_| by_kind) {
+            Some(kd) => {
+                let mut first_of: Vec<Option<usize>> = vec![None; kd.iter().map(|&x| x as usize + 1).max().unwrap_or(0)];
+                for (i, &x) in kd.iter().enumerate() {
+                    first_of[x as usize].get_or_insert(i);
+                }
+                first_of[kd[chosen_lot] as usize] = Some(chosen_lot);
+                let mut v: Vec<usize> = first_of.into_iter().flatten().collect();
+                let m = cap.unwrap_or(0);
+                if m > v.len() {
+                    let mut taken = vec![false; lots];
+                    v.iter().for_each(|&i| taken[i] = true);
+                    let rest: Vec<usize> = (0..lots).filter(|&i| !taken[i]).collect();
+                    let add = (m - v.len()).min(rest.len());
+                    v.extend((0..add).map(|j| rest[((j as f64 + 0.5) * rest.len() as f64 / add as f64) as usize]));
+                }
+                v.sort_unstable();
+                v.dedup();
+                v
+            }
+            None => (0..lots).collect(),
+        };
         main.advance(t - 1e-6);
         let base = main.value();
         let player = main.player().unwrap().clone();
-        // each lot on its own copy; the copies spread over at most WORKERS threads, the values kept in candidate order
-        let n_c = cands as usize;
-        let per = n_c.div_ceil(WORKERS).max(1);
-        let mut values = vec![0.0; n_c];
+        // each lot on its own copy; the copies spread over at most WORKERS threads, the values kept in `tried` order
+        let per = tried.len().div_ceil(WORKERS).max(1);
+        let mut values = vec![0.0; tried.len()];
         std::thread::scope(|sc| {
             let player = &player;
+            let tried = &tried;
             for (w, chunk) in values.chunks_mut(per).enumerate() {
                 let own = Copied(main.clone());
                 sc.spawn(move || {
                     let own = own;
                     for (j, v) in chunk.iter_mut().enumerate() {
                         let mut b = own.0.clone();
-                        b.set_player(Some(player.branch(&picks[..k], k as u64, w * per + j)));
+                        b.set_player(Some(player.branch(&picks[..k], k as u64, tried[w * per + j])));
                         b.advance(t + horizon);
                         *v = b.value() - base;
                     }
                 });
             }
         });
-        let chosen = (picks[k] as usize).min(values.len() - 1);
+        let chosen = tried.iter().position(|&i| i == chosen_lot).unwrap_or(0);
         let best = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        samples.push(Sample { k: k as u64, t, regret: best - values[chosen], values, chosen });
+        samples.push(Sample { k: k as u64, t, lots, regret: best - values[chosen], tried, values, chosen });
     }
     let mean_regret = if samples.is_empty() { 0.0 } else { samples.iter().map(|s| s.regret).sum::<f64>() / samples.len() as f64 };
     Audit { samples, mean_regret, horizon }

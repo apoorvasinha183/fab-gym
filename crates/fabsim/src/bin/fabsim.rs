@@ -871,7 +871,7 @@ fn bound_cmd(args: &[String]) {
 }
 
 /// Regret B and D (docs/LONG-RESCORE.md) on one seed:
-/// `fabsim regret audit SHOP --seed N --warmup D --window D --picks FILE [--defects H,L,R] [--samples 300] [--horizon 1440] --out FILE`
+/// `fabsim regret audit SHOP --seed N --warmup D --window D --picks FILE [--defects H,L,R] [--samples 300] [--horizon 1440] [--by-kind | --max M] --out FILE`
 /// `fabsim regret switch SHOP --seed N --warmup D --window D [--defects H,L,R] [--shift 720] --out FILE`
 fn regret_cmd(args: &[String]) {
     use fabsim::policy::Policy;
@@ -892,10 +892,19 @@ fn regret_cmd(args: &[String]) {
             let picks: Vec<u32> = text.lines().filter_map(|l| l.trim().parse().ok()).collect();
             let n = arg(args, "--samples", 300) as usize;
             let horizon = argf(args, "--horizon", 1440.0);
-            let a = fabsim::regret::audit(&shop, seed, from, to, &picks, n, horizon);
-            let _ = write!(j, "\"kind\":\"audit\",\"horizon\":{horizon},\"picks\":{},\"mean_regret\":{},\"samples\":[", picks.len(), a.mean_regret);
+            // --by-kind: one lot of each kind tried, the policy's pick standing for its own (never more regret than all)
+            let by_kind = args.iter().any(|a| a == "--by-kind");
+            // --max M: the kinds and the pick, then lots spread evenly over the rest, at most M tried
+            let max = args.iter().position(|a| a == "--max").and_then(|i| args.get(i + 1)).and_then(|v| v.parse::<usize>().ok());
+            let a = match (max, by_kind) {
+                (Some(m), _) => fabsim::regret::audit_capped(&shop, seed, from, to, &picks, n, horizon, m),
+                (None, true) => fabsim::regret::audit_by_kind(&shop, seed, from, to, &picks, n, horizon),
+                (None, false) => fabsim::regret::audit(&shop, seed, from, to, &picks, n, horizon),
+            };
+            let by_kind = by_kind || max.is_some();
+            let _ = write!(j, "\"kind\":\"audit\",\"by_kind\":{by_kind},\"max\":{},\"horizon\":{horizon},\"picks\":{},\"mean_regret\":{},\"samples\":[", max.map(|m| m.to_string()).unwrap_or("null".into()), picks.len(), a.mean_regret);
             for (i, x) in a.samples.iter().enumerate() {
-                let _ = write!(j, "{}{{\"k\":{},\"t\":{},\"chosen\":{},\"regret\":{},\"values\":{:?}}}", if i > 0 { "," } else { "" }, x.k, x.t, x.chosen, x.regret, x.values);
+                let _ = write!(j, "{}{{\"k\":{},\"t\":{},\"lots\":{},\"tried\":{:?},\"chosen\":{},\"regret\":{},\"values\":{:?}}}", if i > 0 { "," } else { "" }, x.k, x.t, x.lots, x.tried, x.chosen, x.regret, x.values);
             }
             j.push_str("]");
             println!("audit seed {seed}: {} samples, mean regret {:.4} a pick over {horizon} min ({:.0} s)", a.samples.len(), a.mean_regret, t0.elapsed().as_secs_f64());
