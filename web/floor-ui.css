@@ -365,3 +365,31 @@ body.dock-wide .lens-note, body.dock-wide .flow-ctl { display: none; }
   .bar.pill { bottom: 8px; padding: 6px 10px; }
   .rail { bottom: 74px; }
 }
+
+/* How a chip is made: the journey, sand to chip */
+.journey { display: grid; grid-template-columns: 4fr 3fr 4fr; gap: 10px; margin: 8px 0 10px; }
+.j-act { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: rgba(10, 20, 24, 0.5); }
+.j-act.fab { border-color: rgba(126, 232, 216, 0.45); background: rgba(126, 232, 216, 0.05); }
+.j-head { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 2px 6px; }
+.j-act.fab .j-head { color: var(--accent); }
+.j-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 6px; }
+.j-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border: 1px solid transparent; border-radius: 10px;
+  background: #12232A; color: var(--muted2); font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center; }
+.j-card svg { width: 100%; max-width: 88px; height: auto; }
+.j-card:hover { border-color: var(--line); color: var(--text); }
+.j-card.on { border-color: var(--accent); color: var(--text); background: rgba(126, 232, 216, 0.1); }
+.journey-detail { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: center; padding: 12px 14px; margin-bottom: 14px;
+  border-radius: 12px; background: rgba(10, 20, 24, 0.6); border: 1px solid var(--line); }
+.journey-detail .j-pic svg { width: 100%; height: auto; }
+.journey-detail h3 { margin: 4px 0; font-size: 18px; color: var(--text); text-transform: none; letter-spacing: 0; }
+.journey-detail p { margin: 0 0 6px; color: var(--muted2); font-size: 14px; line-height: 1.55; max-width: 68ch; }
+.journey-detail ul { margin: 0; padding-left: 18px; color: var(--muted2); font-size: 13px; line-height: 1.6; }
+.j-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+.j-tag.in { background: rgba(126, 232, 216, 0.16); color: var(--accent); }
+.j-tag.out { background: rgba(169, 196, 192, 0.14); color: var(--muted2); }
+.loop-title { margin: 6px 0 10px; font-size: 13px; color: var(--muted2); font-weight: 600; }
+@media (max-width: 900px) {
+  .journey { grid-template-columns: 1fr; }
+  .journey-detail { grid-template-columns: 1fr; }
+  .journey-detail .j-pic { max-width: 200px; }
+}

@@ -1273,7 +1273,36 @@ function stagesClose() {
   if (ST.opener && ST.opener.focus) ST.opener.focus();
 }
 
+// the whole journey, sand to chip, as one strip above the loop (docs/STAGES.md; the founder, 29 Oct)
+const JOURNEY_ACTS = { before: "Before the fab", fab: "In the fab · simulated", after: "After the fab" };
+function journeyDraw() {
+  const el = $("stages-journey");
+  let html = "";
+  for (const act of ["before", "fab", "after"]) {
+    html += `<div class="j-act ${act}"><div class="j-head">${JOURNEY_ACTS[act]}</div><div class="j-cards">` +
+      FabStages.JOURNEY.filter(j => j.act === act).map(j => `<button type="button" role="listitem" class="j-card${j.key === ST.jkey ? " on" : ""}" data-j="${j.key}">` +
+        `${FabStages.journeyPicture(j.key)}<span>${esc(j.name)}</span></button>`).join("") + `</div></div>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll(".j-card").forEach(b => (b.onclick = () => journeySelect(b.dataset.j)));
+  journeySelect(ST.jkey || "sand", false);
+}
+function journeySelect(key, jump = true) {
+  ST.jkey = key;
+  const j = FabStages.JOURNEY.find(x => x.key === key);
+  document.querySelectorAll("#stages-journey .j-card").forEach(b => b.classList.toggle("on", b.dataset.j === key));
+  $("journey-detail").innerHTML = `<div class="j-pic">${FabStages.journeyPicture(key)}</div><div class="j-text">` +
+    `<div class="j-tag ${j.inModel ? "in" : "out"}">${j.inModel ? "In the simulator · SMT2020 model" : "Outside the simulator · general knowledge"}</div>` +
+    `<h3>${esc(j.name)}</h3><p>${esc(j.what)}</p><ul>${j.facts.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` +
+    (key === "loop" ? `<button type="button" class="link" id="j-to-loop">See the loop below ↓</button>` : "") + `</div>`;
+  if (key === "loop") {
+    $("j-to-loop").onclick = () => $("loop-title").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (jump) $("loop-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function stagesDraw() {
+  journeyDraw();
   const svg = $("stages-loop");
   const cx = 270, cy = 270, rr0 = 196, nw = 112, nh = 70;
   let s = `<circle cx="${cx}" cy="${cy}" r="78" fill="#2f3a44" stroke="#8893a1" stroke-width="2"/>`;
