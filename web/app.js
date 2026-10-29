@@ -24,7 +24,7 @@ const HALLS = [
 // 20 apart in CIE Lab for normal, protan, deutan and tritan vision; each is at least 3:1 against
 // the hall floor. Idle tools are drawn as outlines and broken ones carry a cross, so state never
 // rests on colour alone.
-const STATE_COLORS = ["#4FE3A3", "#8FB3AE", "#7F9CFF", "#FF6262", "#FFC857"];
+const STATE_COLORS = [FabUI.PALETTE.working, FabUI.PALETTE.idle, FabUI.PALETTE.maintenance, FabUI.PALETTE.broken, FabUI.PALETTE.setup];
 const STATE_NAMES = ["working", "idle", "maintenance", "broken down", "changing setup"];
 const LOT = "#efe2c4", HOT = "#e8955a";
 const TOOL = 3, PITCH = 4;
@@ -326,7 +326,7 @@ function fit() {
   const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
   updateTilt();
-  const M = 6; // the board's margin around the fab, in tiles
+  const M = 3; // the board's margin around the fab, in tiles (smaller: docs/FLOOR-CLEANUP.md, item 5)
   const xs = [], ys = [];
   for (const [x, y] of [[-M, -M], [G.L + M, -M], [G.L + M, G.bottom + M], [-M, G.bottom + M]]) { xs.push(TM.a * x + TM.c * y); ys.push(TM.b * x + TM.d * y); }
   const s = Math.min(w / (Math.max(...xs) - Math.min(...xs)), h / (Math.max(...ys) - Math.min(...ys) + 3));
@@ -400,7 +400,7 @@ function rr(x, y, w, h, r) {
 const LOOK = {
   sky0: "#16323A", sky1: "#0B1418", sky2: "#070C0F", boardSide: "#071013",
   ground: "#0F1D22", hallFloor: "#12262D", wall: "#2C5560", wallDark: "#0A1418", wallTop: "#7EE8D8",
-  rail: "#FFB347", beltTop: "#1F3A42", chevron: "rgba(255, 179, 71, 0.85)", glow: "rgba(255, 179, 71, 0.16)",
+  rail: FabUI.PALETTE.track, beltTop: "#1F3A42", chevron: "rgba(126, 232, 216, 0.7)", glow: "rgba(126, 232, 216, 0.07)",
   body: "#3A4A52", bodyEdge: "#0A1418", plate: "rgba(14, 27, 31, 0.86)",
   title: "#E8F2F0", sub: "#8FB3AE", label: "#A9C4C0", section: "#7EE8D8",
   lot: "#F4E7C6", lotTop: "#c9bc9c", hot: "#FF8A4C", hotTop: "#c25e2c", proto: "#FF8AD8", protoTop: "#c25aa6",
@@ -658,7 +658,7 @@ function drawFloorBody(s) {
   });
   drawBelt([[0, G.yTop], [G.L, G.yTop], [G.L, G.yBot], [0, G.yBot], [0, G.yTop]], phase);
   // halls: back walls first, then floors and contents, then the glass fronts
-  const showLabels = s > 2.6;
+  const detail = FabUI.zoomDetail(s), showLabels = detail.names;
   const wallH = Math.max(5, 2.2 * s * TILT.k);
   if (TILT.on) HALLS_L.forEach((h, i) => hallWalls(G.pos[i].x, G.pos[i].y, h.w, h.h, wallH, false));
   const titles = []; // hall titles go on top of everything
@@ -762,7 +762,7 @@ function drawGroup(c, cx, cy, showLabels) {
     const q = cur.queue[g], a = Math.min(0.75, q / 30);
     if (q > 0) {
       const [HX, HY] = W(cx + 0.3, cy + 0.3);
-      ctx.fillStyle = `rgba(255, ${Math.round(140 - 90 * a)}, 70, ${(0.12 + a * 0.7).toFixed(3)})`;
+      ctx.fillStyle = FabUI.heatColor(a / 0.75);
       ctx.fillRect(HX, HY, (c.w - 0.6) * s, (c.h - 0.6) * s);
     }
   }
@@ -772,7 +772,17 @@ function drawGroup(c, cx, cy, showLabels) {
     ctx.textBaseline = "top";
     uprightText(P.plain[g], LX, LY, `500 ${1.5 * s}px -apple-system, Inter, sans-serif`, LOOK.label);
   }
-  // the group's queue belt and its waiting lots
+  // the group's queue: a count chip at middle zoom, the belt with its lots when close (docs/FLOOR-CLEANUP.md)
+  const detail = FabUI.zoomDetail(s);
+  if (!detail.queues) {
+    const n0 = cur.queue[g];
+    if (detail.chips && n0 > 0) {
+      const [X, Y] = W(cx + 1, yLabel + 2.2);
+      ctx.textBaseline = "top";
+      uprightText(`${n0} waiting`, X, Y, `600 ${Math.max(12, 1.3 * s)}px -apple-system, Inter, sans-serif`, LOOK.sub);
+    }
+    return;
+  }
   const qy = yLabel + 3;
   const bw = c.w - 2;
   drawBelt([[cx + 1, qy], [cx + 1 + bw, qy]], 0, false, true);
@@ -823,6 +833,14 @@ const $ = id => document.getElementById(id);
 let lensShown = "";
 function lensNote() {
   let txt = "";
+  $("flow-ctl").hidden = UI.lens !== "flows";
+  // the prototype view needs prototype lots in the fab
+  let np = 0;
+  for (const tr of cur.active) if (tr[6]) np++;
+  for (const q of cur.bQ || []) np += q;
+  const pb = document.querySelector('.lenses [data-lens="proto"]');
+  const off = np === 0 && UI.lens !== "proto";
+  if (pb.disabled !== off) { pb.disabled = off; pb.title = off ? "No prototype lots in this run. Ask a question about prototypes, then show an answer on the floor." : ""; }
   if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
   else if (UI.lens === "flows") txt = flowNote();
   else if (UI.lens === "proto") {
@@ -876,16 +894,17 @@ function breakdownEvents(P) {
   return ev;
 }
 
-let tickShown = "";
+let tickShown = "", tickHold = false;
 function ticker() {
+  if (tickHold) return;
   const ev = P.breakdowns;
   const n = countBelow(P.breakdownTimes, t);
   const rows = [];
-  for (let i = n - 1; i >= 0 && rows.length < 4; i--) {
+  for (let i = n - 1; i >= 0 && rows.length < 3; i--) {
     const [tm, k, broke] = ev[i];
     const g = P.toolGroup[k];
     const idx = P.groupTools[g].indexOf(k) + 1;
-    rows.push(`<li class="${broke ? "broke" : "fixed"}"><span class="tm">${clock(tm)}</span><b>${P.plain[g]}</b>&nbsp;tool ${idx} ${broke ? "broke down" : "back up"}</li>`);
+    rows.push(`<li class="${broke ? "broke" : "fixed"}"><span class="tm">${clock(tm)}</span><b>${P.plain[g]}</b>, tool ${idx} ${broke ? "broke down" : "is back up"}</li>`);
   }
   const html = rows.join("");
   if (html !== tickShown) { $("ticker").innerHTML = html; tickShown = html; }
@@ -897,7 +916,7 @@ function frame(now) {
   lastFrame = now;
   stepFly(now);
   if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
-  if (UI.lens === "flows") FLOW.secs += dt;
+  if (UI.lens === "flows" && !FLOW.paused) FLOW.secs += dt;
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -936,20 +955,14 @@ function showTip(h) {
   for (const k of P.groupTools[g]) counts[cur.toolState[k]]++;
   const G0 = P.j.groups[g];
   const avgWait = G0[4] ? G0[3] / G0[4] : 0;
-  const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">■</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
-  tip.innerHTML = `<b>${P.plain[g]}</b> <span class="m">(${G0[0]})</span><br>${parts.join("<br>")}<br>` +
-    `<span class="m">waiting now:</span> ${cur.queue[g]} lots<br>` +
-    `<span class="m">mean wait over the run:</span> ${avgWait.toFixed(0)} min` +
-    (tipCards[g] || (tipCards[g] = (() => {
-      // the stage this group belongs to: what it does to the silicon (an illustration, not to scale)
-      const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
-      if (!st) return "";
-      const pic = FabStages.crossSection(st.key, "tip-" + st.key);
-      return (pic ? `<div class="xs">${pic}</div>` : "<br>") + `<span class="st"><b style="color:${st.color}">${st.name}:</b> ${st.what}</span>`;
-    })()));
+  const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">●</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
+  const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
+  tip.innerHTML = `<b>${P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}<br>${parts.join("<br>")}` +
+    `<div class="tip-q"><span>${cur.queue[g]}</span> lots waiting now · <span>${avgWait.toFixed(0)} min</span> mean wait</div>`;
   tip.hidden = false;
-  tip.style.left = Math.min(innerWidth - 240, h.mx + 14) + "px";
-  tip.style.top = Math.max(8, Math.min(innerHeight - tip.offsetHeight - 8, h.my + 14)) + "px";
+  const p = FabUI.tipPlace(h.mx, h.my, tip.offsetWidth, tip.offsetHeight, innerWidth, innerHeight);
+  tip.style.left = p.x + "px";
+  tip.style.top = p.y + "px";
 }
 
 function setupInput() {
@@ -1000,9 +1013,6 @@ function setupInput() {
   });
   addEventListener("resize", () => { resize(); });
   $("run").onclick = rerun;
-  $("tab-long").onclick = () => showTab("long");
-  $("tab-ask").onclick = () => showTab("ask");
-  $("tab-change").onclick = () => showTab("change");
   for (const k of DIAL_KEYS) $("d-" + k).oninput = showDials;
   $("reset").onclick = () => {
     for (const k of DIAL_KEYS) $("d-" + k).value = k === "cap" ? CAP_NONE : DEFAULT_DIALS[k];
@@ -1107,9 +1117,9 @@ function fmt(x) {
 function strip(d, st) {
   const m = Math.max(1e-9, ...d.map(Math.abs), Math.abs(st.lo), Math.abs(st.hi)) * 1.1;
   const X = v => 150 + (v / m) * 145;
-  const dots = d.map(v => `<circle cx="${X(v).toFixed(1)}" cy="11" r="2.6" fill="#efe2c4" opacity="0.8"/>`).join("");
-  const bar = isFinite(st.lo) ? `<rect x="${X(st.lo).toFixed(1)}" y="7" width="${Math.max(1, X(st.hi) - X(st.lo)).toFixed(1)}" height="8" rx="2" fill="#f0a63c" opacity="0.35"/>
-    <line x1="${X(st.mean).toFixed(1)}" x2="${X(st.mean).toFixed(1)}" y1="4" y2="18" stroke="#f0a63c" stroke-width="2"/>` : "";
+  const dots = d.map(v => `<circle cx="${X(v).toFixed(1)}" cy="11" r="2.6" fill="#CFE3E0" opacity="0.8"/>`).join("");
+  const bar = isFinite(st.lo) ? `<rect x="${X(st.lo).toFixed(1)}" y="7" width="${Math.max(1, X(st.hi) - X(st.lo)).toFixed(1)}" height="8" rx="2" fill="#7EE8D8" opacity="0.35"/>
+    <line x1="${X(st.mean).toFixed(1)}" x2="${X(st.mean).toFixed(1)}" y1="4" y2="18" stroke="#7EE8D8" stroke-width="2"/>` : "";
   return `<svg viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true"><line x1="150" x2="150" y1="1" y2="21" stroke="#8a8170" stroke-dasharray="2 2"/>${bar}${dots}</svg>`;
 }
 
@@ -1167,14 +1177,9 @@ async function compare(o) {
 
 // ------------------------------------------------------------------ tabs and the 300-day runs
 
+// the old tab names go to the dock's tabs (docs/FLOOR-CLEANUP.md)
 function showTab(which, open = true) {
-  if (open) openDrawer("compare");
-  for (const [tab, pane, key] of [["tab-ask", "pane-ask", "ask"], ["tab-long", "pane-long", "long"], ["tab-change", "pane-change", "change"]]) {
-    const on = key === which;
-    $(tab).classList.toggle("on", on);
-    $(tab).setAttribute("aria-selected", on);
-    $(pane).hidden = !on;
-  }
+  if (open) openDock({ ask: "ask", change: "change", long: "numbers" }[which] || which);
 }
 
 function signed(x, d = 1) {
@@ -1186,7 +1191,7 @@ function signed(x, d = 1) {
 async function loadLong() {
   let L;
   try { L = await fetch("data/lean-long.json").then(r => (r.ok ? r.json() : null)); } catch { L = null; }
-  if (!L) { $("tab-long").hidden = true; showTab("change", false); return; }
+  if (!L) { $("long-sec").hidden = true; return; }
   const cell = (metric, k, cap) => L.cells.find(c => c.metric === metric && c.k === k && c.cap === cap);
   const ks = [...new Set(L.cells.map(c => c.k))];
   const caps = [...new Set(L.cells.map(c => c.cap))];
@@ -1217,7 +1222,6 @@ async function loadLong() {
   if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model. We have not yet traced why.`);
   $("long-finding").innerHTML = lines.join("<br><br>");
   $("long-note").textContent = `Each cell shows wafers out a day with the cap minus without it, and the change in cycle time in days below. Green is better, red is worse and grey is no clear effect. The 95% intervals hold for all ${L.cells.length / 3} cells at once (Bonferroni). These runs were computed ahead of time in ${Math.round(L.seconds)} s. The page's own runs last at most 14 days, too short for a wafer to cross the fab. On the SMT2020 model. What a cap would do in a real fab is unknown.`;
-  showTab("long", false);
 }
 
 function rerun() {
@@ -1468,23 +1472,21 @@ async function api(path, body) {
 }
 
 async function askSetup() {
-  $("ask-form").onsubmit = e => { e.preventDefault(); ask($("ask-q").value); };
   $("ask-run").onclick = () => runText($("ask-text").value);
   let st;
   try { st = await api("/api/status"); } catch { st = null; }
   if (!st || st.error) {
     $("ask-model").innerHTML = "The ask box needs the helper running on this Mac. In the fab-gym folder, run <code>python3 -m agent.helper</code>, then open <b>http://127.0.0.1:8766</b>.";
-    $("ask-go").disabled = true; $("ask-run").disabled = true;
+    $("ask-run").disabled = true;
     return;
   }
   ASK.helper = true;
   $("ask-model").textContent = st.model_connected
     ? `Questions go to ${st.model}. It turns your question into a scenario, and the simulator runs it.`
-    : "No model is connected yet. The example questions use answers we wrote by hand, and you can write your own scenario below.";
+    : "Answers come from worked examples until a model is connected. You can also write a scenario under Advanced.";
   $("ask-examples").innerHTML = st.examples.map((e, i) => `<button type="button" data-i="${i}">${esc(e.question)}</button>`).join("");
-  $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("ask-q").value = st.examples[+b.dataset.i].question; ask($("ask-q").value); }));
+  $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(st.examples[+b.dataset.i].question)));
   if (!$("ask-text").value) $("ask-text").value = "fabgym-scenario 1\nquestion\tPrototype orders double. Their own wing?\nfamily\tshare\t2\tsaid\ncandidate\town-wing\tfloor\twing\n";
-  showTab("ask", false);
 }
 
 async function ask(q) {
@@ -1536,7 +1538,7 @@ function showScenario(j) {
 }
 
 // a cell's value: dollars for operating profit and cash, else the plain number
-function cellNum(c, x) { return x === null || x === undefined ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd(x, true) : fmt(x); }
+function cellNum(c, x) { return x === null || x === undefined ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd3(x, true) : fmt(x); }
 function cellText(c) {
   if (c.mean === null) return "—";
   return cellNum(c, c.mean);
@@ -1545,7 +1547,14 @@ function cellText(c) {
 function plLine(p) {
   if (!p) return "";
   const pay = p.capital ? paybackText(p.payback_days) : "no capital needed";
-  return `<p class="note small pl-line">Capital ${p.capital ? FabUI.usd(p.capital) : "none"} · pays back ${pay} · value over 5 years ${FabUI.usd(p.npv.mean, true)} (${FabUI.usd(p.npv.lo, true)} to ${FabUI.usd(p.npv.hi, true)}) · prices assumed</p>`;
+  return `<p class="note small pl-line">Capital ${p.capital ? FabUI.usd3(p.capital) : "none"} · pays back ${pay} · value over 5 years ${FabUI.usd3(p.npv.mean, true)} (${FabUI.usd3(p.npv.lo, true)} to ${FabUI.usd3(p.npv.hi, true)}) · prices assumed</p>`;
+}
+
+// a candidate named by what it changes (docs/FLOOR-CLEANUP.md): the scenario's own lines, in the page's words
+function candLabel(j, name) {
+  if (name === "today") return "Today's fab";
+  const ch = (j.scenario || "").split("\n").map(l => l.split("\t")).filter(f => f[0] === "candidate" && f[1] === name).map(f => [f[2], f.slice(3).join(" ")]);
+  return ch.length ? FabUI.candidateName(ch) : name;
 }
 
 function showResult(j) {
@@ -1555,15 +1564,15 @@ function showResult(j) {
   const arms = r.arms || [];
   const armBtn = name => {
     const i = arms.findIndex(a => a.name === name);
-    return i < 0 ? "" : `<button type="button" class="show" data-arm="${i}">Show on the floor</button>` +
-      (name === "today" ? "" : ` <button type="button" class="show sbs" data-arm="${i}">Side by side</button>`);
+    return i < 0 ? "" : (name === "today" ? "" : `<button type="button" class="show sbs" data-arm="${i}">Side by side</button>`) +
+      ` <button type="button" class="show link" data-arm="${i}">On the floor</button>`;
   };
   const head = r.families
-    ? `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval. Today's values: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : c.key === "profit" ? FabUI.usd(c.today, false) : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
+    ? `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval. Today's values: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : c.key === "profit" ? FabUI.usd3(c.today, false) : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
     : `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval.</p>`;
-  $("ask-result").innerHTML = `<p class="what">${esc(FabAsk.summaryLine(r))}</p>${head}` +
+  $("ask-result").innerHTML = `<p class="what">${esc(r.best ? FabAsk.summaryLine(r).replace(r.best, candLabel(j, r.best)) : FabAsk.summaryLine(r))}</p>${head}` +
     (arms.length ? `<div class="arm"><div class="top"><b>today</b>${armBtn("today")}</div></div>` : "") +
-    rows.map(row => `<div class="arm"><div class="top"><b>${esc(row.name)}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
+    rows.map(row => `<div class="arm"><div class="top"><b>${esc(candLabel(j, row.name))}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
       <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table>${plLine(row.pl)}</div>`).join("") +
     `<p class="note small">${!r.families ? "" : rows.some(x => x.pl) ? "Operating profit is in dollars at the central assumed prices (see How money is counted in the numbers). " : "Money a day is counted in volume-wafer margins, and every price is assumed. "}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated on the SMT2020 model, a published research model of a wafer fab. What these changes would do in a real fab is unknown.</p>`;
   $("ask-result").querySelectorAll("button.show:not(.sbs)").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
@@ -1633,13 +1642,38 @@ let VP = null; // the part of the window a scene is drawn in; null for all of it
 function floorPad() {
   if (VP) return { l: VP.x + 6, r: innerWidth - VP.x - VP.w + 6, t: 170, b: 175 };
   const wide = innerWidth > 900;
-  return { l: wide && !$("compare").hidden ? 420 : 24, r: wide && !$("panel").hidden ? 340 : 24, t: 116, b: 86 };
+  const dock = $("dock");
+  const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : $("rail").offsetWidth + 32;
+  return { l: wide && !document.body.classList.contains("dock-wide") ? 330 : 24, r, t: 116, b: 96 };
 }
 
-function openDrawer(id, on = true) {
-  $(id).hidden = !on;
-  if (id === "compare") document.body.classList.toggle("drawer-left", on);
-  if (id === "panel") $("panel-open").classList.toggle("on", on);
+// ------------------------------------------------------------------ the dock: Ask, Change, Numbers, Results, Glossary
+const DOCK = { tab: null };
+const DOCK_WIDE = new Set(["numbers", "results", "glossary"]);
+function openDock(tab) {
+  closeOpening();
+  DOCK.tab = tab;
+  const dock = $("dock");
+  dock.hidden = false;
+  dock.classList.toggle("wide", DOCK_WIDE.has(tab));
+  document.body.classList.add("dock-open");
+  document.body.classList.toggle("dock-wide", DOCK_WIDE.has(tab));
+  for (const [t, id] of [["ask", "pane-ask"], ["change", "pane-change"], ["numbers", "numbers"], ["results", "results"], ["glossary", "glossary"]]) $(id).hidden = t !== tab;
+  document.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle("on", on); if (b.getAttribute("role") === "tab") b.setAttribute("aria-selected", on); });
+  fit();
+}
+function closeDock() {
+  $("dock").hidden = true;
+  DOCK.tab = null;
+  document.body.classList.remove("dock-open", "dock-wide");
+  document.querySelectorAll("[data-tab]").forEach(b => b.classList.remove("on"));
+  fit();
+}
+function goTab(tab) {
+  if (tab === "numbers") openNumbers();
+  else if (tab === "results") openResults();
+  else if (tab === "glossary") openGlossary();
+  else openDock(tab);
 }
 
 function closeOpening() {
@@ -1654,9 +1688,7 @@ function askFrom(q) {
   q = (q || "").trim();
   if (!q) return;
   closeOpening();
-  showTab("ask");
-  fit();
-  $("ask-q").value = q;
+  openDock("ask");
   if (ASK.helper) ask(q);
   else stage("To ask a question, start the helper on this Mac. In the fab-gym folder, run python3 -m agent.helper.");
 }
@@ -1679,24 +1711,44 @@ async function chromeSetup() {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
       if (document.body.classList.contains("opening-on")) $("open-q").focus();
-      else { $("numbers").hidden = true; $("cmd-q").focus(); }
+      else $("cmd-q").focus();
     } else if (e.key === "Escape") {
-      if (!$("numbers").hidden) $("numbers").hidden = true;
-      else if (!$("results").hidden) $("results").hidden = true;
-      else if (!$("glossary").hidden) $("glossary").hidden = true;
-      else if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
+      if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
+      else if (!$("dock").hidden) closeDock();
     }
   });
-  document.querySelectorAll("[data-close]").forEach(b => (b.onclick = () => {
-    const id = b.dataset.close;
-    if (id === "numbers" || id === "results" || id === "glossary") $(id).hidden = true;
-    else { openDrawer(id, false); fit(); }
+  // the rail and the dock's tabs; a rail button on the open tab closes the dock
+  document.querySelectorAll("[data-tab]").forEach(b => (b.onclick = () => {
+    if (b.closest("#rail") && DOCK.tab === b.dataset.tab && !$("dock").hidden) closeDock();
+    else goTab(b.dataset.tab);
   }));
-  $("panel-open").onclick = () => { openDrawer("panel", $("panel").hidden); fit(); };
-  $("ask-open").onclick = () => { showTab("ask"); fit(); $("ask-q").focus(); };
-  $("numbers-open").onclick = () => openNumbers();
-  $("results-open").onclick = () => openResults();
-  $("glossary-open").onclick = () => openGlossary();
+  $("dock-close").onclick = closeDock;
+  // Flows: pause, restart, product
+  $("flow-play").onclick = () => { FLOW.paused = !FLOW.paused; $("flow-play").textContent = FLOW.paused ? "Play" : "Pause"; };
+  $("flow-restart").onclick = () => { FLOW.secs = 0; FLOW.paused = false; $("flow-play").textContent = "Pause"; };
+  document.querySelectorAll("#flow-route button").forEach(b => (b.onclick = () => {
+    FLOW.want = b.dataset.r; FLOW.secs = 0;
+    document.querySelectorAll("#flow-route button").forEach(x => x.classList.toggle("on", x === b));
+  }));
+  // the log holds still while you read it
+  $("key").addEventListener("mouseenter", () => (tickHold = true));
+  $("key").addEventListener("mouseleave", () => (tickHold = false));
+  // the controls hint shows once, then fades
+  let seen = false;
+  try { seen = localStorage.getItem("fabgym-hint-seen") === "1"; } catch { seen = false; }
+  if (seen) $("hint").hidden = true;
+  else setTimeout(() => { $("hint").classList.add("fade"); try { localStorage.setItem("fabgym-hint-seen", "1"); } catch { /* private window */ } }, 9000);
+  // rest: start paused when the viewer asks for less motion, and pause while the page is hidden
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { playing = false; $("play").textContent = "▶"; }
+  let wasPlaying = null;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { wasPlaying = playing; playing = false; }
+    else if (wasPlaying !== null) { playing = wasPlaying; wasPlaying = null; }
+  });
+  // outage hours only mean something once a group is chosen
+  const outage = () => { const on = +$("down-group").value >= 0; $("down-at").disabled = !on; $("down-hours").disabled = !on; };
+  $("down-group").addEventListener("change", outage);
+  outage();
   glossarySetup();
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
@@ -1710,15 +1762,16 @@ async function chromeSetup() {
 // The Flows view: one wafer's whole route replayed on the track. A lot runs from hall to hall along the spine with
 // a glowing tail; every stretch of track brightens each time it passes, so the map fills from nothing. Slow at first,
 // faster later (FabUI.journeyDone); after a pause it starts again.
-const FLOW = { secs: 0, T: 36, hold: 8, key: null, trips: [], route: "", steps: 0, sOf: [], fin: null, finMax: 1, feedFin: [], feedMax: 1 };
+const FLOW = { secs: 0, T: 36, hold: 8, key: null, trips: [], route: "", steps: 0, sOf: [], fin: null, finMax: 1, feedFin: [], feedMax: 1, paused: false, want: "3" };
 const FLOW_BINS = 260;
 
 function flowSetup() {
   const routes = HALLS_L.routes || [];
   const key = HALLS_L;
-  if (FLOW.key === key) return FLOW.trips.length > 0;
+  if (FLOW.key === key && FLOW.keyWant === FLOW.want) return FLOW.trips.length > 0;
   FLOW.key = key;
-  const k = Math.max(0, routes.findIndex(([name]) => /(^|_)3$/.test(name)));
+  FLOW.keyWant = FLOW.want;
+  const k = Math.max(0, routes.findIndex(([name]) => new RegExp(`(^|_)${FLOW.want}$`).test(name)));
   const [name, steps] = routes[k] || ["", []];
   FLOW.route = name.replace(/^part_/, "product ");
   FLOW.steps = steps.length;
@@ -1846,11 +1899,10 @@ function flowNote() {
 
 // ------------------------------------------------------------------ the numbers
 
-const FLOOR_WORDS = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "D3 copies": "Copies in the halls" };
-const POLICY_WORDS = { "P0 today": "today's order", "P1 family B first": "prototypes first", "P2 family cap": "prototypes capped at the door",
-  "P3 reservation": "a tool kept for prototypes", "P4 qualification": "prototypes on half the tools" };
+const FLOOR_WORDS = Object.fromEntries(FabUI.STRATEGIES.map(k => [k, FabUI.floorWord(k)]));
+const POLICY_WORDS = Object.fromEntries(FabUI.POLICIES.map(k => [k, FabUI.policyWord(k).replace(/^./, c => c.toLowerCase())]));
 const METRIC = {
-  profit: { name: "Operating profit a day", unit: "dollars a day", higher: true, base: v => FabUI.usd(v), tick: v => FabUI.usd(v) },
+  profit: { name: "Operating profit a day", unit: "$ a day", higher: true, base: v => FabUI.usd3(v), tick: v => FabUI.usd3(v) },
   a_wafers: { name: "Volume wafers a day", unit: "wafers a day", higher: true, base: v => fmtN(v, 0) },
   b_cycle: { name: "Prototype cycle time", unit: "days", higher: false, base: v => fmtN(v, 1) },
 };
@@ -1860,10 +1912,7 @@ const VERDICT_COLOR = { better: "#4FE3A3", worse: "#FF6262", "no clear effect": 
 function fmtN(v, d = 1) { return v === null || v === undefined ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
 
 async function openNumbers() {
-  closeOpening();
-  $("results").hidden = true;
-  $("glossary").hidden = true;
-  $("numbers").hidden = false;
+  openDock("numbers");
   if (!UI.sweep) {
     try {
       UI.sweep = await fetch("data/two-families.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))));
@@ -1872,7 +1921,7 @@ async function openNumbers() {
     catch (err) { $("num-lead").textContent = "The sweep's results are not in this build (run web/build.sh)."; return; }
   }
   drawNumbers();
-  $("numbers").querySelector(".close").focus();
+  $("dock-close").focus();
 }
 
 // a forest plot: one row per change, the mean as a dot, the 95% interval as a bar, the exact numbers on the right
@@ -1891,7 +1940,7 @@ function forestSVG(rows, m, xTitle) {
   // gridlines and ticks
   for (const t of ticks) {
     lines.push(`<line x1="${X(t)}" x2="${X(t)}" y1="${top - 4}" y2="${y + 2}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
-    lines.push(`<text x="${X(t)}" y="${y + 18}" fill="#A9C4C0" font-size="11" text-anchor="middle">${(m.tick || FabUI.tickLabel)(t)}</text>`);
+    lines.push(`<text x="${X(t)}" y="${y + 18}" fill="#A9C4C0" font-size="12" text-anchor="middle">${(m.tick || FabUI.tickLabel)(t)}</text>`);
   }
   lines.push(`<line x1="${L}" x2="${W0 - R}" y1="${y + 2}" y2="${y + 2}" stroke="#2C5560"/>`);
   rows.forEach((r, i) => {
@@ -1908,7 +1957,8 @@ function forestSVG(rows, m, xTitle) {
     const c = VERDICT_COLOR[r.verdict];
     lines.push(`<line x1="${X(r.lo)}" x2="${X(r.hi)}" y1="${yy}" y2="${yy}" stroke="${c}" stroke-width="4" stroke-linecap="round" opacity="0.55"/>`);
     lines.push(`<circle cx="${X(r.mean)}" cy="${yy}" r="5" fill="${c}" stroke="#0A1418" stroke-width="1.5"><title>${esc(r.label)}: ${esc(r.text)}, ${r.verdict}</title></circle>`);
-    lines.push(`<text x="${W0 - R + 12}" y="${yy + 4}" fill="${r.verdict === "no clear effect" ? "#A9C4C0" : c}" font-size="11" font-family="ui-monospace, Menlo, monospace">${esc(r.text)}</text>`);
+    const mark = r.verdict === "better" ? "✓ " : r.verdict === "worse" ? "✗ " : "· ";
+    lines.push(`<text x="${W0 - R + 12}" y="${yy + 4}" fill="#CFE3E0" font-size="12" style="font-variant-numeric: tabular-nums"><tspan fill="${c}">${mark}</tspan>${esc(r.text)}</text>`);
   });
   // axis titles
   const better = m.higher ? "better →" : "← better";
@@ -1923,10 +1973,14 @@ function forestSVG(rows, m, xTitle) {
 function linesSVG(lines, m, share) {
   const W0 = 520, L = 64, R = 16, top = 14, B = 54, H = 330;
   const shares = lines[0].points.map(p => p.share);
-  const vals = lines.flatMap(l => l.points.flatMap(p => (p.mean === null ? [] : [p.lo, p.hi]))).concat([0]);
+  // far points are left off the scale and marked at its edge, so they do not flatten the rest (docs/FLOOR-CLEANUP.md)
+  const cr = FabUI.clipRange(lines.flatMap(l => l.points.map(p => p.mean)));
+  const inRange = p => p.mean !== null && !cr.off.includes(p.mean);
+  const vals = lines.flatMap(l => l.points.flatMap(p => (inRange(p) ? [p.lo, p.hi] : []))).concat([0]);
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const ticks = FabUI.niceTicks(lo, hi);
   lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+  const Yc = v => Math.max(top, Math.min(H - B, top + (1 - (v - lo) / (hi - lo)) * (H - top - B)));
   const X = i => L + 20 + (i / (shares.length - 1)) * (W0 - L - R - 40);
   const Y = v => top + (1 - (v - lo) / (hi - lo)) * (H - top - B);
   const out = [];
@@ -1934,18 +1988,24 @@ function linesSVG(lines, m, share) {
   if (si >= 0) out.push(`<rect x="${X(si) - 18}" y="${top}" width="36" height="${H - top - B}" fill="rgba(126,232,216,0.07)" rx="6"/>`);
   for (const t of ticks) {
     out.push(`<line x1="${L}" x2="${W0 - R}" y1="${Y(t)}" y2="${Y(t)}" stroke="${t === 0 ? "#A9C4C0" : "#1A2E35"}" stroke-width="${t === 0 ? 1.5 : 1}"/>`);
-    out.push(`<text x="${L - 8}" y="${Y(t) + 4}" fill="#A9C4C0" font-size="11" text-anchor="end">${(m.tick || FabUI.tickLabel)(t)}</text>`);
+    out.push(`<text x="${L - 8}" y="${Y(t) + 4}" fill="#A9C4C0" font-size="12" text-anchor="end">${(m.tick || FabUI.tickLabel)(t)}</text>`);
   }
-  shares.forEach((s, i) => out.push(`<text x="${X(i)}" y="${H - B + 18}" fill="#A9C4C0" font-size="11.5" text-anchor="middle">×${s}</text>`));
+  shares.forEach((s, i) => out.push(`<text x="${X(i)}" y="${H - B + 18}" fill="#A9C4C0" font-size="12" text-anchor="middle">×${s}</text>`));
   out.push(`<line x1="${L}" x2="${L}" y1="${top}" y2="${H - B}" stroke="#2C5560"/><line x1="${L}" x2="${W0 - R}" y1="${H - B}" y2="${H - B}" stroke="#2C5560"/>`);
   lines.forEach((l, k) => {
     const c = LINE_COLORS[k % LINE_COLORS.length], dx = (k - 1.5) * 5;
-    const pts = l.points.map((p, i) => (p.mean === null ? null : [X(i) + dx, Y(p.mean), p]));
+    const pts = l.points.map((p, i) => (p.mean === null ? null : [X(i) + dx, Yc(p.mean), p]));
     const d = pts.filter(Boolean).map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join("");
     out.push(`<path d="${d}" fill="none" stroke="${c}" stroke-width="2"/>`);
     for (const q of pts) if (q) {
       const [x, yv, p] = q;
-      out.push(`<line x1="${x}" x2="${x}" y1="${Y(p.lo)}" y2="${Y(p.hi)}" stroke="${c}" stroke-width="2" opacity="0.6"/>`);
+      if (!inRange(p)) {
+        const down = p.mean < lo, ty = down ? H - B - 2 : top + 2;
+        out.push(`<path d="M${x - 6},${down ? ty - 9 : ty + 9} L${x + 6},${down ? ty - 9 : ty + 9} L${x},${ty} Z" fill="${c}"/>`);
+        out.push(`<text x="${x + 9}" y="${down ? ty - 4 : ty + 12}" fill="${c}" font-size="12">${(m.tick || fmtN)(p.mean)}, off the scale</text>`);
+        continue;
+      }
+      out.push(`<line x1="${x}" x2="${x}" y1="${Yc(p.lo)}" y2="${Yc(p.hi)}" stroke="${c}" stroke-width="2" opacity="0.6"/>`);
       out.push(`<circle cx="${x}" cy="${yv}" r="3.5" fill="${c}"><title>${esc(POLICY_WORDS[l.policy])} at ×${p.share}: ${(m.tick || fmtN)(p.mean)} (${(m.tick || fmtN)(p.lo)} to ${(m.tick || fmtN)(p.hi)})</title></circle>`);
     }
   });
@@ -1972,7 +2032,7 @@ function drawNumbers() {
     `Each interval is set at 1 − 0.05/${k}, so all ${k} hold together at 95%. Every price is assumed: see How money is counted below. What these changes would do in a real fab is unknown.`;
   const base = { ...(d.baseline[String(share)] || {}), profit: d.plToday && d.plToday[String(share)] ? d.plToday[String(share)].profit : null };
   $("num-base").innerHTML = Object.entries(METRIC).map(([key, mm]) =>
-    `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">Today's fab with ×${share} prototype orders: ${mm.name.toLowerCase()} (${mm.unit})</div></div>`).join("");
+    `<div class="fact${key === UI.metric ? " on" : ""}"><div class="v">${mm.base(base[key])}</div><div class="l">${mm.name}, today's fab at ×${share}</div></div>`).join("");
   // the forest: rows grouped by floor
   const rows = [];
   let last = null;
@@ -1996,7 +2056,7 @@ function drawNumbers() {
       const c = r.cells.find(x => x.key === qkey) || {};
       const has = c.mean !== null && c.mean !== undefined && c.lo !== null;
       return { label: r.name, mean: has ? c.mean : null, lo: has ? c.lo : null, hi: has ? c.hi : null, verdict: c.verdict || "no clear effect",
-        text: has ? (qkey === "profit" ? `${FabUI.usd(c.mean, true)} (${FabUI.usd(c.lo, true)} to ${FabUI.usd(c.hi, true)})` : `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})`) : "no prototype lot out" };
+        text: has ? (qkey === "profit" ? `${FabUI.usd3(c.mean, true)} (${FabUI.usd3(c.lo, true)} to ${FabUI.usd3(c.hi, true)})` : `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})`) : "no prototype lot out" };
     });
     const q = forestSVG(qrows, m, `Change against today's fab, ${m.unit}`);
     $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}: each candidate compared with today's fab on ${j.report.seeds.length} paired seeds. The intervals hold together at 95%.</span></figcaption><svg role="img"></svg></figure>`;
@@ -2016,7 +2076,7 @@ function paybackText(p) {
 function drawCapital(d, share) {
   const el = $("num-capital");
   if (!d.pl) { el.innerHTML = ""; return; }
-  const U = FabUI.usd, period = UI.period || "day";
+  const U = FabUI.usd3, period = UI.period || "day";
   const g = FabUI.capitalGrid(d, share, period);
   const short = { "P0 today": "Today's order", "P1 family B first": "Prototypes first", "P2 family cap": "Capped at the door",
     "P3 reservation": "A tool kept for prototypes", "P4 qualification": "Half the tools" };
@@ -2106,7 +2166,7 @@ function logAsk(j) {
   const r = j.report, sc = FabAsk.scenarioLines(j.scenario);
   const rows = [];
   for (const row of FabAsk.resultRows(r)) for (const c of row.cells)
-    rows.push([row.name, c.label, cellNum(c, c.today), cellNum(c, c.mean), c.lo === null || c.mean === null ? "—" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`, c.verdict]);
+    rows.push([candLabel(j, row.name), c.label, cellNum(c, c.today), cellNum(c, c.mean), c.lo === null || c.mean === null ? "—" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`, c.verdict]);
   const settings = [["Question", j.question || "a written scenario"], ["Answer from", j.answer_source === "model" ? "the model, checked" : j.answer_source === "example" ? "an example answer we wrote by hand" : "a scenario written by hand"]]
     .concat(sc.given.map(g => ["Given", `${g.text}${g.said ? "" : " (assumed)"}`]))
     .concat(sc.candidates.map(c => [`Candidate: ${c.name}`, c.changes.join("; ")]))
@@ -2119,20 +2179,23 @@ function logAsk(j) {
 }
 
 async function openResults() {
-  closeOpening();
-  $("numbers").hidden = true;
-  $("glossary").hidden = true;
-  $("results").hidden = false;
+  openDock("results");
   if (!RESULTS.saved) {
     try { RESULTS.saved = await fetch("data/results.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
     catch (err) { RESULTS.saved = []; }
   }
+  if (!RESULTS.wired) {
+    RESULTS.wired = true;
+    $("res-q").oninput = drawResults;
+    document.querySelectorAll("#res-kind button").forEach(b => (b.onclick = () => { document.querySelectorAll("#res-kind button").forEach(x => x.classList.toggle("on", x === b)); drawResults(); }));
+  }
   drawResults();
-  $("results").querySelector(".close").focus();
+  $("res-q").focus();
 }
 
 function drawResults() {
-  const all = RESULTS.page.concat(RESULTS.saved || []);
+  const kindOn = document.querySelector("#res-kind button.on");
+  const all = FabUI.filterResults(RESULTS.page.concat(RESULTS.saved || []), $("res-q").value, kindOn ? kindOn.dataset.k : "all");
   const KIND = { sweep: "sweep", search: "search", training: "training", contest: "contest", "what-if": "your change", question: "your question" };
   const when = iso => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const table = (cols, rows) => `<div class="res-scroll"><table class="captab"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
@@ -2142,9 +2205,11 @@ function drawResults() {
     <div class="res-body">${e.question ? `<p class="q">${esc(e.question)}</p>` : ""}
       <h4>Settings in the simulator</h4>${table(["Setting", "Value"], e.settings)}
       <h4>Numbers that came out</h4>${table(e.numbers.columns, e.numbers.rows)}
+      ${e.id === "two-families" ? `<p><button type="button" class="link" data-open-numbers>Open it in Numbers</button></p>` : ""}
       ${e.files.length ? `<h4>Files</h4><p class="files">${e.files.map(f => `<code>${esc(f)}</code>`).join(" ")}</p>` : ""}
       <p class="note small">${esc(e.note)}</p></div></details>`).join("")
-    : `<p class="note">No results in this build (run web/build.sh).</p>`;
+    : `<p class="note">${RESULTS.saved && RESULTS.saved.length ? "No result matches." : "No results in this build (run web/build.sh)."}</p>`;
+  $("res-list").querySelectorAll("[data-open-numbers]").forEach(b => (b.onclick = () => openNumbers()));
 }
 
 // ------------------------------------------------------------------ the Glossary tab: every term in plain English
@@ -2152,9 +2217,7 @@ const GL = { term: null, order: "az" };
 const GL_SOURCE = { published: "Published", assumed: "Assumed by us", choice: "Our choice", standard: "Standard method" };
 
 function openGlossary(term) {
-  closeOpening();
-  for (const id of ["numbers", "results"]) $(id).hidden = true;
-  $("glossary").hidden = false;
+  openDock("glossary");
   if (term) GL.term = term;
   if (!GL.term) GL.term = FabGlossary.find("")[0].term;
   drawGlossaryIndex();
@@ -2188,7 +2251,7 @@ function drawGlossaryArticle() {
   if (!t) { $("gl-article").innerHTML = ""; return; }
   const link = name => `<button type="button" class="gl-see" data-term="${esc(name)}">${esc(name)}</button>`;
   $("gl-article").innerHTML = `<div class="gl-topic">${esc(t.topic)}</div><h3>${esc(t.term)}</h3>` +
-    (t.aliases && t.aliases.length ? `<p class="gl-aka">Also: ${t.aliases.map(esc).join(", ")}</p>` : "") +
+    (FabGlossary.shownAliases(t).length ? `<p class="gl-aka">Also: ${FabGlossary.shownAliases(t).map(esc).join(", ")}</p>` : "") +
     `<p class="gl-meaning">${esc(t.meaning)}</p>` +
     `<h4>In this fab</h4><p>${esc(t.here)}</p>` +
     `<h4>Example</h4><p>${esc(t.example)}</p>` +
@@ -2244,8 +2307,8 @@ function verdictCards(rows) {
   if (!best) return "";
   return `<p class="note">${esc(best.name)} compared with today's fab:</p><div class="verdicts">${best.cells.map(c => {
     const v = c.mean === null ? "no clear effect" : c.verdict;
-    return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd(c.mean, true) : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
-      `<div class="iv">${c.lo === null || c.mean === null ? "" : c.key === "profit" || c.key === "cash" ? `${FabUI.usd(c.lo, true)} to ${FabUI.usd(c.hi, true)}` : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
+    return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd3(c.mean, true) : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
+      `<div class="iv">${c.lo === null || c.mean === null ? "" : c.key === "profit" || c.key === "cash" ? `${FabUI.usd3(c.lo, true)} to ${FabUI.usd3(c.hi, true)}` : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
   }).join("")}</div>`;
 }
 
@@ -2399,9 +2462,9 @@ function splitLabel(k, tk) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   ctx.font = "800 17px -apple-system, Inter, sans-serif";
-  ctx.fillStyle = k === 0 ? LOOK.title : LOOK.proto;
+  ctx.fillStyle = k === 0 ? LOOK.title : LOOK.section;
   ctx.fillText(title, vp.x + vp.w / 2, 140);
-  ctx.font = "500 12px ui-monospace, Menlo, monospace";
+  ctx.font = "500 12px -apple-system, Inter, sans-serif";
   ctx.fillStyle = LOOK.sub;
   ctx.fillText(line, vp.x + vp.w / 2, 162);
   ctx.textAlign = "left";

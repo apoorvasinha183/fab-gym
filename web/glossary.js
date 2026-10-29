@@ -395,7 +395,10 @@
     return out;
   }
 
-  const api = { TERMS, find, linkify };
+  // a term's other names as shown: codes such as P1 or D2 are left out
+  function shownAliases(t) { return (t.aliases || []).filter((a) => !/^[A-Z]\d$/.test(a)); }
+
+  const api = { TERMS, find, linkify, shownAliases };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabGlossary = api;
 })(typeof window !== "undefined" ? window : globalThis);

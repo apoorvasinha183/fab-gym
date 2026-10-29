@@ -65,6 +65,7 @@ test("words on the page link to their article: the longest match, once each", ()
 
 test("the page has the Glossary tab: a search box, the index and the article", () => {
   const html = readFileSync(join(ROOT, "web", "index.html"), "utf8");
-  for (const id of ["glossary-open", "glossary", "gl-search", "gl-index", "gl-article"]) assert.match(html, new RegExp(`id="${id}"`));
+  for (const id of ["glossary", "gl-search", "gl-index", "gl-article"]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /data-tab="glossary"/, "opened from the dock's rail and tabs (docs/FLOOR-CLEANUP.md)");
   assert.ok(html.indexOf('src="glossary.js"') > 0 && html.indexOf('src="glossary.js"') < html.indexOf('src="app.js"'));
 });

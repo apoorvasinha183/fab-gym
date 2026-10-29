@@ -23,12 +23,17 @@
   <kbd>⌘K</kbd>
 </form>
 <nav class="lenses" aria-label="What the floor shows">
-  <button type="button" data-lens="day" class="on" aria-pressed="true">Day</button>
+  <button type="button" data-lens="day" class="on" aria-pressed="true">Live</button>
   <button type="button" data-lens="heat" aria-pressed="false">Waiting heat</button>
   <button type="button" data-lens="proto" aria-pressed="false">Prototype lots</button>
   <button type="button" data-lens="flows" aria-pressed="false">Flows</button>
 </nav>
 <div id="lens-note" class="lens-note" aria-live="polite"></div>
+<div id="flow-ctl" class="flow-ctl" hidden>
+  <button type="button" id="flow-play">Pause</button>
+  <button type="button" id="flow-restart">Restart</button>
+  <div class="seg" id="flow-route" role="group" aria-label="Product"><button type="button" data-r="3" class="on">Product 3</button><button type="button" data-r="4">Product 4</button></div>
+</div>
 
 <section class="card kpis" aria-label="How the fab is doing">
   <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
@@ -37,96 +42,147 @@
   <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">tools working</div></div>
 </section>
 
-<aside class="card panel drawer" id="panel" hidden>
-  <h2>Try a change <button type="button" class="icon close" data-close="panel" aria-label="Close">✕</button></h2>
-  <label>Dispatch rule
-    <select id="rule">
-      <option value="0">Today's rule: hot lots first, then no setup change, then oldest</option>
-      <option value="1">First come, first served</option>
-      <option value="2">Shortest processing first</option>
-    </select>
-  </label>
-  <label>Take a tool group down
-    <select id="down-group"><option value="-1">None</option></select>
-  </label>
-  <div class="row">
-    <label>From hour <input id="down-at" type="number" min="0" max="72" value="6"></label>
-    <label>For hours <input id="down-hours" type="number" min="1" max="72" value="8"></label>
-  </div>
-  <h3>Dials</h3>
-  <div class="dials">
-    <label>Breakdowns <output id="o-breakdowns">×1</output><input id="d-breakdowns" type="range" min="0" max="3" step="0.25" value="1"></label>
-    <label>Repair time <output id="o-repair">×1</output><input id="d-repair" type="range" min="0.5" max="3" step="0.25" value="1"></label>
-    <label>Demand <output id="o-demand">×1</output><input id="d-demand" type="range" min="0.5" max="1.5" step="0.05" value="1"></label>
-    <label>Hot lots <output id="o-hot">×1</output><input id="d-hot" type="range" min="0" max="5" step="0.5" value="1"></label>
-    <label>Rework <output id="o-rework">×1</output><input id="d-rework" type="range" min="0" max="5" step="0.5" value="1"></label>
-    <label title="When an inspection finds a defect (a rework, at SMT2020's published rates), the tool and the lots it just did are held. The lengths are assumed: at ×1 the tool is held 2 h and its lots of the last 4 h are held 1 h.">Defect holds <output id="o-defects">off</output><input id="d-defects" type="range" min="0" max="2" step="0.5" value="0"></label>
-    <label>WIP cap <output id="o-cap">none</output><input id="d-cap" type="range" min="1500" max="3600" step="100" value="3600"></label>
-    <button id="reset" class="link" type="button">Reset dials</button>
-  </div>
-  <div class="row">
-    <label>Seed shown <input id="seed" type="number" min="0" value="0"></label>
-    <label>Days <input id="days" type="number" min="1" max="14" value="3"></label>
-  </div>
-  <button id="run" class="primary">Simulate and compare</button>
-  <p class="note" id="runnote">Loading the simulator…</p>
-  <h3>Machines</h3>
-  <ul class="legend">
-    <li><i class="sw s0"></i>working</li>
-    <li><i class="sw s1"></i>idle</li>
-    <li><i class="sw s4"></i>changing setup</li>
-    <li><i class="sw s2"></i>maintenance</li>
-    <li><i class="sw s3"></i>broken down</li>
-  </ul>
-  <h3>Lots</h3>
-  <ul class="legend">
-    <li><i class="dot"></i>a lot of 25 wafers</li>
-    <li><i class="dot hot"></i>a hot lot</li>
-    <li><i class="dot proto"></i>a prototype lot (family B)</li>
-  </ul>
-  <p class="note small">Every number here is simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.</p>
-</aside>
+<nav id="rail" class="rail" aria-label="Panels">
+  <button type="button" data-tab="ask"><span class="ic" aria-hidden="true">✦</span>Ask</button>
+  <button type="button" data-tab="change"><span class="ic" aria-hidden="true">⚙︎</span>Change</button>
+  <button type="button" data-tab="numbers"><span class="ic" aria-hidden="true">▦</span>Numbers</button>
+  <button type="button" data-tab="results"><span class="ic" aria-hidden="true">☰</span>Results</button>
+  <button type="button" data-tab="glossary"><span class="ic" aria-hidden="true">Aa</span>Glossary</button>
+</nav>
 
-<section class="card compare drawer" id="compare" hidden>
-  <div class="tabs" role="tablist">
-    <button type="button" class="close-tab" data-close="compare" aria-label="Close">✕</button>
-    <button role="tab" id="tab-ask" aria-selected="false" type="button">Ask</button>
-    <button role="tab" id="tab-long" aria-selected="true" class="on" type="button">300-day runs</button>
-    <button role="tab" id="tab-change" aria-selected="false" type="button">Your change</button>
+<aside id="dock" class="card dock" aria-label="Panels" hidden>
+  <div class="dock-head">
+    <div class="seg dock-tabs" role="tablist" aria-label="Panels">
+      <button type="button" role="tab" data-tab="ask">Ask</button><button type="button" role="tab" data-tab="change">Change</button><button type="button" role="tab" data-tab="numbers">Numbers</button><button type="button" role="tab" data-tab="results">Results</button><button type="button" role="tab" data-tab="glossary">Glossary</button>
+    </div>
+    <button type="button" class="icon close" id="dock-close" aria-label="Close the panel">✕</button>
   </div>
-  <div id="pane-ask" role="tabpanel" hidden>
-    <form id="ask-form">
-      <label for="ask-q" class="q">Ask the fab a question</label>
-      <textarea id="ask-q" rows="3" placeholder="Prototype orders double next quarter. Do we give them their own wing or put them first in line?"></textarea>
-      <button class="primary" type="submit" id="ask-go">Ask</button>
-    </form>
+  <div class="dock-body" id="dock-body">
+  <section id="pane-ask" class="pane" role="tabpanel" aria-label="Ask" hidden>
+    <h2>Ask the fab</h2>
+    <p class="pane-lead">Type a question in the bar at the top (⌘K), or pick one of these.</p>
     <div id="ask-examples" class="chips" aria-label="Example questions"></div>
-    <p class="note small" id="ask-model">Connecting to the helper…</p>
+    <p class="note" id="ask-model">Connecting to the helper…</p>
     <div id="ask-live" aria-live="polite">
       <p id="ask-stage" class="stage" hidden></p>
       <div id="ask-scenario" hidden></div>
       <div id="ask-result"></div>
     </div>
-    <details id="ask-edit">
-      <summary>Write or edit the scenario</summary>
+    <details id="ask-edit" class="advanced">
+      <summary>Advanced: write or edit the scenario</summary>
       <label for="ask-text" class="sr">Scenario text</label>
       <textarea id="ask-text" rows="9" spellcheck="false"></textarea>
       <button type="button" id="ask-run">Run this scenario</button>
     </details>
+  </section>
+
+  <section id="pane-change" class="pane" role="tabpanel" aria-label="Try a change" hidden>
+    <h2>Try a change</h2>
+    <label class="field">Dispatch rule
+      <select id="rule">
+        <option value="0">Today's rule: hot first, same setup, oldest</option>
+        <option value="1">First come, first served</option>
+        <option value="2">Shortest processing first</option>
+      </select>
+    </label>
+    <label class="field">Take a tool group down
+      <select id="down-group"><option value="-1">None</option></select>
+    </label>
+    <div class="row">
+      <label class="field">From hour <input id="down-at" type="number" min="0" max="72" value="6" disabled></label>
+      <label class="field">For hours <input id="down-hours" type="number" min="1" max="72" value="8" disabled></label>
+    </div>
+    <h3>Dials <button id="reset" class="link" type="button">Reset</button></h3>
+    <div class="dials">
+      <div class="dial"><label for="d-breakdowns">Breakdowns <output id="o-breakdowns">×1</output></label><input id="d-breakdowns" type="range" min="0" max="3" step="0.25" value="1"><p class="help">How often tools fail. ×2 fails twice as often; 0 never.</p></div>
+      <div class="dial"><label for="d-repair">Repair time <output id="o-repair">×1</output></label><input id="d-repair" type="range" min="0.5" max="3" step="0.25" value="1"><p class="help">How long a broken tool takes to fix.</p></div>
+      <div class="dial"><label for="d-demand">Demand <output id="o-demand">×1</output></label><input id="d-demand" type="range" min="0.5" max="1.5" step="0.05" value="1"><p class="help">How many new lots start each day.</p></div>
+      <div class="dial"><label for="d-hot">Hot lots <output id="o-hot">×1</output></label><input id="d-hot" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How many urgent lots jump the queue.</p></div>
+      <div class="dial"><label for="d-rework">Rework <output id="o-rework">×1</output></label><input id="d-rework" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How often an inspection sends a lot back.</p></div>
+      <div class="dial"><label for="d-defects">Defect holds <output id="o-defects">off</output></label><input id="d-defects" type="range" min="0" max="2" step="0.5" value="0"><p class="help">At each rework, the tool and its recent lots are held. ×1: tool 2 h, lots 1 h (assumed).</p></div>
+      <div class="dial"><label for="d-cap">WIP cap <output id="o-cap">none</output></label><input id="d-cap" type="range" min="1500" max="3600" step="100" value="3600"><p class="help">The most lots allowed in the fab; new lots wait at the door.</p></div>
+    </div>
+    <details class="advanced">
+      <summary>Advanced: replay seed and days</summary>
+      <div class="row">
+        <label class="field">Replay seed <input id="seed" type="number" min="0" value="0"></label>
+        <label class="field">Days <input id="days" type="number" min="1" max="14" value="3"></label>
+      </div>
+    </details>
+    <div class="pane-foot">
+      <button id="run" class="primary">Simulate and compare</button>
+      <p class="note" id="runnote">Loading the simulator…</p>
+    </div>
+    <div class="change-result" aria-live="polite">
+      <p class="what" id="cmp-what">Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.</p>
+      <div id="cmp-rows"></div>
+      <p class="note small" id="cmp-note"></p>
+    </div>
+  </section>
+
+  <section id="numbers" class="pane wide" role="tabpanel" aria-label="Numbers" hidden>
+    <h2>Two families: what each change does</h2>
+    <div class="num-controls">
+      <div class="seg" role="group" aria-label="Measure" id="num-metric">
+        <button type="button" data-m="profit" class="on">Operating profit</button>
+        <button type="button" data-m="a_wafers">Volume wafers</button>
+        <button type="button" data-m="b_cycle">Prototype cycle time</button>
+      </div>
+      <div class="seg" role="group" aria-label="Prototype orders" id="num-share">
+        <span class="seg-l">Prototype orders</span>
+        <button type="button" data-s="1">×1</button><button type="button" data-s="2">×2</button><button type="button" data-s="4" class="on">×4</button><button type="button" data-s="8">×8</button>
+      </div>
+    </div>
+    <div id="num-base" class="num-base"></div>
+    <div id="num-capital" class="num-capital"></div>
+    <div id="num-question"></div>
+    <details class="advanced" id="num-more">
+      <summary>Every change as an interval, and the trend as orders grow</summary>
+      <div class="num-charts">
+        <figure><figcaption id="num-forest-t"></figcaption><svg id="num-forest" role="img"></svg></figure>
+        <figure><figcaption id="num-lines-t"></figcaption><svg id="num-lines" role="img"></svg><div id="num-lines-key" class="key"></div></figure>
+      </div>
+    </details>
+    <details class="advanced" id="num-method">
+      <summary>How this was measured</summary>
+      <p class="lead" id="num-lead"></p>
+      <p class="note small" id="num-note"></p>
+    </details>
+    <section id="long-sec" class="long-sec">
+      <h3 class="q">Is a WIP cap free?</h3>
+      <p class="what" id="long-lead"></p>
+      <div id="long-grid" class="grid"></div>
+      <p class="finding" id="long-finding"></p>
+      <p class="note small" id="long-note"></p>
+    </section>
+  </section>
+
+  <section id="results" class="pane wide" role="tabpanel" aria-label="Results" hidden>
+    <h2>Results</h2>
+    <p class="pane-lead">Every simulation and policy run, newest first. Open one for its question, the simulator's settings and the numbers that came out.</p>
+    <div class="res-filter">
+      <input id="res-q" type="search" placeholder="Search results…" aria-label="Search results" autocomplete="off">
+      <div class="seg" id="res-kind" role="group" aria-label="Kind">
+        <button type="button" data-k="all" class="on">All</button><button type="button" data-k="sweep">Studies</button><button type="button" data-k="search">Searches</button><button type="button" data-k="training">Training</button><button type="button" data-k="contest">Contests</button><button type="button" data-k="what-if">Your changes</button><button type="button" data-k="question">Your questions</button>
+      </div>
+    </div>
+    <div id="res-list"></div>
+  </section>
+
+  <section id="glossary" class="pane wide" role="tabpanel" aria-label="Glossary" hidden>
+    <h2>Glossary</h2>
+    <div class="gl-wrap">
+      <nav class="gl-side" aria-label="Terms">
+        <input id="gl-search" type="search" placeholder="Search terms…" aria-label="Search terms" autocomplete="off">
+        <div class="seg gl-order" role="group" aria-label="Order"><button type="button" data-o="az" class="on">A to Z</button><button type="button" data-o="topic">By topic</button></div>
+        <div id="gl-index" class="gl-index"></div>
+      </nav>
+      <article id="gl-article" class="gl-article" aria-live="polite"></article>
+    </div>
+  </section>
   </div>
-  <div id="pane-long" role="tabpanel">
-    <h3 class="q">Is a WIP cap free?</h3>
-    <p class="what" id="long-lead"></p>
-    <div id="long-grid" class="grid"></div>
-    <p class="finding" id="long-finding"></p>
-    <p class="note small" id="long-note"></p>
-  </div>
-  <div id="pane-change" role="tabpanel" hidden aria-live="polite">
-    <p class="what" id="cmp-what">Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.</p>
-    <div id="cmp-rows"></div>
-    <p class="note small" id="cmp-note"></p>
-  </div>
-</section>
+</aside>
+<!-- /dock -->
 
 <section id="stages" class="card stages" role="dialog" aria-modal="true" aria-labelledby="stages-title" hidden>
   <div class="stages-head">
@@ -155,7 +211,16 @@
   <p class="note small">The drawings are our own simple sketches and are not to scale. The model itself holds only steps, tools and times, with no chemistry. Every count here is on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.</p>
 </section>
 
-<section class="card ticker" aria-label="Floor log"><ol id="ticker"></ol></section>
+<section id="key" class="card key" aria-label="What the marks on the floor mean">
+  <ul class="legend">
+    <li><i class="sw s0"></i>working</li><li><i class="sw s1"></i>idle</li><li><i class="sw s4"></i>changing setup</li><li><i class="sw s2"></i>maintenance</li><li><i class="sw s3"></i>broken down</li>
+  </ul>
+  <ul class="legend">
+    <li><i class="dot"></i>a lot (25 wafers)</li><li><i class="dot hot"></i>a hot lot</li><li><i class="dot proto"></i>a prototype lot</li>
+  </ul>
+  <p class="key-note"><b>+N</b> more lots waiting than drawn · <b>Holding</b> lots resting between steps</p>
+  <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
+</section>
 
 <footer class="card bar pill">
   <button id="play" class="icon" aria-label="Play or pause">❚❚</button>
@@ -165,17 +230,12 @@
     <button data-speed="60" class="on">3×</button>
     <button data-speed="240">12×</button>
   </div>
+  <span class="scrub-l">Lots waiting</span>
   <div class="scrub">
     <canvas id="spark" aria-hidden="true"></canvas>
     <input id="scrub" type="range" min="0" max="4320" step="1" value="0" aria-label="Fab time">
   </div>
-  <button id="fit" class="icon" aria-label="Fit the whole fab">⤢</button>
-  <span class="sep" aria-hidden="true"></span>
-  <button id="numbers-open" type="button" class="ghost">Numbers</button>
-  <button id="results-open" type="button" class="ghost">Results</button>
-  <button id="glossary-open" type="button" class="ghost">Glossary</button>
-  <button id="panel-open" type="button" class="ghost">Try a change</button>
-  <button id="ask-open" type="button" class="askbtn">Ask the fab</button>
+  <button id="fit" type="button" class="ghost" aria-label="Fit the whole fab">Fit</button>
 </footer>
 
 <section id="opening" class="opening" aria-labelledby="open-title">
@@ -184,67 +244,16 @@
   <form id="open-form" class="open-form" autocomplete="off">
     <label for="open-q" class="sr">Your question</label>
     <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
-    <button type="submit" class="askbtn">Ask</button>
+    <button type="submit" class="primary">Ask</button>
   </form>
   <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
   <button id="open-explore" type="button" class="link explore">or explore the floor</button>
   <p class="fine">Agents propose changes, the simulator scores them, and a person signs off. Everything runs on the SMT2020 model, a published research model of a wafer fab.</p>
 </section>
 
-<section id="numbers" class="card numbers" role="dialog" aria-modal="true" aria-labelledby="numbers-title" hidden>
-  <div class="numbers-head">
-    <h2 id="numbers-title">The numbers</h2>
-    <button type="button" class="icon close" data-close="numbers" aria-label="Close">✕</button>
-  </div>
-  <p class="lead" id="num-lead"></p>
-  <div class="num-controls">
-    <div class="seg" role="group" aria-label="Measure" id="num-metric">
-      <button type="button" data-m="profit" class="on">Operating profit a day</button>
-      <button type="button" data-m="a_wafers">Volume wafers a day</button>
-      <button type="button" data-m="b_cycle">Prototype cycle time</button>
-    </div>
-    <div class="seg" role="group" aria-label="Prototype orders" id="num-share">
-      <span class="seg-l">Prototype orders</span>
-      <button type="button" data-s="1">×1</button><button type="button" data-s="2">×2</button><button type="button" data-s="4" class="on">×4</button><button type="button" data-s="8">×8</button>
-    </div>
-  </div>
-  <div id="num-base" class="num-base"></div>
-  <div class="num-charts">
-    <figure><figcaption id="num-forest-t"></figcaption><svg id="num-forest" role="img"></svg></figure>
-    <figure><figcaption id="num-lines-t"></figcaption><svg id="num-lines" role="img"></svg><div id="num-lines-key" class="key"></div></figure>
-  </div>
-  <div id="num-capital" class="num-capital"></div>
-  <div id="num-question"></div>
-  <p class="note small" id="num-note"></p>
-</section>
-
-<section id="results" class="card numbers results" role="dialog" aria-modal="true" aria-labelledby="results-title" hidden>
-  <div class="numbers-head">
-    <h2 id="results-title">Results</h2>
-    <button type="button" class="icon close" data-close="results" aria-label="Close">✕</button>
-  </div>
-  <p class="lead">Every simulation and policy run, newest first. Open one to see the question it asked, the settings the simulator ran with and the numbers that came out. Runs made in this page are listed too.</p>
-  <div id="res-list"></div>
-</section>
-
-<section id="glossary" class="card numbers glossary" role="dialog" aria-modal="true" aria-labelledby="glossary-title" hidden>
-  <div class="numbers-head">
-    <h2 id="glossary-title">Glossary</h2>
-    <button type="button" class="icon close" data-close="glossary" aria-label="Close">✕</button>
-  </div>
-  <div class="gl-wrap">
-    <nav class="gl-side" aria-label="Terms">
-      <input id="gl-search" type="search" placeholder="Search terms…" aria-label="Search terms" autocomplete="off">
-      <div class="seg gl-order" role="group" aria-label="Order"><button type="button" data-o="az" class="on">A to Z</button><button type="button" data-o="topic">By topic</button></div>
-      <div id="gl-index" class="gl-index"></div>
-    </nav>
-    <article id="gl-article" class="gl-article" aria-live="polite"></article>
-  </div>
-</section>
-
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>
 <div id="tip" class="tip" hidden></div>
-<div class="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit · T to tilt · ⌘K to ask</div>
+<div class="hint" id="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit · T to tilt · ⌘K to ask</div>
 
 <script src="ui.js"></script>
 <script src="stages.js"></script>

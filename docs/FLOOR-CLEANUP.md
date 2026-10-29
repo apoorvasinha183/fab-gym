@@ -65,3 +65,9 @@ information). On the SMT2020 model, a published research model of a wafer fab.
 15. The CSS turns the dock into a bottom sheet under 900 px.
 
 ## Changes
+
+- 29 Oct, during the build: two older tests changed with the plan. The hover card names its group's stage and
+  drops the drawing (`web/tests/stages.test.mjs`); the Glossary opens from the dock's rail and tabs, so its own
+  footer button is gone (`web/tests/glossary.test.mjs`). Found on the way: "+N" on a group counts lots waiting in
+  its queue beyond those drawn (the critique had read it as tools); the floor key says so.
+

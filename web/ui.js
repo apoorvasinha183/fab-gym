@@ -232,7 +232,71 @@
     return { share, period, unit, policies: POLICIES.slice(), floors };
   }
 
-  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, runEntry, capitalGrid, STRATEGIES, POLICIES };
+  // ---------------------------------------------------------------- the cleanup (docs/FLOOR-CLEANUP.md)
+  // One role per colour: teal for actions, green good, red broken or worse, pink prototype lots, amber waiting heat.
+  const PALETTE = {
+    accent: "#7EE8D8", working: "#4FE3A3", better: "#4FE3A3", idle: "#8FA9A6", maintenance: "#7F9CFF", setup: "#C9A3FF",
+    broken: "#FF6262", worse: "#FF6262", proto: "#FF8AD8", lot: "#F4E7C6", hot: "#FFB347", track: "#5F7F88", chevron: "#7EE8D8",
+  };
+  // waiting heat, a = 0..1: pale to deep amber
+  function heatColor(a) {
+    const t = Math.max(0, Math.min(1, a));
+    return `rgba(255, ${Math.round(214 - 54 * t)}, ${Math.round(110 - 70 * t)}, ${(0.14 + 0.6 * t).toFixed(3)})`;
+  }
+  // what a group shows at a zoom scale (pixels per tile): names first, then the "+N" chips, then the queue belts
+  function zoomDetail(s) { return { names: s >= 2.6, chips: s >= 4, queues: s >= 5.5 }; }
+  // a hover card of w × h placed beside the cursor (x, y), inside a vw × vh screen with an 8 px margin
+  function tipPlace(x, y, w, h, vw, vh) {
+    const m = 8, gap = 18;
+    let px = x + gap + w <= vw - m ? x + gap : x - gap - w;
+    let py = y + gap + h <= vh - m ? y + gap : y - gap - h;
+    px = Math.max(m, Math.min(px, vw - m - w));
+    py = Math.max(m, Math.min(py, vh - m - h));
+    // if clamping put it under the cursor, move it to the other side vertically
+    if (x >= px && x <= px + w && y >= py && y <= py + h) py = y - gap - h >= m ? y - gap - h : y + gap;
+    return { x: px, y: Math.max(m, Math.min(py, vh - m - h)) };
+  }
+  // one name per policy and floor, everywhere on the page
+  const POLICY_NAMES = { "P0 today": "Today's order", "P1 family B first": "Prototypes first", "P2 family cap": "Capped at the door",
+    "P3 reservation": "A tool kept for prototypes", "P4 qualification": "Prototypes on half the tools" };
+  const FLOOR_NAMES = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "D3 copies": "Copies in the halls" };
+  function policyWord(k) { return POLICY_NAMES[k] || k; }
+  function floorWord(k) { return FLOOR_NAMES[k] || k; }
+  // a scenario candidate named by what it changes: [[kind, value], ...]
+  const RULE_NAMES = { today: "Today's rule", fifo: "First come, first served", spt: "Shortest processing first", cr: "Critical ratio" };
+  const POLICY_KEYS = { today: "today's order", bfirst: "prototypes first", cap: "capped at the door", reserve: "a tool kept for prototypes", qualify: "prototypes on half the tools" };
+  const FLOOR_KEYS = { share: "the shared floor", wing: "a prototype wing", copies: "copies in the halls" };
+  function candidateName(changes) {
+    const parts = changes.map(([k, v]) => k === "floor" ? FLOOR_KEYS[v] || v : k === "policy" ? POLICY_KEYS[v] || v : k === "rule" ? (RULE_NAMES[v] || v).toLowerCase()
+      : k === "cap" ? `a WIP cap of ${Number(v).toLocaleString("en-US")} lots` : k === "spare" ? `more tools in ${v}` : `${k} ${v}`);
+    const t = parts.join(", ");
+    return t ? t[0].toUpperCase() + t.slice(1) : "No change";
+  }
+  // a chart's range without far points (more than k times the spread of the middle half from the median), and those points
+  function clipRange(values, k = 4) {
+    const v = values.filter((x) => x !== null && isFinite(x)).slice().sort((a, b) => a - b);
+    if (v.length < 4) return { lo: Math.min(...v), hi: Math.max(...v), off: [] };
+    const q = (p) => v[Math.min(v.length - 1, Math.max(0, Math.round(p * (v.length - 1))))];
+    const med = q(0.5), spread = Math.max(q(0.75) - q(0.25), 1e-9);
+    const keep = (x) => Math.abs(x - med) <= k * spread;
+    const kept = v.filter(keep);
+    return { lo: Math.min(...kept), hi: Math.max(...kept), off: values.filter((x) => x !== null && isFinite(x) && !keep(x)) };
+  }
+  // dollars to three significant figures: $667k, $1.07M, $8,000
+  function usd3(x, sign = false) {
+    if (x === null || x === undefined || !isFinite(x)) return "—";
+    const s = x < 0 ? "−" : sign && x > 0 ? "+" : "", a = Math.abs(x);
+    const sig = (n) => +n.toPrecision(3);
+    const t = a >= 1e6 ? `${sig(a / 1e6)}M` : a >= 1e4 ? `${sig(a / 1e3)}k` : Math.round(a).toLocaleString("en-US");
+    return `${s}$${t}`;
+  }
+  // the Results tab's filter: words in the title, headline or question, and a kind ("all" for every kind)
+  function filterResults(entries, q, kind) {
+    const k = (q || "").trim().toLowerCase();
+    return entries.filter((e) => (kind === "all" || e.kind === kind) && (!k || `${e.title} ${e.headline} ${e.question}`.toLowerCase().includes(k)));
+  }
+
+  const api = { iso, isoInverse, hallAt, niceTicks, tickLabel, verdictOf, sweepRows, sweepLines, baselineFromRuns, pairedClock, openingState, journey, journeyDone, ringUse, usd, withPl, priceSheetRows, runEntry, capitalGrid, PALETTE, heatColor, zoomDetail, tipPlace, policyWord, floorWord, candidateName, clipRange, usd3, filterResults, STRATEGIES, POLICIES };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabUI = api;
 })(typeof window !== "undefined" ? window : globalThis);

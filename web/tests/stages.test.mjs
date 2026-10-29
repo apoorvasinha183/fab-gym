@@ -152,6 +152,7 @@ test("the floor wires the panel, the fly to a hall and the hall card", () => {
   assert.match(app, /function flyToHall\(/);
   assert.match(app, /"Escape"/);
   const tip = app.slice(app.indexOf("function showTip("), app.indexOf("\n}\n", app.indexOf("function showTip(")));
-  assert.match(tip, /FabStages\.crossSection\(/);
-  assert.match(tip, /\.what/);
+  // the hover card names the group's stage; its drawing lives in How a chip is made (docs/FLOOR-CLEANUP.md, item 7)
+  assert.match(tip, /FabStages\.byKey\(/);
+  assert.match(tip, /st\.name/);
 });
