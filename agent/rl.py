@@ -134,7 +134,7 @@ class BuiltIn:
             raise RuntimeError(f"fabsim env refused: {p.stdout.strip() or p.stderr.strip()}")
         d = json.loads(p.stdout.strip().splitlines()[-1])
         return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": 0,
-                "picked_other_by_group": {}, "fallbacks": d["fallbacks"]}
+                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "pick_ns": d.get("pick_ns", float("nan"))}
 
 
 class Learned:
@@ -167,7 +167,8 @@ class Written:
             raise RuntimeError(f"fabrule env refused: {p.stdout.strip() or p.stderr.strip()}")
         d = json.loads(p.stdout.strip().splitlines()[-1])
         return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": d["picked_other"],
-                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "faults": d["faults"]}
+                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "faults": d["faults"],
+                "pick_ns": d.get("pick_ns", float("nan"))}
 
 
 def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None):
@@ -268,7 +269,8 @@ def timed_play(policy, seed, shop, fabsim, warmup_days, window_days, defects):
     wall = time.perf_counter() - t0
     n = max(1, r["decisions"])
     r["sec_per_decision"] = wall / n
-    r["act_ms"] = 1000.0 * inner[0] / n if hasattr(policy, "act") else float("nan")
+    # inside the policy's own code: timed here for Python players, inside the engine for built-in and written rules
+    r["act_ms"] = 1000.0 * inner[0] / n if hasattr(policy, "act") else r.get("pick_ns", float("nan")) / 1e6
     return r
 
 

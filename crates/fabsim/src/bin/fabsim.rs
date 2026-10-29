@@ -1136,12 +1136,17 @@ fn env_cmd(args: &[String]) {
     let stdout = std::io::stdout();
     let mut out = std::io::BufWriter::new(stdout.lock());
     let mut line = String::new();
+    // seconds inside the rule's own pick (docs/LONG-RESCORE.md, the speed chart)
+    let mut pick_time = 0.0f64;
     let mut ask = |d: &fabsim::engine::Decision, ord: &[usize], reward: f64| -> Option<usize> {
         if auto {
-            return Some(match rule_pick.as_mut() {
+            let t0 = std::time::Instant::now();
+            let k = match rule_pick.as_mut() {
                 Some(p) => p(d),
                 None => d.default,
-            });
+            };
+            pick_time += t0.elapsed().as_secs_f64();
+            return Some(k);
         }
         let _ = writeln!(out, "{}", observation_json(d, ord, reward, &fams));
         let _ = out.flush();
@@ -1163,7 +1168,10 @@ fn env_cmd(args: &[String]) {
     if let Some(p) = args.iter().position(|a| a == "--picks").and_then(|i| args.get(i + 1)) {
         fabsim::gym::write_picks(&e, std::path::Path::new(p)).expect("write the picks");
     }
-    let tag = rule.map(|p| format!(",\"policy\":\"{}\"", p.name())).unwrap_or_default();
+    let mut tag = rule.map(|p| format!(",\"policy\":\"{}\"", p.name())).unwrap_or_default();
+    if auto {
+        tag.push_str(&format!(",\"pick_ns\":{}", 1e9 * pick_time / e.asked.max(1) as f64));
+    }
     let _ = writeln!(out, "{}", done_json(&e, &tag));
     let _ = out.flush();
 }

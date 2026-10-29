@@ -145,9 +145,13 @@ fn env(args: &[String]) -> ExitCode {
     };
     rule.prepare(&shop);
     let (mut faults, mut other) = (0u64, 0u64);
+    // seconds inside the rule's own pick, the sandbox call included (docs/LONG-RESCORE.md, the speed chart)
+    let mut pick_time = 0.0f64;
     let w = Window { from: warmup * 1440.0, to: (warmup + window) * 1440.0 };
     let mut ask = |d: &fabsim::engine::Decision, _ord: &[usize], _reward: f64| -> Option<usize> {
+        let t0 = std::time::Instant::now();
         let k = rule.decide(d);
+        pick_time += t0.elapsed().as_secs_f64();
         match k {
             None => faults += 1,
             Some(i) if i != d.default => other += 1,
@@ -161,7 +165,8 @@ fn env(args: &[String]) -> ExitCode {
             return fail("picks", &err.to_string());
         }
     }
-    println!("{}", done_json(&e, &format!(",\"faults\":{faults},\"picked_other\":{other}")));
+    let pick_ns = 1e9 * pick_time / e.asked.max(1) as f64;
+    println!("{}", done_json(&e, &format!(",\"faults\":{faults},\"picked_other\":{other},\"pick_ns\":{pick_ns}")));
     ExitCode::SUCCESS
 }
 
