@@ -5,7 +5,8 @@ import json
 import sys
 from pathlib import Path
 
-from agent import rl
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # the repo, for `agent`
+from agent import rl  # noqa: E402
 
 name, seed, out = sys.argv[1], int(sys.argv[2]), Path(sys.argv[3])
 # today's rule is played inside the engine, as the other built-in rules are
