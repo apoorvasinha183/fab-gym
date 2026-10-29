@@ -158,3 +158,45 @@ fn only_real_choices_in_the_window_are_asked_and_bad_answers_fall_back() {
     let want = expected(SHOP, 5);
     assert!((num(score_of(&e.done), "moves") - want.moves).abs() < 1e-9);
 }
+
+// ---- every built-in rule through the same episode, and the slow measures (docs/LONG-RESCORE.md) ----
+
+#[test]
+fn a_built_in_rule_plays_in_the_window_and_todays_rule_in_the_warm_up() {
+    use fabsim::gym::episode;
+    use fabsim::policy::{picker, Policy};
+    let text = SHOP.to_string();
+    let shop = Shop::parse(&text).unwrap();
+    let w = Window { from: WARMUP * 1440.0, to: (WARMUP + WINDOW) * 1440.0 };
+    for p in [Policy::Fifo, Policy::Spt, Policy::CriticalRatio, Policy::Random] {
+        let mut pick = picker(&shop, p, 3);
+        let mut ask = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(d));
+        let e = episode(&shop, 3, w, &mut ask);
+        assert_eq!(e.fallbacks, 0, "{}", p.name());
+        assert!(e.asked > 20, "{}: it decides in the window", p.name());
+    }
+    // the warm-up is today's rule whatever plays the window: a window of nothing scores as today's
+    let mut pick = picker(&shop, Policy::Fifo, 3);
+    let mut ask = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(d));
+    let none = Window { from: w.to, to: w.to };
+    let a = episode(&shop, 3, none, &mut ask);
+    let mut today = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(d.default);
+    let b = episode(&shop, 3, none, &mut today);
+    assert_eq!(a.score.moves, b.score.moves);
+}
+
+#[test]
+fn the_env_runs_a_built_in_rule_and_reports_the_slow_measures() {
+    let p = shop_file(SHOP, "auto-fifo");
+    let out = Command::new(env!("CARGO_BIN_EXE_fabsim"))
+        .args(["env", p.to_str().unwrap(), "--seed", "1", "--warmup", "0.5", "--window", "1", "--auto", "fifo"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let done = String::from_utf8(out.stdout).unwrap();
+    let done = done.lines().last().unwrap();
+    for k in ["cycle_days", "wafers_per_day", "mean_wip", "hot_cycle_days", "moves", "lots_finished"] {
+        assert!(done.contains(&format!("\"{k}\":")), "{k} in {done}");
+    }
+    assert!(done.contains("\"policy\":\"fifo\""));
+}

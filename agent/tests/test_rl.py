@@ -99,5 +99,24 @@ class TrainAndContest(unittest.TestCase):
         self.assertTrue((out / "card.json").exists())
 
 
+    def test_every_kind_of_policy_is_scored_and_registered(self):
+        """docs/LONG-RESCORE.md: built-in rules, written rules and learned policies through one harness, every
+        measure kept per seed with the time each decision took, and a registry naming each policy and the protocol."""
+        from agent import rl
+        out = self.tmp / "registry"
+        pols = {"today": rl.Today(), "fifo": rl.BuiltIn("fifo"), "cr": rl.BuiltIn("cr"), "last slot": rl.Fixed(7)}
+        card = rl.contest(pols, seeds=[0, 1], out=out, protocol="test-v0", **self.common)
+        head = (out / "runs.tsv").read_text().splitlines()[0].split("\t")
+        for k in ("contestant", "seed", "reward", "moves", "lots_finished", "wait_lot_hours", "breaches", "cycle_days",
+                  "wafers_per_day", "mean_wip", "hot_cycle_days", "decisions", "sec_per_decision"):
+            self.assertIn(k, head)
+        reg = json.loads((out / "policies.json").read_text())
+        self.assertEqual(reg["protocol"]["name"], "test-v0")
+        self.assertEqual(sorted(p["name"] for p in reg["policies"]), sorted(pols))
+        for p in reg["policies"]:
+            self.assertIn(p["kind"], ("built-in rule", "written rule", "learned", "fixed slot"))
+        self.assertIn("cycle_days", card["against_today"][0]["measures"])
+
+
 if __name__ == "__main__":
     unittest.main()
