@@ -136,7 +136,8 @@ class BuiltIn:
             raise RuntimeError(f"fabsim env refused: {p.stdout.strip() or p.stderr.strip()}")
         d = json.loads(p.stdout.strip().splitlines()[-1])
         return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": 0,
-                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "pick_ns": d.get("pick_ns", float("nan"))}
+                "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "pick_ns": d.get("pick_ns", float("nan")),
+                "daily_wafers": d.get("daily_wafers")}
 
 
 class Learned:
@@ -172,7 +173,7 @@ class Written:
         d = json.loads(p.stdout.strip().splitlines()[-1])
         return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": d["picked_other"],
                 "picked_other_by_group": {}, "fallbacks": d["fallbacks"], "faults": d["faults"],
-                "pick_ns": d.get("pick_ns", float("nan"))}
+                "pick_ns": d.get("pick_ns", float("nan")), "daily_wafers": d.get("daily_wafers")}
 
 
 def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None, picks=None):
@@ -196,7 +197,7 @@ def play(policy, seed, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.
             obs, _, done, _, info = env.step(a)
             steps += 1
         return {"seed": seed, "score": info["score"], "decisions": info["decisions"], "picked_other": picked_other,
-                "picked_other_by_group": by_group, "fallbacks": info["fallbacks"]}
+                "picked_other_by_group": by_group, "fallbacks": info["fallbacks"], "daily_wafers": info.get("daily_wafers")}
     finally:
         env.close()
 

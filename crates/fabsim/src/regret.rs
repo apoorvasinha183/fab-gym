@@ -65,6 +65,9 @@ pub fn audit_capped(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n
 /// `cap`: None tries every lot; Some(m), one of each kind and the policy's pick, filled evenly up to m.
 fn audit_with(shop: &Shop, seed: u64, from: f64, to: f64, picks: &[u32], n: usize, horizon: f64, cap: Option<usize>) -> Audit {
     let by_kind = cap.is_some();
+    // the shop as an episode plays it (probes at the window's ends), so recorded picks replay their own run
+    let probed = crate::window::with_probes(shop, &crate::window::Window { from, to });
+    let shop = &probed;
     let opts = RunOptions { seed, until: Some(to + horizon), record: false };
     let n = n.min(picks.len());
     let ks: Vec<usize> = (0..n).map(|i| ((i as f64 + 0.5) * picks.len() as f64 / n as f64) as usize).collect();

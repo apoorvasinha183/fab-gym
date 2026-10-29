@@ -115,7 +115,7 @@ class FabGymEnv(gym.Env):
     def _info(self, o):
         info = {"mask": self._mask(o), "default": 0, "fallbacks": self.fallbacks, "seed": self.seed_now}
         if o is not None and o.get("done"):
-            info.update(score=o["score"], decisions=o["decisions"])
+            info.update(score=o["score"], decisions=o["decisions"], daily_wafers=o.get("daily_wafers"))
         return info
 
     # ------------------------------------------------------------------ Gymnasium

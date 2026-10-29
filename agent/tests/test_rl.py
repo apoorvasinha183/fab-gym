@@ -132,6 +132,8 @@ class TrainAndContest(unittest.TestCase):
             lines = path.read_text().split()
             self.assertEqual(len(lines), got["decisions"], name)
             self.assertTrue(all(x.isdigit() for x in lines), name)
+            # and the wafers out on each day of the window, for the day-by-day graphs
+            self.assertEqual(len(got["daily_wafers"]), 1, name)
 
 
 if __name__ == "__main__":

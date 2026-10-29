@@ -16,6 +16,8 @@ pub struct Episode {
     pub fallbacks: u64,
     /// the window's reward less the rewards already paid at each question
     pub last_reward: f64,
+    /// wafers finished on each day of the window, in order (a lot counts on the day its last step ends)
+    pub daily_wafers: Vec<f64>,
     /// the pick played at each decision asked, in order (docs/LONG-RESCORE.md): replayed, they give the same run
     pub picks: Vec<u32>,
 }
@@ -82,7 +84,15 @@ pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision,
         run(&shop, &RunOptions { seed, until: Some(w.to), record: false }, Some(&mut chooser))
     };
     let sc = score(&r, &w).expect("the window scores");
-    Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks, picks }
+    let days = ((w.to - w.from) / 1440.0).ceil().max(1.0) as usize;
+    let mut daily_wafers = vec![0.0; days];
+    for l in &r.lots {
+        if let Some(d) = l.done.filter(|&d| d > w.from && d <= w.to) {
+            let i = (((d - w.from) / 1440.0).ceil() as usize).clamp(1, days) - 1;
+            daily_wafers[i] += l.size as f64;
+        }
+    }
+    Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks, picks, daily_wafers }
 }
 
 fn num(x: f64) -> String {
@@ -140,7 +150,7 @@ pub fn observation_json(d: &Decision, ord: &[usize], reward: f64, fams: &[String
 pub fn done_json(e: &Episode, extra: &str) -> String {
     let s = &e.score;
     format!(
-        "{{\"done\":true,\"reward\":{},\"decisions\":{},\"fallbacks\":{}{},\"score\":{{\"reward\":{},\"moves\":{},\"lots_finished\":{},\"wait_lot_hours\":{},\"wait_per_move_minutes\":{},\"breaches\":{},\"mean_wip\":{},\"lots_per_day\":{},\"wafers_per_day\":{},\"cycle_days\":{},\"hot_cycle_days\":{}}}}}",
+        "{{\"done\":true,\"reward\":{},\"decisions\":{},\"fallbacks\":{}{},\"score\":{{\"reward\":{},\"moves\":{},\"lots_finished\":{},\"wait_lot_hours\":{},\"wait_per_move_minutes\":{},\"breaches\":{},\"mean_wip\":{},\"lots_per_day\":{},\"wafers_per_day\":{},\"cycle_days\":{},\"hot_cycle_days\":{}}},\"daily_wafers\":[{}]}}",
         num(e.last_reward),
         e.asked,
         e.fallbacks,
@@ -155,7 +165,8 @@ pub fn done_json(e: &Episode, extra: &str) -> String {
         num(s.lots_per_day),
         num(s.wafers_per_day),
         num(s.cycle_days),
-        num(s.hot_cycle_days.unwrap_or(f64::NAN))
+        num(s.hot_cycle_days.unwrap_or(f64::NAN)),
+        e.daily_wafers.iter().map(|x| num(*x)).collect::<Vec<_>>().join(",")
     )
 }
 
