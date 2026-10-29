@@ -147,3 +147,10 @@ test("15. a bottom sheet on narrow screens", () => {
   const m = css.match(/@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/);
   assert.ok(m && /#dock/.test(m[1]), "the dock changes under 900 px");
 });
+
+test("no function in app.js is declared twice (a second declaration silently replaces the first)", () => {
+  // the follow-one-lot drawing once reused journeyDraw, and How a chip is made opened empty (30 Oct)
+  const names = [...app.matchAll(/^(?:async )?function ([A-Za-z0-9_$]+)/gm)].map(m => m[1]);
+  const twice = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
+  assert.deepEqual(twice, []);
+});
