@@ -1,0 +1,118 @@
+<title>From Sand to Chip</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a screening-room storyboard. A timeline strip of the twelve scenes, then one row per scene (frame left,
+   script right), then the four choices to agree. Each act keeps one colour throughout. */
+:root {
+  --bg: #111624; --panel: #192033; --line: #2a3350; --fg: #e9ecf3; --muted: #a6aec4;
+  --open: #f3dfb4; --before: #ff9a52; --fab: #7ee8d8; --after: #b9a8ff;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f2f3f7; --panel: #ffffff; --line: #d9dce8; --fg: #1a2033; --muted: #59627e;
+  --open: #8f7140; --before: #c2571a; --fab: #0d8577; --after: #6a52d1; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #f2f3f7; --panel: #ffffff; --line: #d9dce8; --fg: #1a2033; --muted: #59627e;
+  --open: #8f7140; --before: #c2571a; --fab: #0d8577; --after: #6a52d1; color-scheme: light; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 14px; }
+.eyebrow { font: 500 13px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 800 clamp(40px, 7vw, 76px)/1 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+h1 .sand { color: var(--open); } h1 .chip { color: var(--fab); }
+.lede { margin: 0; max-width: 64ch; color: var(--muted); font-size: 17px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font: 500 14px var(--mono); color: var(--muted); }
+.facts b { color: var(--fg); font-weight: 500; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.timeline { display: flex; gap: 3px; height: 34px; }
+.timeline .seg { display: flex; align-items: center; justify-content: center; border-radius: 6px; text-decoration: none; font: 500 12px var(--mono); color: var(--bg); min-width: 0; }
+.timeline .seg:focus-visible, .scene:target { outline: 2px solid var(--fg); outline-offset: 3px; }
+.open { --act: var(--open); } .before { --act: var(--before); } .fab { --act: var(--fab); } .after { --act: var(--after); }
+.timeline .seg { background: var(--act); }
+.tl-scale { display: flex; justify-content: space-between; font: 500 12px var(--mono); color: var(--muted); margin-top: 4px; }
+h2 { margin: 0 0 4px; font: 800 30px/1.15 var(--display); text-wrap: balance; }
+.section-lede { margin: 0 0 18px; color: var(--muted); max-width: 64ch; }
+.scenes { display: grid; gap: 18px; }
+.scene { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 22px; padding: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; border-left: 4px solid var(--act); scroll-margin-top: 16px; }
+.frame { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 10px; overflow: hidden; display: grid; place-items: center;
+  background: radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--act) 22%, #0b0f1a), #0b0f1a 70%); }
+.frame .art { width: 78%; height: auto; }
+.frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame .tc { position: absolute; left: 8px; top: 6px; font: 500 12px var(--mono); color: #e9ecf3; background: rgba(0,0,0,0.45); padding: 1px 6px; border-radius: 4px; }
+.frame .sim { position: absolute; right: 8px; bottom: 6px; font: 500 12px var(--mono); color: #0b1418; background: #7ee8d8; padding: 1px 6px; border-radius: 4px; }
+.fab .frame { box-shadow: inset 0 0 0 2px #7ee8d8; }
+.body { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font: 500 12px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.meta .act { color: var(--act); }
+.scene h3 { margin: 0; font: 600 24px/1.2 var(--display); }
+.see { margin: 0; color: var(--muted); }
+blockquote { margin: 0; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--act) 10%, transparent); font-size: 17px; line-height: 1.55; }
+blockquote::before { content: "Narration"; display: block; font: 500 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--act); margin-bottom: 2px; }
+.cap, .cam { margin: 0; font-size: 14px; color: var(--muted); }
+.cap span, .cam span { display: inline-block; min-width: 82px; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg); }
+.choices { display: grid; gap: 22px; }
+.choice h3 { margin: 0 0 8px; font: 600 20px var(--display); }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.opt { position: relative; padding: 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.opt.rec { border-color: var(--fab); }
+.opt h4 { margin: 0 0 4px; font: 600 16px var(--body); }
+.opt p { margin: 0; font-size: 14px; color: var(--muted); }
+.badge { display: inline-block; margin-bottom: 6px; font: 500 12px var(--mono); color: var(--bg); background: var(--fab); padding: 1px 7px; border-radius: 999px; }
+.sw { display: flex; gap: 4px; margin: 6px 0 8px; }
+.sw i { width: 22px; height: 14px; border-radius: 4px; border: 1px solid var(--line); }
+ol.next { margin: 0; padding-left: 22px; color: var(--muted); display: grid; gap: 4px; max-width: 64ch; }
+ol.next b { color: var(--fg); font-weight: 600; }
+footer { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; max-width: 72ch; }
+@media (max-width: 720px) { .scene { grid-template-columns: minmax(0, 1fr); } .timeline .seg span { display: none; } }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Fab Gym · film script, draft 2 · storyboard stills</div>
+    <h1>From <span class="sand">Sand</span> to <span class="chip">Chip</span></h1>
+    <p class="lede">A short animated film in Three.js that follows one grain of sand all the way to a working chip. The middle of the story, inside the fab, is what Fab Gym simulates; the steps before and after it come from general knowledge and say so on screen.</p>
+    <div class="facts"><span>Running time <b>{{TOTAL}}</b></span><span>Scenes <b>13</b></span><span>Built in <b>Three.js</b>, delivered as <b>MP4</b></span><span>Status <b>direction agreed</b></span></div>
+  </header>
+
+  <section aria-label="Timeline">
+    <div class="legend"><span><i style="background:var(--open)"></i>Opening</span><span><i style="background:var(--before)"></i>Before the fab</span><span><i style="background:var(--fab)"></i>In the fab · simulated on the SMT2020 model</span><span><i style="background:var(--after)"></i>After the fab</span></div>
+    <div class="timeline" role="navigation" aria-label="Scenes, sized by length">{{BAR}}</div>
+    <div class="tl-scale"><span>0:00</span><span>1:00</span><span>2:00</span><span>{{TOTAL}}</span></div>
+  </section>
+
+  <section>
+    <h2>The script</h2>
+    <p class="section-lede">Each scene: what we see, the narration, any on-screen caption and the camera move. Click a block in the timeline to jump to its scene.</p>
+    <div class="scenes">{{SCENES}}</div>
+  </section>
+
+  <section>
+    <h2>The agreed direction</h2>
+    <p class="section-lede">Chosen by the founder on 29 October.</p>
+    <div class="opts">
+      <div class="opt rec"><h4>Look: semi-real, with explainer animation</h4><p>Physically based materials, reflections, soft shadows and depth of field, with Kurzgesagt-style explainers on top: labels with leader lines, a powers-of-ten scale bar, counters, molecule pop-outs and flow arrows. A mining scene opens the story.</p></div>
+      <div class="opt rec"><h4>Delivery: a video file</h4><p>The scenes are rendered frame by frame in Three.js and encoded to one MP4.</p></div>
+      <div class="opt rec"><h4>Sound: voice and music</h4><p>The narration voiced with Chatterbox on the Mac mini. Music: <i>The Budding of Consciousness</i> by Yoiyami under sand to wafers, crossfading into <i>New Sunrise</i> by nene as the box enters the fab and swelling at the finished wafer. Both CC0 from OpenGameArt; no attribution required, credited anyway.</p></div>
+      <div class="opt rec"><h4>Three.js</h4><p>three@0.169.0 from npm (MIT), vendored with its licence: the module build and the post-processing, environment, geometry and utility add-ons.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Then, in order</h2>
+    <ol class="next">
+      <li><b>Storyboard stills.</b> Done: each scene above shows a still rendered in Three.js, waiting for your sign-off.</li>
+      <li><b>Scenes built one at a time</b>, each playable on its own, starting with Layer by layer, the longest and hardest.</li>
+      <li><b>A full cut</b> with captions, rendered to MP4.</li>
+      <li><b>Voice and music</b> laid in and mixed to the picture.</li>
+    </ol>
+  </section>
+
+  <footer>The fab's part of the film runs on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab; its figures (583 steps, 105 tool groups, about 66 days for a regular lot) come from Fab Gym's own runs. The steps before and after the fab are general knowledge with typical figures. No real fab, company or product is shown. Music: The Budding of Consciousness (Yoiyami) and New Sunrise (nene), CC0 via OpenGameArt.</footer>
+</div>
