@@ -208,3 +208,69 @@ fn a_delivery_takes_at_least_the_two_hoists() {
     let f = go(&with(s, fleet(80, 2)), 0, 1.0, false).fleet.unwrap();
     assert!(f.deliver_least + 1e-9 >= 2.0 * 0.3, "shortest delivery {}", f.deliver_least);
 }
+
+// ---- every tool its own port (docs/FLEET.md, changes after the first probe) ----
+
+/// The realistic campus laid out here (a quick optimiser), with one port per tool.
+fn campus_with_ports() -> Option<Shop> {
+    use fabsim::layout::{Config, Problem};
+    let dir = common::smt2020_dir()?;
+    let base = fabsim::smt2020::load(&dir).unwrap();
+    let areas = fabsim::smt2020::areas(&dir).unwrap();
+    let mut cfg = Config::realistic();
+    cfg.iters = 3000;
+    cfg.restarts = 1;
+    let p = Problem::new(&base, &areas, &cfg).unwrap();
+    let c = p.pack(&p.optimise());
+    let mut s = base;
+    s.oht = Some(p.oht(&c));
+    s.ports = p.ports(&c);
+    Some(s)
+}
+
+#[test]
+fn every_tool_has_a_port_on_the_track() {
+    let Some(s) = campus_with_ports() else { return };
+    let t = Track::with_ports(s.oht.as_ref().unwrap(), &s.ports, 60.0);
+    for g in &s.groups {
+        let n = s.ports.iter().filter(|p| p.0 == g.name).count();
+        let placed = s.oht.as_ref().unwrap().places.iter().any(|p| p.0 == g.name && p.1.is_some());
+        assert_eq!(n, if placed { g.count } else { 0 }, "{}: one port per tool", g.name);
+        assert_eq!(t.ports_of(&g.name).len(), n);
+    }
+    let all: Vec<usize> = s.groups.iter().flat_map(|g| t.ports_of(&g.name).to_vec()).collect();
+    let o = s.oht.as_ref().unwrap();
+    for (i, &a) in all.iter().enumerate().step_by(7) {
+        for &b in all.iter().skip(i % 5).step_by(11) {
+            let d = t.dist(a, b);
+            assert!(d.is_finite());
+            assert!(d + 1e-6 >= o.distance(&t.place(a), &t.place(b)), "no trip between ports beats the aisles");
+        }
+    }
+}
+
+#[test]
+fn the_port_record_reads_and_writes_back() {
+    let Some(s) = campus_with_ports() else { return };
+    let back = Shop::parse(&s.to_text()).unwrap();
+    assert_eq!(back.ports, s.ports);
+    let mut none = s.clone();
+    none.ports.clear();
+    assert!(!none.to_text().contains("\nport\t"));
+}
+
+#[test]
+fn lots_are_hoisted_at_tool_ports_and_stocker_spurs_only() {
+    let Some(s) = campus_with_ports() else { return };
+    let sh = with(s, fleet(250, 2));
+    let t = Track::with_ports(sh.oht.as_ref().unwrap(), &sh.ports, 60.0);
+    let r = go(&sh, 0, 1.0, true);
+    let f = r.fleet.unwrap();
+    let mut stops = std::collections::BTreeSet::new();
+    for h in &f.hoists {
+        let n = &t.nodes()[h.stop];
+        assert!(n.tool.is_some() || n.spur, "a hoist at node {} on the open rail", h.stop);
+        stops.insert(h.stop);
+    }
+    assert!(stops.len() > 300, "hoists spread over the tools' ports: {} stops used", stops.len());
+}
