@@ -1927,7 +1927,7 @@ function drawReal(s) {
   }
   ctx.globalAlpha = 1;
   for (const st of B.stockers) block(st[0], st[1], st[2], st[3], 4, REAL_LOOK.stockerTop, REAL_LOOK.stocker, null);
-  if (jr) { journeyDraw(jr, s); drawFlash(); return; }
+  if (jr) { followDraw(jr, s); drawFlash(); return; }
   // wafers at a tool: the lot's 25 as a 5 by 5 grid on the working tool's panel, filled one by one over the step
   if (s >= 8) {
     screenSpace();
@@ -2116,7 +2116,7 @@ function journeyCamera(dt, jump = false) {
 }
 function drag_active() { return document.querySelector("#floor.drag") !== null; }
 
-function journeyDraw(jr, s) {
+function followDraw(jr, s) {
   // the followed tool's wafers, then the lot itself, large and pink
   if (jr.tool >= 0 && jr.boxOf && jr.boxOf[jr.tool] >= 0 && jr.kind === "work") {
     const b = G.B.tools[jr.boxOf[jr.tool]], done = FabBuilding.wafersDone(jr.st[4], jr.st[5], jr.t, JOURNEY.data.wafers || 25);
