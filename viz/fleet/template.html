@@ -43,7 +43,7 @@ canvas:active { cursor: grabbing; }
 <main>
   <header>
     <h1>Rails and Vehicles</h1>
-    <p class="sub">An hour of the fleet on today's US building, from the simulator's own trace (simulated day 2, seed 3000). The rails here are the ones the simulator moves vehicles on: one-way loops, a load port for each of the 1,043 tools, stocker ports on short spurs. Vehicles never pass one another, and one stopped to hoist holds up the vehicles behind it.</p>
+    <p class="sub">An hour of the fleet on today's US building, from the simulator's own trace (simulated day 2, seed 3000). The rails here are the ones the simulator moves vehicles on: the drawings' own rails: two one-way spine rails across the whole campus with crossovers, and in every bay a rail over each wall's load ports, joined at the far end. Every one of the 1,043 tools has its port under its wall's rail; stockers are served from the spine rail above them. Vehicles never pass one another, and one stopped to hoist holds up the vehicles behind it.</p>
   </header>
   <div class="bar">
     <div class="seg" role="group" aria-label="Fleet size" id="fleets"></div>
@@ -70,11 +70,11 @@ canvas:active { cursor: grabbing; }
       <div class="card"><h2>Key</h2>
         <div class="row"><span><i class="dot" style="background:var(--lane)"></i>spine loops, one way</span></div>
         <div class="row"><span><i class="dot" style="background:var(--bay)"></i>bay loops, one way</span></div>
-        <div class="row"><span><i class="dot" style="background:var(--spur)"></i>stocker spurs</span></div>
+        <div class="row"><span><i class="dot" style="background:var(--spur)"></i>stockers on the spine</span></div>
         <p class="note" style="margin:6px 0 0">Held up means a vehicle is still on a stretch after it would have left at full speed: queued behind a hoist, a full stretch, or a merge.</p>
       </div>
       <div class="card"><h2>Assumed</h2>
-        <p class="note" style="margin:0">2.5 m/s everywhere, 3 m between vehicles, 60 s to load and 60 s to unload (cited from Yang 2023), crossovers every 60 m, nearest idle vehicle. The rails' shape is our own design.</p>
+        <p class="note" style="margin:0">2.5 m/s everywhere, 3 m between vehicles, 60 s to load and 60 s to unload (cited from Yang 2023), nearest idle vehicle. The rails are the ones the plans, the BIM and the game draw, a design of our own; a test keeps the simulator's track equal to them.</p>
       </div>
     </div>
   </div>
@@ -103,6 +103,8 @@ function draw() {
   for (const b of P.bays) cx.strokeRect(...rect(b[0], b[1], b[2], b[3]));
   cx.fillStyle = "#1a2246";
   for (const tl of P.tools) cx.fillRect(...rect(tl[0], tl[1], tl[2], tl[3]));
+  cx.fillStyle = "#4a4220"; cx.strokeStyle = C.spur; cx.lineWidth = 1;
+  for (const st of P.stockers) { const r = rect(st[0], st[1], st[2], st[3]); cx.fillRect(...r); cx.strokeRect(...r); }
   // the rails
   const lane = i => N[i][2] === "lane";
   for (const e of E) {
@@ -160,7 +162,7 @@ D.fleets.forEach((f, i) => { const b = document.createElement("button"); b.textC
 document.getElementById("play").onclick = e => { playing = !playing; e.target.textContent = playing ? "Pause" : "Play"; };
 document.getElementById("scrub").oninput = e => { const f = D.fleets[fi]; t = f.from + (f.to - f.from) * e.target.value / 1000; draw(); };
 document.getElementById("rate").oninput = e => { rate = +e.target.value; document.getElementById("rateOut").textContent = `${rate} min/s`; };
-const views = { vAll: whole, vEnd: () => fit(-6, 70, -70, 70), vBay: () => { const b = P.bays[0]; fit(b[0] - 6, b[1] + 6, 0, b[3] + 4); } };
+const views = { vAll: whole, vEnd: () => fit(-6, 170, -70, 70), vBay: () => { const b = P.bays[0]; fit(b[0] - 6, b[1] + 6, 0, b[3] + 4); } };
 for (const id in views) document.getElementById(id).onclick = () => { for (const k in views) document.getElementById(k).setAttribute("aria-pressed", k === id); views[id](); };
 cv.addEventListener("wheel", e => { e.preventDefault(); const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
   const wx = view.x + (mx - W / 2) / view.s, wy = view.y - (my - H / 2) / view.s, k = Math.exp(-e.deltaY * 0.0015);
