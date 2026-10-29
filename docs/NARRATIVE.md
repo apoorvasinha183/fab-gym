@@ -69,6 +69,13 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
 10. **The demo video**, as above.
 11. **Public**: the README labelling new work and what existed before 27 Oct, the NOTICE, the repository made
     public, the submission and the X post (the founder).
+12. **If time permits (the founder, 30 Oct): a layout sandbox for the nerds.** A 2D space known to hold at least
+    one full set of SMT2020's tools; people lay down bays, tools, rails and stockers and write their own scheduling
+    rule, and the simulator scores the pair under the defined defect model on paired seeds (wafers a day, cycle time,
+    breaches, vehicles, capital). Built already: the layout model, variant layouts with capital, the fleet on any
+    drawn track, the rule sandbox, the Python env, protocol long-v1. Missing: a 2D editor, a feasibility checker,
+    hidden scoring seeds, a leaderboard. Output is capped by the bottleneck group (about 1,302 wafers a day), so a
+    layout mostly moves cycle time, WIP, vehicles and jams; scoring needs several measures.
 
 ## Tests (written with each deliverable, before its code)
 
