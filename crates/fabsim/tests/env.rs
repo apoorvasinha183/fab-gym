@@ -202,4 +202,7 @@ fn the_env_runs_a_built_in_rule_and_reports_the_slow_measures() {
         assert!(done.contains(&format!("\"{k}\":")), "{k} in {done}");
     }
     assert!(done.contains("\"policy\":\"fifo\""));
+    // the time inside the rule's own pick, apart from the simulation (docs/LONG-RESCORE.md, the speed chart)
+    let ns = num(done, "pick_ns");
+    assert!(ns.is_finite() && ns > 0.0 && ns < 1e6, "pick_ns {ns}");
 }

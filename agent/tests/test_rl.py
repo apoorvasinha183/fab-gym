@@ -116,6 +116,11 @@ class TrainAndContest(unittest.TestCase):
         for p in reg["policies"]:
             self.assertIn(p["kind"], ("built-in rule", "written rule", "learned", "fixed slot"))
         self.assertIn("cycle_days", card["against_today"][0]["measures"])
+        # every kind has the time inside its own pick, apart from the simulation and the harness
+        rows = [dict(zip(head, line.split("\t"))) for line in (out / "runs.tsv").read_text().splitlines()[1:]]
+        for r in rows:
+            ms = float(r["act_ms"])
+            self.assertTrue(ms == ms and 0.0 <= ms < 50.0, f"{r['contestant']}: act_ms {r['act_ms']}")
 
 
 if __name__ == "__main__":
