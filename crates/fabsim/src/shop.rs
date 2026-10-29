@@ -194,6 +194,9 @@ pub struct Shop {
     pub defects: Option<Defects>,
     /// a finite fleet on a one-way track (docs/FLEET.md); needs `oht`; None leaves every run as it was
     pub fleet: Option<Fleet>,
+    /// (group, place): each tool's load port on the rail, in the order of the group's tools (docs/FLEET.md);
+    /// read only by a fleet
+    pub ports: Vec<(String, Place)>,
 }
 
 /// The fleet (docs/FLEET.md): vehicles on the one-way track, the gap between them (metres), minutes to hoist a lot
@@ -497,6 +500,10 @@ impl Shop {
                         places: vec![],
                     });
                 }
+                "port" => {
+                    need(7)?;
+                    s.ports.push((f[1].to_string(), read_place(&f[2..])?));
+                }
                 "fleet" => {
                     need(7)?;
                     let n = |x: &str| x.parse::<usize>().map_err(|_| format!("line {}: fleet wants whole numbers of vehicles and ports", no + 2));
@@ -530,6 +537,9 @@ impl Shop {
         }
         if let Some(o) = &s.oht {
             o.check()?;
+        }
+        if !s.ports.is_empty() && s.oht.is_none() {
+            return Err("ports need a layout (an oht record)".into());
         }
         if let Some(f) = &s.fleet {
             if s.oht.is_none() {
@@ -577,6 +587,12 @@ impl Shop {
                         let _ = writeln!(o, "place\t{g}\t{}", write_place(p));
                     }
                 }
+            }
+        }
+        // ports belong to a layout: written only with one
+        if self.oht.is_some() {
+            for (g, p) in &self.ports {
+                let _ = writeln!(o, "port\t{g}\t{}", write_place(p));
             }
         }
         if let Some(f) = &self.fleet {

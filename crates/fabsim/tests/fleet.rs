@@ -98,7 +98,8 @@ fn vehicles_never_pass_one_another() {
     let Some(s) = campus() else { return };
     let sh = with(s, fleet(60, 2));
     let o = sh.oht.as_ref().unwrap();
-    let t = Track::new(o, 60.0);
+    // the track the engine builds: with the tools' ports when the shop lists them
+    let t = Track::with_ports(o, &sh.ports, 60.0);
     let r = go(&sh, 1, 1.0, true);
     let f = r.fleet.as_ref().unwrap();
     assert!(!f.entries.is_empty());

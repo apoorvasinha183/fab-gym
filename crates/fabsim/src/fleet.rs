@@ -68,6 +68,8 @@ pub struct FleetOut {
     pub held_min: f64,
     /// tool-minutes with every port full
     pub blocked_min: f64,
+    /// times a vehicle found its way full and went on by another stretch, as a control system routes round a jam
+    pub detours: u64,
     pub entries: Vec<Entry>,
     pub hoists: Vec<HoistRec>,
 }
@@ -129,16 +131,20 @@ pub(crate) struct FleetState {
     pub pending: VecDeque<Job>,
     /// each group's stop (`None`: a stocker)
     pub stop_of_group: Vec<Option<usize>>,
+    /// each group's tools' ports (empty when the shop lists none), and deliveries on their way to each node
+    pub group_ports: Vec<Vec<usize>>,
+    pub port_load: Vec<u32>,
     pub out: FleetOut,
 }
 
 impl FleetState {
-    pub fn new(track: Track, speed: f64, gap: f64, hoist: f64, vehicles: usize, nearest: bool, stop_of_group: Vec<Option<usize>>) -> FleetState {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(track: Track, speed: f64, gap: f64, hoist: f64, vehicles: usize, nearest: bool, stop_of_group: Vec<Option<usize>>, group_ports: Vec<Vec<usize>>) -> FleetState {
         let ne = track.edges().len();
         let nn = track.nodes().len();
         let cap = track.edges().iter().map(|e| ((e.len / gap).floor() as usize).max(1)).collect();
         // vehicles start parked at the stops in node order, round and round
-        let mut stops: Vec<usize> = (0..nn).filter(|&n| track.nodes()[n].group.is_some()).collect();
+        let mut stops: Vec<usize> = (0..nn).filter(|&n| track.nodes()[n].group.is_some() || track.nodes()[n].tool.is_some()).collect();
         stops.sort();
         let veh = (0..vehicles)
             .map(|k| {
@@ -162,6 +168,8 @@ impl FleetState {
             veh,
             pending: VecDeque::new(),
             stop_of_group,
+            group_ports,
+            port_load: vec![0; nn],
             out: FleetOut { vehicles, deliver_least: f64::INFINITY, ..FleetOut::default() },
         }
     }
@@ -194,6 +202,28 @@ impl FleetState {
             }
         }
         best
+    }
+
+    /// The stretch to take from node n toward `target`: the shortest way when it has room; when that is full, another
+    /// stretch out of n with room, the one with the shortest way on (a detour). `None` when nothing can be entered now.
+    pub fn way(&self, n: usize, target: usize, t: f64) -> (usize, Option<usize>) {
+        let e2 = self.track.next(n, target).expect("the track reaches every stop");
+        if self.can_enter(e2, t) {
+            return (e2, Some(e2));
+        }
+        if self.edge_q[e2].len() < self.cap[e2] {
+            return (e2, None); // only the gap to the vehicle ahead: wait for it
+        }
+        let mut best: Option<(f64, usize)> = None;
+        for &e3 in self.track.out_of(n) {
+            if e3 != e2 && self.can_enter(e3, t) {
+                let d = self.track.edges()[e3].len + self.track.dist(self.track.edges()[e3].to, target);
+                if d.is_finite() && best.is_none_or(|b| d < b.0) {
+                    best = Some((d, e3));
+                }
+            }
+        }
+        (e2, best.map(|b| b.1))
     }
 
     pub fn can_enter(&self, e: usize, t: f64) -> bool {

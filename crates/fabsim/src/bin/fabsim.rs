@@ -675,6 +675,7 @@ fn layout(args: &[String]) {
     for (name, c) in [("plain", &plain), ("optimised", &best)] {
         let mut s = shop.clone();
         s.oht = Some(p.oht(c));
+        s.ports = p.ports(c);
         std::fs::write(data.join(format!("{name}.shop.txt")), s.to_text()).unwrap();
     }
     let lots: f64 = p.flows().iter().map(|f| f.2).sum();
@@ -724,6 +725,7 @@ fn variant_cmd(args: &[String]) {
     std::fs::write(data.join("optimised.shop.txt"), v.shop.to_text()).unwrap();
     let mut ps = v.shop.clone();
     ps.oht = Some(v.problem.oht(&plain));
+    ps.ports = v.problem.ports(&plain);
     std::fs::write(data.join("plain.shop.txt"), ps.to_text()).unwrap();
     let s = Sheet::central();
     let cap = v.capital(&s);

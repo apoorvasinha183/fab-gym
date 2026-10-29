@@ -91,3 +91,21 @@ replay the fleet.
 - 29 Oct, before any code: the default hoist time changed from 0.3 min (assumed) to 1 min, cited from Yang (2023).
   The tests set their own values and are unchanged. One speed for straights and curves stays (the layout's
   150 m/min); Yang's curve speed and acceleration are a later refinement.
+- 29 Oct, after the first probe (one seed, 10 days on today's US building): with one stop per tool group, from 80
+  vehicles up the spine loops locked solid within hours. Every vehicle waited at the end of a full stretch, because
+  vehicles queuing to turn into a busy bay backed up onto the spine. Three changes, tests first for the second
+  (830e82d):
+  - **detours:** a vehicle whose way is full takes another open stretch out of the junction and routes again from
+    the next one, as a control system sends a vehicle round a jam; counted in `detours`;
+  - **a port per tool:** one stop per group made a whole group hoist at one point, one lot at a time. Each tool now
+    has its own load port (the `port` records, written by `fabsim layout` and `fabsim variant`). A finished lot is
+    taken from the port of the tool that finished it and set down at the port of the group's tool with the fewest
+    deliveries on their way. Lots in the fab at the start stand at their first group's ports, spread over its tools;
+  - **stocker spurs:** a bay's stocker port sits on a short spur (2 m each way, assumed) off the lane at the bay's
+    downstream end, so its hoists no longer stop the spine.
+- Test 6 now builds the track the engine builds (with the shop's ports), since the realistic campus's shop lists
+  them.
+- Probe after the changes (one seed, 10 days, hoist 1 min; not a scored run):
+  - 80 vehicles: a lot waits 37 min for a vehicle and output falls by a quarter;
+  - 120 vehicles: a 7.5 min wait, output as today;
+  - 160 to 400 vehicles: about 1.2 min, with a delivery taking 5.5 min against today's 4.6.

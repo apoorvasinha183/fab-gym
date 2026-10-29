@@ -663,6 +663,19 @@ impl Problem {
         self.lay(plan, true)
     }
 
+    /// Each tool's load port on the rail (docs/FLEET.md): the centre line of its bay, at the middle of the tool's depth
+    /// along the bay, grouped by tool group in the order the campus placed them.
+    pub fn ports(&self, c: &Campus) -> Vec<(String, Place)> {
+        let mut out = vec![];
+        for g in 0..self.names.len() {
+            for tb in c.tools.iter().filter(|t| t.group == g) {
+                let b = &c.bays[tb.bay];
+                out.push((self.names[g].clone(), Place { phase: tb.phase, side: tb.side, bay: tb.bay, x: (b.x0 + b.x1) / 2.0, y: (tb.y0 + tb.y1) / 2.0 }));
+            }
+        }
+        out
+    }
+
     /// The OHT record for a campus, with the config's hoist numbers.
     pub fn oht(&self, c: &Campus) -> Oht {
         Oht {

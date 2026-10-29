@@ -1285,7 +1285,16 @@ impl<'a, 'c> Sim<'a, 'c> {
             None => Place { phase: 0, side: 0, bay: 0, x: 0.0, y: 0.0 },
             Some(o) => self.routes[r].get(step).and_then(|st| self.place_of[st.group as usize]).unwrap_or(o.start),
         };
-        let node = self.fl.as_ref().map(|f| f.track.node_of(&at)).unwrap_or(0);
+        // with a fleet: at one of its first group's ports (spread over the tools by lot number), else a stocker spur
+        let n_lot = self.lots.len();
+        let node = match &self.fl {
+            None => 0,
+            Some(f) => match self.routes[r].get(step).map(|st| st.group as usize) {
+                Some(g) if !f.group_ports[g].is_empty() => f.group_ports[g][n_lot % f.group_ports[g].len()],
+                Some(g) if self.place_of[g].is_none() => f.track.node_of(&Place { bay: usize::MAX, y: 0.0, ..at }),
+                _ => f.track.node_of(&at),
+            },
+        };
         self.lots.push(Lot {
             id,
             route: r as u32,
@@ -1367,14 +1376,27 @@ impl<'a, 'c> Sim<'a, 'c> {
         // a stocker holds the lot at the spine end of the bay it came from, as without a fleet
         let to_place = self.place_of[g].unwrap_or(Place { bay: usize::MAX, y: 0.0, ..from_place });
         self.lots[l as usize].at = to_place;
-        let fl = self.fl.as_ref().unwrap();
-        let from = self.lots[l as usize].node;
-        let to = fl.stop_of_group[g].unwrap_or_else(|| fl.track.node_of(&to_place));
         let tool = self.from_tool;
+        let fl = self.fl.as_ref().unwrap();
+        // from the port of the tool that finished it, when tools have ports; else where the lot stands
+        let from = match tool {
+            Some(ti) => {
+                let tl = &self.tools[ti as usize];
+                let k = self.group_tools[tl.group as usize].iter().position(|&x| x == ti).unwrap();
+                fl.group_ports[tl.group as usize].get(k).copied().unwrap_or(self.lots[l as usize].node)
+            }
+            None => self.lots[l as usize].node,
+        };
+        // to the port of the group's tool with the fewest deliveries on their way (ties to the first tool)
+        let to = match fl.group_ports[g].iter().min_by_key(|&&n| fl.port_load[n]) {
+            Some(&n) => n,
+            None => fl.stop_of_group[g].unwrap_or_else(|| fl.track.node_of(&to_place)),
+        };
         if let Some(ti) = tool {
             self.tool_out(ti, true, t);
         }
         let fl = self.fl.as_mut().unwrap();
+        fl.port_load[to] += 1;
         fl.out.asked += 1;
         fl.pending.push_back(Job { lot: l, from, to, asked: t, tool });
         self.fleet_assign(t);
@@ -1477,10 +1499,13 @@ impl<'a, 'c> Sim<'a, 'c> {
                     return;
                 }
                 if n != target {
-                    let e2 = fl.track.next(n, target).expect("the track reaches every stop");
-                    if !fl.can_enter(e2, t) {
-                        self.fleet_wait(v, e2, t);
+                    let (want, go) = fl.way(n, target, t);
+                    let Some(e2) = go else {
+                        self.fleet_wait(v, n, want, t);
                         return;
+                    };
+                    if e2 != want {
+                        fl.out.detours += 1;
                     }
                     self.fleet_leave(v, e, t);
                     self.fleet_enter(v, e2, t);
@@ -1498,20 +1523,33 @@ impl<'a, 'c> Sim<'a, 'c> {
             return;
         }
         let fl = self.fl.as_mut().unwrap();
-        let e2 = fl.track.next(n, target).expect("the track reaches every stop");
-        if !fl.can_enter(e2, t) {
-            self.fleet_wait(v, e2, t);
+        let (want, go) = fl.way(n, target, t);
+        let Some(e2) = go else {
+            self.fleet_wait(v, n, want, t);
             return;
+        };
+        if e2 != want {
+            fl.out.detours += 1;
         }
         self.fleet_release(n, t);
         self.fleet_enter(v, e2, t);
     }
 
-    fn fleet_wait(&mut self, v: u32, e: usize, t: f64) {
+    /// Wait at node n: for the gap behind the vehicle ahead on `e`, or, when every way out is full, for any of them
+    /// to free.
+    fn fleet_wait(&mut self, v: u32, n: usize, e: usize, t: f64) {
         let fl = self.fl.as_mut().unwrap();
         if fl.edge_q[e].len() >= fl.cap[e] {
-            if !fl.edge_wait[e].contains(&v) {
-                fl.edge_wait[e].push(v);
+            let outs: Vec<usize> = fl.track.out_of(n).to_vec();
+            for e3 in outs {
+                if !fl.edge_wait[e3].contains(&v) {
+                    fl.edge_wait[e3].push(v);
+                }
+            }
+            // a way out held only by its gap frees by itself
+            let soonest = fl.track.out_of(n).iter().filter(|&&e3| fl.edge_q[e3].len() < fl.cap[e3]).map(|&e3| fl.last_in[e3] + fl.headway).fold(f64::INFINITY, f64::min);
+            if soonest.is_finite() {
+                self.at(soonest.max(t), Ev::VehTry(v));
             }
         } else {
             let at = fl.last_in[e] + fl.headway;
@@ -1618,6 +1656,7 @@ impl<'a, 'c> Sim<'a, 'c> {
         // set down: the lot joins its next group's queue and the vehicle parks off the track
         let d = t - job.asked;
         fl.out.delivered += 1;
+        fl.port_load[job.to] -= 1;
         fl.out.deliver_sum += d;
         fl.out.deliver_least = fl.out.deliver_least.min(d);
         fl.out.busy_min += t - fl.veh[vi].busy_since;
@@ -1838,9 +1877,10 @@ pub fn run_vehicles<'c>(
         holds: vec![],
         fl: match (&shop.fleet, &shop.oht) {
             (Some(f), Some(o)) => {
-                let track = crate::track::Track::new(o, f.cross);
+                let track = crate::track::Track::with_ports(o, &shop.ports, f.cross);
                 let stops = shop.groups.iter().map(|g| track.stop_of(&g.name)).collect();
-                Some(FleetState::new(track, o.speed, f.gap, f.hoist, f.vehicles, f.controller != "first", stops))
+                let gports = shop.groups.iter().map(|g| track.ports_of(&g.name).to_vec()).collect();
+                Some(FleetState::new(track, o.speed, f.gap, f.hoist, f.vehicles, f.controller != "first", stops, gports))
             }
             _ => None,
         },

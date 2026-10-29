@@ -101,6 +101,7 @@ pub fn variant_layout(base: &Shop, areas: &[(String, String)], cfg: &Config, sha
     let before = before_p.cost(&before_p.pack(&before_plan));
     let campus = problem.pack(&plan);
     shop.oht = Some(problem.oht(&campus));
+    shop.ports = problem.ports(&campus);
     let travel = (before, problem.cost(&campus));
     Ok(Variant { copies, plan, problem, shop, travel })
 }
