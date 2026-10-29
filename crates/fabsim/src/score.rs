@@ -66,6 +66,18 @@ pub struct CandResult {
     pub name: String,
     pub rule: Policy,
     pub measures: Vec<Measure>,
+    /// a two-family candidate's money in dollars (docs/MONEY-PL.md); None for other questions
+    pub pl: Option<CandPl>,
+}
+
+/// What a candidate buys and what it is worth, at the central assumed prices.
+#[derive(Clone, Debug)]
+pub struct CandPl {
+    pub capital: f64,
+    /// net present value over the horizon: mean, lo, hi (capital is the same on every seed)
+    pub npv: (f64, f64, f64),
+    /// payback in days at the cash interval's ends: (soonest, latest); None is never
+    pub payback: (Option<f64>, Option<f64>),
 }
 
 impl CandResult {
@@ -158,7 +170,7 @@ fn cand_result(c: &CandidateSpec, rule: Policy, base: &[WindowScore], cand: &[Wi
             Measure { key, higher_is_better: higher, base: b, cand: x, interval, verdict: v }
         })
         .collect();
-    CandResult { name: c.name.clone(), rule, measures }
+    CandResult { name: c.name.clone(), rule, measures, pl: None }
 }
 
 pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String> {
@@ -222,6 +234,8 @@ pub struct ArmShop {
     pub metres_added: f64,
     /// (copy, area) for copies: the original's area in the halls, "P3 wing" in a wing
     pub extra_areas: Vec<(String, String)>,
+    /// what the arm buys: tools by the area of the group they copy, and where they stand (docs/MONEY-PL.md)
+    pub added: crate::pl::Added,
 }
 
 #[derive(Clone, Debug)]
@@ -295,7 +309,19 @@ pub fn family_arm(
     let with_pol = apply_policy(&laid, pol, "B", &groups, b_cap(&e, raw));
     let (dials, rule) = sc.arm(cand, if family_swept { None } else { swept });
     let shop = dials.apply(&with_pol)?;
-    Ok(ArmShop { shop, rule, bfirst: pol == FamPolicy::BFirst, tools_added, metres_added, extra_areas })
+    // what it buys: the copies (in a wing or the halls) and any spare tools (in the halls)
+    let area_of = |g: &str| ctx.areas.as_ref().and_then(|a| a.iter().find(|x| x.0 == g).map(|x| x.1.clone())).unwrap_or_default();
+    let mut tools: Vec<(String, usize)> = picks.iter().map(|(g, n)| (area_of(g), *n)).collect();
+    tools.extend(dials.spare.iter().map(|(g, n)| (area_of(g), *n)));
+    let place = if picks.is_empty() && dials.spare.is_empty() {
+        crate::pl::Place::None
+    } else if wing {
+        crate::pl::Place::Wing
+    } else {
+        crate::pl::Place::Halls
+    };
+    let added = crate::pl::Added { tools, place };
+    Ok(ArmShop { shop, rule, bfirst: pol == FamPolicy::BFirst, tools_added, metres_added, extra_areas, added })
 }
 
 /// One run of an arm: the window's scores, and money, family A's wafers, family B's lots and cycle time.
@@ -303,6 +329,8 @@ pub fn family_arm(
 struct FamRun {
     w: WindowScore,
     money: f64,
+    profit: f64,
+    cash: f64,
     a_wafers: f64,
     b_lots: f64,
     b_cycle: f64,
@@ -318,14 +346,16 @@ fn run_arm(a: &ArmShop, seed: u64, w: &Window) -> RunResult {
     }
 }
 
-const FAM_MEASURES: [(&str, bool, fn(&FamRun) -> f64); 4] = [
+const FAM_MEASURES: [(&str, bool, fn(&FamRun) -> f64); 6] = [
+    ("profit", true, |r| r.profit),
+    ("cash", true, |r| r.cash),
     ("money", true, |r| r.money),
     ("a_wafers", true, |r| r.a_wafers),
     ("b_lots", true, |r| r.b_lots),
     ("b_cycle_days", false, |r| r.b_cycle),
 ];
 
-fn fam_cand(name: &str, rule: Policy, base: &[FamRun], cand: &[FamRun], alpha: f64) -> CandResult {
+fn fam_cand(name: &str, rule: Policy, base: &[FamRun], cand: &[FamRun], alpha: f64, capital: f64) -> CandResult {
     let mut measures = vec![];
     let mut push = |key: &'static str, higher: bool, b: Vec<f64>, x: Vec<f64>| {
         let interval = paired(&b, &x, alpha);
@@ -338,7 +368,11 @@ fn fam_cand(name: &str, rule: Policy, base: &[FamRun], cand: &[FamRun], alpha: f
     for &(k, h, f) in MEASURES.iter() {
         push(k, h, base.iter().map(|r| f(&r.w)).collect(), cand.iter().map(|r| f(&r.w)).collect());
     }
-    CandResult { name: name.to_string(), rule, measures }
+    let cash = &measures.iter().find(|m| m.key == "cash").expect("cash is measured").interval;
+    let f = crate::pl::npv_factor(&crate::pl::Sheet::central());
+    let at = |d: f64| if d > 0.0 { Some(capital / d) } else { None };
+    let pl = CandPl { capital, npv: (-capital + cash.mean * f, -capital + cash.lo * f, -capital + cash.hi * f), payback: (at(cash.hi), at(cash.lo)) };
+    CandResult { name: name.to_string(), rule, measures, pl: Some(pl) }
 }
 
 fn fam_point(base: &Shop, sc: &Scenario, p: &Protocol, ctx: &FamilyContext, swept: Option<f64>, alpha: f64) -> Result<(Vec<CandResult>, Vec<(String, ArmShop)>), String> {
@@ -361,12 +395,30 @@ fn fam_point(base: &Shop, sc: &Scenario, p: &Protocol, ctx: &FamilyContext, swep
             .filter(|l| arm.shop.family_of(&l.route) != "B" && l.done.is_some_and(|d| d > w.from && d <= w.to))
             .map(|l| l.size as f64)
             .sum();
-        Ok(FamRun { w: window_score(&r, &w)?, money: m.per_day, a_wafers: a_w / days, b_lots: m.b_lots as f64, b_cycle: m.b_cycle_days.unwrap_or(f64::NAN) })
+        let sheet = crate::pl::Sheet::central();
+        let cap = crate::pl::capital(&arm.added, &sheet);
+        let b_revenue_day = crate::pl::b_revenue_day(&arm.shop, &r, &w, &sheet);
+        let pl = crate::pl::run_pl(&crate::pl::RunIn { a_wafers_day: a_w / days, b_wafers_day: m.b_wafers as f64 / days, b_revenue_day }, &cap, &sheet);
+        Ok(FamRun {
+            w: window_score(&r, &w)?,
+            money: m.per_day,
+            profit: pl.profit,
+            cash: pl.cash,
+            a_wafers: a_w / days,
+            b_lots: m.b_lots as f64,
+            b_cycle: m.b_cycle_days.unwrap_or(f64::NAN),
+        })
     });
     let runs: Vec<FamRun> = runs.into_iter().collect::<Result<_, _>>()?;
     let n = p.seeds.len();
     let of = |a: usize| &runs[a * n..(a + 1) * n];
-    let cands = sc.candidates.iter().enumerate().map(|(i, c)| fam_cand(&c.name, arms[i + 1].1.rule, of(0), of(i + 1), alpha)).collect();
+    let sheet = crate::pl::Sheet::central();
+    let cands = sc
+        .candidates
+        .iter()
+        .enumerate()
+        .map(|(i, c)| fam_cand(&c.name, arms[i + 1].1.rule, of(0), of(i + 1), alpha, crate::pl::capital(&arms[i + 1].1.added, &sheet).total))
+        .collect();
     Ok((cands, arms))
 }
 
@@ -384,8 +436,8 @@ pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyC
     let (candidates, arms) = fam_point(shop, sc, p, ctx, None, alpha)?;
     let best = candidates
         .iter()
-        .filter(|c| c.measure("money").verdict == Verdict::Better)
-        .max_by(|a, b| a.measure("money").interval.lo.total_cmp(&b.measure("money").interval.lo))
+        .filter(|c| c.measure("profit").verdict == Verdict::Better)
+        .max_by(|a, b| a.measure("profit").interval.lo.total_cmp(&b.measure("profit").interval.lo))
         .map(|c| c.name.clone());
     let sweep = match &sc.sweep {
         None => None,
@@ -397,7 +449,7 @@ pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyC
                 .iter()
                 .enumerate()
                 .map(|(i, c)| {
-                    let pts: Vec<(f64, Interval)> = points.iter().zip(&by_point).map(|(x, r)| (*x, r[i].measure("money").interval.clone())).collect();
+                    let pts: Vec<(f64, Interval)> = points.iter().zip(&by_point).map(|(x, r)| (*x, r[i].measure("profit").interval.clone())).collect();
                     (c.name.clone(), crossover(&pts))
                 })
                 .collect();
@@ -469,7 +521,21 @@ fn cands_json(cs: &[CandResult]) -> String {
                 js(verdict_word(m.verdict))
             );
         }
-        o.push_str("}}");
+        o.push('}');
+        if let Some(p) = &c.pl {
+            let opt = |x: Option<f64>| x.map(num).unwrap_or_else(|| "null".into());
+            let _ = write!(
+                o,
+                ",\"pl\":{{\"capital\":{},\"npv\":{{\"mean\":{},\"lo\":{},\"hi\":{}}},\"payback_days\":{{\"soonest\":{},\"latest\":{}}}}}",
+                num(p.capital),
+                num(p.npv.0),
+                num(p.npv.1),
+                num(p.npv.2),
+                opt(p.payback.0),
+                opt(p.payback.1)
+            );
+        }
+        o.push('}');
     }
     o.push(']');
     o

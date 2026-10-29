@@ -51,13 +51,17 @@
   }
 
   const CELLS_FAM = [["money", "Money a day"], ["a_wafers", "Volume wafers a day"], ["b_cycle_days", "Prototype cycle, days"]];
+  // answers scored in dollars (docs/MONEY-PL.md) carry operating profit; older answers carry only money a day
+  const CELLS_USD = [["profit", "Operating profit a day ($)"], ["a_wafers", "Volume wafers a day"], ["b_cycle_days", "Prototype cycle, days"]];
+  const inDollars = (report) => report.families && report.candidates.some((c) => c.measures && c.measures.profit);
   const CELLS_ONE = [["reward", "Reward"], ["moves", "Moves"], ["wait_per_move_minutes", "Wait per move, min"]];
 
   function resultRows(report) {
-    const keys = report.families ? CELLS_FAM : CELLS_ONE;
+    const keys = !report.families ? CELLS_ONE : inDollars(report) ? CELLS_USD : CELLS_FAM;
     return report.candidates.map(c => ({
       name: c.name,
       best: report.best === c.name,
+      pl: c.pl || null,
       cells: keys.map(([key, label]) => {
         const m = c.measures[key];
         const vals = (m.today || []).filter(x => x !== null);
@@ -72,7 +76,7 @@
   }
 
   function summaryLine(report) {
-    const what = report.families ? "money a day" : "the scorer's reward";
+    const what = !report.families ? "the scorer's reward" : inDollars(report) ? "operating profit a day" : "money a day";
     const head = report.best
       ? `Best on ${what}: ${report.best}. It beats today's fab, with all intervals holding together at 95%.`
       : `No candidate is clearly better on ${what}, so today's fab stands.`;

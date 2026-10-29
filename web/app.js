@@ -1535,10 +1535,17 @@ function showScenario(j) {
   $("ask-text").value = j.scenario;
 }
 
+// a cell's value: dollars for operating profit and cash, else the plain number
+function cellNum(c, x) { return x === null || x === undefined ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd(x, true) : fmt(x); }
 function cellText(c) {
   if (c.mean === null) return "—";
-  const unit = c.key === "money" ? "" : "";
-  return `${fmt(c.mean)}${unit}`;
+  return cellNum(c, c.mean);
+}
+// what a candidate buys and what it is worth (docs/MONEY-PL.md)
+function plLine(p) {
+  if (!p) return "";
+  const pay = p.capital ? paybackText(p.payback_days) : "no capital needed";
+  return `<p class="note small pl-line">Capital ${p.capital ? FabUI.usd(p.capital) : "none"} · pays back ${pay} · value over 5 years ${FabUI.usd(p.npv.mean, true)} (${FabUI.usd(p.npv.lo, true)} to ${FabUI.usd(p.npv.hi, true)}) · prices assumed</p>`;
 }
 
 function showResult(j) {
@@ -1552,13 +1559,13 @@ function showResult(j) {
       (name === "today" ? "" : ` <button type="button" class="show sbs" data-arm="${i}">Side by side</button>`);
   };
   const head = r.families
-    ? `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval. Today's values: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
+    ? `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval. Today's values: ${rows[0] ? rows[0].cells.map(c => `${c.label.toLowerCase()} ${c.today === null ? "—" : c.key === "profit" ? FabUI.usd(c.today, false) : Math.round(c.today * 10) / 10}`).join(", ") : ""}.</p>`
     : `<p class="note">Each row compares a candidate with today's fab on the same seeds and gives a 95% interval.</p>`;
   $("ask-result").innerHTML = `<p class="what">${esc(FabAsk.summaryLine(r))}</p>${head}` +
     (arms.length ? `<div class="arm"><div class="top"><b>today</b>${armBtn("today")}</div></div>` : "") +
     rows.map(row => `<div class="arm"><div class="top"><b>${esc(row.name)}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
-      <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${fmt(c.lo)} to ${fmt(c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table></div>`).join("") +
-    `<p class="note small">${r.families ? "Money a day is counted in volume-wafer margins, and every price is assumed. " : ""}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated on the SMT2020 model, a published research model of a wafer fab. What these changes would do in a real fab is unknown.</p>`;
+      <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table>${plLine(row.pl)}</div>`).join("") +
+    `<p class="note small">${!r.families ? "" : rows.some(x => x.pl) ? "Operating profit is in dollars at the central assumed prices (see How money is counted in the numbers). " : "Money a day is counted in volume-wafer margins, and every price is assumed. "}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated on the SMT2020 model, a published research model of a wafer fab. What these changes would do in a real fab is unknown.</p>`;
   $("ask-result").querySelectorAll("button.show:not(.sbs)").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
   $("ask-result").querySelectorAll("button.sbs").forEach(b => (b.onclick = () => sideBySide(j, +b.dataset.arm)));
   {
@@ -1989,7 +1996,7 @@ function drawNumbers() {
       const c = r.cells.find(x => x.key === qkey) || {};
       const has = c.mean !== null && c.mean !== undefined && c.lo !== null;
       return { label: r.name, mean: has ? c.mean : null, lo: has ? c.lo : null, hi: has ? c.hi : null, verdict: c.verdict || "no clear effect",
-        text: has ? `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})` : "no prototype lot out" };
+        text: has ? (qkey === "profit" ? `${FabUI.usd(c.mean, true)} (${FabUI.usd(c.lo, true)} to ${FabUI.usd(c.hi, true)})` : `${FabUI.tickLabel(Math.round(c.mean * 10) / 10)} (${FabUI.tickLabel(Math.round(c.lo * 10) / 10)} to ${FabUI.tickLabel(Math.round(c.hi * 10) / 10)})`) : "no prototype lot out" };
     });
     const q = forestSVG(qrows, m, `Change against today's fab, ${m.unit}`);
     $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}: each candidate compared with today's fab on ${j.report.seeds.length} paired seeds. The intervals hold together at 95%.</span></figcaption><svg role="img"></svg></figure>`;
@@ -2074,7 +2081,7 @@ function logAsk(j) {
   const r = j.report, sc = FabAsk.scenarioLines(j.scenario);
   const rows = [];
   for (const row of FabAsk.resultRows(r)) for (const c of row.cells)
-    rows.push([row.name, c.label, c.today === null ? "—" : fmt(c.today), c.mean === null ? "—" : fmt(c.mean), c.lo === null || c.mean === null ? "—" : `${fmt(c.lo)} to ${fmt(c.hi)}`, c.verdict]);
+    rows.push([row.name, c.label, cellNum(c, c.today), cellNum(c, c.mean), c.lo === null || c.mean === null ? "—" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`, c.verdict]);
   const settings = [["Question", j.question || "a written scenario"], ["Answer from", j.answer_source === "model" ? "the model, checked" : j.answer_source === "example" ? "an example answer we wrote by hand" : "a scenario written by hand"]]
     .concat(sc.given.map(g => ["Given", `${g.text}${g.said ? "" : " (assumed)"}`]))
     .concat(sc.candidates.map(c => [`Candidate: ${c.name}`, c.changes.join("; ")]))
@@ -2212,8 +2219,8 @@ function verdictCards(rows) {
   if (!best) return "";
   return `<p class="note">${esc(best.name)} compared with today's fab:</p><div class="verdicts">${best.cells.map(c => {
     const v = c.mean === null ? "no clear effect" : c.verdict;
-    return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
-      `<div class="iv">${c.lo === null || c.mean === null ? "" : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
+    return `<div class="vcard ${v === "no clear effect" ? "" : v}"><div class="l">${esc(c.label)}</div><div class="v">${c.mean === null ? "—" : c.key === "profit" || c.key === "cash" ? FabUI.usd(c.mean, true) : FabUI.tickLabel(Math.round(c.mean * 10) / 10)}</div>` +
+      `<div class="iv">${c.lo === null || c.mean === null ? "" : c.key === "profit" || c.key === "cash" ? `${FabUI.usd(c.lo, true)} to ${FabUI.usd(c.hi, true)}` : `${fmtN(c.lo)} to ${fmtN(c.hi)}`}</div><span class="pill ${v === "no clear effect" ? "unclear" : v}">${v}</span></div>`;
   }).join("")}</div>`;
 }
 
