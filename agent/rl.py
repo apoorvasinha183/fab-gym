@@ -9,6 +9,7 @@ On the SMT2020 model, a published model of a fab; not a real fab. Agents propose
 import argparse
 import json
 import math
+import subprocess
 import time
 from pathlib import Path
 
@@ -116,6 +117,26 @@ class Fixed:
         return self.k
 
 
+class BuiltIn:
+    """One of the engine's own rules (today, fifo, spt, cr, random), played inside the engine by `fabsim env --auto
+    NAME` through the same episode code (docs/LONG-RESCORE.md)."""
+
+    def __init__(self, name, fabsim=str(FABSIM)):
+        self.name, self.fabsim = name, fabsim
+
+    def play_episode(self, seed, shop, warmup_days, window_days, defects):
+        cmd = [self.fabsim, "env", str(shop), "--seed", str(seed), "--warmup", str(warmup_days), "--window", str(window_days),
+               "--auto", self.name]
+        if defects:
+            cmd += ["--defects", ",".join(str(x) for x in defects)]
+        p = subprocess.run(cmd, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        if p.returncode != 0:
+            raise RuntimeError(f"fabsim env refused: {p.stdout.strip() or p.stderr.strip()}")
+        d = json.loads(p.stdout.strip().splitlines()[-1])
+        return {"seed": seed, "score": d["score"], "decisions": d["decisions"], "picked_other": 0,
+                "picked_other_by_group": {}, "fallbacks": d["fallbacks"]}
+
+
 class Learned:
     """A PPO policy saved by `train`, played deterministically."""
 
@@ -214,23 +235,74 @@ def train(seeds, timesteps, workers, out, shop, fabsim=str(FABSIM), warmup_days=
 
 # ------------------------------------------------------------------ the contest
 
-MEASURES = [("reward", True), ("moves", True), ("lots_finished", True), ("wait_lot_hours", False), ("breaches", False)]
+MEASURES = [("reward", True), ("moves", True), ("lots_finished", True), ("wait_lot_hours", False), ("breaches", False),
+            ("cycle_days", False), ("wafers_per_day", True), ("mean_wip", False), ("hot_cycle_days", False)]
 
 
-def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None):
-    """Every contestant on every held-out seed; each against today's rule. `policies` must hold "today"."""
+def kind_of(p):
+    return {"BuiltIn": "built-in rule", "Today": "built-in rule", "Written": "written rule", "Learned": "learned",
+            "Fixed": "fixed slot"}.get(type(p).__name__, "learned")
+
+
+def timed_play(policy, seed, shop, fabsim, warmup_days, window_days, defects):
+    """`play`, with the wall time per decision (the simulation included) and the time inside the policy's own code
+    when it runs in Python."""
+    import time
+    inner = [0.0]
+    if hasattr(policy, "act"):
+        act = policy.act
+
+        def counted(obs, info):
+            t0 = time.perf_counter()
+            try:
+                return act(obs, info)
+            finally:
+                inner[0] += time.perf_counter() - t0
+        policy.act = counted
+    t0 = time.perf_counter()
+    try:
+        r = play(policy, seed, shop, fabsim, warmup_days, window_days, defects)
+    finally:
+        if hasattr(policy, "act"):
+            policy.act = act
+    wall = time.perf_counter() - t0
+    n = max(1, r["decisions"])
+    r["sec_per_decision"] = wall / n
+    r["act_ms"] = 1000.0 * inner[0] / n if hasattr(policy, "act") else float("nan")
+    return r
+
+
+def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None, protocol=None, sources=None):
+    """Every contestant on every held-out seed; each against today's rule. `policies` must hold "today". Writes
+    runs.tsv (every measure per seed), card.json (each against today) and policies.json (the registry: each policy, its
+    kind and source, and the protocol), so any later policy, Meta's agent included, is scored the same way."""
     assert "today" in policies, "the contest needs today's rule"
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     seeds = list(seeds)
-    runs = {name: [play(p, s, shop, fabsim, warmup_days, window_days, defects) for s in seeds] for name, p in policies.items()}
-    head = ["contestant", "seed"] + [m for m, _ in MEASURES] + ["decisions", "picked_other", "fallbacks"]
+    runs = {}
+    for name, p in policies.items():
+        runs[name] = []
+        for s in seeds:
+            r = timed_play(p, s, shop, fabsim, warmup_days, window_days, defects)
+            runs[name].append(r)
+            # each run is kept as it lands, so a stopped contest keeps what it did
+            with open(out / "progress.jsonl", "a") as fh:
+                fh.write(json.dumps({"contestant": name, **{k: v for k, v in r.items() if k != "picked_other_by_group"}}) + "\n")
+    num = lambda x: "nan" if x is None else repr(float(x))
+    head = ["contestant", "seed"] + [m for m, _ in MEASURES] + ["decisions", "picked_other", "fallbacks", "sec_per_decision", "act_ms"]
     lines = ["\t".join(head)]
     for name, rs in runs.items():
         for r in rs:
-            lines.append("\t".join([name, str(r["seed"])] + [repr(float(r["score"][m])) for m, _ in MEASURES] +
-                                   [str(r["decisions"]), str(r["picked_other"]), str(r["fallbacks"])]))
+            lines.append("\t".join([name, str(r["seed"])] + [num(r["score"].get(m)) for m, _ in MEASURES] +
+                                   [str(r["decisions"]), str(r["picked_other"]), str(r["fallbacks"]), num(r["sec_per_decision"]), num(r["act_ms"])]))
     (out / "runs.tsv").write_text("\n".join(lines) + "\n")
+    reg = {"protocol": {"name": protocol or f"warmup-{warmup_days:g}d-window-{window_days:g}d", "warmup_days": warmup_days,
+                        "window_days": window_days, "seeds": seeds, "defects": list(defects) if defects else None,
+                        "shop": str(shop), "warm_up_rule": "today", "note": NOTE},
+           "policies": [{"name": n, "kind": kind_of(p), "source": (sources or {}).get(n, getattr(p, "path", getattr(p, "name", None)))}
+                        for n, p in policies.items()]}
+    (out / "policies.json").write_text(json.dumps(reg, indent=1))
     others = [n for n in policies if n != "today"]
     alpha = 0.05 / max(1, len(others))
     card = {"seeds": seeds, "alpha_each": alpha, "defects": list(defects) if defects else None,
@@ -239,7 +311,12 @@ def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, win
     for name in others:
         ms = {}
         for m, higher in MEASURES:
-            iv = paired([r["score"][m] for r in runs["today"]], [r["score"][m] for r in runs[name]], alpha)
+            a = [r["score"].get(m) for r in runs["today"]]
+            b = [r["score"].get(m) for r in runs[name]]
+            if any(x is None for x in a + b):
+                ms[m] = {"mean": None, "lo": None, "hi": None, "verdict": "not measured", "higher_is_better": higher}
+                continue
+            iv = paired(a, b, alpha)
             ms[m] = {**iv, "verdict": verdict(iv, higher), "higher_is_better": higher}
         picked = sum(r["picked_other"] for r in runs[name])
         decided = sum(r["decisions"] for r in runs[name])
@@ -278,7 +355,8 @@ def main():
             p.add_argument("--workers", type=int, default=4)
             p.add_argument("--n-steps", type=int, default=2048)
         else:
-            p.add_argument("--policy", action="append", default=[], help="NAME=policy.zip (PPO) or NAME=rule.rs (a written rule); today's rule is always in")
+            p.add_argument("--policy", action="append", default=[], help="NAME=policy.zip (PPO), NAME=rule.rs (a written rule) or NAME=builtin:fifo; today's rule is always in")
+            p.add_argument("--protocol", default=None, help="a name for the protocol, kept in policies.json")
     a = ap.parse_args()
     defects = tuple(float(x) for x in a.defects.split(",")) if a.defects else None
     common = dict(shop=a.shop, fabsim=a.fabsim, warmup_days=a.warmup, window_days=a.window, defects=defects)
@@ -289,8 +367,8 @@ def main():
         pols = {"today": Today()}
         for spec in a.policy:
             n, path = spec.split("=", 1)
-            pols[n] = Written(path) if path.endswith(".rs") else Learned(path)
-        print(json.dumps(contest(pols, _seeds(a.seeds), a.out, **common), indent=1))
+            pols[n] = BuiltIn(path.split(":", 1)[1]) if path.startswith("builtin:") else Written(path) if path.endswith(".rs") else Learned(path)
+        print(json.dumps(contest(pols, _seeds(a.seeds), a.out, protocol=a.protocol, **common), indent=1))
 
 
 if __name__ == "__main__":

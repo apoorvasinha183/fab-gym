@@ -1045,7 +1045,15 @@ fn env_cmd(args: &[String]) {
     let seed = arg(args, "--seed", 0);
     let warmup = argf(args, "--warmup", 1.0);
     let window = argf(args, "--window", 3.0);
-    let auto = args.iter().any(|a| a == "--auto");
+    // --auto plays the engine's own pick; --auto NAME a built-in rule (docs/LONG-RESCORE.md), with today's rule in the
+    // warm-up as for any player
+    let auto_at = args.iter().position(|a| a == "--auto");
+    let auto = auto_at.is_some();
+    let rule = auto_at.and_then(|i| args.get(i + 1)).filter(|s| !s.starts_with("--")).map(|s| fabsim::policy::Policy::parse(s).unwrap_or_else(|| {
+        eprintln!("refused: --auto names today, fifo, spt, cr or random");
+        std::process::exit(2)
+    }));
+    let mut rule_pick = rule.map(|p| fabsim::policy::picker(&shop, p, seed));
     let w = Window { from: warmup * 1440.0, to: (warmup + window) * 1440.0 };
     let fams = families(&shop);
     let stdin = std::io::stdin();
@@ -1055,7 +1063,10 @@ fn env_cmd(args: &[String]) {
     let mut line = String::new();
     let mut ask = |d: &fabsim::engine::Decision, ord: &[usize], reward: f64| -> Option<usize> {
         if auto {
-            return Some(d.default);
+            return Some(match rule_pick.as_mut() {
+                Some(p) => p(d),
+                None => d.default,
+            });
         }
         let _ = writeln!(out, "{}", observation_json(d, ord, reward, &fams));
         let _ = out.flush();
@@ -1074,6 +1085,7 @@ fn env_cmd(args: &[String]) {
     };
     let e = episode(&shop, seed, w, &mut ask);
     drop(ask);
-    let _ = writeln!(out, "{}", done_json(&e, ""));
+    let tag = rule.map(|p| format!(",\"policy\":\"{}\"", p.name())).unwrap_or_default();
+    let _ = writeln!(out, "{}", done_json(&e, &tag));
     let _ = out.flush();
 }

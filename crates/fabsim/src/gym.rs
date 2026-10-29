@@ -125,7 +125,7 @@ pub fn observation_json(d: &Decision, ord: &[usize], reward: f64, fams: &[String
 pub fn done_json(e: &Episode, extra: &str) -> String {
     let s = &e.score;
     format!(
-        "{{\"done\":true,\"reward\":{},\"decisions\":{},\"fallbacks\":{}{},\"score\":{{\"reward\":{},\"moves\":{},\"lots_finished\":{},\"wait_lot_hours\":{},\"wait_per_move_minutes\":{},\"breaches\":{},\"mean_wip\":{},\"lots_per_day\":{},\"wafers_per_day\":{},\"cycle_days\":{}}}}}",
+        "{{\"done\":true,\"reward\":{},\"decisions\":{},\"fallbacks\":{}{},\"score\":{{\"reward\":{},\"moves\":{},\"lots_finished\":{},\"wait_lot_hours\":{},\"wait_per_move_minutes\":{},\"breaches\":{},\"mean_wip\":{},\"lots_per_day\":{},\"wafers_per_day\":{},\"cycle_days\":{},\"hot_cycle_days\":{}}}}}",
         num(e.last_reward),
         e.asked,
         e.fallbacks,
@@ -139,7 +139,8 @@ pub fn done_json(e: &Episode, extra: &str) -> String {
         num(s.mean_wip),
         num(s.lots_per_day),
         num(s.wafers_per_day),
-        num(s.cycle_days)
+        num(s.cycle_days),
+        num(s.hot_cycle_days.unwrap_or(f64::NAN))
     )
 }
 

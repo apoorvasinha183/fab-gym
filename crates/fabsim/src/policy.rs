@@ -68,38 +68,41 @@ pub fn argmin(d: &Decision, key: impl Fn(&Candidate) -> (f64, f64)) -> usize {
     best
 }
 
-/// Run a shop under a policy.
-pub fn run_with(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
+/// A policy's pick at each decision (docs/LONG-RESCORE.md), for a run or for the window of an episode. `seed` seeds
+/// the random rule.
+pub fn picker<'a>(shop: &'a Shop, policy: Policy, seed: u64) -> Box<dyn FnMut(&Decision) -> usize + 'a> {
     match policy {
-        Policy::Today => run(shop, opts, None),
-        Policy::Fifo => {
-            let mut pick = |d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0));
-            run(shop, opts, Some(&mut pick))
-        }
-        Policy::Spt => {
-            let mut pick = |d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes));
-            run(shop, opts, Some(&mut pick))
-        }
+        Policy::Today => Box::new(|d: &Decision| d.default),
+        Policy::Fifo => Box::new(|d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0))),
+        Policy::Spt => Box::new(|d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes))),
         Policy::CriticalRatio => {
             let work: std::collections::HashMap<(String, i64), f64> = shop
                 .routes
                 .iter()
                 .flat_map(|r| [25i64, 1].map(|sz| ((r.name.clone(), sz), route_work(shop, &r.name, sz))))
                 .collect();
-            let mut pick = |d: &Decision| {
+            Box::new(move |d: &Decision| {
                 argmin(d, |c| {
                     let size = c.size_wafers.max(1) / c.lots.len().max(1) as i64;
                     let w = work.get(&(c.route.clone(), size)).copied().unwrap_or_else(|| route_work(shop, &c.route, size));
                     let due = c.release + DUE_FACTOR * w;
                     ((due - d.t) / c.work_left_minutes.max(1.0), -c.waited_minutes)
                 })
-            };
-            run(shop, opts, Some(&mut pick))
+            })
         }
         Policy::Random => {
-            let mut r = PyRandom::from_str_seed(&format!("{}/random-rule", opts.seed));
-            let mut pick = |d: &Decision| ((r.random() * d.candidates.len() as f64) as usize).min(d.candidates.len() - 1);
-            run(shop, opts, Some(&mut pick))
+            let mut r = PyRandom::from_str_seed(&format!("{seed}/random-rule"));
+            Box::new(move |d: &Decision| ((r.random() * d.candidates.len() as f64) as usize).min(d.candidates.len() - 1))
         }
     }
+}
+
+/// Run a shop under a policy.
+pub fn run_with(shop: &Shop, opts: &RunOptions, policy: Policy) -> RunResult {
+    if policy == Policy::Today {
+        return run(shop, opts, None);
+    }
+    let mut p = picker(shop, policy, opts.seed);
+    let mut pick = |d: &Decision| p(d);
+    run(shop, opts, Some(&mut pick))
 }

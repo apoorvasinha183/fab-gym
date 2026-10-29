@@ -175,14 +175,17 @@ fn a_built_in_rule_plays_in_the_window_and_todays_rule_in_the_warm_up() {
         assert_eq!(e.fallbacks, 0, "{}", p.name());
         assert!(e.asked > 20, "{}: it decides in the window", p.name());
     }
-    // the warm-up is today's rule whatever plays the window: a window of nothing scores as today's
+    // today's rule in the warm-up, the rule in the window: the episode scores as a run built that way by hand
     let mut pick = picker(&shop, Policy::Fifo, 3);
     let mut ask = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(d));
-    let none = Window { from: w.to, to: w.to };
-    let a = episode(&shop, 3, none, &mut ask);
-    let mut today = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(d.default);
-    let b = episode(&shop, 3, none, &mut today);
-    assert_eq!(a.score.moves, b.score.moves);
+    let e = episode(&shop, 3, w, &mut ask);
+    let mut p2 = picker(&shop, Policy::Fifo, 3);
+    let mut by_hand = |d: &fabsim::engine::Decision| if d.t < w.from || d.t > w.to || d.candidates.len() < 2 { d.default } else { p2(d) };
+    let r = run(&with_probes(&shop, &w), &RunOptions { seed: 3, until: Some(w.to), record: false }, Some(&mut by_hand));
+    let want = score(&r, &w).unwrap();
+    assert_eq!(e.score.moves, want.moves);
+    assert_eq!(e.score.lots_finished, want.lots_finished);
+    assert!((e.score.wait_lot_hours - want.wait_lot_hours).abs() < 1e-9);
 }
 
 #[test]
