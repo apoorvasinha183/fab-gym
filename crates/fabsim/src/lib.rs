@@ -20,4 +20,5 @@ pub mod smt2020;
 pub mod sweep;
 pub mod twofam;
 pub mod uq;
+pub mod variant;
 pub mod window;

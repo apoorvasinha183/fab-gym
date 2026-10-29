@@ -227,7 +227,7 @@ pub struct LayoutInfo {
 
 /// The shop as the layout reads it: listed lots become a release stream at their rate and mean
 /// size, so their flows place the groups.
-fn layout_shop(shop: &Shop) -> Shop {
+pub fn layout_shop(shop: &Shop) -> Shop {
     let mut s = shop.clone();
     let listed: BTreeSet<String> =
         shop.lots.iter().filter(|l| l.step == 0 && l.start >= 0.0).map(|l| l.route.clone()).collect();

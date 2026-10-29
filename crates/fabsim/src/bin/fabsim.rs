@@ -697,6 +697,56 @@ fn layout(args: &[String]) {
     println!("{md}");
 }
 
+/// The decision as a fab (docs/NARRATIVE.md, deliverable 2): today's realistic plan with copies of the groups
+/// prototypes load most, each right after its original. Writes the layout, the variant shop and variant.json.
+fn variant_cmd(args: &[String]) {
+    use fabsim::pl::Sheet;
+    use fabsim::variant::variant_layout;
+    use std::fmt::Write as _;
+    let dir = args.get(0).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    // by default the building on record for the US profile: 1.6 m chases with a cross aisle (docs/DESIGN-DEV.md)
+    let mut cfg = fabsim::layout::Config::realistic();
+    cfg.chase = flag(args, "--chase", "1.6").parse().expect("--chase is metres");
+    cfg.cross = flag(args, "--cross", "1.6").parse().expect("--cross is metres");
+    let out = PathBuf::from(flag(args, "--out", "results/layout-real-dd-copies"));
+    let data = PathBuf::from(flag(args, "--data", "data/layout-real-dd-copies"));
+    let n = arg(args, "--copies", 3) as usize;
+    let share: f64 = flag(args, "--share", "2").parse().expect("--share is a number");
+    let base = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let areas = fabsim::smt2020::areas(&dir).expect("areas");
+    let v = variant_layout(&base, &areas, &cfg, share, n).expect("the variant");
+    let plain = v.problem.pack(&v.problem.plain());
+    let campus = v.problem.pack(&v.plan);
+    std::fs::create_dir_all(&out).unwrap();
+    std::fs::create_dir_all(&data).unwrap();
+    // the same names as `fabsim layout`, so the plans, BIM and bill of materials read it unchanged
+    std::fs::write(out.join("layout.json"), v.problem.to_json(&[("plain", &plain), ("optimised", &campus)])).unwrap();
+    std::fs::write(data.join("optimised.shop.txt"), v.shop.to_text()).unwrap();
+    let mut ps = v.shop.clone();
+    ps.oht = Some(v.problem.oht(&plain));
+    std::fs::write(data.join("plain.shop.txt"), ps.to_text()).unwrap();
+    let s = Sheet::central();
+    let cap = v.capital(&s);
+    let (before, after) = v.travel();
+    let mut json = format!(
+        "{{\"model\":\"SMT2020\",\"note\":\"A gigafab-style layout of our own design on the SMT2020 model; placements and prices assumed.\",\"share\":{share},\"copies\":["
+    );
+    let mut md = String::new();
+    let _ = writeln!(md, "The decision as a fab, on the SMT2020 model: today's realistic plan kept block for block, with one copy of each of the {n} groups prototype orders (x{share}) load most, each right after its original in the halls. Placements and prices assumed.\n");
+    let _ = writeln!(md, "| copy | area | tools |\n|---|---|---|");
+    for (i, c) in v.copies.iter().enumerate() {
+        let _ = write!(json, "{}{{\"copy\":\"{}\",\"original\":\"{}\",\"area\":\"{}\",\"tools\":{}}}", if i > 0 { "," } else { "" }, c.copy, c.original, c.area, c.tools);
+        let _ = writeln!(md, "| {} | {} | {} |", c.copy, c.area, c.tools);
+    }
+    let _ = write!(json, "],\"capital\":{{\"tools\":{},\"qualify\":{},\"floor\":{},\"bridge\":{},\"total\":{},\"depreciation_day\":{},\"upkeep_day\":{}}},", cap.tools, cap.qualify, cap.floor, cap.bridge, cap.total, cap.depreciation_day, cap.upkeep_day);
+    let _ = write!(json, "\"travel\":{{\"before\":{before},\"after\":{after},\"unit\":\"hoist metres a day at the two-family flows\"}},\"lengths\":{:?}}}\n", campus.lengths);
+    let _ = writeln!(md, "\nCapital (central price sheet): ${:.1}M once (tools ${:.1}M, qualifying ${:.1}M, floor ${:.1}M), ${:.0} a day in depreciation and upkeep.", cap.total / 1e6, cap.tools / 1e6, cap.qualify / 1e6, cap.floor / 1e6, cap.depreciation_day + cap.upkeep_day);
+    let _ = writeln!(md, "\nHoist travel at the two-family flows: {:.0} m a day on today's campus, {:.0} m with the copies ({:+.1}%). Exact for the stated flows.", before, after, 100.0 * (after - before) / before);
+    std::fs::write(out.join("variant.json"), json).unwrap();
+    std::fs::write(out.join("summary.md"), &md).unwrap();
+    println!("{md}");
+}
+
 fn layout_score(args: &[String]) {
     use fabsim::uq::{paired, verdict, Verdict};
     use fabsim::window::{score, with_probes, Window};
@@ -784,8 +834,18 @@ fn layout_trace(args: &[String]) {
     // the campus is rebuilt from the same deterministic optimiser, and checked against the shop's places
     let flat = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
     let areas = fabsim::smt2020::areas(&dir).expect("areas");
-    let p = Problem::new(&flat, &areas, &cfg).unwrap();
-    let c = if plan == "plain" { p.pack(&p.plain()) } else { p.pack(&p.optimise()) };
+    // `--copies N`: the variant (fabsim variant), rebuilt the same way
+    let copies = arg(args, "--copies", 0) as usize;
+    let (p, c) = if copies > 0 {
+        let share: f64 = flag(args, "--share", "2").parse().expect("--share is a number");
+        let v = fabsim::variant::variant_layout(&flat, &areas, &cfg, share, copies).unwrap();
+        let c = if plan == "plain" { v.problem.pack(&v.problem.plain()) } else { v.problem.pack(&v.plan) };
+        (v.problem, c)
+    } else {
+        let p = Problem::new(&flat, &areas, &cfg).unwrap();
+        let c = if plan == "plain" { p.pack(&p.plain()) } else { p.pack(&p.optimise()) };
+        (p, c)
+    };
     assert_eq!(Some(p.oht(&c)), shop.oht, "the shop's layout is not this build's {plan} plan; rerun fabsim layout");
     // run past the window so lots that arrive in it and start later are recorded
     let r = run(&shop, &RunOptions { seed, until: Some(to + 5.0 * 1440.0), record: true }, None);
@@ -823,6 +883,7 @@ fn main() {
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),
+        Some("variant") => variant_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));

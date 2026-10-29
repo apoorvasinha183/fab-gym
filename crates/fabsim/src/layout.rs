@@ -378,6 +378,19 @@ impl Problem {
         self.phase[g]
     }
 
+    /// The number of tool groups.
+    pub fn len(&self) -> usize {
+        self.names.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.names.is_empty()
+    }
+
+    pub fn name(&self, g: usize) -> &str {
+        &self.names[g]
+    }
+
     pub fn area_of(&self, g: usize) -> &str {
         &self.areas[g]
     }
