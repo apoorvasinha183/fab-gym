@@ -85,3 +85,22 @@ fn the_value_so_far_is_the_rewards_measure() {
     assert!(finished > 0 && wait_lot_minutes > 0.0);
     assert!((s.value() - (finished as f64 - 0.01 * wait_lot_minutes / 60.0)).abs() < 1e-9);
 }
+
+#[test]
+fn an_episodes_picks_replay_it_exactly() {
+    use fabsim::gym::episode;
+    use fabsim::window::{score, with_probes, Window};
+    let shop = toy();
+    let w = Window { from: 1440.0, to: 3.0 * 1440.0 };
+    let mut pick = fabsim::policy::picker(&shop, Policy::Spt, 6);
+    let mut ask = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(d));
+    let e = episode(&shop, 6, w, &mut ask);
+    assert_eq!(e.picks.len() as u64, e.asked, "one pick kept per decision asked");
+    let probed = with_probes(&shop, &w);
+    let mut s = Stepper::new(&probed, &RunOptions { seed: 6, until: Some(w.to), record: false }, Some(Player::replay(e.picks.clone()).window(w.from, w.to)));
+    s.advance(w.to);
+    let r = s.finish();
+    let sc = score(&r, &w).unwrap();
+    assert_eq!(sc.moves, e.score.moves);
+    assert!((sc.wait_lot_hours - e.score.wait_lot_hours).abs() < 1e-9);
+}
