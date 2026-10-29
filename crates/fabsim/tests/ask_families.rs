@@ -186,12 +186,13 @@ fn two_families_score_deterministically_with_money_and_shops() {
     for k in ["\"families\":true", "\"arms\":[", "\"shop\":\"fabgym-shop 1", "\"money\":", "Real-fab effect"] {
         assert!(j.contains(k), "{k} missing");
     }
-    // the best is the better-than-today candidate with the highest money lower bound, if any
-    let better: Vec<_> = one.candidates.iter().filter(|c| c.measure("money").verdict == fabsim::uq::Verdict::Better).collect();
+    // the best is the better-than-today candidate with the highest lower bound on operating profit, if any
+    // (changed 29 Oct from money a day, docs/MONEY-PL.md)
+    let better: Vec<_> = one.candidates.iter().filter(|c| c.measure("profit").verdict == fabsim::uq::Verdict::Better).collect();
     match &one.best {
         None => assert!(better.is_empty()),
         Some(b) => {
-            let top = better.iter().max_by(|x, y| x.measure("money").interval.lo.total_cmp(&y.measure("money").interval.lo)).unwrap();
+            let top = better.iter().max_by(|x, y| x.measure("profit").interval.lo.total_cmp(&y.measure("profit").interval.lo)).unwrap();
             assert_eq!(&top.name, b);
         }
     }

@@ -123,3 +123,7 @@ The same code scores the ask box's two-family questions from fresh runs.
    with the word "assumed".
 
 ## Changes
+
+- 29 Oct, before deliverable 4's code: the ask box's best candidate is now the one better on operating profit with the
+  highest lower bound (it was money a day); `crates/fabsim/tests/ask_families.rs` changed to match. Money a day stays
+  in the report as a measure, so older answers still read.
