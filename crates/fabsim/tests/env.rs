@@ -206,3 +206,22 @@ fn the_env_runs_a_built_in_rule_and_reports_the_slow_measures() {
     let ns = num(done, "pick_ns");
     assert!(ns.is_finite() && ns > 0.0 && ns < 1e6, "pick_ns {ns}");
 }
+
+#[test]
+fn the_env_reports_wafers_out_day_by_day() {
+    // the founder, 30 Oct: day-by-day graphs of wafers out under each policy (docs/LONG-RESCORE.md)
+    let p = shop_file(SHOP, "auto-daily");
+    let out = Command::new(env!("CARGO_BIN_EXE_fabsim"))
+        .args(["env", p.to_str().unwrap(), "--seed", "1", "--warmup", "0.5", "--window", "2", "--auto", "spt"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let text = String::from_utf8(out.stdout).unwrap();
+    let done = text.lines().last().unwrap();
+    let i = done.find("\"daily_wafers\":[").expect("daily_wafers in the done line") + "\"daily_wafers\":[".len();
+    let days: Vec<f64> = done[i..done[i..].find(']').unwrap() + i].split(',').map(|x| x.parse().unwrap()).collect();
+    assert_eq!(days.len(), 2, "one value a day of the window");
+    assert!(days.iter().all(|&x| x >= 0.0 && x.fract() == 0.0), "whole wafers");
+    let mean = days.iter().sum::<f64>() / 2.0;
+    assert!((mean - num(score_of(done), "wafers_per_day")).abs() < 1e-9, "the days add up to wafers a day");
+}
