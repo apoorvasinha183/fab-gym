@@ -107,3 +107,17 @@ Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less
     thesis, a top-level rule every few hours) needs its choices scored over a horizon longer than the shift, with
     the rule that follows playing on. D, as built, is not a hindsight bound; a D scored over a longer horizon is
     still to build.
+- **Regret B** (30 Oct; `results/long-rescore/regret-b.json`, per seed `regret-b/POLICY-SEED.json`): each policy's
+  own run replayed, 60 evenly spaced picks on seeds 0 to 2 (defects off), and at each the lots it could have taken
+  tried on copies of the fab for one day with today's rule after; at most 64 lots a pick (one of each kind, the
+  policy's own pick, the rest spread evenly), which on FIFO's picks finds 86% of the full audit's regret. Mean regret
+  a pick, in reward over the day (95% interval over the 180 picks):
+  - shortest first 0.29 (0.19 to 0.38), PPO 0.56 (0.44 to 0.68), critical ratio 0.77 (0.59 to 0.95), today 0.81
+    (0.69 to 0.93), FIFO 1.22 (0.95 to 1.49), random 1.32 (1.03 to 1.61);
+  - 73 to 84% of picks had a better lot within the day.
+  - The ranking is nearly the reverse of the long window's (today 1,263 wafers a day, shortest first 668). As with
+    D, a day's look-ahead favours finishing short steps now. So B over one day measures how greedy a policy is,
+    not how far it is from the best plan; B over a longer horizon is the next check.
+- The 60 runs behind B (every policy, seeds 0 to 9, defects off) also keep wafers out on each day of the window
+  (`regret-b/runs/`), for the day-by-day graphs; each matches the contest's run exactly. Their picks are kept
+  locally, not in git.
