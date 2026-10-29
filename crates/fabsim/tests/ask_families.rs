@@ -207,3 +207,42 @@ fn the_no_bay_marker_reads_on_any_width() {
     assert!(fabsim::shop::read_bay("seven").is_err());
     assert!(fabsim::shop::read_bay("-1").is_err());
 }
+
+// Money in dollars for two-family answers (docs/MONEY-PL.md, deliverable 4): each candidate carries operating profit
+// and operating cash a day as measures, and its capital, payback and five-year value; the best is chosen on profit.
+#[test]
+fn two_family_answers_are_in_dollars() {
+    use fabsim::pl::{npv_factor, Sheet};
+    let s = Scenario::parse(FAM).unwrap();
+    let r = score_with(&toy(), &s, &small(1), Some(&ctx())).unwrap();
+    let central = Sheet::central();
+    let per_tool = central.get("tool_other") + central.get("qualify") + central.get("floor_per_tool") * central.get("halls_m2");
+    for c in &r.candidates {
+        let p = c.measure("profit");
+        assert!(p.higher_is_better);
+        assert_eq!(p.base.len(), 3);
+        let cash = c.measure("cash");
+        let pl = c.pl.as_ref().expect("a two-family candidate carries its money");
+        if c.name.contains("copies") {
+            let k = pl.capital / per_tool;
+            assert!(k >= 1.0 && (k - k.round()).abs() < 1e-9, "{}: capital {} is whole tools in the halls", c.name, pl.capital);
+        } else {
+            assert_eq!(pl.capital, 0.0, "{}", c.name);
+        }
+        let f = npv_factor(&central);
+        assert!((pl.npv.0 - (-pl.capital + cash.interval.mean * f)).abs() < 1e-6 * (1.0 + pl.npv.0.abs()));
+        match pl.payback.0 {
+            Some(d) => assert!(cash.interval.hi > 0.0 && (d - pl.capital / cash.interval.hi).abs() < 1e-9),
+            None => assert!(cash.interval.hi <= 0.0),
+        }
+    }
+    let better: Vec<_> = r.candidates.iter().filter(|c| c.measure("profit").verdict == fabsim::uq::Verdict::Better).collect();
+    match &r.best {
+        None => assert!(better.is_empty()),
+        Some(b) => assert_eq!(&better.iter().max_by(|x, y| x.measure("profit").interval.lo.total_cmp(&y.measure("profit").interval.lo)).unwrap().name, b),
+    }
+    let j = r.to_json();
+    for k in ["\"profit\":", "\"cash\":", "\"pl\":{\"capital\":", "\"payback_days\":"] {
+        assert!(j.contains(k), "{k} missing");
+    }
+}
