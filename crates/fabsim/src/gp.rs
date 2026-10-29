@@ -156,8 +156,8 @@ impl Expr {
         use Expr::*;
         match self {
             Field(i) => format!("c.{}", RULE_FIELDS[*i]),
-            Const(x) if *x < 0.0 => format!("({x:?})"),
-            Const(x) => format!("{x:?}"),
+            Const(x) if *x < 0.0 => format!("({x:?}_f64)"),
+            Const(x) => format!("{x:?}_f64"),
             Add(a, b) => format!("({} + {})", a.rust(), b.rust()),
             Sub(a, b) => format!("({} - {})", a.rust(), b.rust()),
             Mul(a, b) => format!("({} * {})", a.rust(), b.rust()),
