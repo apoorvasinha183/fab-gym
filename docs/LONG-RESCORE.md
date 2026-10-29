@@ -121,3 +121,14 @@ Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less
 - The 60 runs behind B (every policy, seeds 0 to 9, defects off) also keep wafers out on each day of the window
   (`regret-b/runs/`), for the day-by-day graphs; each matches the contest's run exactly. Their picks are kept
   locally, not in git.
+- **Regret B over 7 days** (30 Oct; `results/long-rescore/regret-b7/`): the same audit on seed 0, 30 picks a
+  policy, the alternatives played for 7 days with today's rule after. Mean regret a pick (95% over the 30 picks):
+  shortest first 10.4 (6.7 to 14.1), today 14.8 (10.9 to 18.7), critical ratio 19.9 (11.8 to 28.0), PPO 22.1 (14.8
+  to 29.4), FIFO 22.3 (14.2 to 30.5), random 31.1 (20.1 to 42.1).
+  - The intervals overlap; shortest first still scores lowest, so the ranking does not turn over to match the
+    long window.
+  - Two reasons B cannot rank strategies. It changes one pick and then lets today's rule play, so it never sees the
+    state a policy builds up over weeks (the WIP mix shortest first leaves behind). And over 7 days one changed pick
+    sends the whole fab down a different path, so the best of 64 tries is partly luck; the regret grows with the
+    horizon for that reason too (a winner's-curse bias, not measured here).
+  - So long windows (A and C, the table above) measure a strategy; B measures single picks against today's rule.
