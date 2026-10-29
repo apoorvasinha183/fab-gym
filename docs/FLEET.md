@@ -36,8 +36,9 @@ idle vehicle's stop and its track distance to the lot.
 - Lots keep today's dispatching at the tools. Vehicles only, first.
 
 **Shop record.** `fleet <vehicles> <gap m> <hoist min> <ports> <cross m> <controller>` after the `oht` records; it
-needs an `oht`. Assumed defaults for the realistic campus: gap 3 m, hoist 0.3 min, ports 2, crossovers every 60 m,
-`nearest`. A shop without `fleet` runs and writes exactly as before.
+needs an `oht`. Defaults for the realistic campus: hoist 1 min, from Yang (2023, Table 13: 60 s to load and 60 s to
+unload); gap 3 m, ports 2 and crossovers every 60 m, assumed; `nearest`. A shop without `fleet` runs and writes
+exactly as before.
 
 **What a run reports** (`RunResult::fleet`):
 - moves asked for and delivered;
@@ -73,3 +74,20 @@ replay the fleet.
 11. A vehicle controller is asked for every pick and its picks are used; a pick that is not an idle vehicle is refused,
     counted, and `nearest` is used instead.
 12. A delivery takes at least the two hoists.
+
+## Sources
+
+- Yang Hyun, "Vehicle dispatching and idle vehicle operation of AMHS in FAB", master's thesis, Ajou University,
+  February 2023, pp. 29 to 43 read: a spine layout of the author's own for SMT2020's dataset 4 (1,468 tools; 40 bay
+  loops and 3 interbay loops, one-way rails), 250 vehicles at 5.0 m/s on straights and 1.0 m/s on curves,
+  accelerating at 2.0 m/s² and braking at 3.5 m/s², 60 s to load and 60 s to unload. Rules compared: closest,
+  oldest and least-used idle vehicle, and the fastest arrival counting busy vehicles. Idle vehicles circle their bay
+  under a cap per bay.
+- Nazzal and McGinnis, WSC 2005, p. 1: one-way closed loops, no passing even when a vehicle stops at a port.
+- Schmaler et al., WSC 2017, pp. 1 to 2: empty vehicle management, the time tools wait for empty vehicles.
+
+## Changes
+
+- 29 Oct, before any code: the default hoist time changed from 0.3 min (assumed) to 1 min, cited from Yang (2023).
+  The tests set their own values and are unchanged. One speed for straights and curves stays (the layout's
+  150 m/min); Yang's curve speed and acceleration are a later refinement.
