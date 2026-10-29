@@ -1,0 +1,176 @@
+{
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9
+ ],
+ "alpha_each": 0.025,
+ "defects": [
+  120.0,
+  240.0,
+  60.0
+ ],
+ "warmup_days": 130.0,
+ "window_days": 60.0,
+ "against_today": [
+  {
+   "name": "ppo",
+   "measures": {
+    "reward": {
+     "mean": -18529.312635645107,
+     "lo": -18992.532481246606,
+     "hi": -18066.092790043607,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "moves": {
+     "mean": -545863.7,
+     "lo": -555628.0865822347,
+     "hi": -536099.3134177652,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "lots_finished": {
+     "mean": -1455.3,
+     "lo": -1514.6881266020143,
+     "hi": -1395.9118733979856,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "wait_lot_hours": {
+     "mean": 1707401.2635645107,
+     "lo": 1663174.7502106165,
+     "hi": 1751627.776918405,
+     "verdict": "worse",
+     "higher_is_better": false
+    },
+    "breaches": {
+     "mean": -12521.1,
+     "lo": -14768.745210556743,
+     "hi": -10273.454789443258,
+     "verdict": "better",
+     "higher_is_better": false
+    },
+    "cycle_days": {
+     "mean": 81.37793476189623,
+     "lo": 74.26017812081244,
+     "hi": 88.49569140298001,
+     "verdict": "worse",
+     "higher_is_better": false
+    },
+    "wafers_per_day": {
+     "mean": -606.375,
+     "lo": -631.1200527508392,
+     "hi": -581.6299472491608,
+     "verdict": "worse",
+     "higher_is_better": true
+    },
+    "mean_wip": {
+     "mean": 708.3774955728362,
+     "lo": 678.1130140210862,
+     "hi": 738.6419771245862,
+     "verdict": "worse",
+     "higher_is_better": false
+    },
+    "hot_cycle_days": {
+     "mean": 8.705881045331761,
+     "lo": 7.8345627887421525,
+     "hi": 9.57719930192137,
+     "verdict": "worse",
+     "higher_is_better": false
+    }
+   },
+   "picked_other_share": 0.7252633270102907,
+   "picked_other_top_groups": []
+  },
+  {
+   "name": "e2-1",
+   "measures": {
+    "reward": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "moves": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "lots_finished": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "wait_lot_hours": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    },
+    "breaches": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    },
+    "cycle_days": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    },
+    "wafers_per_day": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": true
+    },
+    "mean_wip": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    },
+    "hot_cycle_days": {
+     "mean": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "verdict": "no clear effect",
+     "higher_is_better": false
+    }
+   },
+   "picked_other_share": 0.0,
+   "picked_other_top_groups": []
+  }
+ ],
+ "note": "On the SMT2020 model, a published model of a fab. Defect holds and their rates are assumed. Real-fab effect: cannot say.",
+ "today": {
+  "reward": -23683.943987615425,
+  "moves": 1291976.1,
+  "lots_finished": 3044.1,
+  "wait_lot_hours": 2672804.3987615425,
+  "breaches": 15889.7,
+  "cycle_days": 59.15315421587646,
+  "wafers_per_day": 1268.375,
+  "mean_wip": 2999.870353952659,
+  "hot_cycle_days": 24.60691094927791
+ }
+}

@@ -280,15 +280,33 @@ def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, win
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     seeds = list(seeds)
-    runs = {}
+    # each run is kept as it lands; a contest started again picks up the runs already done
+    done = {}
+    prog = out / "progress.jsonl"
+    if prog.exists():
+        for line in prog.read_text().splitlines():
+            r = json.loads(line)
+            done[(r["contestant"], r["seed"])] = {**r, "picked_other_by_group": {}}
+    runs, failed = {}, {}
     for name, p in policies.items():
         runs[name] = []
         for s in seeds:
-            r = timed_play(p, s, shop, fabsim, warmup_days, window_days, defects)
+            if (name, s) in done:
+                runs[name].append(done[(name, s)])
+                continue
+            try:
+                r = timed_play(p, s, shop, fabsim, warmup_days, window_days, defects)
+            except Exception as err:  # a policy that cannot play is recorded, and the contest goes on
+                failed[name] = str(err)[:2000]
+                break
             runs[name].append(r)
-            # each run is kept as it lands, so a stopped contest keeps what it did
-            with open(out / "progress.jsonl", "a") as fh:
+            with open(prog, "a") as fh:
                 fh.write(json.dumps({"contestant": name, **{k: v for k, v in r.items() if k != "picked_other_by_group"}}) + "\n")
+    if "today" in failed:
+        raise RuntimeError("today's rule failed: " + failed["today"])
+    for name in failed:
+        runs.pop(name, None)
+    policies = {n: p for n, p in policies.items() if n in runs}
     num = lambda x: "nan" if x is None else repr(float(x))
     head = ["contestant", "seed"] + [m for m, _ in MEASURES] + ["decisions", "picked_other", "fallbacks", "sec_per_decision", "act_ms"]
     lines = ["\t".join(head)]
@@ -301,7 +319,8 @@ def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, win
                         "window_days": window_days, "seeds": seeds, "defects": list(defects) if defects else None,
                         "shop": str(shop), "warm_up_rule": "today", "note": NOTE},
            "policies": [{"name": n, "kind": kind_of(p), "source": (sources or {}).get(n, getattr(p, "path", getattr(p, "name", None)))}
-                        for n, p in policies.items()]}
+                        for n, p in policies.items()],
+           "failed": [{"name": n, "error": e} for n, e in failed.items()]}
     (out / "policies.json").write_text(json.dumps(reg, indent=1))
     others = [n for n in policies if n != "today"]
     alpha = 0.05 / max(1, len(others))
