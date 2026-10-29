@@ -68,33 +68,49 @@ pub fn argmin(d: &Decision, key: impl Fn(&Candidate) -> (f64, f64)) -> usize {
     best
 }
 
-/// A policy's pick at each decision (docs/LONG-RESCORE.md), for a run or for the window of an episode. `seed` seeds
-/// the random rule.
-pub fn picker<'a>(shop: &'a Shop, policy: Policy, seed: u64) -> Box<dyn FnMut(&Decision) -> usize + 'a> {
-    match policy {
-        Policy::Today => Box::new(|d: &Decision| d.default),
-        Policy::Fifo => Box::new(|d: &Decision| argmin(d, |c| (-c.waited_minutes, 0.0))),
-        Policy::Spt => Box::new(|d: &Decision| argmin(d, |c| (c.proc_minutes, -c.waited_minutes))),
-        Policy::CriticalRatio => {
-            let work: std::collections::HashMap<(String, i64), f64> = shop
-                .routes
-                .iter()
-                .flat_map(|r| [25i64, 1].map(|sz| ((r.name.clone(), sz), route_work(shop, &r.name, sz))))
-                .collect();
-            Box::new(move |d: &Decision| {
+/// A built-in rule as a value a run can copy (docs/LONG-RESCORE.md): its policy, the random rule's stream and the
+/// critical ratio's route work.
+#[derive(Clone)]
+pub struct Rule {
+    pub policy: Policy,
+    rng: PyRandom,
+    work: Option<std::sync::Arc<std::collections::HashMap<(String, i64), f64>>>,
+}
+
+impl Rule {
+    pub fn new(shop: &Shop, policy: Policy, seed: u64) -> Rule {
+        let work = (policy == Policy::CriticalRatio).then(|| {
+            std::sync::Arc::new(
+                shop.routes.iter().flat_map(|r| [25i64, 1].map(|sz| ((r.name.clone(), sz), route_work(shop, &r.name, sz)))).collect(),
+            )
+        });
+        Rule { policy, rng: PyRandom::from_str_seed(&format!("{seed}/random-rule")), work }
+    }
+
+    pub fn pick(&mut self, shop: &Shop, d: &Decision) -> usize {
+        match self.policy {
+            Policy::Today => d.default,
+            Policy::Fifo => argmin(d, |c| (-c.waited_minutes, 0.0)),
+            Policy::Spt => argmin(d, |c| (c.proc_minutes, -c.waited_minutes)),
+            Policy::CriticalRatio => {
+                let work = self.work.as_ref().unwrap();
                 argmin(d, |c| {
                     let size = c.size_wafers.max(1) / c.lots.len().max(1) as i64;
                     let w = work.get(&(c.route.clone(), size)).copied().unwrap_or_else(|| route_work(shop, &c.route, size));
                     let due = c.release + DUE_FACTOR * w;
                     ((due - d.t) / c.work_left_minutes.max(1.0), -c.waited_minutes)
                 })
-            })
-        }
-        Policy::Random => {
-            let mut r = PyRandom::from_str_seed(&format!("{seed}/random-rule"));
-            Box::new(move |d: &Decision| ((r.random() * d.candidates.len() as f64) as usize).min(d.candidates.len() - 1))
+            }
+            Policy::Random => ((self.rng.random() * d.candidates.len() as f64) as usize).min(d.candidates.len() - 1),
         }
     }
+}
+
+/// A policy's pick at each decision (docs/LONG-RESCORE.md), for a run or for the window of an episode. `seed` seeds
+/// the random rule.
+pub fn picker<'a>(shop: &'a Shop, policy: Policy, seed: u64) -> Box<dyn FnMut(&Decision) -> usize + 'a> {
+    let mut r = Rule::new(shop, policy, seed);
+    Box::new(move |d: &Decision| r.pick(shop, d))
 }
 
 /// Run a shop under a policy.

@@ -329,6 +329,7 @@ impl Ord for F {
     }
 }
 
+#[derive(Clone)]
 enum Ev {
     Arrive(u32),
     Release(u32, i64),
@@ -353,11 +354,13 @@ enum Ev {
 }
 
 /// A release or a listed lot held by its family's cap: (release, n, log row) or (lot, log row).
+#[derive(Clone)]
 enum Held {
     Rel(u32, i64, usize),
     Lot(u32, usize),
 }
 
+#[derive(Clone)]
 struct HeapItem {
     t: f64,
     seq: u64,
@@ -381,6 +384,7 @@ impl Ord for HeapItem {
     }
 }
 
+#[derive(Clone)]
 struct StepC {
     group: u32,
     per: Per,
@@ -395,6 +399,7 @@ struct StepC {
     cqt: Option<(usize, f64)>,
 }
 
+#[derive(Clone)]
 struct Tool {
     name: String,
     group: u32,
@@ -413,6 +418,7 @@ struct Tool {
     full_since: f64,
 }
 
+#[derive(Clone)]
 struct Lot {
     id: String,
     route: u32,
@@ -443,16 +449,27 @@ struct Lot {
 
 type QKey = (F, F, u64);
 
+#[derive(Clone)]
 struct Queue {
     key: u32,
     q: BTreeMap<QKey, u32>,
 }
 
+#[derive(Clone)]
 struct Waiting {
     key: (u32, usize),
     lots: Vec<(f64, u32)>,
 }
 
+/// A hook into a run from outside (a chooser); a copy of a run drops it (docs/LONG-RESCORE.md).
+struct Hook<'c, T: ?Sized>(Option<&'c mut dyn FnMut(&T) -> usize>);
+impl<T: ?Sized> Clone for Hook<'_, T> {
+    fn clone(&self) -> Self {
+        Hook(None)
+    }
+}
+
+#[derive(Clone)]
 struct Sim<'a, 'c> {
     shop: &'a Shop,
     seed: u64,
@@ -495,7 +512,9 @@ struct Sim<'a, 'c> {
     held: VecDeque<(u32, i64, usize)>,
     release_log: Vec<ReleaseRow>,
     probes: Vec<Probe>,
-    chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
+    chooser: Hook<'c, Decision>,
+    /// a player a run can copy (docs/LONG-RESCORE.md): used when there is no chooser
+    player: Option<Player>,
     decisions: u64,
     trace: Vec<Trace>,
     // two families (docs/TWO-FAMILIES.md); with fam_on false nothing below changes a run
@@ -518,7 +537,7 @@ struct Sim<'a, 'c> {
     fl: Option<FleetState>,
     ports: u32,
     from_tool: Option<u32>,
-    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+    vchooser: Hook<'c, VehicleAsk>,
     /// one lot followed from start to finish (docs/LIVE-REAL.md): its steps and moves are kept without `record`
     follow: Option<String>,
     follow_lot: Option<u32>,
@@ -999,10 +1018,13 @@ impl<'a, 'c> Sim<'a, 'c> {
                 continue;
             }
             let choice;
-            if self.chooser.is_some() {
+            if self.chooser.0.is_some() || self.player.is_some() {
                 let Some((dec, handles)) = self.decision(g, ti, t) else { continue };
                 self.decisions += 1;
-                let mut k = (self.chooser.as_mut().unwrap())(&dec);
+                let mut k = match self.chooser.0.as_mut() {
+                    Some(c) => c(&dec),
+                    None => self.player.as_mut().unwrap().pick(self.shop, &dec),
+                };
                 if k >= handles.len() {
                     k = dec.default;
                 }
@@ -1435,7 +1457,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             }
             let default = fl.default_pick(&idle);
             let mut refused = false;
-            let k = match self.vchooser.as_mut() {
+            let k = match self.vchooser.0.as_mut() {
                 Some(ch) => {
                     let ask = VehicleAsk { lot: job.lot, from: job.from, to: job.to, asked: job.asked, now: t, idle: idle.clone() };
                     let k = ch(&ask);
@@ -1704,14 +1726,14 @@ pub fn run_vehicles<'c>(
     run_inner(shop, opts, chooser, vchooser, None)
 }
 
-fn run_inner<'c>(
-    shop: &Shop,
+fn build<'a, 'c>(
+    shop: &'a Shop,
     opts: &RunOptions,
     chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
     vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
     follow: Option<String>,
-) -> RunResult {
-    let horizon = opts.until.unwrap_or(f64::INFINITY);
+    player: Option<Player>,
+) -> Sim<'a, 'c> {
     // compile the shop into indexes
     let gidx: HashMap<&str, u32> = shop.groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i as u32)).collect();
     let mut setup_names = vec![String::new()];
@@ -1885,7 +1907,8 @@ fn run_inner<'c>(
         held: VecDeque::new(),
         release_log: vec![],
         probes: vec![],
-        chooser,
+        chooser: Hook(chooser),
+        player,
         decisions: 0,
         trace: vec![],
         fam_on,
@@ -1910,7 +1933,7 @@ fn run_inner<'c>(
         },
         ports: shop.fleet.as_ref().filter(|_| shop.oht.is_some()).map(|f| f.ports as u32).unwrap_or(0),
         from_tool: None,
-        vchooser,
+        vchooser: Hook(vchooser),
         follow,
         follow_lot: None,
     };
@@ -1967,225 +1990,382 @@ fn run_inner<'c>(
     for &tp in &shop.probes {
         sim.at(tp, Ev::Probe);
     }
+    sim
+}
 
-    while let Some(HeapItem { t, ev, .. }) = sim.heap.pop() {
-        if t > horizon {
-            break;
-        }
-        if sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some()) {
-            break;
-        }
-        sim.now = t;
-        match ev {
-            Ev::Arrive(l) => sim.arrive(l, t),
-            Ev::Admit(l) => {
-                let f = sim.lots[l as usize].fam as usize;
-                let id = sim.lots[l as usize].id.clone();
-                if sim.fam_room(f) {
-                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.fam_wip[f]) });
-                    sim.lots[l as usize].release = t;
-                    sim.arrive(l, t);
-                } else {
-                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
-                    let row = sim.release_log.len() - 1;
-                    sim.fam_held[f].push_back(Held::Lot(l, row));
-                }
+impl<'a, 'c> Sim<'a, 'c> {
+    /// Run every event up to `horizon` (those at it included), leaving later ones queued.
+    fn advance_to(&mut self, horizon: f64) {
+        let sim = self;
+        let shop = sim.shop;
+        let seed = sim.seed;
+        while let Some(top) = sim.heap.peek() {
+            if top.t > horizon {
+                break;
             }
-            Ev::UnholdFam(f) => {
-                let f = f as usize;
-                let cap = sim.fam_cap[f].unwrap();
-                while sim.fam_wip[f] < cap {
-                    let Some(h) = sim.fam_held[f].pop_front() else { break };
-                    match h {
-                        Held::Rel(k, n, row) => {
-                            sim.release_log[row].released = Some(t);
-                            sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
-                            sim.release(k, n, t);
-                        }
-                        Held::Lot(l, row) => {
-                            sim.release_log[row].released = Some(t);
-                            sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
-                            sim.lots[l as usize].release = t;
-                            sim.arrive(l, t);
-                        }
-                    }
-                }
+            if sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some()) {
+                break;
             }
-            Ev::Release(k, n) => {
-                let rel = &shop.releases[k as usize];
-                if let Some(c) = rel.count {
-                    if n >= c {
-                        continue;
-                    }
-                }
-                let id = sim.rid(k, n);
-                let rf = if sim.fam_on {
-                    let r = shop.routes.iter().position(|x| x.name == rel.route).unwrap();
-                    Some(sim.route_fam[r] as usize).filter(|&f| sim.fam_cap[f].is_some())
-                } else {
-                    None
-                };
-                if let Some(f) = rf {
+            let HeapItem { t, ev, .. } = sim.heap.pop().unwrap();
+            sim.now = t;
+            match ev {
+                Ev::Arrive(l) => sim.arrive(l, t),
+                Ev::Admit(l) => {
+                    let f = sim.lots[l as usize].fam as usize;
+                    let id = sim.lots[l as usize].id.clone();
                     if sim.fam_room(f) {
                         sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.fam_wip[f]) });
-                        sim.release(k, n, t);
+                        sim.lots[l as usize].release = t;
+                        sim.arrive(l, t);
                     } else {
                         sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
                         let row = sim.release_log.len() - 1;
-                        sim.fam_held[f].push_back(Held::Rel(k, n, row));
+                        sim.fam_held[f].push_back(Held::Lot(l, row));
                     }
-                } else if sim.cap.is_some() && (!sim.held.is_empty() || sim.wip >= sim.cap.unwrap()) {
-                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
-                    sim.held.push_back((k, n, sim.release_log.len() - 1));
-                } else {
-                    sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.wip) });
-                    sim.release(k, n, t);
                 }
-                sim.at(t + rel.every, Ev::Release(k, n + 1));
-            }
-            Ev::Unhold => {
-                while !sim.held.is_empty() && sim.wip < sim.cap.unwrap() {
-                    let (k, n, row) = sim.held.pop_front().unwrap();
-                    sim.release_log[row].released = Some(t);
-                    sim.release_log[row].wip_before = Some(sim.wip);
-                    sim.release(k, n, t);
-                }
-            }
-            Ev::Probe => {
-                sim.probes.push(Probe {
-                    t,
-                    finished: sim.done,
-                    wip: sim.wip,
-                    moves: sim.moves,
-                    waiting: sim.n,
-                    wait_lot_minutes: sim.area + sim.n as f64 * (t - sim.last),
-                    wip_lot_minutes: sim.warea + sim.wip as f64 * (t - sim.wlast),
-                    transports: sim.transports,
-                    transport_minutes: sim.transport_minutes,
-                });
-            }
-            Ev::Begin(ti, batch, dur) => {
-                sim.set_state(ti, t, PRODUCTIVE, "");
-                if let Some(fl) = sim.follow_lot.filter(|f| !sim.full && batch.contains(f)) {
-                    let lot = &sim.lots[fl as usize];
-                    sim.trace.push(Trace { lot: fl, step: lot.step as u32, tool: ti, arrive: lot.arrived, start: t, end: t + dur });
-                }
-                if sim.full {
-                    for &l in &batch {
-                        let name = sim.tools[ti as usize].name.clone();
-                        let lot = &mut sim.lots[l as usize];
-                        let (step, arrive) = (lot.step, lot.arrived);
-                        if let Some(tr) = lot.trail.as_mut() {
-                            tr.push(StepOut { step, tool: name, arrive, start: t, end: t + dur });
+                Ev::UnholdFam(f) => {
+                    let f = f as usize;
+                    let cap = sim.fam_cap[f].unwrap();
+                    while sim.fam_wip[f] < cap {
+                        let Some(h) = sim.fam_held[f].pop_front() else { break };
+                        match h {
+                            Held::Rel(k, n, row) => {
+                                sim.release_log[row].released = Some(t);
+                                sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
+                                sim.release(k, n, t);
+                            }
+                            Held::Lot(l, row) => {
+                                sim.release_log[row].released = Some(t);
+                                sim.release_log[row].wip_before = Some(sim.fam_wip[f]);
+                                sim.lots[l as usize].release = t;
+                                sim.arrive(l, t);
+                            }
                         }
-                        sim.trace.push(Trace { lot: l, step: step as u32, tool: ti, arrive, start: t, end: t + dur });
                     }
                 }
-                let g = sim.tools[ti as usize].group as usize;
-                sim.busy[g] += dur;
-                sim.at(t + dur, Ev::End(ti, batch));
-            }
-            Ev::End(ti, batch) => sim.finish(ti, t, batch),
-            Ev::Down(ti, how, minutes) => sim.down_due(ti, t, how, minutes),
-            Ev::Pm(ti, k, every) => {
-                let g = sim.tools[ti as usize].group as usize;
-                let pm = &shop.groups[g].pm[k as usize];
-                let mut r = PyRandom::from_str_seed(&format!("{}/pm/{}/{}/{}", opts.seed, sim.tools[ti as usize].name, k, t as i64));
-                let m = r.uniform(pm.lo, pm.hi);
-                sim.down_due(ti, t, SCHEDULED, m);
-                sim.at(t + every, Ev::Pm(ti, k, every));
-            }
-            Ev::Break(ti) => {
-                let g = sim.tools[ti as usize].group as usize;
-                let (mttf, mttr) = shop.groups[g].breakdown.unwrap();
-                let mut r = PyRandom::from_str_seed(&format!("{}/break/{}/{}", opts.seed, sim.tools[ti as usize].name, t as i64));
-                let m = r.expovariate(1.0 / mttr);
-                sim.down_due(ti, t, UNSCHEDULED, m);
-                let next = r.expovariate(1.0 / mttf);
-                sim.at(t + next, Ev::Break(ti));
-            }
-            Ev::Wake(g) => sim.dispatch(g, t),
-            Ev::VehEnd(v) => {
-                sim.fl.as_mut().unwrap().veh[v as usize].at_end = true;
-                sim.fleet_go(v, t);
-            }
-            Ev::VehTry(v) => sim.fleet_go(v, t),
-            Ev::Hoisted(v) => sim.fleet_hoisted(v, t),
-            Ev::Unpark(l) => sim.unpark(l, t),
-            Ev::Up(ti) => {
-                sim.tools[ti as usize].down = 0;
-                sim.set_state(ti, t, STANDBY, "");
-                if let Some((kind, m)) = sim.tools[ti as usize].pending.pop_front() {
-                    sim.go_down(ti, t, kind, m);
+                Ev::Release(k, n) => {
+                    let rel = &shop.releases[k as usize];
+                    if let Some(c) = rel.count {
+                        if n >= c {
+                            continue;
+                        }
+                    }
+                    let id = sim.rid(k, n);
+                    let rf = if sim.fam_on {
+                        let r = shop.routes.iter().position(|x| x.name == rel.route).unwrap();
+                        Some(sim.route_fam[r] as usize).filter(|&f| sim.fam_cap[f].is_some())
+                    } else {
+                        None
+                    };
+                    if let Some(f) = rf {
+                        if sim.fam_room(f) {
+                            sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.fam_wip[f]) });
+                            sim.release(k, n, t);
+                        } else {
+                            sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
+                            let row = sim.release_log.len() - 1;
+                            sim.fam_held[f].push_back(Held::Rel(k, n, row));
+                        }
+                    } else if sim.cap.is_some() && (!sim.held.is_empty() || sim.wip >= sim.cap.unwrap()) {
+                        sim.release_log.push(ReleaseRow { id, scheduled: t, released: None, wip_before: None });
+                        sim.held.push_back((k, n, sim.release_log.len() - 1));
+                    } else {
+                        sim.release_log.push(ReleaseRow { id, scheduled: t, released: Some(t), wip_before: Some(sim.wip) });
+                        sim.release(k, n, t);
+                    }
+                    sim.at(t + rel.every, Ev::Release(k, n + 1));
                 }
-                let g = sim.tools[ti as usize].group;
-                sim.dispatch(g, t);
+                Ev::Unhold => {
+                    while !sim.held.is_empty() && sim.wip < sim.cap.unwrap() {
+                        let (k, n, row) = sim.held.pop_front().unwrap();
+                        sim.release_log[row].released = Some(t);
+                        sim.release_log[row].wip_before = Some(sim.wip);
+                        sim.release(k, n, t);
+                    }
+                }
+                Ev::Probe => {
+                    sim.probes.push(Probe {
+                        t,
+                        finished: sim.done,
+                        wip: sim.wip,
+                        moves: sim.moves,
+                        waiting: sim.n,
+                        wait_lot_minutes: sim.area + sim.n as f64 * (t - sim.last),
+                        wip_lot_minutes: sim.warea + sim.wip as f64 * (t - sim.wlast),
+                        transports: sim.transports,
+                        transport_minutes: sim.transport_minutes,
+                    });
+                }
+                Ev::Begin(ti, batch, dur) => {
+                    sim.set_state(ti, t, PRODUCTIVE, "");
+                    if let Some(fl) = sim.follow_lot.filter(|f| !sim.full && batch.contains(f)) {
+                        let lot = &sim.lots[fl as usize];
+                        sim.trace.push(Trace { lot: fl, step: lot.step as u32, tool: ti, arrive: lot.arrived, start: t, end: t + dur });
+                    }
+                    if sim.full {
+                        for &l in &batch {
+                            let name = sim.tools[ti as usize].name.clone();
+                            let lot = &mut sim.lots[l as usize];
+                            let (step, arrive) = (lot.step, lot.arrived);
+                            if let Some(tr) = lot.trail.as_mut() {
+                                tr.push(StepOut { step, tool: name, arrive, start: t, end: t + dur });
+                            }
+                            sim.trace.push(Trace { lot: l, step: step as u32, tool: ti, arrive, start: t, end: t + dur });
+                        }
+                    }
+                    let g = sim.tools[ti as usize].group as usize;
+                    sim.busy[g] += dur;
+                    sim.at(t + dur, Ev::End(ti, batch));
+                }
+                Ev::End(ti, batch) => sim.finish(ti, t, batch),
+                Ev::Down(ti, how, minutes) => sim.down_due(ti, t, how, minutes),
+                Ev::Pm(ti, k, every) => {
+                    let g = sim.tools[ti as usize].group as usize;
+                    let pm = &shop.groups[g].pm[k as usize];
+                    let mut r = PyRandom::from_str_seed(&format!("{}/pm/{}/{}/{}", seed, sim.tools[ti as usize].name, k, t as i64));
+                    let m = r.uniform(pm.lo, pm.hi);
+                    sim.down_due(ti, t, SCHEDULED, m);
+                    sim.at(t + every, Ev::Pm(ti, k, every));
+                }
+                Ev::Break(ti) => {
+                    let g = sim.tools[ti as usize].group as usize;
+                    let (mttf, mttr) = shop.groups[g].breakdown.unwrap();
+                    let mut r = PyRandom::from_str_seed(&format!("{}/break/{}/{}", seed, sim.tools[ti as usize].name, t as i64));
+                    let m = r.expovariate(1.0 / mttr);
+                    sim.down_due(ti, t, UNSCHEDULED, m);
+                    let next = r.expovariate(1.0 / mttf);
+                    sim.at(t + next, Ev::Break(ti));
+                }
+                Ev::Wake(g) => sim.dispatch(g, t),
+                Ev::VehEnd(v) => {
+                    sim.fl.as_mut().unwrap().veh[v as usize].at_end = true;
+                    sim.fleet_go(v, t);
+                }
+                Ev::VehTry(v) => sim.fleet_go(v, t),
+                Ev::Hoisted(v) => sim.fleet_hoisted(v, t),
+                Ev::Unpark(l) => sim.unpark(l, t),
+                Ev::Up(ti) => {
+                    sim.tools[ti as usize].down = 0;
+                    sim.set_state(ti, t, STANDBY, "");
+                    if let Some((kind, m)) = sim.tools[ti as usize].pending.pop_front() {
+                        sim.go_down(ti, t, kind, m);
+                    }
+                    let g = sim.tools[ti as usize].group;
+                    sim.dispatch(g, t);
+                }
             }
         }
     }
 
-    let followed_done = sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some());
-    let end = if horizon.is_infinite() || followed_done { sim.now } else { horizon };
-    for tool in &mut sim.tools {
-        let x = end - tool.since;
-        tool.minutes[tool.state as usize] += if x > 0.0 { x } else { 0.0 };
+    /// The run's results, its clock stopped at `horizon` (or where it stopped, without one).
+    fn into_result(self, horizon: f64) -> RunResult {
+        let mut sim = self;
+        let shop = sim.shop;
+        let followed_done = sim.follow_lot.is_some_and(|f| sim.lots[f as usize].done.is_some());
+        let end = if horizon.is_infinite() || followed_done { sim.now } else { horizon };
+        for tool in &mut sim.tools {
+            let x = end - tool.since;
+            tool.minutes[tool.state as usize] += if x > 0.0 { x } else { 0.0 };
+        }
+        let lots = std::mem::take(&mut sim.lots)
+            .into_iter()
+            .map(|l| LotOut {
+                route: shop.routes[l.route as usize].name.clone(),
+                id: l.id,
+                priority: l.priority,
+                size: l.size,
+                release: l.release,
+                done: l.done,
+                wip: l.wip,
+                steps: l.trail.unwrap_or_default(),
+            })
+            .collect();
+        RunResult {
+            lots,
+            states: std::mem::take(&mut sim.states),
+            breaches: std::mem::take(&mut sim.breaches),
+            tools: sim
+                .tools
+                .iter()
+                .map(|t| ToolOut { name: t.name.clone(), group: shop.groups[t.group as usize].name.clone(), minutes: t.minutes })
+                .collect(),
+            groups: shop
+                .groups
+                .iter()
+                .enumerate()
+                .map(|(i, g)| GroupOut { name: g.name.clone(), busy: sim.busy[i], wait: sim.wait[i], visits: sim.visits[i], count: g.count })
+                .collect(),
+            release_log: std::mem::take(&mut sim.release_log),
+            holds: std::mem::take(&mut sim.holds),
+            probes: std::mem::take(&mut sim.probes),
+            finished: sim.done,
+            waiting: sim.n,
+            wait_lot_minutes: sim.area + sim.n as f64 * (end - sim.last),
+            moves: sim.moves,
+            transports: sim.transports,
+            transport_minutes: sim.transport_minutes,
+            until: end,
+            decisions: sim.decisions,
+            trace: std::mem::take(&mut sim.trace),
+            fleet: sim.fl.take().map(|mut f| {
+                for tool in &sim.tools {
+                    if sim.ports > 0 && tool.out >= sim.ports {
+                        f.out.blocked_min += end - tool.full_since;
+                    }
+                }
+                for v in &f.veh {
+                    if v.mode != Mode::Idle {
+                        f.out.busy_min += end - v.busy_since;
+                    }
+                }
+                f.out.open = f.out.asked - f.out.delivered;
+                if f.out.deliver_least.is_infinite() {
+                    f.out.deliver_least = 0.0;
+                }
+                f.out
+            }),
+        }
     }
-    let lots = std::mem::take(&mut sim.lots)
-        .into_iter()
-        .map(|l| LotOut {
-            route: shop.routes[l.route as usize].name.clone(),
-            id: l.id,
-            priority: l.priority,
-            size: l.size,
-            release: l.release,
-            done: l.done,
-            wip: l.wip,
-            steps: l.trail.unwrap_or_default(),
-        })
-        .collect();
-    RunResult {
-        lots,
-        states: std::mem::take(&mut sim.states),
-        breaches: std::mem::take(&mut sim.breaches),
-        tools: sim
-            .tools
-            .iter()
-            .map(|t| ToolOut { name: t.name.clone(), group: shop.groups[t.group as usize].name.clone(), minutes: t.minutes })
-            .collect(),
-        groups: shop
-            .groups
-            .iter()
-            .enumerate()
-            .map(|(i, g)| GroupOut { name: g.name.clone(), busy: sim.busy[i], wait: sim.wait[i], visits: sim.visits[i], count: g.count })
-            .collect(),
-        release_log: std::mem::take(&mut sim.release_log),
-        holds: std::mem::take(&mut sim.holds),
-        probes: std::mem::take(&mut sim.probes),
-        finished: sim.done,
-        waiting: sim.n,
-        wait_lot_minutes: sim.area + sim.n as f64 * (end - sim.last),
-        moves: sim.moves,
-        transports: sim.transports,
-        transport_minutes: sim.transport_minutes,
-        until: end,
-        decisions: sim.decisions,
-        trace: std::mem::take(&mut sim.trace),
-        fleet: sim.fl.take().map(|mut f| {
-            for tool in &sim.tools {
-                if sim.ports > 0 && tool.out >= sim.ports {
-                    f.out.blocked_min += end - tool.full_since;
-                }
+}
+
+fn run_inner<'c>(
+    shop: &Shop,
+    opts: &RunOptions,
+    chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
+    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+    follow: Option<String>,
+) -> RunResult {
+    let horizon = opts.until.unwrap_or(f64::INFINITY);
+    let mut sim = build(shop, opts, chooser, vchooser, follow, None);
+    sim.advance_to(horizon);
+    sim.into_result(horizon)
+}
+
+// ---------------------------------------------------------------------------- runs that can be copied
+
+/// A player a run can copy (docs/LONG-RESCORE.md): a built-in rule, or picks recorded earlier replayed in order, with
+/// an optional forced pick and an optional window (outside it, and at decisions with one lot, today's rule picks and
+/// nothing is counted). Every pick it makes is recorded.
+#[derive(Clone)]
+pub struct Player {
+    base: Option<crate::policy::Rule>,
+    log: Option<std::sync::Arc<Vec<u32>>>,
+    force: Option<(u64, usize)>,
+    window: Option<(f64, f64)>,
+    asked: u64,
+    picks: Vec<u32>,
+}
+
+impl Player {
+    /// A built-in rule (the random rule seeded by `seed`, as `policy::run_with` seeds it).
+    pub fn rule(shop: &Shop, policy: crate::policy::Policy, seed: u64) -> Player {
+        Player { base: Some(crate::policy::Rule::new(shop, policy, seed)), log: None, force: None, window: None, asked: 0, picks: vec![] }
+    }
+
+    /// Picks recorded earlier, replayed in order; past their end, today's rule.
+    pub fn replay(picks: Vec<u32>) -> Player {
+        Player { base: None, log: Some(std::sync::Arc::new(picks)), force: None, window: None, asked: 0, picks: vec![] }
+    }
+
+    /// Force the `at`-th counted pick to candidate `pick`.
+    pub fn force(mut self, at: u64, pick: usize) -> Player {
+        self.force = Some((at, pick));
+        self
+    }
+
+    /// Count and play only inside [from, to]; today's rule elsewhere.
+    pub fn window(mut self, from: f64, to: f64) -> Player {
+        self.window = Some((from, to));
+        self
+    }
+
+    /// Switch to a built-in rule from the next pick on (what was recorded stays).
+    pub fn switch(&mut self, shop: &Shop, policy: crate::policy::Policy, seed: u64) {
+        self.base = Some(crate::policy::Rule::new(shop, policy, seed));
+        self.log = None;
+        self.force = None;
+    }
+
+    pub fn asked(&self) -> u64 {
+        self.asked
+    }
+
+    fn pick(&mut self, shop: &Shop, d: &Decision) -> usize {
+        if let Some((a, b)) = self.window {
+            if d.t < a || d.t > b || d.candidates.len() < 2 {
+                return d.default;
             }
-            for v in &f.veh {
-                if v.mode != Mode::Idle {
-                    f.out.busy_min += end - v.busy_since;
-                }
-            }
-            f.out.open = f.out.asked - f.out.delivered;
-            if f.out.deliver_least.is_infinite() {
-                f.out.deliver_least = 0.0;
-            }
-            f.out
-        }),
+        }
+        let k = self.asked;
+        self.asked += 1;
+        let mut i = match self.force {
+            Some((at, p)) if at == k => p,
+            _ => match self.log.as_ref().filter(|l| (k as usize) < l.len()) {
+                Some(l) => l[k as usize] as usize,
+                None => match self.base.as_mut() {
+                    Some(r) => r.pick(shop, d),
+                    None => d.default,
+                },
+            },
+        };
+        if i >= d.candidates.len() {
+            i = d.default;
+        }
+        self.picks.push(i as u32);
+        i
+    }
+}
+
+/// A run that can be advanced to a time, copied, and finished (docs/LONG-RESCORE.md, regret options B and D). Advanced
+/// to its horizon and finished, it is exactly `run` with the same player.
+#[derive(Clone)]
+pub struct Stepper<'a> {
+    sim: Sim<'a, 'static>,
+    horizon: f64,
+}
+
+impl<'a> Stepper<'a> {
+    pub fn new(shop: &'a Shop, opts: &RunOptions, player: Option<Player>) -> Stepper<'a> {
+        Stepper { sim: build(shop, opts, None, None, None, player), horizon: opts.until.unwrap_or(f64::INFINITY) }
+    }
+
+    /// Run every event up to `until` (never past the horizon).
+    pub fn advance(&mut self, until: f64) {
+        self.sim.advance_to(until.min(self.horizon));
+    }
+
+    pub fn now(&self) -> f64 {
+        self.sim.now
+    }
+
+    /// Lots finished so far, and lot-minutes spent waiting so far.
+    pub fn totals(&self) -> (i64, f64) {
+        (self.sim.done, self.sim.area + self.sim.n as f64 * (self.sim.now - self.sim.last))
+    }
+
+    /// The reward's measure so far: lots finished minus 0.01 per lot-hour waiting.
+    pub fn value(&self) -> f64 {
+        let (f, w) = self.totals();
+        f as f64 - 0.01 * w / 60.0
+    }
+
+    /// The picks the player made so far.
+    pub fn picks(&self) -> &[u32] {
+        self.sim.player.as_ref().map(|p| p.picks.as_slice()).unwrap_or(&[])
+    }
+
+    pub fn player_mut(&mut self) -> Option<&mut Player> {
+        self.sim.player.as_mut()
+    }
+
+    pub fn set_player(&mut self, p: Option<Player>) {
+        self.sim.player = p;
+    }
+
+    /// Advance to the horizon and give the run's results.
+    pub fn finish(mut self) -> RunResult {
+        let h = self.horizon;
+        self.sim.advance_to(h);
+        self.sim.into_result(h)
     }
 }

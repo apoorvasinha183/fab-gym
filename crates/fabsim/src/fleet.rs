@@ -99,6 +99,7 @@ pub(crate) struct Job {
     pub tool: Option<u32>,
 }
 
+#[derive(Clone)]
 pub(crate) struct Veh {
     pub pos: Pos,
     pub mode: Mode,
@@ -114,8 +115,9 @@ pub(crate) struct Veh {
     pub hoist: usize,
 }
 
+#[derive(Clone)]
 pub(crate) struct FleetState {
-    pub track: Track,
+    pub track: std::sync::Arc<Track>,
     pub speed: f64,
     pub headway: f64,
     pub hoist: f64,
@@ -153,7 +155,7 @@ impl FleetState {
             })
             .collect();
         FleetState {
-            track,
+            track: std::sync::Arc::new(track),
             speed,
             headway: gap / speed,
             hoist,
