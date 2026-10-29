@@ -56,6 +56,9 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
    18 of 73 sheets.
 4. **The variant in the film and the game**: the game loads the variant building; the walkthrough gains a shot of the
    copies.
+   Game built 29 Oct: it opens on today's US fab (the same scene, IFC and trace as steps 2 and 3), F switches to the
+   variant, each copy carries a saffron beam and label, G flies to the next (`viz/godot-real/sync.sh` copies both into
+   `data/fabs/`). The walkthrough's shot of the copies is still to do.
 5. **The colleague**: the character, the chat panel, "show me" walking you there, places taken from the layout, the
    tool workflow, the stand-in until the key is in.
 6. **The movie hall**: the room, the screen, Silicon Odyssey then the Robot Construction Crew trailer.
