@@ -14,11 +14,12 @@ const MATERIALS := {
 	"bim_covering_ceiling": preload("res://bim/materials/bim_covering_ceiling.tres"),
 }
 const BY_TYPE := {
-	"IfcWall/SOLIDWALL": "bim_wall", "IfcColumn/COLUMN": "bim_column", "IfcSlab/FLOOR": "bim_slab_floor",
+	"IfcWall/SOLIDWALL": "bim_wall", "IfcWall/PARTITIONING": "bim_wall", "IfcColumn/COLUMN": "bim_column", "IfcSlab/FLOOR": "bim_slab_floor",
 	"IfcSlab/ROOF": "bim_slab_roof", "IfcCovering/FLOORING": "bim_covering_flooring",
 	"IfcCovering/CEILING": "bim_covering_ceiling",
 }
 
+var glb_path := GLB           # the fab's own building when the game shows a US fab (main.gd sets it)
 var elements: Array = []      # {name, cls, type, node, aabb} in GlobalId order
 var colliders: StaticBody3D
 var loaded := false
@@ -27,7 +28,7 @@ var loaded := false
 func _ready() -> void:
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
-	if not FileAccess.file_exists(GLB) or doc.append_from_file(GLB, state) != OK:
+	if not FileAccess.file_exists(glb_path) or doc.append_from_file(glb_path, state) != OK:
 		push_error("no building: run viz/bim/gltf.py, then viz/godot-real/sync.sh")
 		return
 	var root := doc.generate_scene(state)
@@ -81,4 +82,4 @@ func report(every := 17) -> Dictionary:
 		if i % every == 0:
 			var b: AABB = e["aabb"]
 			samples.append([e["name"], [b.position.x, b.position.y, b.position.z], [b.end.x, b.end.y, b.end.z]])
-	return {"nodes": nodes, "colliders": colliders.get_child_count() if colliders else 0, "samples": samples}
+	return {"elements": elements.size(), "nodes": nodes, "colliders": colliders.get_child_count() if colliders else 0, "samples": samples}

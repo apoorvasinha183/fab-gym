@@ -99,7 +99,8 @@ def report():
             (data / "fab-building.glb").write_bytes(GLB.read_bytes())
         subprocess.run([g, "--headless", "--path", str(PROJ), "--import"], timeout=600)
         out = ROOT / "data/layout-real/explore-check.json"
-        subprocess.run([g, "--headless", "--path", str(PROJ), "--", "--check", str(out)], check=True, timeout=600)
+        # the concept campus: the game opens on the US fab by default since docs/NARRATIVE.md, deliverable 4
+        subprocess.run([g, "--headless", "--path", str(PROJ), "--", "--fab", "concept", "--check", str(out)], check=True, timeout=600)
         return json.loads(out.read_text())
     if REPORT.exists():
         return json.loads(REPORT.read_text())

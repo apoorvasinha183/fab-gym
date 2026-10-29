@@ -24,6 +24,7 @@ CLASSES = ["IfcWall", "IfcColumn", "IfcSlab", "IfcCovering"]
 # material name and its plain colour in the file; the viewer and the film put their own materials on by name
 MATERIALS = {
     ("IfcWall", "SOLIDWALL"): ("bim_wall", (0.84, 0.85, 0.87)),
+    ("IfcWall", "PARTITIONING"): ("bim_wall", (0.84, 0.85, 0.87)),
     ("IfcColumn", "COLUMN"): ("bim_column", (0.65, 0.64, 0.62)),
     ("IfcSlab", "FLOOR"): ("bim_slab_floor", (0.65, 0.64, 0.62)),
     ("IfcSlab", "ROOF"): ("bim_slab_roof", (0.60, 0.63, 0.66)),

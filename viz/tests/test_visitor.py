@@ -464,7 +464,7 @@ def godot_report():
     g = os.environ.get("GODOT")
     if g and P is not None:
         subprocess.run(["sh", str(GPROJ / "sync.sh")], cwd=ROOT, check=True)
-        subprocess.run([g, "--headless", "--path", str(GPROJ), "--", "--visitor-check", str(GREPORT)],
+        subprocess.run([g, "--headless", "--path", str(GPROJ), "--", "--fab", "concept", "--visitor-check", str(GREPORT)],
                        check=True, timeout=900)
     return json.loads(GREPORT.read_text()) if GREPORT.exists() else None
 

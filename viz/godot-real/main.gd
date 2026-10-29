@@ -18,7 +18,7 @@ const MODELS := "res://data/models.json"
 const FILTER := 0.35           # filter ceiling depth, assumed (viz/blueprint/model.py, the IFC's ceiling)
 const FILM := "res://data/film.json"
 const BADGE := "Fab Gym · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab"
-const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse\nV visitor: A Walk Through the Fab (V again to leave · Left/Right seek · R restart)"
+const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse\nF today / with copies for prototype orders · G next copy\nV visitor: A Walk Through the Fab (V again to leave · Left/Right seek · R restart)"
 const STATE_WORDS := ["working", "idle", "maintenance (scheduled)", "broken down"]
 const KIND_WORDS := {
 	"scanner": "lithography scanner", "track": "coat and develop track", "metrology": "metrology tool",
@@ -110,6 +110,10 @@ var script_dir := Vector3.ZERO
 var shot := ""
 var shot_at := -1.0
 var visitor = null              # A Walk Through the Fab (res://visitor.gd), when its plan is synced
+var fab := ""                   # which US fab (docs/NARRATIVE.md): "today", "variant", or "" for the concept campus
+var fab_dir := "res://data/"
+var copy_tools: Array = []      # tools of copied groups (names with "@"), marked in the variant
+var copy_at := -1
 
 
 static func w(x: float, y: float, z: float) -> Vector3:
@@ -357,7 +361,27 @@ func make(b: Batch, name: String, shadows := true) -> MeshInstance3D:
 
 # ---------------------------------------------------------------------------- start
 
+func _pick_fab() -> void:
+	## --fab NAME (today, variant, or concept for the first campus), else the one F last switched to, else today's
+	## US fab when synced, else the concept campus
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var fi := args.find("--fab")
+	if fi >= 0:
+		fab = args[fi + 1]
+	elif Engine.has_meta("fab"):
+		fab = Engine.get_meta("fab")
+	elif FileAccess.file_exists("res://data/fabs/today/scene.json"):
+		fab = "today"
+	if fab == "concept":
+		fab = ""
+	if fab != "":
+		fab_dir = "res://data/fabs/%s/" % fab
+		scene_path = fab_dir + "scene.json"
+
+
 func _ready() -> void:
+	if not embedded:
+		_pick_fab()
 	var f := FileAccess.open(scene_path, FileAccess.READ)
 	var g := FileAccess.open(MODELS, FileAccess.READ)
 	if f == null or g == null:
@@ -366,8 +390,9 @@ func _ready() -> void:
 		return
 	S = JSON.parse_string(f.get_as_text())
 	M = JSON.parse_string(g.get_as_text())
-	if FileAccess.file_exists(FILM):
-		F = JSON.parse_string(FileAccess.open(FILM, FileAccess.READ).get_as_text())
+	var film := fab_dir + "film.json" if fab != "" else FILM
+	if FileAccess.file_exists(film):
+		F = JSON.parse_string(FileAccess.open(film, FileAccess.READ).get_as_text())
 	var floors := {}
 	for fl in S["floors"]:
 		floors[fl["name"]] = fl
@@ -393,6 +418,7 @@ func _ready() -> void:
 	_fabs()
 	_rails()
 	_tools()
+	_copies()
 	_lots()
 	_player()
 	if embedded:
@@ -401,7 +427,7 @@ func _ready() -> void:
 		view(1)
 		return
 	_hud()
-	if FileAccess.file_exists("res://data/visitor.json"):
+	if FileAccess.file_exists(fab_dir + "visitor.json"):
 		visitor = load("res://visitor.gd").new()
 		add_child(visitor)
 		if not visitor.setup(self):
@@ -737,9 +763,9 @@ func _campus() -> void:
 
 func _visitor_clear() -> Array:
 	## the visitor's own car and the way he walks out of the car park stay free of parked cars
-	if not FileAccess.file_exists("res://data/visitor.json"):
+	if not FileAccess.file_exists(fab_dir + "visitor.json"):
 		return []
-	var v: Dictionary = JSON.parse_string(FileAccess.open("res://data/visitor.json", FileAccess.READ).get_as_text())
+	var v: Dictionary = JSON.parse_string(FileAccess.open(fab_dir + "visitor.json", FileAccess.READ).get_as_text())
 	var c: Dictionary = v["car"]
 	var p: Array = v["path"][0]
 	return [[c["x"] - 2.0, c["y"] - 3.0, c["x"] + 2.0, c["y"] + 3.0], [p[1] - 1.6, p[2] - 4.0, p[1] + 1.6, p[2] + 4.0]]
@@ -764,6 +790,8 @@ func _fabs() -> void:
 	# The structure (walls, columns, slabs, raised floor, filter ceiling) and its colliders come from the IFC
 	# model; this adds the dressing BIM does not hold, placed to fit it.
 	bim = load("res://bim/building.tscn").instantiate()
+	if fab != "":
+		bim.glb_path = fab_dir + "fab-building.glb"
 	add_child(bim)
 	cut_nodes.append_array(bim.cut_away())
 	var walls := StaticBody3D.new()
@@ -1252,6 +1280,8 @@ func view(n: int) -> void:
 			walking = false
 			following = hero >= 0
 			cam.fov = 55.0
+		5:
+			_next_copy()
 		4:
 			walking = false
 			_set_cut(true)
@@ -1438,8 +1468,8 @@ func _process(delta: float) -> void:
 	if touring:
 		return
 	var mode := "Walking" if walking else ("Following the film's lot" if following else "Flying")
-	hud.text = "%s · simulated day %d, %02d:%02d  ×%d%s\nTools working %d · idle %d · maintenance %d · broken down %d" % [
-		mode, day + 1, hm / 60, hm % 60, int(round(speed * 60.0)), "  (paused)" if paused else "",
+	hud.text = "%s%s · simulated day %d, %02d:%02d  ×%d%s\nTools working %d · idle %d · maintenance %d · broken down %d" % [
+		_fab_words(), mode, day + 1, hm / 60, hm % 60, int(round(speed * 60.0)), "  (paused)" if paused else "",
 		counts[0], counts[1], counts[2], counts[3]]
 
 
@@ -1493,6 +1523,10 @@ func _unhandled_input(e: InputEvent) -> void:
 				speed = maxf(speed / 2.0, 1.0 / 16.0)
 			KEY_C:
 				_set_cut(not cut)
+			KEY_F:
+				_switch_fab()
+			KEY_G:
+				_next_copy()
 			KEY_H:
 				help.visible = not help.visible
 			KEY_1, KEY_2, KEY_3, KEY_4:
@@ -1618,6 +1652,11 @@ func _check_start() -> void:
 				break
 	check["lot_samples"] = samples
 	check["badge"] = BADGE
+	check["fab"] = fab
+	var cn: Array = []
+	for i in copy_tools:
+		cn.append(S["groups"][S["tools"][i]["g"]]["name"])
+	check["copies"] = cn
 	var br: Dictionary = bim.report()
 	_set_cut(true)
 	var on := bim_cut_z
@@ -1661,3 +1700,71 @@ func _check_step(delta: float) -> void:
 			print("check written: ", check_out)
 			check_phase = 3
 			get_tree().quit()
+
+
+# ---------------------------------------------------------------------------- the variant (docs/NARRATIVE.md)
+
+func _fab_words() -> String:
+	match fab:
+		"today":
+			return "Today's fab · "
+		"variant":
+			return "With %d copies for prototype orders (saffron) · " % copy_tools.size()
+	return ""
+
+
+func _copies() -> void:
+	## A copied group's tools (the variant names them G@B) get a saffron beam and a label over them.
+	for i in S["tools"].size():
+		var tl: Dictionary = S["tools"][i]
+		var gname: String = S["groups"][tl["g"]]["name"]
+		if not gname.contains("@"):
+			continue
+		copy_tools.append(i)
+		var c := w((tl["x0"] + tl["x1"]) / 2.0, (tl["y0"] + tl["y1"]) / 2.0, CZ)
+		var beam := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.35
+		cyl.bottom_radius = 0.35
+		cyl.height = CEIL - CZ - 0.4
+		beam.mesh = cyl
+		beam.material_override = pm("e8892b", 0.0, 0.4, 2.5)
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam.position = c + Vector3(0, cyl.height / 2.0 + 0.2, 0)
+		beam.name = "copy " + gname
+		add_child(beam)
+		var lab := Label3D.new()
+		lab.text = "New: %s\ncopy for prototype orders" % gname
+		lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lab.font_size = 64
+		lab.pixel_size = 0.01
+		lab.modulate = Color("ffb366")
+		lab.outline_modulate = Color("1d2430")
+		lab.outline_size = 18
+		lab.no_depth_test = true
+		lab.position = c + Vector3(0, CEIL - CZ - 0.2, 0)
+		add_child(lab)
+
+
+func _switch_fab() -> void:
+	if fab == "":
+		return
+	var other := "variant" if fab == "today" else "today"
+	if not FileAccess.file_exists("res://data/fabs/%s/scene.json" % other):
+		return
+	Engine.set_meta("fab", other)
+	get_tree().reload_current_scene()
+
+
+func _next_copy() -> void:
+	if copy_tools.is_empty():
+		return
+	copy_at = (copy_at + 1) % copy_tools.size()
+	var tl: Dictionary = S["tools"][copy_tools[copy_at]]
+	var c := w((tl["x0"] + tl["x1"]) / 2.0, (tl["y0"] + tl["y1"]) / 2.0, CZ + 1.5)
+	_set_cut(true)
+	walking = false
+	following = false
+	player.global_position = c + Vector3(-9.0, 12.0, 9.0)
+	_look(c)
+	cam.fov = 55.0

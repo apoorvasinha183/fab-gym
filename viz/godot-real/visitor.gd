@@ -52,7 +52,7 @@ const RING_COLOUR := {"breakdown": "ff4d4d", "maintenance": "ffb020", "queue": "
 
 func setup(m: Node3D) -> bool:
 	main = m
-	var f := FileAccess.open(PLAN, FileAccess.READ)
+	var f := FileAccess.open(m.fab_dir + "visitor.json" if m.fab != "" else PLAN, FileAccess.READ)
 	if f == null:
 		return false
 	P = JSON.parse_string(f.get_as_text())
