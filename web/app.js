@@ -633,6 +633,7 @@ function hazard(X, Y, w, h) {
 function draw(clear = true) {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (UI.lens === "rails") { drawRails(); return; }
   if (clear) drawSky();
   if (!G || !P) return;
   updateTilt();
@@ -834,6 +835,9 @@ let lensShown = "";
 function lensNote() {
   let txt = "";
   $("flow-ctl").hidden = UI.lens !== "flows";
+  $("rails-ctl").hidden = UI.lens !== "rails";
+  document.body.classList.toggle("rails-on", UI.lens === "rails");
+  if (UI.lens === "rails" && !$("rails-note").textContent) $("rails-note").textContent = FabRails.NOTE;
   // the prototype view needs prototype lots in the fab
   let np = 0;
   for (const tr of cur.active) if (tr[6]) np++;
@@ -841,7 +845,8 @@ function lensNote() {
   const pb = document.querySelector('.lenses [data-lens="proto"]');
   const off = np === 0 && UI.lens !== "proto";
   if (pb.disabled !== off) { pb.disabled = off; pb.title = off ? "No prototype lots in this run. Ask a question about prototypes, then show an answer on the floor." : ""; }
-  if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
+  if (UI.lens === "rails") txt = railsNote();
+  else if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
   else if (UI.lens === "flows") txt = flowNote();
   else if (UI.lens === "proto") {
     let n = 0;
@@ -917,6 +922,11 @@ function frame(now) {
   stepFly(now);
   if (SPLIT.on) { splitFrame(dt); requestAnimationFrame(frame); return; }
   if (UI.lens === "flows" && !FLOW.paused) FLOW.secs += dt;
+  if (UI.lens === "rails" && RAILS.data && !RAILS.paused) {
+    const f = RAILS.data.fleets[RAILS.fi];
+    RAILS.t += dt * RAILS.rate;
+    if (RAILS.t > f.to) RAILS.t = f.from;
+  }
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
     if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
@@ -966,10 +976,17 @@ function showTip(h) {
 }
 
 function setupInput() {
-  let drag = null;
-  cv.addEventListener("mousedown", e => { splitPick(e.clientX); const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y, scene: SPLIT.active }; cv.classList.add("drag"); });
-  addEventListener("mouseup", () => { drag = null; cv.classList.remove("drag"); });
+  let drag = null, railsDrag = null;
+  cv.addEventListener("mousedown", e => { if (UI.lens === "rails") { railsDrag = { x: e.clientX, y: e.clientY }; cv.classList.add("drag"); return; } splitPick(e.clientX); const [ux, uy] = untilt(e.clientX, e.clientY); drag = { x: ux, y: uy, vx: view.x, vy: view.y, scene: SPLIT.active }; cv.classList.add("drag"); });
+  addEventListener("mouseup", () => { drag = null; railsDrag = null; cv.classList.remove("drag"); });
   addEventListener("mousemove", e => {
+    if (railsDrag && RAILS.view) {
+      RAILS.view.x -= (e.clientX - railsDrag.x) / RAILS.view.s;
+      RAILS.view.y += (e.clientY - railsDrag.y) / RAILS.view.s;
+      railsDrag = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (UI.lens === "rails") return;
     if (drag) {
       if (SPLIT.on) useScene(drag.scene);
       const [ux, uy] = untilt(e.clientX, e.clientY);
@@ -987,6 +1004,7 @@ function setupInput() {
   cv.addEventListener("mouseleave", () => { hover = null; $("tip").hidden = true; });
   cv.addEventListener("wheel", e => {
     e.preventDefault();
+    if (UI.lens === "rails") { if (RAILS.view) FabRails.zoom(RAILS.view, innerWidth, innerHeight, e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); return; }
     splitPick(e.clientX);
     const k = Math.exp(-e.deltaY * 0.0015);
     const [ux, uy] = untilt(e.clientX, e.clientY);
@@ -1782,10 +1800,62 @@ async function chromeSetup() {
   document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
     UI.lens = b.dataset.lens;
     FLOW.secs = 0;
+    if (UI.lens === "rails") railsLoad();
     document.querySelectorAll(".lenses button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
   }));
   document.querySelectorAll("#num-metric button").forEach(b => (b.onclick = () => { UI.metric = b.dataset.m; drawNumbers(); }));
   document.querySelectorAll("#num-share button").forEach(b => (b.onclick = () => { UI.share = +b.dataset.s; drawNumbers(); }));
+}
+
+// The Rails view (docs/FLEET.md): today's US building from above, on the simulator's own track (the rails the plans,
+// the BIM and the game draw), with an hour of the fleet replayed from the simulator's trace (web/data/fleet.json,
+// written by build.sh from `fabsim fleet-trace`). Drag and scroll move this view; the floor keeps its own.
+const RAILS = { data: null, loading: false, failed: false, fi: 0, t: 0, rate: 4, paused: false, view: null, now: null };
+
+async function railsLoad() {
+  if (RAILS.data || RAILS.loading) return;
+  RAILS.loading = true;
+  try {
+    RAILS.data = FabRails.prep(await fetch("data/fleet.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))));
+  } catch {
+    RAILS.failed = true;
+    RAILS.loading = false;
+    return;
+  }
+  RAILS.fi = RAILS.data.fleets.length - 1;
+  RAILS.t = RAILS.data.fleets[RAILS.fi].from;
+  // fit the buildings into the floor left free by the panels: the key at the left, the tabs at the right, the bars on top
+  const L = 360, Rt = innerWidth - 110, T = 215, B = innerHeight - 24;
+  RAILS.view = FabRails.fit(RAILS.data, Rt - L, B - T);
+  RAILS.view.x -= ((L + Rt) / 2 - innerWidth / 2) / RAILS.view.s;
+  RAILS.view.y += ((T + B) / 2 - innerHeight / 2) / RAILS.view.s;
+  const seg = $("rails-fleet");
+  seg.innerHTML = "";
+  RAILS.data.fleets.forEach((f, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = `${f.vehicles} vehicles`;
+    b.classList.toggle("on", i === RAILS.fi);
+    b.onclick = () => { RAILS.fi = i; seg.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i)); };
+    seg.appendChild(b);
+  });
+  $("rails-play").onclick = () => { RAILS.paused = !RAILS.paused; $("rails-play").textContent = RAILS.paused ? "Play" : "Pause"; };
+  $("rails-restart").onclick = () => { RAILS.t = RAILS.data.fleets[RAILS.fi].from; };
+  RAILS.loading = false;
+}
+
+function drawRails() {
+  if (!RAILS.data) { drawSky(); return; }
+  RAILS.now = FabRails.draw(ctx, innerWidth, innerHeight, RAILS.view, RAILS.data, RAILS.fi, RAILS.t);
+  const m = Math.floor(RAILS.t) % 1440;
+  $("rails-clock").textContent = `Simulated day ${Math.floor(RAILS.t / 1440) + 1}, ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+function railsNote() {
+  if (RAILS.failed) return "The fleet's trace is not in this copy of the page. Run web/build.sh after fabsim fleet-trace.";
+  if (!RAILS.data || !RAILS.now) return "Loading the rails…";
+  const c = RAILS.now.counts;
+  return `The simulator's own track and its vehicles. Now: ${c.loaded} carrying a lot, ${c.empty} fetching, ${c.hoist} hoisting, ${c.held} held up, ${c.idle} parked.`;
 }
 
 // The Flows view: one wafer's whole route replayed on the track. A lot runs from hall to hall along the spine with

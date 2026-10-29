@@ -122,3 +122,7 @@ replay the fleet.
   half a centimetre, so its rounding now snaps both sides the same way. The no-passing and trace tests, and
   `fabsim fleet-trace`, build the track from the shop as the engine does. The spurs and the single centre loop
   remain only for shops without bay rails.
+- 29 Oct: the floor page gains a Rails lens (tests first, `web/tests/rails.test.mjs`): today's US building from
+  above on the simulator's own track, with an hour of 90 or 160 vehicles from `fabsim fleet-trace`
+  (`web/rails.js`; `web/build.sh` writes `web/data/fleet.json`). `web/tests/cleanup.test.mjs` test 6 now expects
+  five lenses.

@@ -26,6 +26,7 @@ def main():
     ap.add_argument("--scene", default=str(ROOT / "data/layout-real-dd/scene-optimised.json"))
     ap.add_argument("--trace", action="append")
     ap.add_argument("--out", default=str(ROOT / "data/layout-real-dd/fleet-page/index.html"))
+    ap.add_argument("--json", default=None, help="write the data only, for the floor page's Rails lens")
     a = ap.parse_args()
     traces = a.trace or [str(ROOT / "data/layout-real-dd/fleet-90.json"), str(ROOT / "data/layout-real-dd/fleet-160.json")]
     s = json.loads(Path(a.scene).read_text())
@@ -44,6 +45,10 @@ def main():
         assert j["nodes"] == track["nodes"] and j["edges"] == track["edges"], "the traces must share one track"
         fleets.append({"vehicles": j["vehicles"], "from": j["from"], "to": j["to"], "entries": j["entries"], "hoists": j["hoists"]})
     data = {"what": json.loads(Path(traces[0]).read_text())["what"], "plan": plan, "track": track, "fleets": fleets}
+    if a.json:
+        Path(a.json).write_text(json.dumps(data, separators=(",", ":")))
+        print(f"wrote {a.json}: fleets {[f['vehicles'] for f in fleets]}")
+        return
     html = (Path(__file__).parent / "template.html").read_text().replace("{{DATA}}", json.dumps(data, separators=(",", ":")))
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
