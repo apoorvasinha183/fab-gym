@@ -263,12 +263,12 @@
   function policyWord(k) { return POLICY_NAMES[k] || k; }
   function floorWord(k) { return FLOOR_NAMES[k] || k; }
   // a scenario candidate named by what it changes: [[kind, value], ...]
-  const RULE_NAMES = { today: "Today's rule", fifo: "First come, first served", spt: "Shortest processing first", cr: "Critical ratio" };
+  const RULE_NAMES = { today: "Today's rule", fifo: "First come, first served", spt: "Quickest job first", cr: "Critical ratio" };
   const POLICY_KEYS = { today: "today's order", bfirst: "prototypes first", cap: "capped at the door", reserve: "a tool kept for prototypes", qualify: "prototypes on half the tools" };
   const FLOOR_KEYS = { share: "the shared floor", wing: "a prototype wing", copies: "copies in the halls" };
   function candidateName(changes) {
     const parts = changes.map(([k, v]) => k === "floor" ? FLOOR_KEYS[v] || v : k === "policy" ? POLICY_KEYS[v] || v : k === "rule" ? (RULE_NAMES[v] || v).toLowerCase()
-      : k === "cap" ? `a WIP cap of ${Number(v).toLocaleString("en-US")} lots` : k === "spare" ? `more tools in ${v}` : `${k} ${v}`);
+      : k === "cap" ? `a cap of ${Number(v).toLocaleString("en-US")} lots inside` : k === "spare" ? `more tools in ${v}` : `${k} ${v}`);
     const t = parts.join(", ");
     return t ? t[0].toUpperCase() + t.slice(1) : "No change";
   }

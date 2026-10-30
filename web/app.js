@@ -1092,10 +1092,10 @@ function describe(o) {
   const parts = [];
   if (o.rule !== 0) parts.push($("rule").selectedOptions[0].textContent.toLowerCase());
   if (o.downGroup >= 0 && o.downHours > 0) parts.push(`${$("down-group").selectedOptions[0].textContent} down from hour ${o.downAt} for ${o.downHours} h`);
-  const names = { breakdowns: "breakdowns", repair: "repair time", demand: "demand", hot: "hot lots", rework: "rework" };
+  const names = { breakdowns: "breakdowns", repair: "repair time", demand: "demand", hot: "urgent lots", rework: "rework" };
   for (const k of Object.keys(names)) if (o.dials[k] !== 1) parts.push(`${names[k]} ×${o.dials[k]}`);
-  if (o.dials.defects) parts.push(`defect holds ×${o.dials.defects}`);
-  if (o.dials.cap) parts.push(`WIP cap ${o.dials.cap.toLocaleString()} lots`);
+  if (o.dials.defects) parts.push(`quality holds ×${o.dials.defects}`);
+  if (o.dials.cap) parts.push(`a cap of ${o.dials.cap.toLocaleString()} lots inside`);
   return parts.join(", ");
 }
 
@@ -1165,14 +1165,14 @@ function renderCompare(o, base, chg, done, total) {
   }).join("");
   $("cmp-note").textContent = done < total
     ? `${done} of ${total} runs done…`
-    : `Simulated from the SMT2020 testbed with seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}. Each run is paired with today's fab on the same seed, and each range is a 95% interval on its own. Treat this as a first look: a claim is made only after one more check on fresh seeds. What the change would do in a real fab is unknown.`;
+    : `We ran your change and today's fab on the same ${COMPARE_SEEDS.length} random days (numbers ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}), so luck is shared. Each range is where the true difference lies, 95% of the time. Treat this as a first look, to be checked again on fresh days. A real fab may behave differently.`;
 }
 
 let compareToken = 0;
 async function compare(o) {
   const token = ++compareToken;
   if (isToday(o)) {
-    $("cmp-what").textContent = "This is today's fab. Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.";
+    $("cmp-what").textContent = "This is today's fab. Change something above, then run it to compare.";
     $("cmp-rows").innerHTML = "";
     $("cmp-note").textContent = "";
     showTab("change");
@@ -1222,7 +1222,7 @@ async function loadLong() {
   const ks = [...new Set(L.cells.map(c => c.k))];
   const caps = [...new Set(L.cells.map(c => c.cap))];
   const verdict = c => (/better/.test(c.verdict) ? "better" : /worse/.test(c.verdict) ? "worse" : "unclear");
-  $("long-lead").textContent = `How many wafers come out a day with a cap on lots in the fab (WIP cap), compared with no cap. Measured from day ${L.warmup} to day ${L.days} of each run, with ${L.seeds.length} paired seeds in every cell.`;
+  $("long-lead").textContent = `How many wafers come out each day when we cap the number of lots inside the fab, compared with no cap. We measured days ${L.warmup} to ${L.days} of each run, on the same ${L.seeds.length} random histories for every cell.`;
   let g = `<div class="h">break­downs</div>` + caps.map(c => `<div class="h">cap ${c.toLocaleString()}</div>`).join("");
   for (const k of ks) {
     g += `<div class="r">×${k}</div>`;
@@ -1241,13 +1241,13 @@ async function loadLong() {
     const worst = ks.map(k => cell("wafers_per_day", k, cap)).find(c => verdict(c) === "worse");
     if (verdict(calm) !== "worse" && worst) {
       const ctc = cell("cycle_days", ks[0], cap);
-      lines.push(`In today's fab, a cap of <b>${cap.toLocaleString()} lots</b> costs no wafers (${signed(calm.mean)} a day, 95%: ${signed(calm.lo)} to ${signed(calm.hi)}) and cuts cycle time by ${Math.abs(ctc.mean).toFixed(0)} days. When breakdowns are ×${worst.k}, the same cap costs <b>${Math.abs(worst.mean).toFixed(0)} wafers a day</b> (95%: ${Math.abs(worst.hi).toFixed(0)} to ${Math.abs(worst.lo).toFixed(0)}).`);
+      lines.push(`In today's fab, a cap of <b>${cap.toLocaleString()} lots</b> costs no wafers (${signed(calm.mean)} a day, range ${signed(calm.lo)} to ${signed(calm.hi)}), and each wafer gets through ${Math.abs(ctc.mean).toFixed(0)} days sooner. When machines break ${worst.k} times as often, the same cap costs <b>${Math.abs(worst.mean).toFixed(0)} wafers a day</b> (range ${Math.abs(worst.hi).toFixed(0)} to ${Math.abs(worst.lo).toFixed(0)}).`);
     }
   }
   const gains = caps.filter(cap => verdict(cell("wafers_per_day", ks[0], cap)) === "better");
-  if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model. We have not yet traced why.`);
+  if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots get more wafers out in this simulation. We have not found out why yet.`);
   $("long-finding").innerHTML = lines.join("<br><br>");
-  $("long-note").textContent = `Each cell shows wafers out a day with the cap minus without it, and the change in cycle time in days below. Green is better, red is worse and grey is no clear effect. The 95% intervals hold for all ${L.cells.length / 3} cells at once (Bonferroni). These runs were computed ahead of time in ${Math.round(L.seconds)} s. The page's own runs last at most 14 days, too short for a wafer to cross the fab. From the SMT2020 testbed. What a cap would do in a real fab is unknown.`;
+  $("long-note").textContent = `Each cell shows the change in wafers a day with the cap, and below it the change in how many days a wafer takes. Green is better, red is worse and grey is too close to call. The ranges hold for all ${L.cells.length / 3} cells together, 95% of the time. We ran these ahead of time (${Math.round(L.seconds)} s), because a wafer needs more than the page's 14-day limit to cross the fab. A real fab may behave differently.`;
 }
 
 function rerun() {
@@ -1258,7 +1258,7 @@ function rerun() {
     try { run = simulate(opts); } catch (err) { $("runnote").textContent = "Could not run: " + err.message; return; }
     load(run);
     const moves = run.j.moves.toLocaleString();
-    $("runnote").textContent = `Seed ${opts.seed}: ${opts.days} day${opts.days > 1 ? "s" : ""}, ${moves} moves, ${run.j.decisions.toLocaleString()} dispatch decisions, simulated in ${run.secs.toFixed(2)} s here in your browser.`;
+    $("runnote").textContent = `Ran ${opts.days} day${opts.days > 1 ? "s" : ""} (random day ${opts.seed}): ${moves} deliveries and ${run.j.decisions.toLocaleString()} choices of what to run next, in ${run.secs.toFixed(2)} s here in your browser.`;
     compare(opts);
   }, 20);
 }
@@ -1489,7 +1489,7 @@ async function main() {
   setFloor(first);
   await loadLong();
   fit();
-  $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, right here in your browser.`;
+  $("runnote").textContent = `Ran 3 days of the fab (${first.j.moves.toLocaleString()} deliveries) in ${first.secs.toFixed(2)} s, right here in your browser.`;
   askSetup();
   applyHash();
 }
@@ -1545,8 +1545,8 @@ async function askSetup() {
   }
   ASK.helper = true;
   $("ask-model").textContent = st.model_connected
-    ? `Questions go to ${st.model}. It turns your question into a scenario, and the simulator runs it.`
-    : "Answers come from worked examples until a model is connected. You can also write a scenario under Advanced.";
+    ? "Meta's Muse Spark model turns your question into an experiment. The simulator runs it on the full fab and shows you what changed."
+    : "Until a model is connected, answers come from worked examples. You can also write an experiment yourself under Advanced.";
   $("ask-examples").innerHTML = st.examples.map((e, i) => `<button type="button" data-i="${i}">${esc(e.question)}</button>`).join("");
   $("ask-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(st.examples[+b.dataset.i].question)));
   if (!$("ask-text").value) $("ask-text").value = "fabgym-scenario 1\nquestion\tPrototype orders double. Their own wing?\nfamily\tshare\t2\tsaid\ncandidate\town-wing\tfloor\twing\n";
@@ -1692,7 +1692,7 @@ async function backToToday() {
   const run = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
   setFloor(run);
   fit();
-  $("runnote").textContent = `Today's fab: simulated 3 days (${run.j.moves.toLocaleString()} moves) in ${run.secs.toFixed(2)} s, right here in your browser.`;
+  $("runnote").textContent = `Today's fab: ran 3 days (${run.j.moves.toLocaleString()} deliveries) in ${run.secs.toFixed(2)} s, right here in your browser.`;
 }
 
 
@@ -2586,10 +2586,10 @@ function drawCapital(d, share) {
   if (ck) {
     const name = `${FLOOR_WORDS[ck.strategy].toLowerCase()} with ${POLICY_WORDS[ck.policy]}`;
     const item = k => (d.pl.sheet.find(x => x.key === k) || {}).label || k;
-    const moves = ck.items.flatMap(it => [["low", it.low], ["high", it.high]].filter(([, v]) => v.verdict !== ck.verdict).map(([end, v]) => `${item(it.key)} at its ${end} value (${v.verdict})`));
-    check = `<p class="note">The best change here is the ${esc(name)}, ${esc(ck.verdict)} on operating profit. ` +
-      (moves.length ? `Its verdict changes with ${esc(moves.join("; "))}. Every other price can move to its low or high value and the verdict holds.`
-        : "Its verdict holds when any one price moves to its low or high value.") + "</p>";
+    const moves = ck.items.flatMap(it => [["low", it.low], ["high", it.high]].filter(([, v]) => v.verdict !== ck.verdict).map(([end]) => `the ${item(it.key).replace(/^./, (c) => c.toLowerCase())} is at the ${end} end`));
+    check = `<p class="note">The best change here is the ${esc(name)} (${esc(ck.verdict)} on profit). ` +
+      (moves.length ? `The answer changes if ${esc(moves.join(", or "))}. Any other single price can move to either end of its range and the answer holds.`
+        : "The answer holds when any single price moves to either end of its range.") + "</p>";
   }
   const sheet = FabUI.priceSheetRows(d.pl).map(r => `<tr><td>${esc(r.label)}</td><td class="v">${esc(r.central)}</td><td class="v">${esc(r.range)}</td><td>${r.note}</td></tr>`).join("");
   el.innerHTML = `<div class="cg-head"><h4>What each change buys at ×${share} prototype orders</h4>` +

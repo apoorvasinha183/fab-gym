@@ -145,7 +145,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <div class="ch-ico" aria-hidden="true">🏁</div>
     <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
     <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span></div><div class="goaltext" id="goaltext">Running the simulator…</div>
-      <button class="btn" id="showfix">Stuck? Show one fix</button></div>
+      <button class="btn" id="showfix">Stuck? Show me a fix</button></div>
     <div class="score" id="score" aria-label="Score of the last run"></div>
   </section>
 
@@ -155,22 +155,22 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="maptools">
         <span class="mode" role="group" aria-label="Mode"><button class="tab" id="modeRun" aria-pressed="true">▶ Run</button><button class="tab" id="modeBuild" aria-pressed="false">✎ Build</button></span>
         <button class="btn" id="play" aria-label="Pause">❚❚</button>
-        <select id="speed" aria-label="Replay speed"><option value="15">15× slow motion</option><option value="60" selected>60×</option><option value="240">240×</option></select>
+        <select id="speed" aria-label="Playback speed"><option value="15">15× slow motion</option><option value="60" selected>60×</option><option value="240">240×</option></select>
         <span class="clock" id="clock">Day 1 · 00:00:00</span>
         <button class="btn go" id="again" hidden>Run again with my changes</button>
-        <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 testbed</option></select></span>
+        <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">The small fab</option><option value="smt2020">The full fab (SMT2020)</option></select></span>
       </div>
       <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor, tilted, with vehicles moving as the simulator ran them"></canvas><div class="hover" id="hover" hidden></div></div>
       <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
-      <div class="status" id="status">Hover a machine or a vehicle to read it.</div>
+      <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
     </div>
     <aside class="side">
       <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
       <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
-      <div class="card"><h4><span>Lots at this hour</span></h4><div class="lots" id="lots"></div></div>
+      <div class="card"><h4><span>The lots right now</span></h4><div class="lots" id="lots"></div></div>
     </aside>
   </section>
-  <p class="note">The motion is an exact replay of the simulator's run of this layout: every vehicle where the simulator had it, every machine's mood and queue from the same run, on one seed. A tile is 3 m. Prices are assumed for the gym. On a teaching fab of our own or one built from the SMT2020 testbed (a published set of a fab's tool groups, routes and times); never a real fab.</p>
+  <p class="note">What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p>
 </div>
 <script src="look.js"></script>
 <script src="editor-core.js"></script>

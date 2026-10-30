@@ -6,12 +6,19 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const NOTE = "From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's data is used.";
+const NOTE = "Run on a fab built from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times. No real company's data is used.";
+const WHO = { ppo: "the trained AI", "e2-best": "the evolved rule", today: "today's rule" };
 const FLOORS = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "D3 copies": "Copies in the halls" };
 const POLICIES = { "P0 today": "today's order", "P1 family B first": "prototypes first", "P2 family cap": "prototypes capped at the door",
   "P3 reservation": "a tool kept for prototypes", "P4 qualification": "prototypes on half the tools" };
-const MEASURES = { reward: "Reward (lots out less waiting)", moves: "Moves", lots_finished: "Lots finished", wait_lot_hours: "Waiting, lot-hours",
-  breaches: "Queue-time limits broken" };
+const MEASURES = { reward: "Score (lots out, minus time spent waiting)", moves: "Deliveries", lots_finished: "Lots finished", wait_lot_hours: "Hours lots spent waiting",
+  breaches: "Time limits missed between steps" };
+
+/** A sweep's verdict across breakdown rates in everyday words. */
+function plainVerdict(v) {
+  return v.replace(/ (on|from) the SMT2020 (model|testbed)/g, "").replace(/same verdict at every rate: (\w+)/, "$1 at every breakdown rate")
+    .replace(/at some rates/g, "at some breakdown rates").replace(/no clear effect at any rate/, "too close to call at every breakdown rate").replace(/no clear effect/g, "too close to call");
+}
 
 function n(x, d = 0) { return x === null || x === undefined || !isFinite(x) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function sg(x, d = 0) { return x === null || x === undefined || !isFinite(x) ? "—" : (x > 0 ? "+" : x < 0 ? "−" : "") + n(Math.abs(x), d); }
@@ -59,9 +66,9 @@ function twoFamilies(root) {
     .concat(pl ? ["results/two-families/pl.json", "results/two-families/pl-runs.tsv", "docs/MONEY-PL.md"] : []);
   return {
     id: "two-families", kind: "sweep", when: when(root, pl ? "results/two-families/pl.json" : "results/two-families/summary.json"),
-    title: "Two families: which floor and which policy as prototype orders grow",
-    question: "As prototype orders grow, which floor layout and which policy make the most money, and where does the answer change?",
-    settings, headline: best ? `Best change in operating profit at each share: ${best}.` : "See the cells.",
+    title: "Prototypes and the main product: which layout and rule pay best as prototype orders grow",
+    question: "As prototype orders grow, which floor layout and which rule for prototypes make the most money, and when does the answer change?",
+    settings, headline: best ? `The most profitable change at each level of prototype orders: ${best}.` : "Open the table for each change.",
     numbers: { columns: ["Prototype orders", "Floor", "Policy", pl ? "Change in operating profit a day" : "Change in money a day", "95% interval", "Capital", "Pays back in", "Verdict"], rows },
     files, note: `${NOTE} Every price is assumed.`,
   };
@@ -81,8 +88,8 @@ function evolve(root) {
   const gens = read(root, "results/evolve-x4/history.tsv").trim().split("\n").length - 1;
   return {
     id: "evolve-x4", kind: "search", when: when(root, "results/evolve-x4/claim.md"),
-    title: "E2: evolving a floor and a dispatch rule together, prototype orders ×4",
-    question: "Can an evolutionary search (ant colony for the floor, genetic programming for the rule) beat the written-down policies?",
+    title: "The evolved rule: a search that grows a layout and a rule together, at four times the prototype orders",
+    question: "Can a search that breeds layouts and rules beat the rules people wrote by hand?",
     settings: [
       ["Prototype orders", "×4"], ["Population", m(/population (\d+)/)], ["Generations", m(/(\d+) generations/)],
       ["Training seeds", m(/training seeds ([\d.]+)/)], ["Held-out seeds", m(/held-out seeds \(([\d.]+)\)/)],
@@ -90,7 +97,7 @@ function evolve(root) {
       ["Money", "money a day at the central prices, in wafers of family-A margin (the units before dollars)"],
       ["Command", "fabsim evolve"],
     ],
-    headline: "The three evolved pairs lose to the yardstick and to prototypes first; their rules collapsed to a constant, so today's rule decides.",
+    headline: "All three evolved pairs lost to today's setup and to putting prototypes first. Their rules ended up ignoring the lots, so today's rule made every choice.",
     numbers: { columns: head, rows }, files: ["results/evolve-x4/claim.md", "results/evolve-x4/history.tsv", "docs/EVOLVE.md"],
     note: `${NOTE} Every price is assumed.`,
   };
@@ -101,12 +108,12 @@ function lean(root) {
   const rows = s.cells.map((c) => [c.metric.replace(/_/g, " "), `×${c.k}`, n(c.cap), n(c.base_mean, 1), n(c.cap_mean, 1), sg(c.mean, 1), `${sg(c.lo, 1)} to ${sg(c.hi, 1)}`, c.verdict.replace(/ (on|from) the SMT2020 (model|testbed)/, "")]);
   return {
     id: "lean-long-units", kind: "sweep", when: when(root, "results/lean-long-units/summary.json"),
-    title: "WIP cap: is holding lots at the door free when breakdowns rise?",
-    question: "Does a cap on lots in the fab cost wafers, and does the answer change when tools break down more often?",
+    title: "Does a cap on lots inside still pay when machines break more often?",
+    question: "Does capping the lots inside the fab cost wafers, and does the answer change when machines break more often?",
     settings: [["Run length", `${s.days} days; warm-up ${s.warmup}`], ["Seeds", seedsText(s.seeds)], ["Caps", [...new Set(s.cells.map((c) => c.cap))].join(", ") + " lots"],
       ["Breakdown rates", [...new Set(s.cells.map((c) => `×${c.k}`))].join(", ")], ["Intervals", `paired t, Bonferroni (each at level ${n(s.alpha_each, 4)})`],
       ["Compute", `${n(s.seconds)} s`], ["Command", "fabsim lean-long"]],
-    headline: s.flips.map((f) => `cap ${f.cap}: ${f.crossover}`).join("; "),
+    headline: s.flips.map((f) => `A cap of ${n(f.cap)} lots: ${plainVerdict(f.crossover)}`).join(". ") + ".",
     numbers: { columns: ["Measure", "Breakdowns", "Cap", "No cap", "With cap", "Change", "95% interval", "Verdict"], rows },
     files: ["results/lean-long-units/summary.json", "results/lean-long-units/runs.tsv", "results/lean-long-units/summary.md"], note: NOTE,
   };
@@ -124,8 +131,8 @@ function rlTrain(root) {
   }
   return {
     id: "rl-train", kind: "training", when: when(root, "results/rl-defects/ppo/train.json"),
-    title: "PPO training: a learned dispatch policy with defect holds",
-    question: "Can a policy trained one dispatch decision at a time learn to beat today's rule when defects hold tools and lots?",
+    title: "The trained AI: learning which lot to run next, with quality holds",
+    question: "Can an AI that practises one choice at a time beat today's rule when quality checks stop machines and lots?",
     settings: [["Training seeds", seedsText(t.seeds)], ["Defect holds (assumed)", `tool ${t.defects[0]} min, lookback ${t.defects[1]} min, lots ${t.defects[2]} min`],
       ["Episode", `${t.warmup_days} day warm-up under today's rule, then ${t.window_days} days of decisions`], ["Decisions trained", n(t.timesteps)],
       ["Workers", String(t.workers)], ["Steps per update", n(t.n_steps)], ["Libraries", Object.entries(t.versions).map(([k, v]) => `${k} ${v}`).join(", ")],
@@ -133,7 +140,7 @@ function rlTrain(root) {
     headline: (() => {
       const f = rows.map((r) => Number(r[2].replace(/,/g, ""))), l = rows.map((r) => Number(r[3].replace(/,/g, "")));
       const m = (xs) => xs.reduce((p, q) => p + q, 0) / xs.length;
-      return `Mean episode reward across the workers went from ${n(m(f), 1)} in the first 5 episodes to ${n(m(l), 1)} in the last 5. The held-out contest shows how it plays.`;
+      return `Its average score went from ${n(m(f), 1)} in its first 5 practice runs to ${n(m(l), 1)} in its last 5. The contest on new days shows how it really plays.`;
     })(),
     numbers: { columns: ["Worker", "Episodes", "Mean reward, first 5 episodes", "Mean reward, last 5 episodes"], rows },
     files: ["results/rl-defects/ppo/train.json", "results/rl-defects/ppo/policy.zip", "docs/RL-DEFECTS.md"],
@@ -146,18 +153,23 @@ function rlContest(root, which) {
   const c = json(root, rel);
   const rows = [];
   for (const a of c.against_today) for (const [k, m] of Object.entries(a.measures))
-    rows.push([a.name, MEASURES[k] || k, n(c.today[k], 1), sg(m.mean, 1), `${sg(m.lo, 1)} to ${sg(m.hi, 1)}`, m.verdict]);
+    rows.push([WHO[a.name] || a.name, MEASURES[k] || k, n(c.today[k], 1), sg(m.mean, 1), `${sg(m.lo, 1)} to ${sg(m.hi, 1)}`, m.verdict]);
   const ppo = c.against_today.find((a) => a.name === "ppo");
   return {
     id: `rl-contest-defects-${which}`, kind: "contest", when: when(root, rel),
-    title: `Held-out contest, defect holds ${{ on: "×1", off: "off" }[which] || which}: today's rule, PPO and E2's best rule`,
-    question: "On seeds none of them trained on, does any learned or evolved policy beat today's dispatch rule?",
+    title: `Contest on new days, quality holds ${{ on: "×1", off: "off" }[which] || which.replace("x", "×")}: today's rule, the trained AI and the evolved rule`,
+    question: "On days none of them practised on, does the trained AI or the evolved rule beat today's rule?",
     settings: [["Seeds", seedsText(c.seeds)], ["Defect holds", c.defects ? `tool ${c.defects[0]} min, lookback ${c.defects[1]} min, lots ${c.defects[2]} min (assumed)` : "off"],
       ["Episode", `${c.warmup_days} day warm-up, ${c.window_days} days scored`], ["Contestants", ["today"].concat(c.against_today.map((a) => a.name)).join(", ")],
       ["Intervals", `paired t, Bonferroni over ${c.against_today.length} (each at level ${n(c.alpha_each, 3)})`],
-      ["PPO's own picks", ppo ? `${n(100 * ppo.picked_other_share)}% of decisions differ from today's rule` : "—"],
+      ["How often the AI chose differently", ppo ? `${n(100 * ppo.picked_other_share)}% of its choices differ from today's rule` : "—"],
       ["Command", `results/rl-defects/contest.sh`]],
-    headline: ppo ? `PPO against today's rule on reward: ${sg(ppo.measures.reward.mean, 1)} (${sg(ppo.measures.reward.lo, 1)} to ${sg(ppo.measures.reward.hi, 1)}), ${ppo.measures.reward.verdict}.` : "",
+    headline: ppo ? (() => {
+      const r = ppo.measures.reward, lower = r.mean < 0, a = Math.abs(r.lo), b = Math.abs(r.hi);
+      const how = r.verdict === "better" ? "did better than" : r.verdict === "worse" ? "did worse than" : "was too close to call against";
+      const range = r.lo < 0 && r.hi > 0 ? `range ${sg(r.lo, 1)} to ${sg(r.hi, 1)}` : `range ${n(Math.min(a, b), 1)} to ${n(Math.max(a, b), 1)}`;
+      return `The trained AI ${how} today's rule: its score was ${n(Math.abs(r.mean), 1)} ${lower ? "lower" : "higher"} (${range}).`;
+    })() : "",
     numbers: { columns: ["Contestant", "Measure", "Today's rule", "Change", "95% interval", "Verdict"], rows },
     files: [rel, `results/rl-defects/contest-defects-${which}/runs.tsv`, "docs/RL-DEFECTS.md"],
     note: `${NOTE}${c.defects ? " Defect holds and their lengths are assumed." : ""}`,

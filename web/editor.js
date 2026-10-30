@@ -16,7 +16,7 @@
   const AREA = {}, SHORT = {}, MOOD = {};
   for (const a in L.AREA) { AREA[a] = [L.AREA[a].name, L.AREA[a].exercise, L.AREA[a].about]; SHORT[a] = L.AREA[a].short; }
   for (const m in L.MOOD) MOOD[m] = [L.MOOD[m].name, L.MOOD[m].color, L.MOOD[m].badge];
-  const INFRA = { stocker: ["Stocker", "Holds lots between steps when a tool's ports are full."], entry: ["Wafer start", "New lots enter the fab here."], exit: ["Ship point", "Finished lots leave here."] };
+  const INFRA = { stocker: ["Storage", "Holds lots between steps when a machine has no room for them."], entry: ["Wafers in", "New lots enter the fab here."], exit: ["Wafers out", "Finished lots leave the fab here."] };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const money = (d) => (Math.abs(d) >= 1e6 ? `$${(d / 1e6).toFixed(d % 1e6 ? 1 : 0)}M` : `$${Math.round(d).toLocaleString()}`);
 
@@ -160,7 +160,7 @@
     }
     if (stale) {
       ctx.font = '600 14px "Chakra Petch",sans-serif'; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#F2B33D";
-      ctx.fillText(running ? "Running the simulator on your layout…" : "Edited. Run again to see it move.", 12, 10);
+      ctx.fillText(running ? "Running the simulator on your layout…" : "You changed the layout. Press Run again to see it move.", 12, 10);
     }
   }
 
@@ -277,10 +277,10 @@
     const top = run.spendTop;
     $("score").innerHTML =
       card("Wafers out a day", Math.round(sc.wafers_per_day).toLocaleString(), "", sc.wafers_per_day, p && p.wafers_per_day, (d) => d > 0, c && sc.wafers_per_day < c.target.wafers) +
-      card("Cycle time", sc.cycle_days.toFixed(2), "days", sc.cycle_days, p && p.cycle_days, (d) => d < 0) +
-      card("Worst queue", sc.worst_queue, `lots · ${esc(groupLabel(sc.worst_group))}`, sc.worst_queue, p && p.worst_queue, (d) => d < 0) +
-      card("Jammed stretches", sc.jams, "", sc.jams, p && p.jams, (d) => d < 0, c && c.target.jams != null && sc.jams > c.target.jams) +
-      card("Spend on top", money(top), c && c.target.budget ? `of ${money(c.target.budget)} allowed` : c && c.target.budget === 0 ? "nothing to spend" : "", top, p && p.spend, (d) => d < 0, c && c.target.budget != null && top > c.target.budget);
+      card("Days a wafer takes", sc.cycle_days.toFixed(2), "days", sc.cycle_days, p && p.cycle_days, (d) => d < 0) +
+      card("Longest line", sc.worst_queue, `lots at ${esc(groupLabel(sc.worst_group))}`, sc.worst_queue, p && p.worst_queue, (d) => d < 0) +
+      card("Jammed track pieces", sc.jams, "", sc.jams, p && p.jams, (d) => d < 0, c && c.target.jams != null && sc.jams > c.target.jams) +
+      card("Extra spend", money(top), c && c.target.budget ? `of ${money(c.target.budget)} allowed` : c && c.target.budget === 0 ? "no budget here" : "", top, p && p.spend, (d) => d < 0, c && c.target.budget != null && top > c.target.budget);
     if (c) {
       const w = sc.wafers_per_day, full = c.target.wafers * 1.2, ok = E.meets(sc, c.target, top);
       $("goalfill").style.width = Math.min(100, (w / full) * 100) + "%";
@@ -317,8 +317,8 @@
     for (const l of base.split("\n")) if (l.startsWith("group\t")) { const g = l.split("\t")[1]; if (!areaOfGroup[g]) areaOfGroup[g] = E.AREA_OF[g.replace(/_T$/, "")]; }
     spend0 = E.spend(c ? c.setup().state : s);
     $("cheye").textContent = c ? `Challenge ${i + 1} · ${c.title}` : "Free build";
-    $("chproblem").textContent = c ? c.problem : "Lay out your own fab: place tool groups, lay rail, then run it.";
-    $("chgoal").textContent = c ? c.goal : "No target here. The score shows how your layout does.";
+    $("chproblem").textContent = c ? c.problem : "Lay out your own fab. Place machines, lay track, then run it.";
+    $("chgoal").textContent = c ? c.goal : "There is no target here. The scores show how your layout does.";
     $("showfix").hidden = !c;
     $("tmpl").hidden = !!c;
     renderTabs(); buildPalette(); inspector(); renderChecks(); renderScore(); draw();
@@ -356,11 +356,11 @@
     return Object.keys(areaOfGroup).find((g) => areaOfGroup[g] === area && !placed.has(g) && !(s.stores || []).includes(g) && base.includes(`group\t${g}\t`));
   }
   function buildPalette() {
-    const pb = (t, n, k, col, dis) => `<button data-t="${t}" aria-pressed="${tool === t}"${dis ? " disabled" : ""} title="${esc(n)}${dis ? ": every group of this area is placed; add tools with + in Selected" : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>`;
-    let h = "<h4>Tools</h4>" + pb("select", "Select", "V") + pb("rail", "Rail", "B") + pb("erase", "Erase", "E");
-    h += "<h4>Process areas</h4>";
+    const pb = (t, n, k, col, dis) => `<button data-t="${t}" aria-pressed="${tool === t}"${dis ? " disabled" : ""} title="${esc(n)}${dis ? ": all of these are placed. Add machines with + under Selected" : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>`;
+    let h = "<h4>Tools</h4>" + pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E");
+    h += "<h4>Machines</h4>";
     for (const a of E.AREAS) h += pb(a, AREA[a][0], "", FAM[a], !nextGroup(a));
-    h += "<h4>Logistics</h4>" + pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]);
+    h += "<h4>Moving wafers</h4>" + pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]);
     $("pal").innerHTML = h;
     $("pal").querySelectorAll("button").forEach((b) => (b.onclick = () => { tool = b.dataset.t; if (tool !== "select" && mode === "run") setMode("build"); syncPal(); }));
   }
@@ -479,7 +479,7 @@
       html = () => `<div class="tcard" style="--fam:${col}"><div class="hd"><span class="nm">${esc(AREA[b.area][0])}</span><span class="fm">${b.count} tool${b.count > 1 ? "s" : ""}</span></div>
         <div class="art" style="background:${col}33"><img src="cast/${b.area}/${mood}.webp" alt="${esc(AREA[b.area][0])}, ${MOOD[mood][0].toLowerCase()}" width="224" height="224"></div>
         <div class="st" style="background:${MOOD[mood][1]}">${n ? MOOD[mood][0] : "Before a run"}</div>
-        <div class="kv"><span>Lots waiting</span><span>${n ? n.queue : "–"}</span><span>Group</span><span>${esc(b.group)}</span><span>Price a tool</span><span>${money(E.PRICE[b.area] || 0)}</span></div>
+        <div class="kv"><span>Lots waiting</span><span>${n ? n.queue : "–"}</span><span>Group</span><span>${esc(b.group)}</span><span>Price of one</span><span>${money(E.PRICE[b.area] || 0)}</span></div>
         <div class="ex">${esc(AREA[b.area][1])}. ${esc(AREA[b.area][2])}</div></div>`;
     } else if (!b && showRun() && win) {
       const v = vehicles(clock).find((w) => Math.abs(w.x - x) < 0.8 && Math.abs(w.y - y) < 0.8);
@@ -487,8 +487,8 @@
         const m = v.hot ? "hot" : v.loaded ? "ride" : null;
         key = `v${v.vehicle}|${m}`;
         html = () => m
-          ? `<div class="tcard" style="--fam:${v.hot ? "#FF8A4C" : "#F2B33D"}"><div class="hd"><span class="nm">Vehicle ${v.vehicle + 1}</span><span class="fm">${v.hot ? "hot lot" : "carrying"}</span></div><div class="art" style="background:#E3EAF0"><img src="cast/lots/${m}.webp" alt="A wafer lot riding the rail" width="224" height="224"></div><div class="st" style="background:${v.hot ? "#FF8A4C" : "#5FA8FF"}">${v.hot ? "Hot lot, riding the rail" : "Riding the rail"}</div><div class="ex">Where the simulator had this vehicle at ${hhmmss(clock)}.</div></div>`
-          : `<div class="tcard" style="--fam:#8A9AA2"><div class="hd"><span class="nm">Vehicle ${v.vehicle + 1}</span><span class="fm">empty</span></div><div class="ex">Running empty to its next pickup, where the simulator had it at ${hhmmss(clock)}.</div></div>`;
+          ? `<div class="tcard" style="--fam:${v.hot ? "#FF8A4C" : "#F2B33D"}"><div class="hd"><span class="nm">Vehicle ${v.vehicle + 1}</span><span class="fm">${v.hot ? "urgent lot" : "carrying a lot"}</span></div><div class="art" style="background:#E3EAF0"><img src="cast/lots/${m}.webp" alt="A lot of wafers riding the track" width="224" height="224"></div><div class="st" style="background:${v.hot ? "#FF8A4C" : "#5FA8FF"}">${v.hot ? "Urgent lot, on its way" : "On its way"}</div><div class="ex">This is where the simulator had the car at ${hhmmss(clock)}.</div></div>`
+          : `<div class="tcard" style="--fam:#8A9AA2"><div class="hd"><span class="nm">Vehicle ${v.vehicle + 1}</span><span class="fm">empty</span></div><div class="ex">Driving empty to its next pickup, as the simulator had it at ${hhmmss(clock)}.</div></div>`;
       }
     }
     if (!html) return (hov.hidden = true);
@@ -503,8 +503,8 @@
   }
 
   // ---------- the selection widget
-  const FAILS = [["", "As the model has it"], ["none", "Never breaks"], ["random", "Random breakdowns"], ["by_wafers", "Every N wafers"]];
-  const RECS = [["", "Repair in place"], ["swap_to_spare", "Swap to a spare"], ["repair_and_hold_lots", "Repair and hold its last lots"]];
+  const FAILS = [["", "As in the data"], ["none", "Never"], ["random", "At random"], ["by_wafers", "After so many wafers"]];
+  const RECS = [["", "Fix it where it stands"], ["swap_to_spare", "Swap in a spare"], ["repair_and_hold_lots", "Fix it and hold its last lots for checks"]];
   const num = (id, v, lab, unit) => `<label class="sub">${lab} <input type="number" min="1" step="1" id="${id}" value="${v}"> ${unit}</label>`;
   function inspector() {
     const ins = $("insp");
@@ -514,12 +514,12 @@
       if (b.kind === "group") {
         const f = b.fail || {}, r = b.rec || {};
         let h = `<div class="ttl">${svg(b.area, FAM[b.area])}<span>${esc(AREA[b.area][0])}</span></div><p class="note">${esc(b.group)} · ${esc(AREA[b.area][2])} ${money(E.PRICE[b.area])} a tool (assumed).</p>`;
-        h += `<div class="row"><span>Tools in this group</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span></div>`;
+        h += `<div class="row"><span>Machines in this group</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span></div>`;
         h += `<div class="row"><label for="fsel">Breakdowns</label><select id="fsel">${FAILS.map(([k, n]) => `<option value="${k}" ${(f.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
-        if (f.kind === "random") h += `<div class="row">${num("fa", f.mttf_minutes / 60, "every", "h")}${num("fb", f.mttr_minutes / 60, "repair", "h")}</div>`;
-        if (f.kind === "by_wafers") h += `<div class="row">${num("fa", f.every, "every", "wafers")}${num("fb", (f.minutes || [60])[0], "repair", "min")}</div>`;
-        h += `<div class="row"><label for="rsel">Recovery</label><select id="rsel">${RECS.map(([k, n]) => `<option value="${k}" ${(r.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
-        if (r.kind === "swap_to_spare") h += `<div class="row">${num("ra", r.spares, "spares", `(${money(r.spares * E.PRICE[b.area])})`)}${num("rb", r.swap_minutes, "swap", "min")}</div>`;
+        if (f.kind === "random") h += `<div class="row">${num("fa", f.mttf_minutes / 60, "about every", "h")}${num("fb", f.mttr_minutes / 60, "fix takes", "h")}</div>`;
+        if (f.kind === "by_wafers") h += `<div class="row">${num("fa", f.every, "after", "wafers")}${num("fb", (f.minutes || [60])[0], "fix takes", "min")}</div>`;
+        h += `<div class="row"><label for="rsel">When it breaks</label><select id="rsel">${RECS.map(([k, n]) => `<option value="${k}" ${(r.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
+        if (r.kind === "swap_to_spare") h += `<div class="row">${num("ra", r.spares, "spares", `(${money(r.spares * E.PRICE[b.area])})`)}${num("rb", r.swap_minutes, "swap takes", "min")}</div>`;
         h += `<div class="row"><button class="btn" id="del">Remove</button></div>`;
         ins.innerHTML = h;
         $("up").onclick = () => { b.count++; inspector(); edited(); };
@@ -545,12 +545,12 @@
       $("del").onclick = () => { s.blocks = s.blocks.filter((z) => z !== b); sel = null; buildPalette(); inspector(); edited(); };
     } else if (sel && sel.rail && s.rail[sel.rail]) {
       const v = s.rail[sel.rail], split = v.o.reduce((a, c) => a + c) > 1, f = v.fail || {};
-      let h = `<div class="ttl">${svg(split ? "split" : "rail")}<span>Rail piece (${sel.rail.replace(",", ", ")})</span></div><p class="note">One-way. Turn on more than one way out to make a split.</p>`;
-      h += `<div class="row"><span>Ways out</span><span class="dirs4">${DN.map((d, i) => `<button class="btn" data-d="${i}" aria-pressed="${!!v.o[i]}" aria-label="${DLONG[i]}">${d}</button>`).join("")}</span></div>`;
-      h += `<div class="row"><label for="rf">Breakdowns</label><select id="rf"><option value="">Never</option><option value="random" ${f.kind === "random" ? "selected" : ""}>Random stoppages</option></select></div>`;
+      let h = `<div class="ttl">${svg(split ? "split" : "rail")}<span>Track piece (${sel.rail.replace(",", ", ")})</span></div><p class="note">Track runs one way. Turn on a second direction to make a junction.</p>`;
+      h += `<div class="row"><span>Directions out</span><span class="dirs4">${DN.map((d, i) => `<button class="btn" data-d="${i}" aria-pressed="${!!v.o[i]}" aria-label="${DLONG[i]}">${d}</button>`).join("")}</span></div>`;
+      h += `<div class="row"><label for="rf">Breakdowns</label><select id="rf"><option value="">Never</option><option value="random" ${f.kind === "random" ? "selected" : ""}>Now and then</option></select></div>`;
       if (f.kind === "random") {
-        h += `<div class="row">${num("ra", f.mttf_minutes, "every", "min")}${num("rb", f.mttr_minutes, "repair", "min")}</div>`;
-        h += `<div class="row"><label for="rr">When it stops</label><select id="rr"><option value="wait" ${(v.rec || {}).kind !== "route_around" ? "selected" : ""}>Vehicles wait for the repair</option><option value="route_around" ${(v.rec || {}).kind === "route_around" ? "selected" : ""}>Vehicles go round it</option></select></div>`;
+        h += `<div class="row">${num("ra", f.mttf_minutes, "about every", "min")}${num("rb", f.mttr_minutes, "for", "min")}</div>`;
+        h += `<div class="row"><label for="rr">When it stops</label><select id="rr"><option value="wait" ${(v.rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(v.rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select></div>`;
       }
       ins.innerHTML = h;
       ins.querySelectorAll("[data-d]").forEach((bt) => (bt.onclick = () => { const d = +bt.dataset.d; v.o[d] = v.o[d] ? 0 : 1; inspector(); edited(); }));
@@ -560,9 +560,9 @@
       bind("ra", (n) => (v.fail.mttf_minutes = n));
       bind("rb", (n) => (v.fail.mttr_minutes = n));
     } else {
-      let h = `<div class="ttl">${svg("fab")}<span>The whole fab</span></div><p class="note">Click a machine or a rail piece to change it. These apply to the whole fab.</p>`;
-      h += `<div class="row"><span>Vehicles</span><span class="count"><button class="btn" id="vdn" aria-label="One fewer vehicle">−</button><b>${s.vehicles}</b><button class="btn" id="vup" aria-label="One more vehicle">+</button></span></div>`;
-      h += `<div class="row"><label for="cap">Work-in-fab cap</label><span class="sub"><input type="number" min="0" step="1" id="cap" value="${s.cap || 0}"> lots (0 = none)</span></div>`;
+      let h = `<div class="ttl">${svg("fab")}<span>The whole fab</span></div><p class="note">Click a machine or a piece of track to change it. The settings below are for the whole fab.</p>`;
+      h += `<div class="row"><span>Cars on the track</span><span class="count"><button class="btn" id="vdn" aria-label="One fewer car">−</button><b>${s.vehicles}</b><button class="btn" id="vup" aria-label="One more car">+</button></span></div>`;
+      h += `<div class="row"><label for="cap">Cap on lots inside</label><span class="sub"><input type="number" min="0" step="1" id="cap" value="${s.cap || 0}"> lots (0 means no cap)</span></div>`;
       ins.innerHTML = h;
       $("vup").onclick = () => { s.vehicles++; inspector(); edited(); };
       $("vdn").onclick = () => { s.vehicles = Math.max(1, s.vehicles - 1); inspector(); edited(); };
@@ -579,7 +579,7 @@
     $("verdict").innerHTML = errs ? `<span class="chip error">${errs} to fix</span>` : '<span class="chip ok">ready to run</span>';
     ul.innerHTML = checks.issues.length
       ? checks.issues.map((i, n) => `<li data-n="${n}"><span class="chip ${i.severity}">${i.severity === "error" ? "fix" : "note"}</span><span>${esc(i.message)}</span></li>`).join("")
-      : '<li><span class="chip ok">ok</span><span>Every tool has a stop, every stop is on the way from the wafer start to the ship point, and every route can be followed.</span></li>';
+      : '<li><span class="chip ok">ok</span><span>Looks good. Every machine is on the track, and wafers can get from the way in to every machine and out again.</span></li>';
     ul.querySelectorAll("li[data-n]").forEach((li) => (li.onclick = () => {
       const i = checks.issues[+li.dataset.n];
       const at = i.at.map((a) => E.cellOfNode(a)).find(Boolean) || (() => { const b = s.blocks.find((z) => i.at.includes(z.group) || i.at.some((a) => z.group && a.startsWith(z.group + "#"))); return b ? [b.x, b.y] : null; })();

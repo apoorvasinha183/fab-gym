@@ -13,7 +13,7 @@
 <header class="card brand">
   <div class="brand-row"><div class="title">Fab Gym</div>
     <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#ask" data-page="ask">Ask</a></nav></div>
-  <div class="sub">A fab built from the SMT2020 testbed, simulated in your browser</div>
+  <div class="sub">The full fab, 1,043 machines, running live in your browser</div>
   <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
 </header>
 
@@ -25,9 +25,9 @@
 </form>
 <nav class="lenses" aria-label="What the floor shows">
   <button type="button" data-lens="day" class="on" aria-pressed="true">Live</button>
-  <button type="button" data-lens="heat" aria-pressed="false">Waiting heat</button>
-  <button type="button" data-lens="proto" aria-pressed="false">Prototype lots</button>
-  <button type="button" data-lens="flows" aria-pressed="false">Flows</button>
+  <button type="button" data-lens="heat" aria-pressed="false">Queues</button>
+  <button type="button" data-lens="proto" aria-pressed="false">Prototypes</button>
+  <button type="button" data-lens="flows" aria-pressed="false">Routes</button>
 </nav>
 <div id="lens-note" class="lens-note" aria-live="polite"></div>
 <div id="flow-ctl" class="flow-ctl" hidden>
@@ -47,8 +47,8 @@
 <section class="card kpis" aria-label="How the fab is doing">
   <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
   <div class="kpi"><div class="v" id="k-wait">0</div><div class="l">lots waiting</div></div>
-  <div class="kpi"><div class="v" id="k-moves">0</div><div class="l">moves, last hour</div></div>
-  <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">tools working</div></div>
+  <div class="kpi"><div class="v" id="k-moves">0</div><div class="l">deliveries, last hour</div></div>
+  <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">machines busy</div></div>
 </section>
 
 <nav id="rail" class="rail" aria-label="Panels">
@@ -69,7 +69,7 @@
   <div class="dock-body" id="dock-body">
   <section id="pane-ask" class="pane" role="tabpanel" aria-label="Ask" hidden>
     <h2>Ask the fab</h2>
-    <p class="pane-lead">Type a question in the bar at the top (⌘K), or pick one of these.</p>
+    <p class="pane-lead">Type a question in the bar at the top (⌘K), or pick one below.</p>
     <div id="ask-examples" class="chips" aria-label="Example questions"></div>
     <p class="note" id="ask-model">Connecting to the helper…</p>
     <div id="ask-live" aria-live="polite">
@@ -78,59 +78,59 @@
       <div id="ask-result"></div>
     </div>
     <details id="ask-edit" class="advanced">
-      <summary>Advanced: write or edit the scenario</summary>
-      <label for="ask-text" class="sr">Scenario text</label>
+      <summary>Advanced: write the experiment yourself</summary>
+      <label for="ask-text" class="sr">Experiment text</label>
       <textarea id="ask-text" rows="9" spellcheck="false"></textarea>
-      <button type="button" id="ask-run">Run this scenario</button>
+      <button type="button" id="ask-run">Run this experiment</button>
     </details>
   </section>
 
   <section id="pane-change" class="pane" role="tabpanel" aria-label="Try a change" hidden>
     <h2>Try a change</h2>
-    <label class="field">Dispatch rule
+    <label class="field">Which lot a free machine picks next
       <select id="rule">
-        <option value="0">Today's rule: hot first, same setup, oldest</option>
+        <option value="0">Today's rule: urgent first, then no re-setup, then oldest</option>
         <option value="1">First come, first served</option>
-        <option value="2">Shortest processing first</option>
+        <option value="2">Quickest job first</option>
       </select>
     </label>
-    <label class="field">Take a tool group down
+    <label class="field">Switch off a machine group
       <select id="down-group"><option value="-1">None</option></select>
     </label>
     <div class="row">
       <label class="field">From hour <input id="down-at" type="number" min="0" max="72" value="6" disabled></label>
       <label class="field">For hours <input id="down-hours" type="number" min="1" max="72" value="8" disabled></label>
     </div>
-    <h3>Dials <button id="reset" class="link" type="button">Reset</button></h3>
+    <h3>Turn the dials <button id="reset" class="link" type="button">Reset</button></h3>
     <div class="dials">
-      <div class="dial"><label for="d-breakdowns">Breakdowns <output id="o-breakdowns">×1</output></label><input id="d-breakdowns" type="range" min="0" max="3" step="0.25" value="1"><p class="help">How often tools fail. ×2 fails twice as often; 0 never.</p></div>
-      <div class="dial"><label for="d-repair">Repair time <output id="o-repair">×1</output></label><input id="d-repair" type="range" min="0.5" max="3" step="0.25" value="1"><p class="help">How long a broken tool takes to fix.</p></div>
+      <div class="dial"><label for="d-breakdowns">Breakdowns <output id="o-breakdowns">×1</output></label><input id="d-breakdowns" type="range" min="0" max="3" step="0.25" value="1"><p class="help">How often machines break. ×2 means twice as often, and 0 means never.</p></div>
+      <div class="dial"><label for="d-repair">Repair time <output id="o-repair">×1</output></label><input id="d-repair" type="range" min="0.5" max="3" step="0.25" value="1"><p class="help">How long a broken machine takes to fix.</p></div>
       <div class="dial"><label for="d-demand">Demand <output id="o-demand">×1</output></label><input id="d-demand" type="range" min="0.5" max="1.5" step="0.05" value="1"><p class="help">How many new lots start each day.</p></div>
-      <div class="dial"><label for="d-hot">Hot lots <output id="o-hot">×1</output></label><input id="d-hot" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How many urgent lots jump the queue.</p></div>
-      <div class="dial"><label for="d-rework">Rework <output id="o-rework">×1</output></label><input id="d-rework" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How often an inspection sends a lot back.</p></div>
-      <div class="dial"><label for="d-defects">Defect holds <output id="o-defects">off</output></label><input id="d-defects" type="range" min="0" max="2" step="0.5" value="0"><p class="help">At each rework, the tool and its recent lots are held. ×1: tool 2 h, lots 1 h (assumed).</p></div>
-      <div class="dial"><label for="d-cap">WIP cap <output id="o-cap">none</output></label><input id="d-cap" type="range" min="1500" max="3600" step="100" value="3600"><p class="help">The most lots allowed in the fab; new lots wait at the door.</p></div>
+      <div class="dial"><label for="d-hot">Urgent lots <output id="o-hot">×1</output></label><input id="d-hot" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How many urgent lots jump the line.</p></div>
+      <div class="dial"><label for="d-rework">Rework <output id="o-rework">×1</output></label><input id="d-rework" type="range" min="0" max="5" step="0.5" value="1"><p class="help">How often an inspection sends a lot back to redo a step.</p></div>
+      <div class="dial"><label for="d-defects">Quality holds <output id="o-defects">off</output></label><input id="d-defects" type="range" min="0" max="2" step="0.5" value="0"><p class="help">When an inspection finds a problem, the machine and its recent lots stop for a check. At ×1 the machine stops for 2 h and the lots for 1 h (our assumption).</p></div>
+      <div class="dial"><label for="d-cap">Cap on lots inside <output id="o-cap">none</output></label><input id="d-cap" type="range" min="1500" max="3600" step="100" value="3600"><p class="help">The most lots allowed in the fab at once. New lots wait at the door.</p></div>
     </div>
     <details class="advanced">
-      <summary>Advanced: replay seed and days</summary>
+      <summary>Advanced: which random day, and how many days</summary>
       <div class="row">
-        <label class="field">Replay seed <input id="seed" type="number" min="0" value="0"></label>
+        <label class="field">Random day number <input id="seed" type="number" min="0" value="0"></label>
         <label class="field">Days <input id="days" type="number" min="1" max="14" value="3"></label>
       </div>
     </details>
     <div class="pane-foot">
-      <button id="run" class="primary">Simulate and compare</button>
+      <button id="run" class="primary">Run it and compare with today</button>
       <p class="note" id="runnote">Loading the simulator…</p>
     </div>
     <div class="change-result" aria-live="polite">
-      <p class="what" id="cmp-what">Choose a dispatch rule, take a tool group down or turn a dial. Then press Simulate and compare.</p>
+      <p class="what" id="cmp-what">Change something above, then run it. You will see how it compares with today's fab on the same days.</p>
       <div id="cmp-rows"></div>
       <p class="note small" id="cmp-note"></p>
     </div>
   </section>
 
   <section id="numbers" class="pane wide" role="tabpanel" aria-label="Numbers" hidden>
-    <h2>Two families: what each change does</h2>
+    <h2>Prototypes and the main product: what each change is worth</h2>
     <div class="num-controls">
       <div class="seg" role="group" aria-label="Measure" id="num-metric">
         <button type="button" data-m="profit" class="on">Operating profit</button>
@@ -158,7 +158,7 @@
       <p class="note small" id="num-note"></p>
     </details>
     <section id="long-sec" class="long-sec">
-      <h3 class="q">Is a WIP cap free?</h3>
+      <h3 class="q">Does a cap on lots inside cost output?</h3>
       <p class="what" id="long-lead"></p>
       <div id="long-grid" class="grid"></div>
       <p class="finding" id="long-finding"></p>
@@ -168,7 +168,7 @@
 
   <section id="results" class="pane wide" role="tabpanel" aria-label="Results" hidden>
     <h2>Results</h2>
-    <p class="pane-lead">Every simulation and policy run, newest first. Open one for its question, the simulator's settings and the numbers that came out.</p>
+    <p class="pane-lead">Every experiment we have run, newest first. Open one to see the question, how it was set up and what came out.</p>
     <div class="res-filter">
       <input id="res-q" type="search" placeholder="Search results…" aria-label="Search results" autocomplete="off">
       <div class="seg" id="res-kind" role="group" aria-label="Kind">
@@ -227,12 +227,12 @@
   <ul class="legend">
     <li><i class="sw s0"></i>working</li><li><i class="sw s1"></i>idle</li><li><i class="sw s4"></i>changing setup</li><li><i class="sw s2"></i>maintenance</li><li><i class="sw s3"></i>broken down</li>
   </ul>
-  <p class="key-note">A tool's top is its area's colour; the light on it is its state. Each group wears its mood:</p>
+  <p class="key-note">A machine's colour shows its area, and its light shows what it is doing. Each group's badge shows how it is coping:</p>
   <ul class="legend" id="moodkey"></ul>
   <ul class="legend">
-    <li><i class="dot"></i>a lot (25 wafers)</li><li><i class="dot hot"></i>a hot lot</li><li><i class="dot proto"></i>a prototype lot</li>
+    <li><i class="dot"></i>a lot: a box of 25 wafers</li><li><i class="dot hot"></i>an urgent lot</li><li><i class="dot proto"></i>a prototype lot</li>
   </ul>
-  <p class="key-note"><b>+N</b> more lots waiting than drawn · <b>Holding</b> lots resting between steps</p>
+  <p class="key-note"><b>+N</b> means more lots are waiting than fit in the picture. <b>Holding</b> lots are resting between steps.</p>
   <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
 </section>
 
@@ -260,12 +260,12 @@
     <a class="door door-play" href="editor.html">
       <span class="door-cast" aria-hidden="true"><img src="cast/base/10-cmp.webp" alt=""><img src="cast/base/01-litho.webp" alt=""><img src="cast/base/03-dry.webp" alt=""></span>
       <span class="door-k">Play a challenge</span>
-      <span class="door-s">Rush hour on the spine and three more. A small fab opens already running; change it, run it again and beat the target.</span>
-      <span class="door-go">Open the challenges →</span>
+      <span class="door-s">A small fab is already running, and something is holding it back. Find the problem, fix it and hit the target.</span>
+      <span class="door-go">Start the first challenge →</span>
     </a>
     <div class="door door-ask">
       <span class="door-k">Ask the fab</span>
-      <span class="door-s">Ask about the full fab; Meta's model proposes changes and the simulator scores them on paired runs.</span>
+      <span class="door-s">Ask a what-if about the full fab. Meta's model sets up the experiment, and the simulator shows you what changes.</span>
       <form id="open-form" class="open-form" autocomplete="off">
         <label for="open-q" class="sr">Your question</label>
         <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
@@ -275,7 +275,7 @@
     </div>
   </div>
   <button id="open-explore" type="button" class="link explore">or explore the floor</button>
-  <p class="fine">Every fab here starts from SMT2020 (Kopp, Hassoun, Kalir, Mönch 2020), a published testbed of a fab's tool groups, routes and times. No real fab's data.</p>
+  <p class="fine">Every fab here starts from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times (Kopp, Hassoun, Kalir, Mönch 2020). No real company's data is used.</p>
 </section>
 
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>
