@@ -1,6 +1,6 @@
 // The map editor's pure parts (docs/EDITOR.md): templates, the map as a fab file, and a block's mood from a run.
-// In the page this defines window.FabEditor; under Node, module.exports. On the SMT2020 model, a published model of a
-// fab, or a teaching fab of our own; not a real fab.
+// In the page this defines window.FabEditor; under Node, module.exports. A fab built from the SMT2020 testbed
+// (a published set of a fab's tool groups, routes and times), or a teaching fab of our own; not a real fab.
 (function (root) {
   "use strict";
 

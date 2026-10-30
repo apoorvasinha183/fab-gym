@@ -1,5 +1,5 @@
 //! Money with full business logic: a profit and loss in dollars (docs/MONEY-PL.md). Every price is an assumption of
-//! ours, with a low and a high value; none is a quote or a real fab's figure. On the SMT2020 model.
+//! ours, with a low and a high value; none is a quote or a real fab's figure. From the SMT2020 testbed.
 
 use std::collections::HashMap;
 use std::path::Path;

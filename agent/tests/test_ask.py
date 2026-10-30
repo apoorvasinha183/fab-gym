@@ -1,7 +1,7 @@
 """Ask the fab, with two families (docs/ASK-FAMILIES.md, parts 3 and 4). Written before the code.
 Run: python3 -m unittest agent.tests.test_ask  (from the repo root).
 
-On the SMT2020 model, a published model of a fab; not a real fab, not real data."""
+From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab, not real data."""
 
 import json
 import os

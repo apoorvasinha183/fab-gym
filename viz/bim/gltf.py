@@ -6,7 +6,7 @@ covering; this writes them as one GLB with the standard library, one node per el
 
 --all (docs/BIM-FAITHFUL.md) writes every element of the faithful BIM: site, buildings, storeys and elements as one tree,
 every property set in the node's extras, one primitive per material named after the IFC's, and each repeat once with
-EXT_mesh_gpu_instancing. The same IFC gives the same bytes. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+EXT_mesh_gpu_instancing. The same IFC gives the same bytes. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 """
 
 import argparse
@@ -95,7 +95,7 @@ def write(ifc_path, out):
             "Storey": container.Name if container else "", "Basis": basis.get("Basis", ""),
             "Status": basis.get("Status", ""), "NumbersFrom": basis.get("NumbersFrom", "")}})
     root = {"name": "fab_building", "children": list(range(len(nodes))), "extras": {
-        "source": Path(ifc_path).name, "note": "Structure of the IFC model, Y up, metres. On the SMT2020 model. "
+        "source": Path(ifc_path).name, "note": "Structure of the IFC model, Y up, metres. From the SMT2020 testbed. "
                                                "A layout of our own design. Not a real fab."}}
     nodes.append(root)
     blob.extend(b"\x00" * (-len(blob) % 4))
@@ -312,7 +312,7 @@ def write_all(ifc_path, out):
             else:
                 del nd["children"]
     nodes.append({"name": "fab_bim", "children": roots, "extras": {
-        "source": Path(ifc_path).name, "note": "Every element of the faithful BIM, Y up, metres. On the SMT2020 model. "
+        "source": Path(ifc_path).name, "note": "Every element of the faithful BIM, Y up, metres. From the SMT2020 testbed. "
                                                "A layout of our own design. Not a real fab. NOT FOR CONSTRUCTION."}})
     blob.extend(b"\x00" * (-len(blob) % 4))
     doc = {

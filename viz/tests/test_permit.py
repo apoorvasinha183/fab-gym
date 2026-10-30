@@ -1,5 +1,5 @@
 """Tests for the permit-set workflow (docs/PERMIT.md). Written before the code. A gigafab-style layout of our own
-design on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
+design from the SMT2020 testbed; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_permit      (from the repo root)
 
@@ -25,7 +25,7 @@ RUN = ROOT / "viz/permit/run.py"
 PERMIT = ROOT / "viz/permit"
 RESCORE = ROOT / "results/layout-real-permit/rescore.json"
 FT = 0.3048
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 STATUSES = {"missing", "drawn", "checked", "assumed", "open", "licensed review"}
 VERDICTS = {"met", "not met", "cannot say"}
 SHEETS = ["G-001", "G-002", "G-003", "G-101", "G-102", "C-101", "C-201", "S-001", "S-101", "S-201", "A-401",
@@ -436,7 +436,7 @@ class Rescore(unittest.TestCase):
 
     def test_rescore(self):
         R = json.loads(RESCORE.read_text())
-        self.assertIn("SMT2020 model", R["truth"])
+        self.assertIn("SMT2020 testbed", R["truth"])
         self.assertEqual(R["chase_before_m"], 1.5)
         self.assertGreaterEqual(R["chase_after_m"], 5 * FT)
         L = json.loads((ROOT / "results/layout-real-permit/layout.json").read_text())

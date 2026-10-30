@@ -3,7 +3,7 @@
 Written 30 October 2026 at the founder's request: the full-scale system the hackathon entry points at, designed so a
 fab could build it. Status marks on every part:
 
-- **Built**: runs today, on the SMT2020 model (a published research model of a wafer fab; no real fab's data).
+- **Built**: runs today, from the SMT2020 testbed (a published set of a fab's tool groups, routes and times; no real fab's data).
 - **Planned**: in the hackathon plan (`docs/NARRATIVE.md`), not yet built.
 - **Design**: how it would connect to a real fab. Not built, not run against any real fab or real equipment.
 
@@ -38,14 +38,14 @@ The same loop, pointed at a real fab, becomes a co-pilot for the people who run 
 7. **It checks itself.** After the change, it compares what happened with what the forks said would happen, and
    recommends a rollback when they part.
 
-What we learned on the SMT2020 model shaped this design:
+What we learned from the SMT2020 testbed shaped this design:
 
 - **Judge over days, from the fab as it is.** A 3-day window starting from a full fab hid how badly FIFO and the
   learned PPO policy do; over 60 settled days they lose about half the output (`docs/LONG-RESCORE.md`). Picking the
   best rule for each 12-hour shift by that shift's own result did worse than never switching, by about 2,200 reward
   (95% 1,600 to 2,770). So the supervisor scores each proposal over days of look-ahead, never over the next shift
   alone.
-- **The incumbent is strong.** On the SMT2020 model today's rule (priority, then no setup change, then oldest) beat
+- **The incumbent is strong.** From the SMT2020 testbed today's rule (priority, then no setup change, then oldest) beat
   every alternative on all ten held-out seeds and sat about 39 wafers a day below the capacity ceiling. A system that
   ships changes because a model likes them would make things worse. Fab Gym ships a change only when it wins on forks
   of the fab's own state, by an interval that excludes zero.
@@ -209,7 +209,7 @@ continues each copy, so forks of a snapshot need no new engine work.
 
 ### 4.5 Simulator core (built)
 
-`crates/fabsim`, in Rust. Measured on the SMT2020 model on one core of an M1 laptop:
+`crates/fabsim`, in Rust. Measured from the SMT2020 testbed on one core of an M1 laptop:
 
 - a simulated day in 0.026 to 0.029 s, about 276,000 dispatch decisions a second;
 - the reference engine's event log reproduced bit for bit; raw processing times within 1% of the published reference;
@@ -378,7 +378,7 @@ snapshot and each proposal's forks.
   code a model writes.
 - **Audit.** Every snapshot, fork set, proposal, rendering, signature and outcome kept with its hashes, and
   replayable.
-- **Speed.** Measured on the SMT2020 model on an M1 laptop: a simulated day in about 0.03 s per core; 60 days of
+- **Speed.** Measured from the SMT2020 testbed on an M1 laptop: a simulated day in about 0.03 s per core; 60 days of
   shift-by-shift switching across five rules in 35 to 42 s per seed. Twenty forks of a week's look-ahead fit easily
   in a supervisor's hours-long cycle on one multi-core server (design estimate from these timings).
 
@@ -388,7 +388,7 @@ snapshot and each proposal's forks.
 
 | Level | Name | What happens | Exit when |
 | --- | --- | --- | --- |
-| 0 | Gym | Everything on the SMT2020 model | Built |
+| 0 | Gym | Everything from the SMT2020 testbed | Built |
 | 1 | Mirror | Read-only connectors; the model compiled from the fab's master data; calibrated; backtested | The validation card shows the twin within its intervals on the measures that matter |
 | 2 | Shadow | Live snapshots; the supervisor proposes; nobody acts; each proposal's forecast kept and compared with what the fab did | Proposals would have helped, measured over weeks, with intervals |
 | 3 | Advise | Proposals go to the shift lead and the industrial engineers with their evidence; people carry out what they sign through their usual systems | People act on them, and outcomes match forecasts |
@@ -406,7 +406,7 @@ change-control process; and people who can say which numbers matter.
 
 What Fab Gym has not shown:
 
-- It has never run on a real fab's data. Every result so far is on the SMT2020 model.
+- It has never run on a real fab's data. Every result so far is from the SMT2020 testbed.
 - The model tracks lots of 25 wafers, has no operators walking between tools, no yield and no chemistry, and treats a
   stretch of rail as a queue with a capacity and a headway.
 - The supervisor, the failure model it is meant to find, the Lean certificates, the connectors, the calibration and

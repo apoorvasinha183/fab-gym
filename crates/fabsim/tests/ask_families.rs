@@ -1,5 +1,5 @@
 //! Ask the fab, with two families (docs/ASK-FAMILIES.md, parts 1 and 2). Written before the code.
-//! On the SMT2020 model, with a layout of our own design; not a real fab.
+//! From the SMT2020 testbed, with a layout of our own design; not a real fab.
 
 mod common;
 

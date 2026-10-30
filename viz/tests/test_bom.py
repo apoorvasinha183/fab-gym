@@ -1,5 +1,5 @@
 """Tests for the bill of materials read from the faithful BIM (docs/BOM.md). Written before the code.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. NOT FOR CONSTRUCTION.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_bom      (from the repo root)
 
@@ -104,7 +104,7 @@ class Bom(unittest.TestCase):
         rows = list(csv.DictReader((self.tmp / "bom" / "bom.csv").open()))
         self.assertEqual(len(rows), len(self.B["lines"]))
         md = (self.tmp / "bom" / "bom.md").read_text()
-        self.assertIn("On the SMT2020 model", md)
+        self.assertIn("From the SMT2020 testbed", md)
         self.assertIn("NOT FOR CONSTRUCTION", md)
         self.assertNotIn("TSMC", md)
         again = self.tmp / "bom2"

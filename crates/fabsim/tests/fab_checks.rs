@@ -1,4 +1,4 @@
-//! The checks a layout must pass (docs/FAB-CHECKS.md). Written before the code. On the SMT2020 model; the layouts
+//! The checks a layout must pass (docs/FAB-CHECKS.md). Written before the code. From the SMT2020 testbed; the layouts
 //! here are of our own design.
 
 mod common;

@@ -1,7 +1,7 @@
 // The Live view on the real building (docs/LIVE-REAL.md): which drawn box each of the engine's tools is, whether a
 // shop fits the drawn building, where each vehicle is and which lot it carries at a moment (from the browser
 // simulator's flat fleet arrays), and how many of a lot's wafers a step has done. In the page this defines
-// window.FabBuilding; under Node, module.exports. On the SMT2020 model, a gigafab-style layout of our own design.
+// window.FabBuilding; under Node, module.exports. From the SMT2020 testbed, a gigafab-style layout of our own design.
 (function (root) {
   "use strict";
 

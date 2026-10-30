@@ -1,7 +1,7 @@
 # Two families: which policy, which floor, at what share?
 
 Pre-registered 28 October 2026, before any run of this design. Results are added below the line once the runs are
-done; nothing above the line changes after that. On the SMT2020 model, with a layout of our own design; not a real
+done; nothing above the line changes after that. From the SMT2020 testbed, with a layout of our own design; not a real
 fab, not real data. Agents propose, the simulator scores, a person signs.
 
 ## The question
@@ -58,7 +58,7 @@ operating policy and which 2D layout strategy make the most money a day, and at 
   cell per share named with its interval only.
 - **Compute:** at most 4 threads, niced; results do not depend on the thread count. A heavy job: it runs only when
   nothing else heavy runs.
-- Every result says "on the SMT2020 model"; real-fab effect: cannot say.
+- Every result says "from the SMT2020 testbed"; real-fab effect: cannot say.
 
 ## Code
 
@@ -76,7 +76,7 @@ above, from commit 6029c41 (11,955 s). The layouts are reproducible on Linux x86
 differ by platform. Every run and every price point: `results/two-families/runs.tsv` and `prices.tsv`; the intervals:
 `summary.json`.
 
-**What it shows, on the SMT2020 model, at the central prices:**
+**What it shows, from the SMT2020 testbed, at the central prices:**
 
 - **Prototypes take about 100 days.** On today's fab family B's lots take 96 to 108 days from scheduled arrival to
   finish at every share (product 3's raw processing is about 25 days; the model's release rate runs above
@@ -105,7 +105,7 @@ prototypes are assumed worthless. Real-fab effect: cannot say.
 
 ### The scorer's tables
 
-On the SMT2020 model, with a layout of our own design; not a real fab. 10 seeds (2000..2009), 300 days, window days 120 to 300; family B's lots drawn with seed 1 (the same lots on every seed). Each cell minus (D1 share, P0 today) at the same share, paired; intervals Bonferroni over 56 cells (each at level 0.00089), so all cover at once with probability at least 95%. Every price assumed. Real-fab effect: cannot say.
+From the SMT2020 testbed, with a layout of our own design; not a real fab. 10 seeds (2000..2009), 300 days, window days 120 to 300; family B's lots drawn with seed 1 (the same lots on every seed). Each cell minus (D1 share, P0 today) at the same share, paired; intervals Bonferroni over 56 cells (each at level 0.00089), so all cover at once with probability at least 95%. Every price assumed. Real-fab effect: cannot say.
 
 ### money a day (central prices, wafers of family-A margin)
 
@@ -169,18 +169,18 @@ On the SMT2020 model, with a layout of our own design; not a real fab. 10 seeds 
 
 - D1 share P1 family B first: flips between x4 and x8 (unclear at [])
 - D1 share P2 family cap: flips between x2 and x4 (unclear at [])
-- D1 share P3 reservation: worse on the SMT2020 model at some shares, no clear effect at the others
-- D1 share P4 qualification: worse on the SMT2020 model at some shares, no clear effect at the others
-- D2 wing P0 today: same verdict at every share: worse on the SMT2020 model
-- D2 wing P1 family B first: same verdict at every share: worse on the SMT2020 model
-- D2 wing P2 family cap: same verdict at every share: worse on the SMT2020 model
-- D2 wing P3 reservation: same verdict at every share: worse on the SMT2020 model
-- D2 wing P4 qualification: same verdict at every share: worse on the SMT2020 model
-- D3 copies P0 today: worse on the SMT2020 model at some shares, no clear effect at the others
-- D3 copies P1 family B first: worse on the SMT2020 model at some shares, no clear effect at the others
+- D1 share P3 reservation: worse from the SMT2020 testbed at some shares, no clear effect at the others
+- D1 share P4 qualification: worse from the SMT2020 testbed at some shares, no clear effect at the others
+- D2 wing P0 today: same verdict at every share: worse from the SMT2020 testbed
+- D2 wing P1 family B first: same verdict at every share: worse from the SMT2020 testbed
+- D2 wing P2 family cap: same verdict at every share: worse from the SMT2020 testbed
+- D2 wing P3 reservation: same verdict at every share: worse from the SMT2020 testbed
+- D2 wing P4 qualification: same verdict at every share: worse from the SMT2020 testbed
+- D3 copies P0 today: worse from the SMT2020 testbed at some shares, no clear effect at the others
+- D3 copies P1 family B first: worse from the SMT2020 testbed at some shares, no clear effect at the others
 - D3 copies P2 family cap: flips between x1 and x4 (unclear at [2.0])
-- D3 copies P3 reservation: worse on the SMT2020 model at some shares, no clear effect at the others
-- D3 copies P4 qualification: worse on the SMT2020 model at some shares, no clear effect at the others
+- D3 copies P3 reservation: worse from the SMT2020 testbed at some shares, no clear effect at the others
+- D3 copies P4 qualification: worse from the SMT2020 testbed at some shares, no clear effect at the others
 
 ### P4: break-even qualification cost per unqualified tool a day (central prices)
 

@@ -1,7 +1,7 @@
 //! The decision as a fab (docs/NARRATIVE.md, deliverable 2): a signed answer, copies of the busiest groups for
 //! prototypes in the halls, becomes a variant of today's realistic campus. Today's optimised plan is kept block for
 //! block and each copy sits right after its original, so the plans, the BIM and the bill of materials differ only
-//! around the copies. Written before the code. A gigafab-style layout of our own design on the SMT2020 model.
+//! around the copies. Written before the code. A gigafab-style layout of our own design from the SMT2020 testbed.
 
 mod common;
 

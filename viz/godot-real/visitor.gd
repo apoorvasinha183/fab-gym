@@ -1,6 +1,6 @@
 extends Node3D
 ## A Walk Through the Fab: the visitor's plan (res://data/visitor.json, from viz/visitor/plan.py)
-## played live in the explore scene. A gigafab-style layout of our own design on the SMT2020 model;
+## played live in the explore scene. A gigafab-style layout of our own design from the SMT2020 testbed;
 ## not a real fab. The run chose where he goes; this script only plays it back: his walk, his
 ## gaze, the camera over his shoulder, the fab clock and the cards with the run's numbers.
 ## The visitor, the rooms of the way in and the walkway are drawn only: he is not in the model and
@@ -11,7 +11,7 @@ extends Node3D
 
 const PLAN := "res://data/visitor.json"
 const MODEL := "res://data/hazmat.glb"
-const BADGE := "A Walk Through the Fab · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab · the visitor is drawn only"
+const BADGE := "A Walk Through the Fab · a gigafab-style layout of our own design, from the SMT2020 testbed · not a real fab · the visitor is drawn only"
 const HEIGHT := 1.75
 const WALK_FOOT := 2.35   # the walk clip's foot speed at the model's own size, m/s
 const KEEP := ["Character_Hazmat", "Character_Hazmat_Head"]

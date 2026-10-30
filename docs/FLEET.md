@@ -1,6 +1,6 @@
 # The faithful floor, rungs L2 to L4: the track, the fleet and traffic
 
-Decided by quiz on 29 Oct 2026 (page: "The Faithful Floor"). On the SMT2020 model, with a gigafab-style layout of our
+Decided by quiz on 29 Oct 2026 (page: "The Faithful Floor"). From the SMT2020 testbed, with a gigafab-style layout of our
 own design; not a real fab. Every number below is assumed unless it says otherwise.
 
 SMT2020 puts every tool at one location, `Fab`, and gives one move time for every move (uniform 7.5 ± 2.5 min).

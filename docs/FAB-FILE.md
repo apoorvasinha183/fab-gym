@@ -2,7 +2,7 @@
 
 Written 30 Oct 2026, before the code. Decided by quiz the same day: the 4 Nov entry has the config file, its checks,
 rails of any shape read from the file, the layout editor and a Meta model that writes a fab. This is the first
-piece: the file. On the SMT2020 model; any layout here is of our own design, not a real fab.
+piece: the file. From the SMT2020 testbed; any layout here is of our own design, not a real fab.
 
 ## The idea
 

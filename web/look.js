@@ -1,6 +1,6 @@
 // The Fab Gym look, shared by the floor and the editor (docs/FLOOR-LOOK.md): icons, area colours and names, the ten
 // tool moods with their badges, a group's label and mood, and small drawing helpers for a 2D canvas. In the page this
-// defines window.FabLook; under Node, module.exports. On the SMT2020 model or a teaching fab of our own; not a real fab.
+// defines window.FabLook; under Node, module.exports. From the SMT2020 testbed or a teaching fab of our own; not a real fab.
 (function (root) {
   "use strict";
 

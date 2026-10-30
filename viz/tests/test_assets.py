@@ -1,6 +1,6 @@
 """Tests for the outside assets in the realistic film (viz/blender/real.py) and the explore scene.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The sky, four
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The sky, four
 ground textures, the cars and the people come from CC0 sets (docs/ASSETS.md). The tools, the
 carriers, the hoist and the buildings stay our own. Workers and cars are drawn only: they are not
 in the model and no number comes from them. Standard library only:

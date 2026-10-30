@@ -1,6 +1,6 @@
 //! Regret option C (docs/LONG-RESCORE.md, the Speed and Regret page): the capacity ceiling. No schedule can get more
 //! wafers out a day than the busiest tool group can pass at the released product mix, nor more than is released.
-//! Written before the code. On the SMT2020 model's rules.
+//! Written before the code. From the SMT2020 testbed's rules.
 
 mod common;
 

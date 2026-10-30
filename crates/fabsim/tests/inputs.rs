@@ -1,5 +1,5 @@
 //! Uncertainty layer 4 (docs/UQ-INPUTS.md): the published input numbers redrawn. Written before the code.
-//! On the SMT2020 model's rules, with a hand-made shop for speed.
+//! From the SMT2020 testbed's rules, with a hand-made shop for speed.
 
 use fabsim::inputs::{factors, perturb, Factors};
 use fabsim::shop::Shop;

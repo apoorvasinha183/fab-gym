@@ -1,5 +1,5 @@
 {
- "_about": "The Fab Gym cast (docs/CAST-PROMPT.md): machines as gym trainees, moods read from a run. Art made with Meta's Muse Image (muse-image-1.0), 30 Oct 2026. Images: <machine>/<mood>.webp, lots/<mood>.webp, base/<nn>-<name>.webp. On the SMT2020 model; generic machines, no real fab.",
+ "_about": "The Fab Gym cast (docs/CAST-PROMPT.md): machines as gym trainees, moods read from a run. Art made with Meta's Muse Image (muse-image-1.0), 30 Oct 2026. Images: <machine>/<mood>.webp, lots/<mood>.webp, base/<nn>-<name>.webp. From the SMT2020 testbed; generic machines, no real fab.",
  "machines": {
   "litho": {
    "name": "Lithography",

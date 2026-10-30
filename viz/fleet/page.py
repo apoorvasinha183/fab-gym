@@ -6,7 +6,7 @@ track and what the fleet did on it in an hour, for two fleet sizes, replayed on 
         [--trace data/layout-real-dd/fleet-90.json --trace data/layout-real-dd/fleet-160.json]
         [--out data/layout-real-dd/fleet-page/index.html]
 
-Write the traces first with `fabsim fleet-trace --vehicles N`. Standard library only. On the SMT2020 model, a
+Write the traces first with `fabsim fleet-trace --vehicles N`. Standard library only. From the SMT2020 testbed, a
 gigafab-style layout of our own design; not a real fab.
 """
 

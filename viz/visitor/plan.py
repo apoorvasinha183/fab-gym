@@ -1,6 +1,6 @@
 """A Walk Through the Fab: where the visitor goes, where he looks, and how the camera sees him.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. A visitor parks,
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. A visitor parks,
 walks to the office door, takes the lift, crosses the link bridge, gowns up, goes through the air
 shower and steps onto the clean floor. From there the run decides where he goes. At each choice
 every sight he could reach is scored:
@@ -53,7 +53,7 @@ FOV_V = 42.0
 CAM_H = 1.7  # the walking camera above his feet
 AIM_H = 1.25  # where it aims, 6 m past him
 IN_FRAME = 18.0  # degrees from the view's centre, kept under the tests' 20
-BADGE = ("A gigafab-style layout of our own design on the SMT2020 model, not a real fab. "
+BADGE = ("A gigafab-style layout of our own design from the SMT2020 testbed, not a real fab. "
          "The visitor is drawn only; he is not in the model. Every number is the run's.")
 
 
@@ -764,7 +764,7 @@ class Planner:
         n = c["numbers"]
         g = s["groups"][c["group"]]["name"] if c["group"] is not None else None
         kind = s["tools"][c["tool"]]["kind"] if c["tool"] is not None else None
-        tag = "On the SMT2020 model: the run's own numbers."
+        tag = "From the SMT2020 testbed: the run's own numbers."
         if c["kind"] == "breakdown":
             title = f"A {kind} tool is down: group {g}"
             lines = [f"{n['up']} of {n['tools']} tools in the group are up",

@@ -257,7 +257,7 @@ fn verdicts_are_three_valued() {
     assert_eq!(verdict(&Interval::from_bounds(0.5, 1.5, 10, 0.05), true), Verdict::Better);
     assert_eq!(verdict(&Interval::from_bounds(0.5, 1.5, 10, 0.05), false), Verdict::Worse);
     assert_eq!(verdict(&Interval::from_bounds(-0.5, 1.5, 10, 0.05), true), Verdict::CannotSay);
-    assert_eq!(Verdict::CannotSay.label(), "no clear effect on the SMT2020 model");
+    assert_eq!(Verdict::CannotSay.label(), "no clear effect from the SMT2020 testbed");
     assert_eq!(REAL_FAB_EFFECT, "Real-fab effect: cannot say");
 }
 

@@ -10,7 +10,7 @@ The questions an operations head asks are answered from experience, with no erro
 
 ## What Fab Gym does
 
-Fab Gym answers such questions on the SMT2020 model of a fab with tested options and intervals.
+Fab Gym answers such questions on the SMT2020 testbed with tested options and intervals.
 
 1. A person types a question or speaks a shift handover (Muse Voice Transcribe).
 2. Muse Spark Open turns it into a scenario that must pass a versioned schema. Each value is tagged as said by the person or assumed; values the question leaves open get a range.
@@ -42,7 +42,7 @@ Fab Gym answers such questions on the SMT2020 model of a fab with tested options
 | What the question leaves open | Sweep the open range and find where the best option changes | "B wins if the outage runs past N hours. How long will it be?" |
 | The gap to a real fab | Say so | Real-fab effect: cannot say |
 
-Redrawing the SMT2020 model's own breakdown and repair numbers comes later.
+Redrawing the SMT2020 testbed's own breakdown and repair numbers comes later.
 
 ## Checks
 

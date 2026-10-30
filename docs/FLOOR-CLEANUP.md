@@ -2,7 +2,7 @@
 
 Written 29 October 2026, before the code, from a tester's critique of the floor page (29 points; the founder: "Put
 all of these in a plan and execute the cleanup"; Apple-like where it makes sense, balancing elegance with
-information). On the SMT2020 model, a published research model of a wafer fab.
+information). From the SMT2020 testbed, a published set of a fab's tool groups, routes and times.
 
 ## Principles
 

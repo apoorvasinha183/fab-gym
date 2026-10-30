@@ -5,7 +5,7 @@
 
 Every shape in the construction-documents IFC is an extruded profile or a placed copy of one, so lengths, volumes
 and counts are read from the profiles without meshing. Writes bom.json, bom.csv and bom.md; the same IFC gives the
-same bytes. A gigafab-style layout of our own design on the SMT2020 model; not a real fab. NOT FOR CONSTRUCTION.
+same bytes. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. NOT FOR CONSTRUCTION.
 """
 
 import argparse
@@ -19,7 +19,7 @@ from pathlib import Path
 import ifcopenshell
 import ifcopenshell.util.element as ue
 
-TRUTH = ("On the SMT2020 model: quantities counted from the Fab Gym BIM, a gigafab-style layout of our own design. "
+TRUTH = ("From the SMT2020 testbed: quantities counted from the Fab Gym BIM, a gigafab-style layout of our own design. "
          "Not a real fab. NOT FOR CONSTRUCTION. Lengths and volumes are of the modelled shapes (pipes and ducts as "
          "solid sections; the waffle slab, roof deck and filter ceiling as solid layers); no fittings, waste "
          "allowance or prices.")

@@ -1,6 +1,6 @@
 # Ask the fab, with two families
 
-Written 28 October 2026, before the code. Extends `docs/ASK.md` and `docs/TWO-FAMILIES.md`. On the SMT2020 model,
+Written 28 October 2026, before the code. Extends `docs/ASK.md` and `docs/TWO-FAMILIES.md`. From the SMT2020 testbed,
 with a layout of our own design; not a real fab, not real data. Agents propose, the simulator scores, a person
 signs.
 
@@ -76,7 +76,7 @@ New records, off unless present (every `fabgym-scenario 1` file written before p
   interval and verdict), and "Show on the floor" for any arm.
 - The floor plays the chosen arm: its shop loaded into the page's simulator, family B's lots drawn in their own
   colour, copies as groups in their halls, a wing as a hall of its own, P1 as a choice in the page's simulator.
-- Every card says "on the SMT2020 model" and "Real-fab effect: cannot say".
+- Every card says "from the SMT2020 testbed" and "Real-fab effect: cannot say".
 
 ## Tests
 

@@ -604,7 +604,7 @@ fn verdict_word(v: Verdict) -> &'static str {
 
 impl RuleReport {
     pub fn to_json(&self) -> String {
-        let mut s = String::from("{\"ok\": true, \"model\": \"the SMT2020 model\", ");
+        let mut s = String::from("{\"ok\": true, \"model\": \"the SMT2020 testbed\", ");
         let _ = write!(
             s,
             "\"seeds\": [{}], ",

@@ -1,6 +1,6 @@
 """Tests for the realistic fab (docs/FAB-LOOK-PROBLEM.md, docs/FAB-LOOK.md, docs/FAB-FILM-SCRIPT.md).
 
-A gigafab-style layout of our own design on the SMT2020 model. Standard library only:
+A gigafab-style layout of our own design from the SMT2020 testbed. Standard library only:
 
     python3 -m unittest discover -s viz/tests
 
@@ -219,7 +219,7 @@ class Scene(unittest.TestCase):
         t = SCENE.read_text()
         for b in BRANDS:
             self.assertNotIn(b, t, b)
-        self.assertIn("on the SMT2020 model", self.s["what"])
+        self.assertIn("from the SMT2020 testbed", self.s["what"])
 
 
 class Film(unittest.TestCase):
@@ -241,7 +241,7 @@ class Film(unittest.TestCase):
             # read at three words a second, every caption of a shot inside the shot
             n = sum(len(c.split()) for c in s["captions"])
             self.assertLessEqual(n / 3.0, s["end"] - s["start"] + 0.5, f"shot {s['id']}: {n} words in {s['end'] - s['start']} s")
-        self.assertIn("on the SMT2020 model", shots[0]["captions"][0])
+        self.assertIn("from the SMT2020 testbed", shots[0]["captions"][0])
         self.assertIn("Not a real fab", shots[-1]["captions"][0])
 
     def test_outside_inside_lot_outside(self):
@@ -265,7 +265,7 @@ class Film(unittest.TestCase):
         self.assertEqual(sorted(caps), sorted(x["id"] for x in SHOTS["shots"]))
         for x in SHOTS["shots"]:
             self.assertEqual(len(caps[x["id"]]), len(x["captions"]), x["id"])
-        self.assertIn("on the SMT2020 model", caps["1"][0])
+        self.assertIn("from the SMT2020 testbed", caps["1"][0])
         for t in caps.values():
             for b in BRANDS:
                 self.assertNotIn(b, " ".join(t))

@@ -1,5 +1,5 @@
 {
-  "what": "The size book of docs/FAB-LOOK.md as data: metres unless stated. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.",
+  "what": "The size book of docs/FAB-LOOK.md as data: metres unless stated. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.",
   "carrier": {"w": 0.426, "d": 0.355, "h": 0.338, "mass_kg": 8.2, "wafers": 25, "pitch_mm": 10},
   "vehicle": {"l": 0.9, "w": 0.6, "h": 0.8},
   "rail_underside": 4.2,

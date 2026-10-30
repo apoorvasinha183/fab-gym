@@ -1,5 +1,5 @@
 //! Defects in the fab: holds on top of rework (docs/RL-DEFECTS.md, tests 1 to 4). Written before the code.
-//! On the SMT2020 model's rules, with a toy shop; no real fab.
+//! From the SMT2020 testbed's rules, with a toy shop; no real fab.
 
 mod common;
 

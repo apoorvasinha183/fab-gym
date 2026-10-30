@@ -1,6 +1,6 @@
 # Uncertainty in Fab Gym
 
-Every claim is a difference against today's rules on the SMT2020 model, run on the same seeds
+Every claim is a difference against today's rules from the SMT2020 testbed, run on the same seeds
 (common random numbers), with an interval and its guarantee. Code: `crates/fabsim/src/uq.rs`;
 tests: `crates/fabsim/tests/uq.rs`.
 
@@ -45,7 +45,7 @@ if the outage runs past N hours. How long will it be?").
 
 ## Layer 5: the gap to a real fab
 
-A verdict is three-valued: better, worse, or no clear effect, always "on the SMT2020 model". Every
+A verdict is three-valued: better, worse, or no clear effect, always "from the SMT2020 testbed". Every
 card also says "Real-fab effect: cannot say".
 
 ## Layer 4: doubt about the input numbers

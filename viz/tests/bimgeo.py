@@ -1,6 +1,6 @@
 """Geometry helpers for the faithful BIM's tests (docs/BIM-FAITHFUL.md): world bounds of every element from
 IfcOpenShell, and the world box of every repeat an element places. Test code only; needs IfcOpenShell (.venv).
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 """
 
 import multiprocessing

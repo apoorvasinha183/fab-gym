@@ -8,7 +8,7 @@ The observation is a fixed vector: K candidates by their fields (scaled), a mask
 deciding group's tools and the fab's totals. The action picks one of the K slots; a slot with no candidate is
 masked to the engine's own pick (slot 0) and counted. Rewards are the scorer's reward (lots finished minus 0.01
 per lot-hour waiting) as it changes between decisions, so an episode's rewards sum to the window's reward.
-On the SMT2020 model, a published model of a fab; not a real fab."""
+From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab."""
 
 import json
 import math

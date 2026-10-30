@@ -4,8 +4,7 @@ Written 31 Oct 2026, before the code. The founder: "I want the floor to have the
 Chosen by quiz: every tool becomes an editor-style raised box with its area's colour on top and a small state light;
 each of the floor's tool groups gets the editor's icon, label, mood badge and row of lots waiting, and the character
 card on hover; labels and badges show from the first zoom step, so the whole-fab view stays readable. The moods are the
-editor's ten, from the same Rust code: the browser build exports them for its last run. On the SMT2020 model, a
-published model of a fab; never a real fab.
+editor's ten, from the same Rust code: the browser build exports them for its last run. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; never a real fab.
 
 ## Pieces
 

@@ -3,7 +3,7 @@
 Written 30 Oct 2026, before the code. The founder, 30 Oct: "Bring back the failure modes per tool, and rail piece,
 the default version is what it is today but they should be able to configure it if they want. Let us first
 modularize the thing." By quiz the same day: a JSON overrides file beside the fab file, listing only what differs.
-On the SMT2020 model; every number a person puts in an overrides file is theirs, not a real fab's.
+From the SMT2020 testbed; every number a person puts in an overrides file is theirs, not a real fab's.
 
 ## Today, which stays the default
 

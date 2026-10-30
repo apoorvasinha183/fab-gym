@@ -1,5 +1,5 @@
 extends Node3D
-## A gigafab-style campus of our own design on the SMT2020 model (not a real fab), with a
+## A gigafab-style campus of our own design from the SMT2020 testbed (not a real fab), with a
 ## simulated run replayed: tools coloured by area and state, lots riding the overhead hoist,
 ## waiting lots stacked in towers at their bay's mouth.
 ##
@@ -375,7 +375,7 @@ func _hud() -> void:
 		row.add_child(r)
 		row.add_child(_text(S["areas"][a]["name"], 15, Color("d5deea")))
 		grid.add_child(row)
-	caption = _text("A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Support buildings drawn only; lots drawn larger than life.", 18, Color("8fa0b8"))
+	caption = _text("A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Support buildings drawn only; lots drawn larger than life.", 18, Color("8fa0b8"))
 	caption.position = Vector2(30, 1040)
 	panel.add_child(caption)
 	legend = caption

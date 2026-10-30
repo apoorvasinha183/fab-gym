@@ -1,7 +1,7 @@
 # agent
 
 The loop that turns a question into dispatch rules written by a model, scores each one in the simulator on
-the SMT2020 model of a fab, and ends in a result card a person signs. The spec is `docs/AGENT.md`.
+the SMT2020 testbed, and ends in a result card a person signs. The spec is `docs/AGENT.md`.
 
 - A rule is one Rust function, `pub fn key(c: &Cand, x: &Ctx) -> f64`. `crates/fabrule` checks it,
   compiles it to WebAssembly and runs it in a wasmtime sandbox with no imports, at most 64 MiB and a fuel

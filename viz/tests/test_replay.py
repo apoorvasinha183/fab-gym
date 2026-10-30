@@ -1,6 +1,6 @@
 """Tests for the replay: a rule against today's rule, side by side (docs/REPLAY.md). Written before the code.
 
-On the SMT2020 model, on a gigafab-style layout of our own design; not a real fab. Standard library only:
+From the SMT2020 testbed, on a gigafab-style layout of our own design; not a real fab. Standard library only:
 
     python3 -m unittest viz.tests.test_replay      (from the repo root)
 
@@ -168,7 +168,7 @@ class Pair(unittest.TestCase):
 
     def test_it_says_what_it_is(self):
         r = self.load("replay.json")
-        self.assertIn("SMT2020 model", r["what"])
+        self.assertIn("SMT2020 testbed", r["what"])
         self.assertIn("not a real fab", r["what"])
         self.assertEqual(r["seed"], 3001)
 
@@ -223,7 +223,7 @@ class Scene(unittest.TestCase):
 
     def test_compare_says_what_it_is(self):
         s = (PROJ / "compare.gd").read_text()
-        for words in ("on the SMT2020 model", "not a real fab", "Today's rule", "hand-written", "not scored",
+        for words in ("from the SMT2020 testbed", "not a real fab", "Today's rule", "hand-written", "not scored",
                       "one seed"):
             self.assertIn(words, s, words)
         for b in BRANDS:
@@ -278,7 +278,7 @@ class Check(unittest.TestCase):
 
     def test_the_screen_names_both_rules(self):
         text = " ".join(self.r["text"])
-        for words in ("Today's rule", "on the SMT2020 model", "not a real fab"):
+        for words in ("Today's rule", "from the SMT2020 testbed", "not a real fab"):
             self.assertIn(words, text)
         self.assertIn(json.loads((PROJ / "data/replay/replay.json").read_text())["rule"]["name"], text)
 

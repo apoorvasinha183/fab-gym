@@ -2,7 +2,7 @@ extends Node3D
 ## The fab's structure from the IFC model (docs/BIM-3D.md): walls, columns, slabs, the raised floor and the filter
 ## ceiling, read from res://data/fab-building.glb (viz/bim/gltf.py; copied in by sync.sh). Each element keeps its
 ## IFC id and where its numbers come from as metadata, wears a saved material by name, and gets a box collider.
-## A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+## A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 
 const GLB := "res://data/fab-building.glb"
 const MATERIALS := {

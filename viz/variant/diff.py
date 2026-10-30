@@ -8,7 +8,7 @@ same pipeline into data/layout-real-dd-copies): the copies, the capital and the 
 code check of both permit stages; the bill of materials; the drawn sheets; where every tool stands. Writes
 difference.json, difference.md and the sheet X-001.svg. The same inputs give the same bytes.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Prices and placements assumed.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Prices and placements assumed.
 NOT FOR CONSTRUCTION.
 """
 
@@ -19,7 +19,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-TRUTH = ("On the SMT2020 model, a published research model of a wafer fab: a gigafab-style layout of our own design, "
+TRUTH = ("From the SMT2020 testbed, a published set of a fab's tool groups, routes and times: a gigafab-style layout of our own design, "
          "not a real fab. Prices and placements assumed. NOT FOR CONSTRUCTION.")
 TODAY = {"layout": "results/layout-real-dd/layout.json", "scene": "data/layout-real-dd/scene-optimised.json",
          "dd": "data/layout-real-dd/permit/us", "cd": "data/layout-real-dd/permit-cd/us"}

@@ -1,6 +1,6 @@
 """A Walk Through the Fab, the Blender film: where the visitor goes, how he moves, and the camera.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The first cut
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The first cut
 (plan.py, played in Godot) walked like a machine: instant starts and stops, turns on the spot
 without a step, paths along the walls. This plan is made for the Blender film and moves like a
 person:
@@ -69,7 +69,7 @@ IN_FRAME = 18.0
 CAM_STEP = 2.8 * DT  # the most the camera moves in a sample
 CAM_TAU = 0.5  # s, how quickly the camera follows
 FOV_V = 42.0
-BADGE = ("A gigafab-style layout of our own design on the SMT2020 model, not a real fab. "
+BADGE = ("A gigafab-style layout of our own design from the SMT2020 testbed, not a real fab. "
          "The visitor is drawn only; he is not in the model. Every number is the run's.")
 STILL = {"stand", "interact", "sit_enter", "sit_idle", "lift", "mirror", "shower", "watch", "close"}
 
@@ -402,7 +402,7 @@ class FilmPlanner(Planner):
         self.start_floor = out_door
         self.reveal = (self.floor_mark(), self.floor_mark() + 3.5)
         self.captions.append({"s0": self.floor_mark(), "s1": self.floor_mark() + 4.0,
-                              "text": "The clean floor: a gigafab-style layout of our own design on the SMT2020 model"})
+                              "text": "The clean floor: a gigafab-style layout of our own design from the SMT2020 testbed"})
 
     # the clean floor
 

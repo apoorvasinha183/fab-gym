@@ -1,6 +1,6 @@
 # Design development: the permit set carried from schematic design to LOD 300
 
-A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Every sheet stays NOT FOR
+A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Every sheet stays NOT FOR
 CONSTRUCTION; a permit still needs a real site and the seals of licensed people.
 
 This builds on `docs/PERMIT.md` (D0 to D10). Decided by quiz on 27 Oct 2026:

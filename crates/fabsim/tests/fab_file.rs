@@ -1,5 +1,5 @@
 //! One file for any fab (docs/FAB-FILE.md): today's shop text plus optional plan records. Written before the code.
-//! On the SMT2020 model; any layout here is of our own design, not a real fab.
+//! From the SMT2020 testbed; any layout here is of our own design, not a real fab.
 
 mod common;
 

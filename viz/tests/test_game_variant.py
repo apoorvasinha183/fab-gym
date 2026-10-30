@@ -1,5 +1,5 @@
 """Tests for the variant in the game (docs/NARRATIVE.md, deliverable 4). Written before the code.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 
 The game opens on the US building, today's or the variant with copies for prototype orders, the same fabs the plans,
 the BIM and the bill of materials were drawn from. F switches between them; in the variant each copy carries a

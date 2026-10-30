@@ -1,6 +1,6 @@
 """Tests for the visitor film's plan ("A Walk Through the Fab", the Blender film): viz/visitor/film_plan.py.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The founder on the
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The founder on the
 first, Godot cut (27 Oct): "unnatural walking, clanker walking indoors weirdly. Weird wall
 trajectory". So this plan is held to how people move:
 
@@ -157,7 +157,7 @@ class Source(unittest.TestCase):
 
     def test_it_says_what_it_is(self):
         doc = PLAN.read_text().split('"""')[1]
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, doc, words)
 
 
@@ -621,11 +621,11 @@ class Plan(unittest.TestCase):
             if x["group"] is not None:
                 self.assertIn(self.s["groups"][x["group"]]["name"], text)
                 self.assertIn(str(x["numbers"]["waiting"]), text)
-            self.assertIn("SMT2020 model", text)
+            self.assertIn("SMT2020 testbed", text)
         for c in P["captions"]:
             self.assertLess(c["s0"], c["s1"])
             self.assertNotIn("TSMC", c["text"])
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, P["badge"])
 
     def test_about_two_minutes(self):

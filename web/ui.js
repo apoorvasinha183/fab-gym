@@ -1,6 +1,6 @@
 // The redesigned floor page's pure parts (docs/FLOOR-UI.md): the tilted view, picking, axis ticks, verdicts, the
 // two-family sweep as rows, lines and baselines, one clock for two runs, and the opening. In the page this defines
-// window.FabUI; under Node, module.exports. On the SMT2020 model, a published model of a fab; not a real fab.
+// window.FabUI; under Node, module.exports. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab.
 (function (root) {
   "use strict";
 
@@ -202,7 +202,7 @@
     return {
       id: `page-${Date.now()}-${runCount}`, kind: o.kind, when: new Date().toISOString(), title: o.title, question: o.question || "",
       settings: o.settings, headline: o.headline || "", numbers: { columns: o.columns, rows: o.rows }, files: [],
-      note: "On the SMT2020 model, a published research model of a wafer fab. No real fab's data is used. Run in this page; not saved to disk.",
+      note: "From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's data is used. Run in this page; not saved to disk.",
     };
   }
 

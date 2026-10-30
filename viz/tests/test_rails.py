@@ -1,5 +1,5 @@
 """The drawn rails are the simulator's track (decided by quiz 29 Oct: the two-rail bay loop; the drawings keep their
-look). Written before the code. On the SMT2020 model, a gigafab-style layout of our own design; not a real fab.
+look). Written before the code. From the SMT2020 testbed, a gigafab-style layout of our own design; not a real fab.
 
     .venv/bin/python -m unittest viz.tests.test_rails      (from the repo root)
 

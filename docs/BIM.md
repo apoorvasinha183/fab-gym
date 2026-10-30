@@ -1,7 +1,7 @@
 # BIM: one building model, drawn for any country
 
 Written 27 Oct 2026, before the code (tests in `viz/tests/test_bim.py` and `viz/tests/test_blueprint.py`).
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Every placement number is
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Every placement number is
 assumed unless the brief cites a source. Concept for review, NOT FOR CONSTRUCTION.
 
 The founder asked whether the fab should be BIM, and noted that both the building and its drawings change with
@@ -42,7 +42,7 @@ results/layout-real/layout.json ──> viz/prep.py --real ──> scene-optimis
   stockers, rails and campus buildings as proxies typed by kind. Each tool carries a property set
   `FabGym_Tool` (its index in the scene, tool group, area, kind, bay, width, depth, height, load ports,
   where its size comes from);
-  every element and space carries `FabGym_Basis` (Basis: "On the SMT2020 model. A layout of our own design.
+  every element and space carries `FabGym_Basis` (Basis: "From the SMT2020 testbed. A layout of our own design.
   Not a real fab."; Status: "Concept for review, NOT FOR CONSTRUCTION"; NumbersFrom: `model`, `assumed` or
   `cited: <source>`). Ids are fixed from each element's name, so the file is the
   same on every run and for every profile.

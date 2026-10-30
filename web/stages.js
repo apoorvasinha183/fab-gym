@@ -1,4 +1,4 @@
-// What each hall does to the silicon (docs/STAGES.md). On the SMT2020 model, a published model of a fab;
+// What each hall does to the silicon (docs/STAGES.md). From the SMT2020 testbed, a published set of a fab's tool groups, routes and times;
 // not a real fab. The model holds steps, tools and times, not chemistry: the drawings are generic textbook
 // steps of our own, not to scale, and every number shown beside them comes from the page's data.
 // In the page this defines window.FabStages; under Node, module.exports.
@@ -202,7 +202,7 @@
       facts: ["In SMT2020 a lot is 25 wafers; prototype lots are 1 to 10.", "Urgent lots, called hot lots, jump every queue."] },
     { key: "loop", act: "fab", name: "Layer by layer", inModel: true,
       what: "Here is the trick: a chip is built like a city, one floor at a time. For every layer the wafer gets a thin film, a pattern printed with light, an etch that carves it, a dose of atoms, a wash and a check. Then the loop begins again.",
-      facts: ["Product 3 goes round it on a route of 583 steps across 105 groups of tools.", "On the SMT2020 model a regular lot spends about 66 days in the fab. Most of that time it is waiting in line."] },
+      facts: ["Product 3 goes round it on a route of 583 steps across 105 groups of tools.", "From the SMT2020 testbed a regular lot spends about 66 days in the fab. Most of that time it is waiting in line."] },
     { key: "done", act: "fab", name: "A finished wafer", inModel: true,
       what: "Out comes a wafer tiled with identical chips, called dies, still joined together. Zoom into one and you would find millions to billions of tiny switches, wired together in stacked layers like the floors of a building.",
       facts: ["How many dies fit depends on their size: tens of large ones, or thousands of small ones.", "In the simulator, a lot is done when it finishes its last step."] },

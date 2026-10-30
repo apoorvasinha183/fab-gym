@@ -1,6 +1,6 @@
 """Tests for the visitor's walk-through ("A Walk Through the Fab"): viz/visitor/plan.py.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. A visitor parks,
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. A visitor parks,
 walks to the office door, takes the lift, crosses the link bridge, gowns up, goes through the
 air shower and steps onto the clean floor. From there the run decides where he goes: every sight
 he can reach is scored by how serious it is, how new it is and how far he must walk, and he goes
@@ -133,7 +133,7 @@ class Source(unittest.TestCase):
 
     def test_it_says_what_it_is(self):
         doc = PLAN.read_text().split('"""')[1]
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, doc, words)
 
 
@@ -434,10 +434,10 @@ class Plan(unittest.TestCase):
                 self.assertIn(str(x["numbers"]["waiting"]), text)
             if x["kind"] == "hoist":
                 self.assertIn(str(x["numbers"]["riding"]), text)
-            self.assertIn("SMT2020 model", text)
+            self.assertIn("SMT2020 testbed", text)
 
     def test_the_badge(self):
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, P["badge"], words)
 
     def test_it_is_one_short_piece(self):
@@ -478,7 +478,7 @@ class GodotSource(unittest.TestCase):
         v = (GPROJ / "visitor.gd").read_text()
         self.assertIn("res://data/visitor.json", v)
         self.assertIn("hazmat.glb", v)
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, v, words)
 
     def test_sync_copies_the_plan_and_the_model(self):
@@ -502,7 +502,7 @@ class GodotPlays(unittest.TestCase):
     def test_it_plays_this_plan(self):
         self.assertEqual(G["seed"], P["seed"])
         self.assertEqual(G["rooms"], len(P["rooms"]))
-        for words in ("on the SMT2020 model", "not a real fab", "drawn only"):
+        for words in ("from the SMT2020 testbed", "not a real fab", "drawn only"):
             self.assertIn(words, G["badge"], words)
 
     def test_the_visitor_is_the_hazmat_suit_and_nothing_else(self):

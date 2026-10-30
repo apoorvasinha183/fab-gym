@@ -3,7 +3,7 @@
 Written 31 Oct 2026, before the code. With a fleet, vehicles drive on the simulator's track. Until now that track
 was always built from the campus settings (`Track::drawn`). From this deliverable, when a fab file has a plan with
 links, **the track is the plan's own nodes and links**, so any shape a person or the editor draws is what vehicles
-drive on. On the SMT2020 model; layouts are of our own design or a person's, never a real fab.
+drive on. From the SMT2020 testbed; layouts are of our own design or a person's, never a real fab.
 
 ## Two kinds of plan
 

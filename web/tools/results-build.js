@@ -1,12 +1,12 @@
 // The Results tab's saved entries: each experiment under results/ as its question, the simulator's settings, the
 // numbers that came from it and its files. Run by web/build.sh (node web/tools/results-build.js > web/data/results.json).
-// On the SMT2020 model, a published research model of a wafer fab. No real fab's data is used.
+// From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's data is used.
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const NOTE = "On the SMT2020 model, a published research model of a wafer fab. No real fab's data is used.";
+const NOTE = "From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's data is used.";
 const FLOORS = { "D1 share": "Shared floor", "D2 wing": "Prototype wing", "D3 copies": "Copies in the halls" };
 const POLICIES = { "P0 today": "today's order", "P1 family B first": "prototypes first", "P2 family cap": "prototypes capped at the door",
   "P3 reservation": "a tool kept for prototypes", "P4 qualification": "prototypes on half the tools" };
@@ -40,7 +40,7 @@ function twoFamilies(root) {
   const pl = exists(root, "results/two-families/pl.json") ? json(root, "results/two-families/pl.json") : null;
   const price = (k) => { const it = pl && pl.sheet.find((x) => x.key === k); return it ? it.central : null; };
   const settings = [
-    ["Model", "SMT2020 high-volume fab, plus prototype lots (family B) rebuilt from SMT2020's engineering lots"],
+    ["Starting point", "The SMT2020 high-volume testbed, plus prototype lots (family B) rebuilt from SMT2020's engineering lots"],
     ["Run length", `${s.days} simulated days; the first ${s.warmup} are warm-up, days ${s.warmup} to ${s.days} are scored`],
     ["Seeds", seedsText(s.seeds)],
     ["Prototype orders", "×1, ×2, ×4, ×8 the published 20 lots a release"],
@@ -98,7 +98,7 @@ function evolve(root) {
 
 function lean(root) {
   const s = json(root, "results/lean-long-units/summary.json");
-  const rows = s.cells.map((c) => [c.metric.replace(/_/g, " "), `×${c.k}`, n(c.cap), n(c.base_mean, 1), n(c.cap_mean, 1), sg(c.mean, 1), `${sg(c.lo, 1)} to ${sg(c.hi, 1)}`, c.verdict.replace(" on the SMT2020 model", "")]);
+  const rows = s.cells.map((c) => [c.metric.replace(/_/g, " "), `×${c.k}`, n(c.cap), n(c.base_mean, 1), n(c.cap_mean, 1), sg(c.mean, 1), `${sg(c.lo, 1)} to ${sg(c.hi, 1)}`, c.verdict.replace(/ (on|from) the SMT2020 (model|testbed)/, "")]);
   return {
     id: "lean-long-units", kind: "sweep", when: when(root, "results/lean-long-units/summary.json"),
     title: "WIP cap: is holding lots at the door free when breakdowns rise?",

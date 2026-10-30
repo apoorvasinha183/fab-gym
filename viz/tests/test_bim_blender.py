@@ -1,5 +1,5 @@
 """Tests for the faithful BIM in Blender (docs/BIM-FAITHFUL.md, "Into Blender"). Written before the code.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 
     BLENDER=~/Applications/Blender.app/Contents/MacOS/Blender .venv/bin/python -m unittest viz.tests.test_bim_blender
 
@@ -27,7 +27,7 @@ RUN = ROOT / "viz/permit/run.py"
 GLTF = ROOT / "viz/bim/gltf.py"
 BIM = ROOT / "viz/blender/bim.py"
 BLENDER = Path(os.environ.get("BLENDER", Path.home() / "Applications/Blender.app/Contents/MacOS/Blender")).expanduser()
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 TRADES = {"Architecture", "Structure", "Mechanical", "Plumbing", "Fire", "Electrical", "Process", "Site"}
 
 try:

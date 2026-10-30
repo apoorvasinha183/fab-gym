@@ -1,6 +1,6 @@
 """Put the words on the film: captions, the clock and step card of Act 3, the bar of shot 11, the
 shares of shot 12, the campus labels of shot 2 and the end card, over the frames Blender rendered
-(viz/blender/real.py). A gigafab-style layout of our own design on the SMT2020 model.
+(viz/blender/real.py). A gigafab-style layout of our own design from the SMT2020 testbed.
 
     python3 viz/film/compose.py FRAMES_DIR FILM.json OVERLAY.json OUT.mp4 [--from N --to M]
 
@@ -216,7 +216,7 @@ def shares(d, s, W, H):
         d.rectangle((lx, y0 + h + 22, lx + 18, y0 + h + 40), fill=c + (int(255 * a),))
         text(d, (lx + 26, y0 + h + 14), lab, F_SMALL_B, a)
         lx += d.textlength(lab, font=F_SMALL_B) + 50
-    text(d, (x0, y0 + h + 52), "all lots in the clip's hours, on the SMT2020 model", F_SMALL, a, (190, 200, 210))
+    text(d, (x0, y0 + h + 52), "all lots in the clip's hours, from the SMT2020 testbed", F_SMALL, a, (190, 200, 210))
 
 
 def labels(d, s, fr, W, H):
@@ -262,7 +262,7 @@ def end_card(img, d, s, W, H):
 def badge(d, s, W, H):
     if s >= SHOTS["end"]["start"]:
         return
-    t = "On the SMT2020 model · a layout of our own design · not a real fab"
+    t = "From the SMT2020 testbed · a layout of our own design · not a real fab"
     text(d, (W - 60 - d.textlength(t, font=F_SMALL), H - 52), t, F_SMALL, 0.7, (215, 222, 230))
 
 

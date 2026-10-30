@@ -1,7 +1,7 @@
 # The agent loop: rules the model writes, scored by the simulator
 
 Written 27 Oct 2026, before the code (tests in `crates/fabrule/tests/` and `agent/tests/`).
-Everything here runs on the SMT2020 model of a fab. Agents propose, the simulator scores, a person signs.
+Everything here runs on the SMT2020 testbed. Agents propose, the simulator scores, a person signs.
 
 ## A rule
 

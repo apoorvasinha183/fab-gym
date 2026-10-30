@@ -1,5 +1,5 @@
 """Tests for design development (docs/DESIGN-DEV.md). Written before the code. A gigafab-style layout of our own design
-on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
+from the SMT2020 testbed; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_dd      (from the repo root)
 
@@ -24,7 +24,7 @@ RESCORE = ROOT / "results/layout-real-dd/rescore.json"
 RUN = ROOT / "viz/permit/run.py"
 PERMIT = ROOT / "viz/permit"
 FT = 0.3048
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 VERDICTS = {"met", "not met", "cannot say"}
 STATUSES = {"missing", "drawn", "checked", "assumed", "open", "licensed review"}
 SCHEMATIC = ["G-001", "G-002", "G-003", "G-101", "G-102", "C-101", "C-201", "S-001", "S-101", "S-201", "A-401",
@@ -423,7 +423,7 @@ class DesignDevelopment(unittest.TestCase):
 
     def test_rescore(self):
         R = load(RESCORE)
-        self.assertIn("SMT2020 model", R["truth"])
+        self.assertIn("SMT2020 testbed", R["truth"])
         self.assertEqual(R["cross_before_m"], 0.0)
         self.assertEqual(R["cross_after_m"], 1.6)
         self.assertEqual(R["chase_m"], 1.6)

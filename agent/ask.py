@@ -1,5 +1,5 @@
 """A question to a scenario (docs/ASK-FAMILIES.md, part 3): the prompt for the model, the check of its JSON answer,
-and the scenario text the simulator scores. On the SMT2020 model, a published model of a fab; not a real fab."""
+and the scenario text the simulator scores. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab."""
 
 import json
 import re
@@ -46,7 +46,7 @@ def prompt(groups):
         by_area.setdefault(a, []).append(g)
     areas = "\n".join(f"- {AREA_NAMES.get(a, a)}: {', '.join(gs)}" for a, gs in sorted(by_area.items()))
     return f"""You turn a person's question about a wafer fab into a scenario for a simulator. The fab is the SMT2020
-model, a published research model of a fab: not a real fab and not real data. Family A is its two volume products.
+model, a published set of a fab's tool groups, routes and times: not a real fab and not real data. Family A is its two volume products.
 Family B is small, urgent prototype lots (SMT2020's engineering lots): about 5.7 lots a day at share 1.
 
 Answer with one JSON object and nothing else:

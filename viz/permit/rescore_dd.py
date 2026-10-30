@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 FABSIM = ROOT / "target/release/fabsim"
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 
 
 def sh(args):

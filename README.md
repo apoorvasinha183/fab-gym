@@ -5,7 +5,7 @@
 
 # Fab Gym
 
-A simulated wafer fab you can ask questions, and a fair way to check the answers. On the **SMT2020 model**, a published research model of a fab: 1,043 machines, 105 groups, routes of 583 and 343 steps. No real fab's data.
+A simulated wafer fab you can ask questions, and a fair way to check the answers. On the **SMT2020 testbed**, a published set of a fab's tool groups, routes and times: 1,043 machines, 105 groups, routes of 583 and 343 steps. No real fab's data.
 
 ## A puzzle to start
 
@@ -25,7 +25,7 @@ So fabs use rules of thumb, and nobody can say how good a rule is until weeks af
 
 ## Three ideas that do most of the work
 
-**1. Little's law.** In any system that has settled, the work inside equals the output rate times the time each piece spends inside. On seed 0 of the SMT2020 model, today's rule holds about 3,014 lots of 25 wafers and gets 1,246 wafers a day out:
+**1. Little's law.** In any system that has settled, the work inside equals the output rate times the time each piece spends inside. On seed 0 of the SMT2020 testbed, today's rule holds about 3,014 lots of 25 wafers and gets 1,246 wafers a day out:
 
 > 3,014 × 25 ÷ 1,246 ≈ 60.5 days
 
@@ -56,7 +56,7 @@ An interval only covers the doubt you feed it. Ours first covered the luck insid
 
 ## Meet the cast
 
-Every machine in the fab is a gym trainee, and the wafers are the drill coaches. Each machine does the exercise that matches its real job, and its mood comes straight from the simulator. The pictures were made with Meta's Muse Image. The machines are the SMT2020 model's generic types; no company's tools are drawn.
+Every machine in the fab is a gym trainee, and the wafers are the drill coaches. Each machine does the exercise that matches its real job, and its mood comes straight from the simulator. The pictures were made with Meta's Muse Image. The machines are the SMT2020 testbed's generic types; no company's tools are drawn.
 
 <table>
 <tr><th></th><th>Machine</th><th>What it does in a fab</th><th>Its exercise</th></tr>
@@ -186,8 +186,8 @@ Without a model key the ask box answers the recorded example questions and score
 
 Built before the hackathon, and kept outside this repository:
 
-- A Python reference engine for the SMT2020 model, written earlier in Chetnova's private repository. The Rust simulator here is written new and is checked against event logs recorded from that engine (the golden files in `golden/`). None of its code is copied here.
-- Earlier results on the SMT2020 model (a learned dispatch rule, a WIP-cap study). They are quoted only where labelled "pre-existing".
+- A Python reference engine for the SMT2020 testbed, written earlier in Chetnova's private repository. The Rust simulator here is written new and is checked against event logs recorded from that engine (the golden files in `golden/`). None of its code is copied here.
+- Earlier results from the SMT2020 testbed (a learned dispatch rule, a WIP-cap study). They are quoted only where labelled "pre-existing".
 
 ## Credits
 

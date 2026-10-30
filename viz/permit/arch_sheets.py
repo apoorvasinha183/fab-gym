@@ -186,7 +186,7 @@ def a001(C):
     o = [text(bp.AX0 + 10, bp.AY0 + 10, "GENERAL NOTES, ABBREVIATIONS AND SYMBOLS", 4.2, weight="bold")]
     t, _ = notes(bp.AX0 + 10, bp.AY0 + 22, [
         "1. These architectural documents cover both fab buildings of the Fab Gym campus: a gigafab-style layout of our own design on "
-        "the SMT2020 model. Not a real fab. NOT FOR CONSTRUCTION.",
+        "the SMT2020 testbed. Not a real fab. NOT FOR CONSTRUCTION.",
         "2. Codes: the 2024 IBC and IFC as published, for a hypothetical jurisdiction; the IPC and IMC 2024 where cited; NFPA 13-2022, "
         "72-2022 and 70-2023 where cited. Standards not read are listed on G-002 and their items stay open.",
         "3. Dimensions are to grid lines, the face of structure or the face of the building, as noted. Do not scale the drawings.",

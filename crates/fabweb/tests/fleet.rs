@@ -1,4 +1,4 @@
-//! The browser simulator with the fleet (docs/LIVE-REAL.md). Written before the code. On the SMT2020 model with a
+//! The browser simulator with the fleet (docs/LIVE-REAL.md). Written before the code. From the SMT2020 testbed with a
 //! gigafab-style layout of our own design.
 
 use fabsim::engine::RunOptions;

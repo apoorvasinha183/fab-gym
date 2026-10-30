@@ -1,4 +1,4 @@
-//! Moods from a run (docs/RUN-MOODS.md). Written before the code. On the SMT2020 model and small shops of our own.
+//! Moods from a run (docs/RUN-MOODS.md). Written before the code. From the SMT2020 testbed and small shops of our own.
 
 mod common;
 

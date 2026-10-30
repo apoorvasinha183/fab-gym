@@ -1,6 +1,6 @@
 //! A fab file's plan from today's track (docs/FAB-FILE.md): the realistic campus's drawn rails written as nodes and
 //! links, every tool's port as a stop, the stocker ports, and entry and exit at the campus start. A gigafab-style
-//! layout of our own design on the SMT2020 model; the plan coordinates and station boxes are for drawing only.
+//! layout of our own design from the SMT2020 testbed; the plan coordinates and station boxes are for drawing only.
 
 use crate::shop::{Link, Node, Plan, Shop, Spot, Station, Stop};
 use crate::track::{NodeAt, Track};

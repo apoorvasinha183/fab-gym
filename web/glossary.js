@@ -2,10 +2,10 @@
 // can understand each word ... in plain english"). Each term: its plain meaning, how this fab uses it, where it comes
 // from (published in SMT2020, assumed by us with the range tried, our own choice, or a standard method), an example,
 // and related terms. In the page this defines window.FabGlossary; under Node, module.exports.
-// On the SMT2020 model, a published research model of a wafer fab. No real fab's data is used.
+// From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's data is used.
 (function (root) {
   "use strict";
-  const SMT = "SMT2020 (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab";
+  const SMT = "SMT2020 (Kopp, Hassoun, Kalir, Mönch 2020), a published set of a fab's tool groups, routes and times";
   const pub = (text) => ({ kind: "published", text });
   const ours = (text) => ({ kind: "choice", text });
   const std = (text) => ({ kind: "standard", text });
@@ -13,10 +13,10 @@
 
   const TERMS = [
     // ------------------------------------------------------------ the fab
-    { term: "SMT2020", topic: "The fab", aliases: ["SMT2020 model"],
-      meaning: "A detailed model of a semiconductor factory, published by researchers so that anyone can test ideas on the same fab.",
-      here: "Every tool, route, processing time, breakdown and rework rate in Fab Gym comes from its high-volume fab: about 1,040 tools in 105 groups, two products.",
-      source: pub(SMT), example: "When a card says \"on the SMT2020 model\", the result is about this published fab and says nothing certain about a real one.",
+    { term: "SMT2020", topic: "The fab", aliases: ["SMT2020 testbed"],
+      meaning: "A published set of starting conditions for a semiconductor factory: its tool groups, product routes, processing times, breakdowns and release plans, so that anyone can test ideas from the same starting point. Our simulator builds and runs a fab from it.",
+      here: "Every tool, route, processing time, breakdown and rework rate in Fab Gym comes from its high-volume set: about 1,040 tools in 105 groups, two products.",
+      source: pub(SMT), example: "When a card says \"from the SMT2020 testbed\", the result is about a fab built from these published conditions and says nothing certain about a real one.",
       see: ["Simulator", "Route", "Tool group"] },
     { term: "Wafer", topic: "The fab", aliases: ["wafers"],
       meaning: "A thin disc of silicon. Hundreds of chips are built on one wafer at the same time, layer by layer.",

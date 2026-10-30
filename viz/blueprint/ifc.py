@@ -3,7 +3,7 @@
 One project, one site, a building per phase with a storey per level; walls, columns, slabs, coverings, spaces, and
 tools, stockers, rails and campus buildings as proxies typed by kind. Every element and space carries FabGym_Basis;
 each tool carries FabGym_Tool. Ids are fixed from each element's key, so the file is the same on every run.
-Lengths in metres. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+Lengths in metres. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 """
 
 import math

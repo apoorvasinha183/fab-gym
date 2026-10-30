@@ -1,7 +1,7 @@
 """Training PPO and the held-out contest (docs/RL-DEFECTS.md, deliverables 5 and 6). Written before the code.
 Run: .venv/bin/python -m unittest agent.tests.test_rl  (from the repo root, after `cargo build --release`).
 
-On the SMT2020 model's rules, with a toy shop for speed; not a real fab."""
+From the SMT2020 testbed's rules, with a toy shop for speed; not a real fab."""
 
 import importlib.util
 import json

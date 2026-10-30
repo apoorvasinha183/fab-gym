@@ -1,5 +1,5 @@
 //! The faithful floor, rungs L2 to L4 (docs/FLEET.md): a one-way track, a finite fleet and traffic, opt in by a
-//! `fleet` record. Written before the code. On the SMT2020 model with a gigafab-style layout of our own design; every
+//! `fleet` record. Written before the code. From the SMT2020 testbed with a gigafab-style layout of our own design; every
 //! fleet number is assumed.
 
 mod common;

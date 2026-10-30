@@ -1,5 +1,5 @@
 """Tests for construction documents of one bay (docs/CONSTRUCTION-DOCS.md). Written before the code. A gigafab-style
-layout of our own design on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
+layout of our own design from the SMT2020 testbed; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_cd      (from the repo root)
 
@@ -23,7 +23,7 @@ SCENE = ROOT / "data/layout-real-dd/scene-optimised.json"
 LAYOUT = ROOT / "results/layout-real-dd/layout.json"
 RUN = ROOT / "viz/permit/run.py"
 PERMIT = ROOT / "viz/permit"
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 VERDICTS = {"met", "not met", "cannot say"}
 DD_SHEETS = ["G-001", "G-002", "G-003", "G-101", "G-102", "C-101", "C-201", "S-001", "S-101", "S-201", "A-401",
              "A-601", "M-101", "M-401", "M-601", "PP-101", "PP-301", "P-101", "FP-101", "FA-101", "E-001", "E-601",

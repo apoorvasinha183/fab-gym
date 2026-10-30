@@ -1,6 +1,6 @@
 //! fabsim: run the simulator from the command line.
 //!
-//!   fabsim bench [DIR] [--days N] [--seeds K]   time runs on the SMT2020 model
+//!   fabsim bench [DIR] [--days N] [--seeds K]   time runs from the SMT2020 testbed
 //!   fabsim log SHOP SEED [UNTIL]                 print the canonical log of a shop file
 //!   fabsim score SCENARIO [DIR] [--seeds A..B] [--threads T]
 //!                                                score a scenario (docs/ASK.md); JSON on stdout
@@ -47,7 +47,7 @@ fn bench(args: &[String]) {
     let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
     println!("load: {:.3} s ({} groups, {} tools, {} lots in progress)", t0.elapsed().as_secs_f64(),
         shop.groups.len(), shop.groups.iter().map(|g| g.count).sum::<usize>(), shop.lots.len());
-    println!("on the SMT2020 model, {days} simulated days, seeds 0..{seeds}, one core");
+    println!("from the SMT2020 testbed, {days} simulated days, seeds 0..{seeds}, one core");
     for (label, record, chooser) in [("totals only", false, false), ("full record", true, false), ("choice point (default rule)", false, true)] {
         let mut secs = vec![];
         let mut decisions = 0u64;
@@ -263,7 +263,7 @@ fn evolve_cmd(args: &[String]) {
     let alpha = 0.05 / ncomp;
     let word = |v: Verdict| match v { Verdict::Better => "better", Verdict::Worse => "worse", Verdict::CannotSay => "no clear effect" };
     let mut md = String::new();
-    let _ = writeln!(md, "On the SMT2020 model, with a layout of our own design; not a real fab. Family B at x{share}. Search: population {pop}, {gens} generations, training seeds 3000..3002, {sdays} days scored from day {warmup}; layouts at {iters} optimiser moves. Claim: the three best distinct individuals laid out at the full setting, {} held-out seeds ({}..{}), {days} days, window days {warmup} to {days}; paired, Bonferroni over {ncomp} comparisons (each at level {alpha:.4}). Money a day at the central prices, in wafers of family-A margin; every price assumed. Run on {} {}. Real-fab effect: cannot say.{}\n",
+    let _ = writeln!(md, "From the SMT2020 testbed, with a layout of our own design; not a real fab. Family B at x{share}. Search: population {pop}, {gens} generations, training seeds 3000..3002, {sdays} days scored from day {warmup}; layouts at {iters} optimiser moves. Claim: the three best distinct individuals laid out at the full setting, {} held-out seeds ({}..{}), {days} days, window days {warmup} to {days}; paired, Bonferroni over {ncomp} comparisons (each at level {alpha:.4}). Money a day at the central prices, in wafers of family-A margin; every price assumed. Run on {} {}. Real-fab effect: cannot say.{}\n",
         seeds.len(), seeds[0], seeds[seeds.len() - 1], std::env::consts::OS, std::env::consts::ARCH, if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
     let _ = writeln!(md, "| arm | money a day | family A wafers a day | family B cycle days | copies | cap | wing |\n|---|---|---|---|---|---|---|");
     for (a, arm) in arms.iter().enumerate() {
@@ -309,7 +309,7 @@ fn pl_cmd(args: &[String]) {
     let p = price_sweep(&inp, &central);
     let iv = |i: &fabsim::uq::Interval| format!("{{\"mean\":{},\"lo\":{},\"hi\":{}}}", jnum(i.mean), jnum(i.lo), jnum(i.hi));
     let opt = |x: Option<f64>| x.map(jnum).unwrap_or_else(|| "null".into());
-    let mut o = String::from("{\"model\":\"SMT2020\",\"note\":\"On the SMT2020 model, a published research model of a wafer fab. Every price is assumed. No real fab's prices or data are used.\",");
+    let mut o = String::from("{\"model\":\"SMT2020\",\"note\":\"From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. Every price is assumed. No real fab's prices or data are used.\",");
     let _ = write!(o, "\"alpha_each\":{},\"npv_factor\":{},\"sheet\":[", jnum(p.alpha_each), jnum(fabsim::pl::npv_factor(&central)));
     let items = Sheet::items();
     for (k, it) in items.iter().enumerate() {
@@ -448,7 +448,7 @@ fn two_families(args: &[String]) {
         ("b_cycle", "family B cycle time, days from scheduled arrival", false, &|r| r.money[0].b_cycle_days.unwrap_or(f64::NAN)),
     ];
     let mut md = String::new();
-    let _ = writeln!(md, "On the SMT2020 model, with a layout of our own design; not a real fab. {} seeds ({}..{}), {days} days, window days {warmup} to {days}; family B's lots drawn with seed 1 (the same lots on every seed). Each cell minus (D1 share, P0 today) at the same share, paired; intervals Bonferroni over {compared} cells (each at level {:.5}), so all cover at once with probability at least 95%. Every price assumed. Real-fab effect: cannot say.{}\n",
+    let _ = writeln!(md, "From the SMT2020 testbed, with a layout of our own design; not a real fab. {} seeds ({}..{}), {days} days, window days {warmup} to {days}; family B's lots drawn with seed 1 (the same lots on every seed). Each cell minus (D1 share, P0 today) at the same share, paired; intervals Bonferroni over {compared} cells (each at level {:.5}), so all cover at once with probability at least 95%. Every price assumed. Real-fab effect: cannot say.{}\n",
         seeds.len(), seeds[0], seeds[seeds.len() - 1], alpha, if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
     let mut json = format!("{{\"model\":\"SMT2020\",\"preregistered\":{preregistered},\"days\":{days},\"warmup\":{warmup},\"seeds\":{seeds:?},\"alpha_each\":{alpha},\"seconds\":{secs:.1},\"cells\":[");
     let mut first = true;
@@ -582,7 +582,7 @@ fn lean_long(args: &[String]) {
     ];
     let fmt_iv = |iv: &Interval| format!("{:+.2} ({:+.2} to {:+.2})", iv.mean, iv.lo, iv.hi);
     let mut md = String::new();
-    let _ = writeln!(md, "On the SMT2020 model. {} seeds ({}..{}), {days} days, window days {warmup} to {days}. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over {cells} cells (each at level {:.4}), so all cover at once with probability at least 95%. Real-fab effect: cannot say. Files read {}.{}\n",
+    let _ = writeln!(md, "From the SMT2020 testbed. {} seeds ({}..{}), {days} days, window days {warmup} to {days}. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over {cells} cells (each at level {:.4}), so all cover at once with probability at least 95%. Real-fab effect: cannot say. Files read {}.{}\n",
         seeds.len(), seeds[0], seeds[seeds.len() - 1], alpha,
         if reference { "as the reference compile reads them (first maintenance in days taken as minutes)" } else { "with their units" },
         if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
@@ -681,7 +681,7 @@ fn layout(args: &[String]) {
     }
     let lots: f64 = p.flows().iter().map(|f| f.2).sum();
     let mut md = String::new();
-    let _ = writeln!(md, "A gigafab-style layout of our own design on the SMT2020 model (docs/FAB-LAYOUT.md); every placement number is assumed. Not a real fab.\n");
+    let _ = writeln!(md, "A gigafab-style layout of our own design from the SMT2020 testbed (docs/FAB-LAYOUT.md); every placement number is assumed. Not a real fab.\n");
     if cfg.phase_by_flow || !cfg.kinds.is_empty() {
         let _ = writeln!(md, "Realistic campus (docs/FAB-LOOK.md): tools at true size by kind from the size book, each tool group in the phase that sends it most of its lots.\n");
     }
@@ -733,10 +733,10 @@ fn variant_cmd(args: &[String]) {
     let cap = v.capital(&s);
     let (before, after) = v.travel();
     let mut json = format!(
-        "{{\"model\":\"SMT2020\",\"note\":\"A gigafab-style layout of our own design on the SMT2020 model; placements and prices assumed.\",\"share\":{share},\"copies\":["
+        "{{\"model\":\"SMT2020\",\"note\":\"A gigafab-style layout of our own design from the SMT2020 testbed; placements and prices assumed.\",\"share\":{share},\"copies\":["
     );
     let mut md = String::new();
-    let _ = writeln!(md, "The decision as a fab, on the SMT2020 model: today's realistic plan kept block for block, with one copy of each of the {n} groups prototype orders (x{share}) load most, each right after its original in the halls. Placements and prices assumed.\n");
+    let _ = writeln!(md, "The decision as a fab, from the SMT2020 testbed: today's realistic plan kept block for block, with one copy of each of the {n} groups prototype orders (x{share}) load most, each right after its original in the halls. Placements and prices assumed.\n");
     let _ = writeln!(md, "| copy | area | tools |\n|---|---|---|");
     for (i, c) in v.copies.iter().enumerate() {
         let _ = write!(json, "{}{{\"copy\":\"{}\",\"original\":\"{}\",\"area\":\"{}\",\"tools\":{}}}", if i > 0 { "," } else { "" }, c.copy, c.original, c.area, c.tools);
@@ -819,7 +819,7 @@ fn follow_cmd(args: &[String]) {
     let tool_group: Vec<usize> = shop.groups.iter().enumerate().flat_map(|(gi, g)| std::iter::repeat_n(gi, g.count)).collect();
     let n4 = |x: f64| if x.is_finite() { format!("{x:.3}") } else { "null".into() };
     let mut o = format!(
-        "{{\"model\":\"SMT2020\",\"what\":\"One lot followed from release to finish on today's US building with {vehicles} vehicles, seed {seed}; a gigafab-style layout of our own design on the SMT2020 model, not a real fab.\",\"lot\":\"{id}\",\"route\":\"{route}\",\"wafers\":{},\"released\":{},\"done\":{},\"route_steps\":{},\"steps\":[",
+        "{{\"model\":\"SMT2020\",\"what\":\"One lot followed from release to finish on today's US building with {vehicles} vehicles, seed {seed}; a gigafab-style layout of our own design from the SMT2020 testbed, not a real fab.\",\"lot\":\"{id}\",\"route\":\"{route}\",\"wafers\":{},\"released\":{},\"done\":{},\"route_steps\":{},\"steps\":[",
         lot.size, n4(lot.release), lot.done.map(n4).unwrap_or("null".into()), shop.routes.iter().find(|x| x.name == route).map(|x| x.steps.len()).unwrap_or(0)
     );
     for (i, t) in r.trace.iter().enumerate() {
@@ -1257,7 +1257,7 @@ fn layout_score(args: &[String]) {
     let names = [("transport minutes a move", false), ("cycle time, days", false), ("wafers out a day", true), ("mean WIP, lots", false), ("hot-lot cycle time, days", false)];
     let alpha = 0.05 / names.len() as f64;
     let mut md = String::new();
-    let _ = writeln!(md, "On the SMT2020 model, a gigafab-style layout of our own design. Seeds {}..{} paired, {days} days, window days {warmup} to {days}, {secs:.0} s. Optimised minus plain, paired t intervals at level {alpha:.3} each (Bonferroni over {} measures, so all cover at once with probability at least 95%). SMT2020's flat transport is for reference only. Real-fab effect: cannot say.{}\n",
+    let _ = writeln!(md, "From the SMT2020 testbed, a gigafab-style layout of our own design. Seeds {}..{} paired, {days} days, window days {warmup} to {days}, {secs:.0} s. Optimised minus plain, paired t intervals at level {alpha:.3} each (Bonferroni over {} measures, so all cover at once with probability at least 95%). SMT2020's flat transport is for reference only. Real-fab effect: cannot say.{}\n",
         seeds[0], seeds[n - 1], names.len(), if preregistered { "" } else { " SMOKE RUN: not the pre-registered design." });
     let _ = writeln!(md, "| measure | plain | optimised | optimised minus plain (95%) | verdict | SMT2020 flat |\n|---|---|---|---|---|---|");
     let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;

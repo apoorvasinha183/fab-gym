@@ -1,5 +1,5 @@
 """Tests for the blueprint, the campus as a drawing set for an architect (docs/BLUEPRINT.md). Written before
-the code. A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Standard library only:
+the code. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Standard library only:
 
     python3 -m unittest viz.tests.test_blueprint      (from the repo root)
 
@@ -88,7 +88,7 @@ class Blueprint(unittest.TestCase):
         for s, svg in self.svg.items():
             self.assertTrue(svg.startswith("<svg"), s)
             self.assertIn('viewBox="0 0 841 594"', svg, s)
-            for w in ["Fab Gym campus", s, "27 Oct 2026", "P1 for review", "On the SMT2020 model.",
+            for w in ["Fab Gym campus", s, "27 Oct 2026", "P1 for review", "From the SMT2020 testbed.",
                       "A layout of our own design.", "Not a real fab.", "NOT FOR CONSTRUCTION", sha]:
                 self.assertIn(w, svg, f"{s} lacks {w!r}")
             if s in SCALES:

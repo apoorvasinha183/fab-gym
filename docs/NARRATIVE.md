@@ -1,8 +1,7 @@
 # One question, all the way down to the building
 
 The entry's narrative and the plan that makes it true. Written 29 October 2026 with the founder; every choice below
-was made by quiz the same day (`~/HACKATHON-README.md`). On the SMT2020 model, a published research model of a wafer
-fab; prices assumed; every drawing NOT FOR CONSTRUCTION. Agents propose, the simulator scores, a person signs.
+was made by quiz the same day (`~/HACKATHON-README.md`). From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; prices assumed; every drawing NOT FOR CONSTRUCTION. Agents propose, the simulator scores, a person signs.
 
 ## The story
 
@@ -77,7 +76,7 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
     carriers and queues is applied to it.
 4c. **Kid words everywhere, with an expert switch** (decided 30 Oct by quiz, after Intel's "What does it take to build
     a fab?" poster, 2022, read for its layers and tone only): every page, the colleague, the film and the game speak
-    in words a 10-year-old follows, with comparisons made from our own numbers on the SMT2020 model; a switch on each
+    in words a 10-year-old follows, with comparisons made from our own numbers from the SMT2020 testbed; a switch on each
     page shows the expert version (units, intervals, standards). The building explained as a cake: roof and fans, the
     clean room, the waffle floor, the sub-fab, the utility building next door, and the visitor wing with the theater.
 12. **If time permits (the founder, 30 Oct): a layout sandbox for the nerds.** A 2D space known to hold at least

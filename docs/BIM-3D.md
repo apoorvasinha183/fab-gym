@@ -1,7 +1,7 @@
 # BIM to 3D: the IFC model in the viewer and the film
 
 Written 27 Oct 2026, before the code (tests in `viz/tests/test_bim_gltf.py` and `viz/tests/test_explore.py`).
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Concept for review, NOT FOR
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Concept for review, NOT FOR
 CONSTRUCTION.
 
 The founder's pipeline: blueprint, BIM, Blender for the render, Godot for the interactive view. Decided by quiz

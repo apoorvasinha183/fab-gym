@@ -8,7 +8,7 @@ analysis, the readiness ledger, an IFC model and a PDF. Every sheet stays NOT FO
 --stage dd is design development (docs/DESIGN-DEV.md): the place profile's permit.dd block names its scene, layout,
 second register, rules, items and judgements; its defaults are the 1.6 m chase layout and data/layout-real-permit.
 A place whose profile has no codes read stops. The same input gives the same files byte for byte (not the PDF).
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 """
 
 import argparse

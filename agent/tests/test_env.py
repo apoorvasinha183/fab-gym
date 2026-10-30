@@ -2,7 +2,7 @@
 Run: python3 -m unittest agent.tests.test_env  (from the repo root, after `cargo build --release`).
 Skipped until Gymnasium is installed (its download is asked first).
 
-On the SMT2020 model's rules, with a toy shop; not a real fab."""
+From the SMT2020 testbed's rules, with a toy shop; not a real fab."""
 
 import importlib.util
 import tempfile

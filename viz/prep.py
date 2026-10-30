@@ -1,7 +1,7 @@
 """Turn the campus (results/layout/layout.json) and a recorded run window
 (data/layout/trace-PLAN.json) into one scene file for the Godot and Blender views.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The support
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The support
 buildings (central utility building, ultrapure water, gas yard, office) are drawn only, at
 assumed places. Lots are drawn larger than life so they show at campus scale.
 
@@ -298,7 +298,7 @@ def main():
 
     scene = {
         "model": "SMT2020",
-        "what": "A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Support buildings drawn only; lots drawn larger than life.",
+        "what": "A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Support buildings drawn only; lots drawn larger than life.",
         "plan": a.plan,
         "from": t_from,
         "to": t_to,

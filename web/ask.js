@@ -1,6 +1,6 @@
 // The ask box's pure parts (docs/ASK-FAMILIES.md, part 5): a scenario in plain words, a report as rows, family B's
 // routes, the wing hall and an arm's rule for the page's simulator. In the page this defines window.FabAsk; under
-// Node, module.exports. On the SMT2020 model, a published model of a fab; not a real fab.
+// Node, module.exports. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab.
 (function (root) {
   "use strict";
 
@@ -80,7 +80,7 @@
     const head = report.best
       ? `Best on ${what}: ${report.best}. It beats today's fab, with all intervals holding together at 95%.`
       : `No candidate is clearly better on ${what}, so today's fab stands.`;
-    return `${head} Simulated on the SMT2020 model with ${report.seeds.length} paired seeds. What these changes would do in a real fab is unknown.`;
+    return `${head} Simulated from the SMT2020 testbed with ${report.seeds.length} paired seeds. What these changes would do in a real fab is unknown.`;
   }
 
   function familyB(j) {

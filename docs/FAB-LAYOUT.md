@@ -1,8 +1,8 @@
-# A gigafab-style campus on the SMT2020 model
+# A gigafab-style campus from the SMT2020 testbed
 
 Written 27 Oct 2026, before any layout code. Tests in `crates/fabsim/tests/layout.rs` are committed with this file and before the code they test.
 
-This is a layout of our own design on the SMT2020 model. It is not a real fab, not TSMC's, and uses no real plant data. SMT2020 says nothing about where tools stand; every number below that places a tool is **assumed** and labelled so.
+This is a layout of our own design from the SMT2020 testbed. It is not a real fab, not TSMC's, and uses no real plant data. SMT2020 says nothing about where tools stand; every number below that places a tool is **assumed** and labelled so.
 
 ## What it is for
 
@@ -110,7 +110,7 @@ SMT2020's own transport is 7.5 ± 2.5 min with no layout. Probes and the run's t
 5. A Blender scene and film rendered on the Mac mini (kept outside git, copied home).
 6. A private artifact with the full-scale animation.
 
-Every view says "a gigafab-style layout of our own design on the SMT2020 model".
+Every view says "a gigafab-style layout of our own design from the SMT2020 testbed".
 
 ## Results (27 Oct 2026)
 

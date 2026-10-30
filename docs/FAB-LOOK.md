@@ -1,7 +1,7 @@
 # The size book: how big things are in the realistic fab
 
 Every dimension the realistic views use, for the gigafab-style layout of our
-own design on the SMT2020 model. Each row is **cited** (a source opened on
+own design from the SMT2020 testbed. Each row is **cited** (a source opened on
 27 Oct 2026, with where in it) or **assumed** (our own value, chosen to look
 right; no source opened). A row marked *secondary* comes from a listing or a
 third party, not the maker. Tests read the machine-readable copy of these
@@ -79,7 +79,7 @@ from back-end groups) is the case that raised it.
 ## Changes
 
 - 27 Oct, before any result was reported: the tests first applied the rule in
-  one pass, counting senders by their names' phases. On the SMT2020 model that
+  one pass, counting senders by their names' phases. From the SMT2020 testbed that
   moved `LithoTrack_FE_95` to Phase 2 and, in the same pass, the scanners it
   feeds (`Litho_BE_110`, `Litho_BE_93`, `Litho_BE_99`) and three more groups
   to Phase 1, so the track and its scanners stayed apart and bridge crossings

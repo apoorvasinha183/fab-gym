@@ -1,6 +1,6 @@
 # Floor and rules, evolved together (E2)
 
-Written 28 October 2026, before the code. On the SMT2020 model, with a layout of our own design; not a real fab, not
+Written 28 October 2026, before the code. From the SMT2020 testbed, with a layout of our own design; not a real fab, not
 real data. Agents propose, the simulator scores, a person signs.
 
 ## The question
@@ -55,7 +55,7 @@ two-wafers note); nothing here claims to reproduce that paper.
   same share, also rerun on those seeds: the yardstick (D1, P0) and the sweep's best cell at that share.
 - Paired differences in money a day at the central prices, Bonferroni over the 6 comparisons (each at level
   0.05/6). Verdicts better, worse or no clear effect. The winning rules are printed in full.
-- Reported whatever it shows. "On the SMT2020 model"; real-fab effect: cannot say.
+- Reported whatever it shows. "From the SMT2020 testbed"; real-fab effect: cannot say.
 
 ## Code
 
@@ -93,7 +93,7 @@ Run 28 to 29 October 2026 on ProdLinuxSever (Linux x86_64, 4 threads, niced) wit
 the design above, from commit bf03497 (10,405 s). Every individual of every generation: `results/evolve-x4/history.tsv`;
 the winning rules: `results/evolve-x4/rules/`.
 
-**What it shows, on the SMT2020 model, at x4:** the search lost. All three evolved pairs are worse than the
+**What it shows, from the SMT2020 testbed, at x4:** the search lost. All three evolved pairs are worse than the
 yardstick (-93 to -130 a day) and far worse than the sweep's best cell, family B first (-844 to -881). Their rules
 collapsed to a constant (every lot gets the same key, so today's rule decides), and their floors copy four or five
 groups with a cap at family B's average load: volume wafers rise from 834 to about 1,200 a day, prototypes take
@@ -104,7 +104,7 @@ policy. Real-fab effect: cannot say.
 
 ### The claim as written by the run
 
-On the SMT2020 model, with a layout of our own design; not a real fab. Family B at x4. Search: population 16, 12 generations, training seeds 3000..3002, 240 days scored from day 120; layouts at 20000 optimiser moves. Claim: the three best distinct individuals laid out at the full setting, 10 held-out seeds (2000..2009), 300 days, window days 120 to 300; paired, Bonferroni over 6 comparisons (each at level 0.0083). Money a day at the central prices, in wafers of family-A margin; every price assumed. Run on linux x86_64. Real-fab effect: cannot say.
+From the SMT2020 testbed, with a layout of our own design; not a real fab. Family B at x4. Search: population 16, 12 generations, training seeds 3000..3002, 240 days scored from day 120; layouts at 20000 optimiser moves. Claim: the three best distinct individuals laid out at the full setting, 10 held-out seeds (2000..2009), 300 days, window days 120 to 300; paired, Bonferroni over 6 comparisons (each at level 0.0083). Money a day at the central prices, in wafers of family-A margin; every price assumed. Run on linux x86_64. Real-fab effect: cannot say.
 
 | arm | money a day | family A wafers a day | family B cycle days | copies | cap | wing |
 |---|---|---|---|---|---|---|

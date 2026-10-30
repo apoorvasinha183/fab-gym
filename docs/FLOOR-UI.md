@@ -1,7 +1,7 @@
 # The floor page, redesigned
 
 Written 29 October 2026, before the code. Directions and mockups: a private plan page.
-On the SMT2020 model, with a layout of our own design; not a real fab. Agents propose, the simulator scores, a person
+From the SMT2020 testbed, with a layout of our own design; not a real fab. Agents propose, the simulator scores, a person
 signs.
 
 Decided by quiz on 29 October (`~/HACKATHON-README.md`): the blend of the four directions, plus a view of graphs and

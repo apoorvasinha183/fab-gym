@@ -1,4 +1,4 @@
-//! A gigafab-style campus on the SMT2020 model (docs/FAB-LAYOUT.md): flows, the plain plan,
+//! A gigafab-style campus from the SMT2020 testbed (docs/FAB-LAYOUT.md): flows, the plain plan,
 //! packing, distance, the optimiser, and lots moved by the layout's distances in the engine.
 
 mod common;
@@ -361,7 +361,7 @@ fn the_trace_export_follows_the_run() {
         }
     }
     let j = p.trace_json(&c, &r, from, to);
-    for k in ["\"from\":600", "\"to\":1800", "\"offsets\":", "\"lots\":", "\"states\":", "on the SMT2020 model"] {
+    for k in ["\"from\":600", "\"to\":1800", "\"offsets\":", "\"lots\":", "\"states\":", "from the SMT2020 testbed"] {
         assert!(j.contains(k), "{k} missing");
     }
 }

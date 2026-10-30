@@ -1,6 +1,6 @@
 //! Floor and rules evolved together (docs/EVOLVE.md): an ant colony builds floors (which groups get copies for
 //! family B, how many tools, where, and family B's cap) and genetic programming breeds dispatch rules. On the
-//! SMT2020 model, with a layout of our own design; not a real fab.
+//! SMT2020 testbed, with a layout of our own design; not a real fab.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;

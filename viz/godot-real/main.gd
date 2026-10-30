@@ -1,5 +1,5 @@
 extends Node3D
-## The realistic fab to explore: a gigafab-style layout of our own design on the SMT2020 model,
+## The realistic fab to explore: a gigafab-style layout of our own design from the SMT2020 testbed,
 ## not a real fab. Built from the film's parts (res://data/models.json, viz/look/kit.py) and
 ## scene (res://data/scene.json, viz/prep.py --real); viz/godot-real/sync.sh copies them in.
 ##
@@ -17,7 +17,7 @@ extends Node3D
 const MODELS := "res://data/models.json"
 const FILTER := 0.35           # filter ceiling depth, assumed (viz/blueprint/model.py, the IFC's ceiling)
 const FILM := "res://data/film.json"
-const BADGE := "Fab Gym · a gigafab-style layout of our own design, on the SMT2020 model · not a real fab"
+const BADGE := "Fab Gym · a gigafab-style layout of our own design, from the SMT2020 testbed · not a real fab"
 const HELP := "Tab walk or fly · WASD move · mouse look · Shift faster · Q/E down/up when flying\nClick a tool for its card · 1 campus · 2 walk the lithography bay · 3 follow the film's lot · 4 cut away the roofs\nC cut away on/off · Space pause · +/- speed · H hide help · Esc free the mouse\nF today / with copies for prototype orders · G next copy\nV visitor: A Walk Through the Fab (V again to leave · Left/Right seek · R restart)"
 const STATE_WORDS := ["working", "idle", "maintenance (scheduled)", "broken down"]
 const KIND_WORDS := {

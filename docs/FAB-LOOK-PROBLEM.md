@@ -77,7 +77,7 @@ the simulator says it is, and every tool shows its simulated state.
   lot, outside.
 - No maker's name, logo or trademark appears on any model, texture or caption.
 - The film and page say "a gigafab-style layout of our own design on the
-  SMT2020 model", and never claim a real fab or real data.
+  SMT2020 testbed", and never claim a real fab or real data.
 
 ## Constraints
 

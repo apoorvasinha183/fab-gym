@@ -3,7 +3,7 @@
 Decided by quiz on 29 Oct 2026. The founder: "Is there a way to modify the live view like look in rails, it looks
 not 1 to 1. I like the 2.5D look ... I also want the rails to show the movement of the individual wafers". Chosen:
 the Live view becomes the real building, running the browser simulator with the fleet, over a Rails lens drawn in
-2.5D. On the SMT2020 model, a gigafab-style layout of our own design; not a real fab.
+2.5D. From the SMT2020 testbed, a gigafab-style layout of our own design; not a real fab.
 
 ## What changes
 

@@ -1,7 +1,7 @@
 // From Sand to Chip (docs/CHIP-FILM.md): the film's renderer and its thirteen scenes, in Three.js.
 // Semi-real: physically based materials, a studio environment for reflections, soft shadows, bloom and depth of
 // field, with explainer marks drawn on a 2D layer above. Every scene is a pure function of its time, so a still or a
-// video frame renders the same on every run. The fab's part runs on the SMT2020 model; the rest is general knowledge.
+// video frame renders the same on every run. The fab's part runs from the SMT2020 testbed; the rest is general knowledge.
 //
 //   ?scene=quarry&t=8   one frame          ?stills=1   every scene's still, saved by film/serve.py
 //   ?frames=0-4919&fps=30   video frames, saved by film/serve.py
@@ -606,7 +606,7 @@ SCN.ship = () => {
   }, overlay(t) {
     const names = ["fastest", "fast", "standard"];
     names.forEach((n, i) => { const p = new THREE.Vector3([-1.6, 0, 1.6][i], 0.6, -1.4).project(cam); label((p.x * 0.5 + 0.5) * W - 70, (-p.y * 0.5 + 0.5) * H - 150, n, null, span(t, 2.5, 3.5) * (1 - span(t, 8, 9))); });
-    if (t > 8.5) { ui.save(); ui.globalAlpha = span(t, 8.5, 9.5); ui.fillStyle = INK; ui.font = "800 64px -apple-system, Inter, sans-serif"; ui.textAlign = "center"; ui.fillText("Fab Gym", W / 2, 180); ui.font = "500 26px -apple-system, Inter, sans-serif"; ui.fillStyle = SOFT; ui.fillText("The fab's part runs on the SMT2020 model, a published research model of a wafer fab. The rest is general knowledge.", W / 2, 230); ui.restore(); }
+    if (t > 8.5) { ui.save(); ui.globalAlpha = span(t, 8.5, 9.5); ui.fillStyle = INK; ui.font = "800 64px -apple-system, Inter, sans-serif"; ui.textAlign = "center"; ui.fillText("Fab Gym", W / 2, 180); ui.font = "500 26px -apple-system, Inter, sans-serif"; ui.fillStyle = SOFT; ui.fillText("The fab's part runs from the SMT2020 testbed, a published set of a fab's tool groups, routes and times. The rest is general knowledge.", W / 2, 230); ui.restore(); }
   } };
 };
 

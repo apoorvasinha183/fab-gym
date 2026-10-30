@@ -1,5 +1,5 @@
 //! Floor and rules evolved together (docs/EVOLVE.md). Written before the code.
-//! On the SMT2020 model, with a layout of our own design; not a real fab.
+//! From the SMT2020 testbed, with a layout of our own design; not a real fab.
 
 use fabsim::engine::{run, Decision, RunOptions};
 use fabsim::evolve::{floor_shop, search, Ants, Floor, Settings, Space, DEPOSITS, RHO, TAU_MAX, TAU_MIN};

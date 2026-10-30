@@ -421,7 +421,7 @@ pub fn frames_json(shop: &Shop, run: &RunResult, until: f64, every: f64) -> serd
     let sc = score(shop, run, &set, every);
     let fin = |x: f64| if x.is_finite() { serde_json::json!((x * 100.0).round() / 100.0) } else { serde_json::Value::Null };
     serde_json::json!({
-        "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). On the SMT2020 model or a layout of its own; not a real fab.",
+        "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). From the SMT2020 testbed or a layout of its own; not a real fab.",
         "tool_moods": TOOL_MOODS,
         "lot_moods": LOT_MOODS,
         "tools": run.tools.iter().map(|x| x.name.clone()).collect::<Vec<_>>(),

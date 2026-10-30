@@ -1,4 +1,4 @@
-//! A gigafab-style campus on the SMT2020 model (docs/FAB-LAYOUT.md): a layout of our own
+//! A gigafab-style campus from the SMT2020 testbed (docs/FAB-LAYOUT.md): a layout of our own
 //! design, not a real fab. Every number that places a tool is assumed and named in `Config`.
 //!
 //! Phases sit end to end, west to east, joined by OHT bridges. In each phase one spine runs
@@ -947,7 +947,7 @@ impl Problem {
             }
         }
         let mut o = String::from("{\"model\":\"SMT2020\",");
-        o.push_str("\"what\":\"a simulated run on the SMT2020 model, on a gigafab-style layout of our own design; not a real fab\",");
+        o.push_str("\"what\":\"a simulated run from the SMT2020 testbed, on a gigafab-style layout of our own design; not a real fab\",");
         let _ = write!(
             o,
             "\"from\":{},\"to\":{},\"spine\":{},\"bridge\":{},\"offsets\":[{}],\"lengths\":[{}],\"states\":[",
@@ -1000,7 +1000,7 @@ impl Problem {
             }
         };
         let mut o = String::from("{\"model\":\"SMT2020\",");
-        o.push_str("\"what\":\"a gigafab-style layout of our own design on the SMT2020 model; not a real fab; every placement number is assumed\",");
+        o.push_str("\"what\":\"a gigafab-style layout of our own design from the SMT2020 testbed; not a real fab; every placement number is assumed\",");
         let _ = write!(
             o,
             "\"assumed\":{{\"bay_depth\":{},\"bay_aisle\":{},\"chase\":{},\"spine\":{},\"bridge\":{},\"balance\":{},\"overhead_min\":{},\"speed_m_per_min\":{},\"jitter_min\":{},",

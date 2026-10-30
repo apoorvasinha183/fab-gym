@@ -44,7 +44,13 @@ select,input[type=number]{font:13px var(--body);background:var(--panel);color:va
 input[type=number]{width:5.5em;font-family:var(--mono)}
 
 /* challenge banner and score */
-.banner{display:grid;grid-template-columns:auto 1fr minmax(180px,260px);gap:14px;align-items:center;background:#0F1D22;color:#E8F2F0;border:1px solid #2C5560;border-radius:12px;padding:10px 16px}
+.banner{display:grid;grid-template-columns:auto 1fr minmax(180px,260px);gap:8px 14px;align-items:center;background:#0F1D22;color:#E8F2F0;border:1px solid #2C5560;border-radius:12px;padding:8px 14px}
+.banner .score{grid-column:1/-1}
+.brandrow{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.topnav{display:flex;gap:4px}
+.topnav a{color:var(--muted);text-decoration:none;font:600 13px var(--display);padding:3px 9px;border-radius:6px;border:1px solid transparent}
+.topnav a:hover{color:var(--ink);border-color:var(--line)}
+.topnav a[aria-current="page"]{background:var(--ink);color:var(--bg)}
 .banner .eyebrow{font:12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#F2B33D}
 .ch-ico{font-size:28px}
 .ch-text{display:grid;gap:2px;font-size:14px;min-width:0}
@@ -57,13 +63,13 @@ input[type=number]{width:5.5em;font-family:var(--mono)}
 .goaltext b{color:#E8F2F0}
 .banner .btn{color:#E8F2F0;border-color:#2C5560;margin-top:6px}
 .score{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.sc{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--panel);display:grid;min-width:0}
-.sc .k{font-size:12px;color:var(--muted)}
-.sc .n{font:700 20px/1.2 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sc .n small{font:500 12px var(--body);color:var(--muted)}
-.sc .dl{font:12px var(--mono);color:var(--muted)}
-.sc .dl.good{color:var(--ok)}.sc .dl.bad{color:var(--bad)}
-.sc.bad{border-color:var(--bad)}
+.sc{border:1px solid #2C5560;border-radius:8px;padding:4px 10px;background:#12262D;display:grid;min-width:0}
+.sc .k{font-size:12px;color:#8FB3AE}
+.sc .n{font:700 18px/1.2 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#E8F2F0}
+.sc .n small{font:500 12px var(--body);color:#8FB3AE}
+.sc .dl{font:12px var(--mono);color:#8FB3AE}
+.sc .dl.good{color:#6CD394}.sc .dl.bad{color:#FF8A7A}
+.sc.bad{border-color:#FF8A7A}
 .sc.stale{opacity:.6}
 
 /* editor */
@@ -130,7 +136,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>Fab Gym <span>· Build your own fab</span></h1>
+    <div class="brandrow"><h1>Fab Gym <span>· Build your own fab</span></h1>
+      <nav class="topnav" aria-label="Pages"><a href="index.html">Home</a><a href="index.html#floor">Floor</a><a href="editor.html" aria-current="page">Build</a><a href="index.html#ask">Ask</a></nav></div>
     <div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
   </header>
 
@@ -139,8 +146,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
     <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span></div><div class="goaltext" id="goaltext">Running the simulator…</div>
       <button class="btn" id="showfix">Stuck? Show one fix</button></div>
+    <div class="score" id="score" aria-label="Score of the last run"></div>
   </section>
-  <section class="score" id="score" aria-label="Score of the last run"></section>
 
   <section class="editor running" id="editor">
     <nav class="pal" id="pal" aria-label="Palette"></nav>
@@ -151,7 +158,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
         <select id="speed" aria-label="Replay speed"><option value="15">15× slow motion</option><option value="60" selected>60×</option><option value="240">240×</option></select>
         <span class="clock" id="clock">Day 1 · 00:00:00</span>
         <button class="btn go" id="again" hidden>Run again with my changes</button>
-        <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 model</option></select></span>
+        <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 testbed</option></select></span>
       </div>
       <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor, tilted, with vehicles moving as the simulator ran them"></canvas><div class="hover" id="hover" hidden></div></div>
       <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
@@ -163,7 +170,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="card"><h4><span>Lots at this hour</span></h4><div class="lots" id="lots"></div></div>
     </aside>
   </section>
-  <p class="note">The motion is an exact replay of the simulator's run of this layout: every vehicle where the simulator had it, every machine's mood and queue from the same run, on one seed. A tile is 3 m. Prices are assumed for the gym. On a teaching fab of our own and the SMT2020 model, a published model of a fab; never a real fab.</p>
+  <p class="note">The motion is an exact replay of the simulator's run of this layout: every vehicle where the simulator had it, every machine's mood and queue from the same run, on one seed. A tile is 3 m. Prices are assumed for the gym. On a teaching fab of our own or one built from the SMT2020 testbed (a published set of a fab's tool groups, routes and times); never a real fab.</p>
 </div>
 <script src="look.js"></script>
 <script src="editor-core.js"></script>

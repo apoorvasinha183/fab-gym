@@ -1,7 +1,7 @@
 # Blueprint to permit set: the drawing set carried toward what a permit needs
 
 Written 27 Oct 2026, before the code (tests in `viz/tests/test_permit.py`). A gigafab-style layout of our own
-design on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION: a permit needs a real site
+design from the SMT2020 testbed; not a real fab. Every sheet stays NOT FOR CONSTRUCTION: a permit needs a real site
 and the stamps of an architect and engineers licensed where it is built, which no pipeline gives.
 
 The founder's architect friend said the concept set "was not construction ready". The founder: "let's make this
@@ -162,7 +162,7 @@ concept sheets A-000 to A-900 stay in `data/layout-real/blueprint/us/`.
 Fab Gym's chases are 1.5 m. If the authority treats them as service corridors, 415.11.3.4 asks 5 ft
 (1.524 m). `fabsim layout --chase` lets the optimiser lay the fab out with a wider chase; `viz/permit/rescore.py`
 runs both layouts on the same seeds and reports the change in hoist metres and in the simulator's measures with
-paired intervals, on the SMT2020 model.
+paired intervals, from the SMT2020 testbed.
 
 ## Checks
 

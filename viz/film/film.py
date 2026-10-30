@@ -1,6 +1,6 @@
 """The film's lot, captions and beats, from the re-packed run (docs/FAB-FILM-SCRIPT.md).
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The script fixes
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The script fixes
 the words; this fills its numbers from the run and chooses the lot by the script's rule.
 
     python3 viz/film/film.py [TRACE] [SCENE] [OUT]    writes data/layout-real/film.json
@@ -150,7 +150,7 @@ def captions(trace, scene, lot):
     n_tools = len(scene["tools"])
 
     c = {}
-    c["1"] = ["A wafer fab campus of our own design, run on the SMT2020 model."]
+    c["1"] = ["A wafer fab campus of our own design, run from the SMT2020 testbed."]
     c["2"] = [f"{n_tools:,} tools in two buildings, joined by an overhead hoist."]
     c["3"] = ["Air space: fans push filtered air down.", "Cleanroom.", "Support floor: pumps, chillers, exhaust."]
     c["4"] = ["Each lot is one carrier of wafers."]
@@ -180,7 +180,7 @@ def captions(trace, scene, lot):
     c["12"] = [f"Across the fab, {wt} of lot time was spent waiting for a tool and {sh['move']:.0%} moving.",
                f"Our layout cut hoist travel by {cut:.0%}. {ct_words}"]
     c["13"] = ["Which lot should go next? In Fab Gym, an agent proposes, the simulator scores, a person signs."]
-    c["end"] = ["Fab Gym. A gigafab-style layout of our own design on the SMT2020 model. Not a real fab."]
+    c["end"] = ["Fab Gym. A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab."]
     return c
 
 
@@ -234,7 +234,7 @@ def main():
     tr, sc = json.loads(tp.read_text()), json.loads(sp.read_text())
     lot = choose_lot(tr, sc)
     caps = captions(tr, sc, lot)
-    out = {"what": "The film's lot and captions, on the SMT2020 model; a gigafab-style layout of our own design.",
+    out = {"what": "The film's lot and captions, from the SMT2020 testbed; a gigafab-style layout of our own design.",
            "lot": lot["id"], "name": lot_name(lot), "beats": beats(tr, sc, lot), "captions": caps,
            "shares": fab_shares(tr), "timemap": timemap(tr, sc, lot), "shots": SHOTS["shots"]}
     op.write_text(json.dumps(out, indent=1))

@@ -1,7 +1,7 @@
 """Signing an answer (docs/FLOOR-UI.md, test 8). Written before the code.
 Run: python3 -m unittest agent.tests.test_sign  (from the repo root).
 
-On the SMT2020 model, a published model of a fab; not a real fab."""
+From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab."""
 
 import hashlib
 import json

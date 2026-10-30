@@ -1165,7 +1165,7 @@ function renderCompare(o, base, chg, done, total) {
   }).join("");
   $("cmp-note").textContent = done < total
     ? `${done} of ${total} runs done…`
-    : `Simulated on the SMT2020 model with seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}. Each run is paired with today's fab on the same seed, and each range is a 95% interval on its own. Treat this as a first look: a claim is made only after one more check on fresh seeds. What the change would do in a real fab is unknown.`;
+    : `Simulated from the SMT2020 testbed with seeds ${COMPARE_SEEDS[0]} to ${COMPARE_SEEDS[COMPARE_SEEDS.length - 1]}. Each run is paired with today's fab on the same seed, and each range is a 95% interval on its own. Treat this as a first look: a claim is made only after one more check on fresh seeds. What the change would do in a real fab is unknown.`;
 }
 
 let compareToken = 0;
@@ -1247,7 +1247,7 @@ async function loadLong() {
   const gains = caps.filter(cap => verdict(cell("wafers_per_day", ks[0], cap)) === "better");
   if (gains.length) lines.push(`Caps of ${gains[0].toLocaleString()} to ${gains[gains.length - 1].toLocaleString()} lots give more wafers out on this model. We have not yet traced why.`);
   $("long-finding").innerHTML = lines.join("<br><br>");
-  $("long-note").textContent = `Each cell shows wafers out a day with the cap minus without it, and the change in cycle time in days below. Green is better, red is worse and grey is no clear effect. The 95% intervals hold for all ${L.cells.length / 3} cells at once (Bonferroni). These runs were computed ahead of time in ${Math.round(L.seconds)} s. The page's own runs last at most 14 days, too short for a wafer to cross the fab. On the SMT2020 model. What a cap would do in a real fab is unknown.`;
+  $("long-note").textContent = `Each cell shows wafers out a day with the cap minus without it, and the change in cycle time in days below. Green is better, red is worse and grey is no clear effect. The 95% intervals hold for all ${L.cells.length / 3} cells at once (Bonferroni). These runs were computed ahead of time in ${Math.round(L.seconds)} s. The page's own runs last at most 14 days, too short for a wafer to cross the fab. From the SMT2020 testbed. What a cap would do in a real fab is unknown.`;
 }
 
 function rerun() {
@@ -1319,7 +1319,7 @@ function journeySelect(key, jump = true) {
   const j = FabStages.JOURNEY.find(x => x.key === key);
   document.querySelectorAll("#stages-journey .j-card").forEach(b => b.classList.toggle("on", b.dataset.j === key));
   $("journey-detail").innerHTML = `<div class="j-pic">${FabStages.journeyPicture(key)}</div><div class="j-text">` +
-    `<div class="j-tag ${j.inModel ? "in" : "out"}">${j.inModel ? "In the simulator · SMT2020 model" : "Outside the simulator · general knowledge"}</div>` +
+    `<div class="j-tag ${j.inModel ? "in" : "out"}">${j.inModel ? "In the simulator · SMT2020 testbed" : "Outside the simulator · general knowledge"}</div>` +
     `<h3>${esc(j.name)}</h3><p>${esc(j.what)}</p><ul>${j.facts.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` +
     (key === "loop" ? `<button type="button" class="link" id="j-to-loop">See the loop below ↓</button>` : "") + `</div>`;
   if (key === "loop") {
@@ -1473,6 +1473,8 @@ function drawFlash() {
 async function main() {
   resize();
   setupInput();
+  if (pageOfHash() !== "home") document.body.classList.remove("opening-on");
+  markPage(pageOfHash());
   chromeSetup();
   stagesSetup();
   $("moodkey").innerHTML = FabLook.TOOL_MOODS.map(m => `<li><span class="badge" style="background:${FabLook.MOOD[m].color}">${FabLook.svg(FabLook.MOOD[m].badge, "#15191C")}</span>${FabLook.MOOD[m].name.toLowerCase()}</li>`).join("");
@@ -1489,6 +1491,7 @@ async function main() {
   fit();
   $("runnote").textContent = `Simulated 3 days (${first.j.moves.toLocaleString()} moves) in ${first.secs.toFixed(2)} s, right here in your browser.`;
   askSetup();
+  applyHash();
 }
 
 // lay the floor out for a run's groups (today's fab, or a setup from the ask box) and play the run
@@ -1634,7 +1637,7 @@ function showResult(j) {
     (arms.length ? `<div class="arm"><div class="top"><b>today</b>${armBtn("today")}</div></div>` : "") +
     rows.map(row => `<div class="arm"><div class="top"><b>${esc(candLabel(j, row.name))}${row.best ? '<span class="best">best</span>' : ""}</b>${armBtn(row.name)}</div>
       <table>${row.cells.map(c => `<tr><td>${esc(c.label)}</td><td class="v">${cellText(c)}</td><td class="v">${c.lo === null || c.mean === null ? "" : `${cellNum(c, c.lo)} to ${cellNum(c, c.hi)}`}</td><td class="p"><span class="pill ${c.verdict === "no clear effect" ? "unclear" : c.verdict}">${c.verdict}</span></td></tr>`).join("")}</table>${plLine(row.pl)}</div>`).join("") +
-    `<p class="note small">${!r.families ? "" : rows.some(x => x.pl) ? "Operating profit is in dollars at the central assumed prices (see How money is counted in the numbers). " : "Money a day is counted in volume-wafer margins, and every price is assumed. "}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated on the SMT2020 model, a published research model of a wafer fab. What these changes would do in a real fab is unknown.</p>`;
+    `<p class="note small">${!r.families ? "" : rows.some(x => x.pl) ? "Operating profit is in dollars at the central assumed prices (see How money is counted in the numbers). " : "Money a day is counted in volume-wafer margins, and every price is assumed. "}The intervals hold together at 95% across all the candidates (Bonferroni). Simulated from the SMT2020 testbed, a published set of a fab's tool groups, routes and times. What these changes would do in a real fab is unknown.</p>`;
   $("ask-result").querySelectorAll("button.show:not(.sbs)").forEach(b => (b.onclick = () => showArm(j, +b.dataset.arm)));
   $("ask-result").querySelectorAll("button.sbs").forEach(b => (b.onclick = () => sideBySide(j, +b.dataset.arm)));
   {
@@ -1736,6 +1739,18 @@ function goTab(tab) {
   else openDock(tab);
 }
 
+// pages by the address's hash (docs/FRONT-DOOR.md): #home the landing, #floor the floor, #ask the floor with the ask
+// panel; the top bar marks the one you are on
+function pageOfHash() { return ({ "#floor": "floor", "#ask": "ask" })[location.hash] || "home"; }
+function applyHash() {
+  const page = pageOfHash();
+  if (page === "home") { closeDock(); document.body.classList.add("opening-on"); resize(); }
+  else { closeOpening(); if (page === "ask") openDock("ask"); else if (DOCK.tab === "ask") closeDock(); }
+  markPage(page);
+}
+function markPage(page) { document.querySelectorAll(".topnav a").forEach(a => (a.dataset.page === page ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"))); }
+addEventListener("hashchange", applyHash);
+
 function closeOpening() {
   if (!document.body.classList.contains("opening-on")) return;
   document.body.classList.remove("opening-on");
@@ -1749,6 +1764,7 @@ function askFrom(q) {
   if (!q) return;
   closeOpening();
   openDock("ask");
+  if (location.hash !== "#ask") { history.replaceState(null, "", "#ask"); markPage("ask"); }
   if (ASK.helper) ask(q);
   else stage("To ask a question, start the helper on this Mac. In the fab-gym folder, run python3 -m agent.helper.");
 }
@@ -1758,12 +1774,11 @@ async function chromeSetup() {
   try { st = await api("/api/status"); if (st.error) st = null; } catch { st = null; }
   try { bundled = await fetch("data/examples.json").then(r => r.json()); } catch { bundled = []; }
   const o = FabUI.openingState(st, bundled);
-  $("open-title").textContent = o.prompt;
   $("open-explore").textContent = o.explore;
   $("open-examples").innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
   $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(o.examples[+b.dataset.i])));
   $("open-form").onsubmit = e => { e.preventDefault(); askFrom($("open-q").value); };
-  $("open-explore").onclick = closeOpening;
+  $("open-explore").onclick = () => { location.hash = "#floor"; };
   setTimeout(() => $("open-q").focus(), 60);
 
   $("cmd").onsubmit = e => { e.preventDefault(); askFrom($("cmd-q").value); $("cmd-q").value = ""; $("cmd-q").blur(); };
@@ -2358,7 +2373,7 @@ function flowNote() {
   const top = visits.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 3);
   return `On its ${FLOW.steps} steps, one wafer of ${FLOW.route} makes ${N} trips between halls. It comes back to ${name(top[0][1])} ${top[0][0]} times, ` +
     `${name(top[1][1])} ${top[1][0]} and ${name(top[2][1])} ${top[2][0]}: the pinker the hall, the more often the wafer returns. ` +
-    `On the SMT2020 model. The replay starts again in a moment.`;
+    `From the SMT2020 testbed. The replay starts again in a moment.`;
 }
 
 // ------------------------------------------------------------------ the numbers
@@ -2491,7 +2506,7 @@ function drawNumbers() {
   document.querySelectorAll("#num-metric button").forEach(b => b.classList.toggle("on", b.dataset.m === UI.metric));
   document.querySelectorAll("#num-share button").forEach(b => b.classList.toggle("on", +b.dataset.s === share));
   const k = Math.round(0.05 / d.alpha_each);
-  $("num-lead").textContent = `The two-family sweep on the SMT2020 model. Each change ran for ${d.days} simulated days after ${d.warmup} days of warm-up, on ${d.seeds.length} seeds, ` +
+  $("num-lead").textContent = `The two-family sweep from the SMT2020 testbed. Each change ran for ${d.days} simulated days after ${d.warmup} days of warm-up, on ${d.seeds.length} seeds, ` +
     `and is compared with today's fab on the same seeds. Today's fab means one shared floor and today's dispatch order. ` +
     `Each interval is set at 1 − 0.05/${k}, so all ${k} hold together at 95%. Every price is assumed: see How money is counted below. What these changes would do in a real fab is unknown.`;
   const base = { ...(d.baseline[String(share)] || {}), profit: d.plToday && d.plToday[String(share)] ? d.plToday[String(share)].profit : null };
@@ -2526,7 +2541,7 @@ function drawNumbers() {
     $("num-question").innerHTML = `<figure><figcaption>Your question: ${esc(j.question || "a written scenario")}<span>${esc(m.name)}: each candidate compared with today's fab on ${j.report.seeds.length} paired seeds. The intervals hold together at 95%.</span></figcaption><svg role="img"></svg></figure>`;
     setSVG($("num-question").querySelector("svg"), q, `${m.name} for each candidate in your question`);
   } else $("num-question").innerHTML = "";
-  $("num-note").textContent = `Operating profit a day is revenue less materials, running costs and depreciation, in dollars. Capital, payback and the five-year value count what a change buys: tools, their qualification, floor space and, for a wing, a building and a bridge. Every price is assumed. Simulated on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.`;
+  $("num-note").textContent = `Operating profit a day is revenue less materials, running costs and depreciation, in dollars. Capital, payback and the five-year value count what a change buys: tools, their qualification, floor space and, for a wing, a building and a bridge. Every price is assumed. Simulated from the SMT2020 testbed (Kopp, Hassoun, Kalir, Mönch 2020), a published set of a fab's tool groups, routes and times. No real fab's data is used.`;
   drawCapital(d, share);
 }
 
@@ -2863,7 +2878,7 @@ async function sideBySide(j, k) {
     $("split-cards").hidden = false;
     $("split-cards").innerHTML = `<div class="split-head"><b>${esc(arms[k].name)}</b> compared with today's fab over ${j.report.seeds.length} paired seeds of the full run` +
       `<button type="button" class="link" id="split-leave">Leave side by side</button></div>` + (row ? verdictCards([row]).replace(/^<p class="note">.*?<\/p>/, "") : "") +
-      `<p class="note small">Both halves replay seed 0 for 3 days in your browser.${scenes[1].rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so its half uses today's rule."} The cards come from the helper's full scored run. On the SMT2020 model.</p>`;
+      `<p class="note small">Both halves replay seed 0 for 3 days in your browser.${scenes[1].rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so its half uses today's rule."} The cards come from the helper's full scored run. From the SMT2020 testbed.</p>`;
     $("split-leave").onclick = () => leaveSplit(true);
     stage("");
   } catch (err) {

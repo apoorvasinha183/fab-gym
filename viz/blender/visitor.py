@@ -1,6 +1,6 @@
 """The visitor film, "A Walk Through the Fab", in Blender: a person walks in from the car park,
 badges in, rides the lift, crosses the bridge, gowns up, takes the air shower and walks the clean
-floor to the sights the run chose. A gigafab-style layout of our own design on the SMT2020 model;
+floor to the sights the run chose. A gigafab-style layout of our own design from the SMT2020 testbed;
 not a real fab. The visitor, the rooms of the way in and their props are drawn only; every number
 on screen is the run's.
 

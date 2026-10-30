@@ -1,5 +1,5 @@
 // From Sand to Chip (docs/CHIP-FILM.md): the scene list the film plays, generated from the agreed script draft 2.
-// The fab's part runs on the SMT2020 model; the rest is general knowledge, labelled so on screen.
+// The fab's part runs from the SMT2020 testbed; the rest is general knowledge, labelled so on screen.
 // In the page this defines window.FilmScript; under Node, module.exports.
 (function (root) {
   "use strict";
@@ -144,14 +144,14 @@
   "act": "fab",
   "d": 10,
   "say": "The wafers enter the fab in lots of 25. From this moment on, the simulator follows every one of them.",
-  "cap": "SMT2020 model · simulated",
-  "see": "The box rides an overhead track into a dark building with teal light seams, the same diorama the floor page draws. At the door: SMT2020 model · simulated. From here a teal border frames the picture.",
+  "cap": "SMT2020 testbed · simulated",
+  "see": "The box rides an overhead track into a dark building with teal light seams, the same diorama the floor page draws. At the door: SMT2020 testbed · simulated. From here a teal border frames the picture.",
   "cam": "follow the box through the door",
   "still": 6,
   "fx": [
    {
     "kind": "frame",
-    "text": "SMT2020 model · simulated"
+    "text": "SMT2020 testbed · simulated"
    },
    {
     "kind": "callout",
@@ -286,7 +286,7 @@
   "act": "after",
   "d": 10,
   "say": "Tested, sorted and shipped. The journey that began on a beach ends in your pocket.",
-  "cap": "End card: Fab Gym · the fab's part runs on the SMT2020 model; the rest is general knowledge.",
+  "cap": "End card: Fab Gym · the fab's part runs from the SMT2020 testbed; the rest is general knowledge.",
   "see": "Chips line up on a tray; a light sweeps over them and they sort into three bins by speed. One chip lifts out, flies into a phone, and the phone's screen wakes up. Pull back to the beach from the cold open.",
   "cam": "follow the chip, then a wide pull-back",
   "still": 4,

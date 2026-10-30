@@ -1,5 +1,5 @@
 //! Two wafer families in one fab (docs/TWO-FAMILIES.md). Written before the code.
-//! On the SMT2020 model, with a gigafab-style layout of our own design; not a real fab.
+//! From the SMT2020 testbed, with a gigafab-style layout of our own design; not a real fab.
 
 mod common;
 
@@ -228,7 +228,7 @@ fn quick(mut c: Config) -> Config {
     c
 }
 
-// 8. The three strategies on the SMT2020 model.
+// 8. The three strategies from the SMT2020 testbed.
 #[test]
 fn strategies_on_the_smt2020_model() {
     let Some(dir) = common::smt2020_dir() else { return };

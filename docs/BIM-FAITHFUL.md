@@ -1,6 +1,6 @@
 # A faithful BIM of the construction documents, and the model in Blender
 
-A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. The model stays a concept for licensed
+A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. The model stays a concept for licensed
 review, NOT FOR CONSTRUCTION, like every sheet.
 
 Decided by quiz on 28 Oct 2026. The founder: "generate a faithful BIM for this and then use our pipeline for

@@ -1,5 +1,5 @@
 //! The floor's moods (docs/FLOOR-LOOK.md): the browser build gives the same moods as `fabsim moods`, from one function
-//! in the library. Written before the code. On small shops of our own and the SMT2020 model; not a real fab.
+//! in the library. Written before the code. On small shops of our own and the SMT2020 testbed; not a real fab.
 
 use fabsim::engine::RunOptions;
 use fabsim::moods::{Moods, Settings, TOOL_MOODS};

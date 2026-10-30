@@ -8,7 +8,7 @@ placed in each tool's IFC box as dressing outside the IFC.
         [--res 1920x1080] [--samples 32]
 
 Writes OUT/fab-bim.blend, OUT/report.json (what was built, read back from Blender's data) and OUT/<still>.png.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. NOT FOR CONSTRUCTION.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. NOT FOR CONSTRUCTION.
 """
 
 import json
@@ -35,7 +35,7 @@ RES = [int(v) for v in opt("--res", "1920x1080").split("x")]
 SAMPLES = int(opt("--samples", "32"))
 STILL_NAMES = ["campus", "cutaway", "subfab", "bay09", "stair", "gowning"]
 STILLS = STILL_NAMES if "--stills" in argv else (opt("--still").split(",") if opt("--still") else [])
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 S = json.loads(SCENE.read_text())
 M = json.loads(MODELS.read_text())
 

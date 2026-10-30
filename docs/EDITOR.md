@@ -3,7 +3,7 @@
 Written 31 Oct 2026, before the code. Decided by quiz the same day: a new page, `web/editor.html`, in the floor
 page's 2.5D look, served by the same helper on 127.0.0.1, which calls the real simulator; one block per tool group
 with a count; 3 m tiles. The look and the cast come from the design page.
-On the SMT2020 model or a teaching fab of our own; never a real fab.
+From the SMT2020 testbed or a teaching fab of our own; never a real fab.
 
 ## What a person does
 

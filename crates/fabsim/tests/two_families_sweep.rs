@@ -1,5 +1,5 @@
 //! The two-family sweep's pieces (docs/TWO-FAMILIES-SWEEP.md). Written before the code.
-//! On the SMT2020 model, with a layout of our own design; not a real fab.
+//! From the SMT2020 testbed, with a layout of our own design; not a real fab.
 
 use fabsim::engine::{Candidate, Decision, GroupTools, RunOptions, Totals};
 use fabsim::money::{money, PriceGrid};

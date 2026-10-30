@@ -2,7 +2,7 @@
 
 Written 31 Oct 2026, before the code. A fab file (`docs/FAB-FILE.md`) can describe any layout; these checks say
 whether it can run, and why not, before the simulator spends any time on it. The editor runs them on every edit and
-the Meta model that writes a fab (deliverable 8) is shown their messages to fix what it wrote. On the SMT2020 model;
+the Meta model that writes a fab (deliverable 8) is shown their messages to fix what it wrote. From the SMT2020 testbed;
 any layout here is of our own design or a person's, never a real fab.
 
 ## What is checked

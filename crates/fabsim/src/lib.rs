@@ -1,4 +1,4 @@
-//! Fab Gym's simulator: a machine-paced wafer fab on the SMT2020 model, reproducing the
+//! Fab Gym's simulator: a machine-paced wafer fab from the SMT2020 testbed, reproducing the
 //! pre-existing Python reference engine's logs exactly, with a choice point for dispatch agents.
 
 pub mod bound;

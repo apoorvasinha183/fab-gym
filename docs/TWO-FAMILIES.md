@@ -1,6 +1,6 @@
 # Two wafer families in one fab
 
-Written 28 October 2026, before the code. On the SMT2020 model, with a gigafab-style layout of our own design; not a
+Written 28 October 2026, before the code. From the SMT2020 testbed, with a gigafab-style layout of our own design; not a
 real fab. Agents propose, the simulator scores, a person signs.
 
 ## The question
@@ -74,7 +74,7 @@ time counted from the scheduled arrival (so holding counts). Every price is assu
 6. **Engineering lots:** 20 lots per release on alternating 2- and 5-day gaps from 08:00 on day 0; sizes 1 to 10;
    exactly one in five at priority 20; the same lots for the same seed; the route copies product 3's steps.
 7. **Copies:** the copy exists with its tool count; family B's steps use it and family A's never do, in a run.
-8. **Strategies on the SMT2020 model:** D1 adds no group; D2 puts every copy in a third phase and D3 in the first
+8. **Strategies from the SMT2020 testbed:** D1 adds no group; D2 puts every copy in a third phase and D3 in the first
    two; every group has a place; a day runs.
 9. **Money:** a hand-worked case gives the exact figure; the same run gives the same money twice.
 
@@ -89,6 +89,6 @@ time counted from the scheduled arrival (so holding counts). Every price is assu
 - 28 Oct, before any sweep run: `contested` estimated a batch step's load as if batch sizes were in lots (they are
   in wafers) and left out load and unload minutes and cascade intervals, so wet benches ranked first. It now uses the
   engine's own job times (first piece plus the cascade interval per further piece, load and unload on every job,
-  a lot's wafer share of a mean batch). On the SMT2020 model the top groups are then thin film, polishing
+  a lot's wafer share of a mean batch). From the SMT2020 testbed the top groups are then thin film, polishing
   (Planar_FE_79 and 77) and lithography metrology. The estimates exceed 1 for several groups, as SMT2020's
   release rate runs above capacity without a cap (`docs/LEAN-LONG.md`); only the order is used.

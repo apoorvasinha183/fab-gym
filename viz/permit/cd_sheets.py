@@ -285,7 +285,7 @@ def specs_cd(C):
          ["Commission with smoke tests at each sampling point; record transport times."]),
     ]
     md = ["", "# Bay 09: specifications in three parts", "",
-          "Construction documents for lithography bay 09. On the SMT2020 model. A layout of our own design. Not a real fab. "
+          "Construction documents for lithography bay 09. From the SMT2020 testbed. A layout of our own design. Not a real fab. "
           "NOT FOR CONSTRUCTION. Products by kind and performance, never by maker; every number assumed unless cited.", ""]
     for num, title, p1, p2, p3 in secs:
         md += [f"## Section {num} {title}", "", "### Part 1 General", ""] + [f"- {x}" for x in p1] + \

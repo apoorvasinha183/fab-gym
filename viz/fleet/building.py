@@ -5,7 +5,7 @@ shop the browser simulator runs (the layout with 160 vehicles).
 
     python3 viz/fleet/building.py [--data data/layout-real-dd] [--out web/data]
 
-Needs `fabsim fleet-trace --vehicles 160` first (for the track). Standard library only. On the SMT2020 model, a
+Needs `fabsim fleet-trace --vehicles 160` first (for the track). Standard library only. From the SMT2020 testbed, a
 gigafab-style layout of our own design; not a real fab.
 """
 
@@ -34,7 +34,7 @@ def main():
     drawn = {names[t["g"]] for t in s["tools"]}
     groups = [line.split("\t")[1] for line in shop.splitlines() if line.startswith("group\t")]
     b = {
-        "what": "Today's US building on the SMT2020 model: a gigafab-style layout of our own design, not a real fab.",
+        "what": "Today's US building from the SMT2020 testbed: a gigafab-style layout of our own design, not a real fab.",
         "fabs": [[r(c["x0"]), r(c["x1"]), r(c["y0"]), r(c["y1"]), c["label"], c["kind"]] for c in s["campus"] if c["kind"] in ("fab", "bridge")],
         "bays": [[r(x["x0"]), r(x["x1"]), r(x["y0"]), r(x["y1"]), x["area"], x["phase"], x["side"]] for x in s["bays"]],
         "tools": [[names[t["g"]], r(t["x0"]), r(t["x1"]), r(t["y0"]), r(t["y1"]), t["kind"], t["wall"], t["h"]] for t in s["tools"]],

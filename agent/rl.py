@@ -4,7 +4,7 @@ held-out seeds against today's rule with paired 95% intervals (Bonferroni over t
     python -m agent.rl train   --shop data/smt2020/hvlm --seeds 100..200 --defects 120,240,60 --timesteps 2000000 --workers 4 --out results/rl-defects/ppo
     python -m agent.rl contest --shop data/smt2020/hvlm --seeds 0..10 --defects 120,240,60 --policy ppo=results/rl-defects/ppo/policy.zip --out results/rl-defects/contest
 
-On the SMT2020 model, a published model of a fab; not a real fab. Agents propose, the simulator scores, a person signs."""
+From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab. Agents propose, the simulator scores, a person signs."""
 
 import argparse
 import json
@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FABSIM = ROOT / "target" / "release" / "fabsim"
-NOTE = "On the SMT2020 model, a published model of a fab. Defect holds and their rates are assumed. Real-fab effect: cannot say."
+NOTE = "From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. Defect holds and their rates are assumed. Real-fab effect: cannot say."
 
 # ------------------------------------------------------------------ intervals (as crates/fabsim/src/uq.rs)
 

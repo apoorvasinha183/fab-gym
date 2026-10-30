@@ -1,8 +1,7 @@
 # A gym for reinforcement learning, with defects in the fab
 
 Written 29 October 2026, before the code. Decided by quiz the same day (`~/HACKATHON-README.md`): reinforcement
-learning plus defects; defects as holds and rework; training on the Linux server after E2. On the SMT2020 model, a
-published model of a fab; no real fab and no real data. Agents propose, the simulator scores, a person signs.
+learning plus defects; defects as holds and rework; training on the Linux server after E2. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; no real fab and no real data. Agents propose, the simulator scores, a person signs.
 
 ## The question
 
@@ -13,7 +12,7 @@ how does it compare with the other two learners on the same seeds?
 
 ## Defects in the fab: holds on top of rework
 
-The SMT2020 model already sends a lot back to an earlier step at its rework steps (`RWKSTEP`, with the published
+The SMT2020 testbed already sends a lot back to an earlier step at its rework steps (`RWKSTEP`, with the published
 probability; `engine.rs`). With defects switched on, each rework is also a **finding** against the tool that just
 did the step:
 

@@ -1,5 +1,5 @@
 //! Money a day for two wafer families (docs/TWO-FAMILIES.md). Every price is assumed, tagged and
-//! swept; on the SMT2020 model, not a real fab.
+//! swept; from the SMT2020 testbed, not a real fab.
 
 use std::collections::HashMap;
 

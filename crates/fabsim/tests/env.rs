@@ -1,5 +1,5 @@
 //! `fabsim env`: one dispatch decision at a time, as JSON lines (docs/RL-DEFECTS.md, tests 5 to 7).
-//! Written before the code. A toy shop on the SMT2020 model's rules; no real fab.
+//! Written before the code. A toy shop from the SMT2020 testbed's rules; no real fab.
 
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};

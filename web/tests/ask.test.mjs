@@ -72,7 +72,7 @@ test("a one-family report uses the scorer's reward, moves and wait", () => {
 test("the summary says what it is and names the best or today", () => {
   for (const r of [fam, one]) {
     const s = A.summaryLine(r);
-    assert.match(s, /SMT2020 model/);
+    assert.match(s, /SMT2020 testbed/);
     assert.match(s, /what (this|these changes) would do in a real fab is unknown/i);
     if (r.best) assert.ok(s.includes(r.best));
     else assert.match(s, /today's fab stands/i);

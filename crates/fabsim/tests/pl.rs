@@ -1,5 +1,5 @@
 //! Money with full business logic: a profit and loss in dollars (docs/MONEY-PL.md). Written before the code.
-//! On the SMT2020 model, a published research model of a wafer fab. Every price is assumed.
+//! From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. Every price is assumed.
 
 mod common;
 

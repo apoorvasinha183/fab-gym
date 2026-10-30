@@ -2,7 +2,7 @@
 
 Pre-registered 30 October 2026, before any run of this design; decided by quiz the same day (a study first, then the
 supervisor). Results go below the line once the runs are done; nothing above the line changes after that. On the
-SMT2020 model, a published research model of a wafer fab; no real fab's data.
+SMT2020 testbed, a published set of a fab's tool groups, routes and times; no real fab's data.
 
 ## The question
 
@@ -150,7 +150,7 @@ seven together), the share of draws pointing the same way as the mean, and the s
   published-number result (−44.9 wafers a day, `docs/LEAN-LONG.md`) holds for SMT2020's own numbers only.
 - Input doubt is again 98 to 100% of the variance between draws.
 
-**What changes in what we claim.** On the SMT2020 model with its published numbers, the earlier results stand as
+**What changes in what we claim.** From the SMT2020 testbed with its published numbers, the earlier results stand as
 measured. For a fab whose numbers are estimates about 20% off: shortest first is worse than today's rule; FIFO is
 probably worse; today's rule against critical ratio is not settled once loads are matched, and critical ratio's
 short-window wins are a drain; the cap's cost under doubled breakdowns cannot be claimed.

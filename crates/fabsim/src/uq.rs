@@ -16,7 +16,7 @@
 //! 3. What the question leaves open. A [`Value`] is said (given in the question) or assumed
 //!    (a range the question leaves open). The range is swept and [`crossover`] reports where
 //!    the better option changes, which becomes the question worth asking back.
-//! 5. The gap to a real fab. Every verdict is about the SMT2020 model; the real-fab effect is
+//! 5. The gap to a real fab. Every verdict is about the SMT2020 testbed; the real-fab effect is
 //!    always [`REAL_FAB_EFFECT`].
 //!
 //! No external crates: the t distribution comes from the regularised incomplete beta function
@@ -489,7 +489,7 @@ pub fn crossover(points: &[(f64, Interval)]) -> Crossover {
 
 // ------------------------------------------------------------------ qualification (layer 5)
 
-/// A three-valued verdict on the SMT2020 model.
+/// A three-valued verdict from the SMT2020 testbed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Verdict {
     Better,
@@ -500,9 +500,9 @@ pub enum Verdict {
 impl Verdict {
     pub fn label(self) -> &'static str {
         match self {
-            Verdict::Better => "better on the SMT2020 model",
-            Verdict::Worse => "worse on the SMT2020 model",
-            Verdict::CannotSay => "no clear effect on the SMT2020 model",
+            Verdict::Better => "better from the SMT2020 testbed",
+            Verdict::Worse => "worse from the SMT2020 testbed",
+            Verdict::CannotSay => "no clear effect from the SMT2020 testbed",
         }
     }
 }
@@ -520,7 +520,7 @@ pub fn verdict(iv: &Interval, higher_is_better: bool) -> Verdict {
     }
 }
 
-/// What every card says about a real fab: the simulator is a published model, not a fab.
+/// What every card says about a real fab: the simulator builds its fab from a published testbed; it is not a real fab.
 pub const REAL_FAB_EFFECT: &str = "Real-fab effect: cannot say";
 
 /// Layer 4 (docs/UQ-INPUTS.md): paired runs nested in draws of the inputs. `base[p][s]` and `cand[p][s]` are draw p's

@@ -1,7 +1,7 @@
 # The replay and the score (editor take two)
 
 Written 31 Oct 2026, before the code. Decided by quiz the same day: the editor opens on the fab running, with a
-challenge and five scores on top, and the motion is **an exact replay** of the simulator's run. On the SMT2020 model
+challenge and five scores on top, and the motion is **an exact replay** of the simulator's run. From the SMT2020 testbed
 or a layout of its own; never a real fab. (Not to be confused with `docs/REPLAY.md`, the earlier floor-page replay.)
 
 ## The score (`fabsim::moods::score`, and `score` in `fabsim moods`)

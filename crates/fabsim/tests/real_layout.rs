@@ -1,6 +1,6 @@
 //! The realistic campus (docs/FAB-LOOK.md): tools at true size by kind, and each tool group in
 //! the phase that sends it most of its lots. A gigafab-style layout of our own design on the
-//! SMT2020 model. Today's `Config::gigafab()` stays as it was.
+//! SMT2020 testbed. Today's `Config::gigafab()` stays as it was.
 
 mod common;
 

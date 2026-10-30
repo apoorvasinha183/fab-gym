@@ -55,7 +55,7 @@ speed. Zero on a free stretch.
 ## Tests (written before the code: `crates/fabsim/tests/moods.rs`)
 
 1. Down states map to their moods: a breakdown is `hurt` in its first 15 minutes and `physio` after; a hold is
-   `hold`; a setup `setup`; maintenance `pm` (on the SMT2020 model, from the run's own state changes).
+   `hold`; a setup `setup`; maintenance `pm` (from the SMT2020 testbed, from the run's own state changes).
 2. A machine with little work dozes; one with more work than it can do is gassed.
 3. A batch tool standing by with too few lots waits for the class.
 4. With one vehicle and one port, a fast tool's finished lots pile up: it shows Hands full at some moment.

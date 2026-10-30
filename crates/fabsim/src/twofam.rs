@@ -1,4 +1,4 @@
-//! Two wafer families in one fab (docs/TWO-FAMILIES.md), on the SMT2020 model with a layout of
+//! Two wafer families in one fab (docs/TWO-FAMILIES.md), from the SMT2020 testbed with a layout of
 //! our own design; not a real fab.
 //!
 //! Family B is SMT2020's engineering lots, rebuilt from their published facts on product 3's

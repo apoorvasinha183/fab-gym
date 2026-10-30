@@ -1,5 +1,5 @@
 """Tests for the faithful BIM of the construction documents (docs/BIM-FAITHFUL.md). Written before the code.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. NOT FOR CONSTRUCTION.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_bim_faithful      (from the repo root)
 

@@ -5,7 +5,7 @@ scored windows are 3 days. The answer: short windows measure flow (moves, waits,
 and they cannot measure cycle time or output from lots started in the window. PPO and the evolved rules were trained
 and scored on 1 day of warm-up and a 3-day window, starting from SMT2020's lots in progress, before the fab settles
 (about day 130). So every policy is scored again over a long window, and every measure is kept for comparison with
-any later policy, Meta's agent included. On the SMT2020 model, a published model of a fab; not a real fab.
+any later policy, Meta's agent included. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab.
 
 ## The protocol, long-v1
 
@@ -16,7 +16,7 @@ any later policy, Meta's agent included. On the SMT2020 model, a published model
   window.
 - Seeds 0 to 9 (held out: no policy was trained or selected on them); each policy against today's rule on the same
   seed, with paired 95% intervals, Bonferroni over the policies.
-- Twice: defect holds off (the published model), and on at PPO's training setting (120, 240, 60 minutes).
+- Twice: defect holds off (as the published testbed has them), and on at PPO's training setting (120, 240, 60 minutes).
 - Policies:
   - the built-in rules: today, FIFO, shortest processing first, critical ratio, random;
   - PPO (`results/rl-defects/ppo/policy.zip`);

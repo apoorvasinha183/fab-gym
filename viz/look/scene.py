@@ -1,7 +1,7 @@
 """The realistic scene: the re-packed campus (results/layout-real/layout.json) and a recorded run
 window (data/layout-real/trace-PLAN.json) at true size, for the Blender film and the Godot scene.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Tools stand on the
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Tools stand on the
 raised floor of the cleanroom at their kind's size (docs/FAB-LOOK.md). Carriers are drawn at true
 size and move the way the run moves them: lifted from a load port by a hoist car, carried along
 the rails, set down on a shelf beside the rail while they wait, lowered onto a port when a tool
@@ -367,7 +367,7 @@ def build(layout_path, trace_path, plan_name):
     kinds = {k["kind"]: {"w": k["w"], "d": k["d"], "h": k["h"], "ports": k["ports"]} for k in S["kinds"]}
     return {
         "model": "SMT2020",
-        "what": "A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Tools are generic shapes of our own at the size book's sizes; support buildings drawn only; which port, which shelf and the path along the rails are drawn only, the times are the run's.",
+        "what": "A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Tools are generic shapes of our own at the size book's sizes; support buildings drawn only; which port, which shelf and the path along the rails are drawn only, the times are the run's.",
         "plan": plan_name,
         "from": t_from,
         "to": t_to,

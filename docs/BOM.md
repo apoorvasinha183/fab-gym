@@ -1,6 +1,6 @@
 # A bill of materials from the BIM
 
-Written 28 October 2026, before the code. A gigafab-style layout of our own design on the SMT2020 model; not a
+Written 28 October 2026, before the code. A gigafab-style layout of our own design from the SMT2020 testbed; not a
 real fab. NOT FOR CONSTRUCTION.
 
 ## What it does

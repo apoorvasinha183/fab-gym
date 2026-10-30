@@ -1,6 +1,6 @@
 # From Sand to Chip: a short film in Three.js
 
-Script draft 2, 29 October 2026. Direction agreed by the founder the same day: a semi-real look with explainer-style animation (a mining scene added), delivered as one MP4, with voice (Chatterbox on the Mac mini) and music (The Budding of Consciousness by Yoiyami, crossfading into New Sunrise by nene; both CC0 from OpenGameArt). The fab's part runs on the SMT2020 model; the steps before and after it are general knowledge and say so on screen. No real fab, company or product is shown.
+Script draft 2, 29 October 2026. Direction agreed by the founder the same day: a semi-real look with explainer-style animation (a mining scene added), delivered as one MP4, with voice (Chatterbox on the Mac mini) and music (The Budding of Consciousness by Yoiyami, crossfading into New Sunrise by nene; both CC0 from OpenGameArt). The fab's part runs from the SMT2020 testbed; the steps before and after it are general knowledge and say so on screen. No real fab, company or product is shown.
 
 Running time 2:44, 13 scenes.
 
@@ -78,11 +78,11 @@ Explainer: split screen: a speck of dust beside a transistor, drawn to the same 
 
 ## 6. Into the fab (1:14, 10 s) · In the fab · simulated
 
-The box rides an overhead track into a dark building with teal light seams, the same diorama the floor page draws. At the door: SMT2020 model · simulated. From here a teal border frames the picture.
+The box rides an overhead track into a dark building with teal light seams, the same diorama the floor page draws. At the door: SMT2020 testbed · simulated. From here a teal border frames the picture.
 
 > The wafers enter the fab in lots of 25. From this moment on, the simulator follows every one of them.
 
-On screen: *SMT2020 model · simulated*
+On screen: *SMT2020 testbed · simulated*
 
 Camera: follow the box through the door.
 
@@ -150,7 +150,7 @@ Chips line up on a tray; a light sweeps over them and they sort into three bins 
 
 > Tested, sorted and shipped. The journey that began on a beach ends in your pocket.
 
-On screen: *End card: Fab Gym · the fab's part runs on the SMT2020 model; the rest is general knowledge.*
+On screen: *End card: Fab Gym · the fab's part runs from the SMT2020 testbed; the rest is general knowledge.*
 
 Camera: follow the chip, then a wide pull-back.
 

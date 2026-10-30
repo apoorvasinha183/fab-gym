@@ -1,5 +1,5 @@
 //! A run that can be paused, copied and continued (docs/LONG-RESCORE.md, regret options B and D). Written before the
-//! code. On the SMT2020 model's rules, with the toy shops for speed.
+//! code. From the SMT2020 testbed's rules, with the toy shops for speed.
 
 mod common;
 

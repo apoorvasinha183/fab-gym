@@ -1,6 +1,6 @@
 # Construction documents: one lithography bay to fabrication detail
 
-A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Every sheet stays NOT FOR
+A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Every sheet stays NOT FOR
 CONSTRUCTION; a permit still needs a real site and the seals of licensed people.
 
 This builds on `docs/DESIGN-DEV.md`. Decided by quiz on 28 Oct 2026:

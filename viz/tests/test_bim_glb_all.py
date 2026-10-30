@@ -1,5 +1,5 @@
 """Tests for every element of the faithful BIM as glTF (docs/BIM-FAITHFUL.md, "The model to glTF"). Written before
-the code. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+the code. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 
     .venv/bin/python -m unittest viz.tests.test_bim_glb_all      (from the repo root)
 

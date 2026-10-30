@@ -1,5 +1,5 @@
 """Tests for the IFC model of the campus (docs/BIM.md). Written before the code. A gigafab-style layout of our own
-design on the SMT2020 model; not a real fab.
+design from the SMT2020 testbed; not a real fab.
 
     .venv/bin/python -m unittest viz.tests.test_bim      (from the repo root)
 

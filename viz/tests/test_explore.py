@@ -1,6 +1,6 @@
 """Tests for the explore scene (viz/godot-real): the realistic fab in Godot, walk and fly.
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. The scene is
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. The scene is
 built from the same parts as the film (data/layout-real/models.json) and the same scene
 (data/layout-real/scene-optimised.json). Standard library only:
 
@@ -57,7 +57,7 @@ class Project(unittest.TestCase):
 
     def test_it_says_what_it_is(self):
         s = source()
-        self.assertIn("on the SMT2020 model", s)
+        self.assertIn("from the SMT2020 testbed", s)
         self.assertIn("not a real fab", s)
         for b in BRANDS:
             self.assertNotIn(b, s, b)
@@ -198,7 +198,7 @@ class Headless(unittest.TestCase):
         self.assertGreater(b["cut"]["off"], fl["roof"]["z1"])
 
     def test_the_badge(self):
-        self.assertIn("on the SMT2020 model", R["badge"])
+        self.assertIn("from the SMT2020 testbed", R["badge"])
         self.assertIn("not a real fab", R["badge"])
 
 

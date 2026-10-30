@@ -1,5 +1,5 @@
 extends Control
-## The replay (docs/REPLAY.md): two copies of one campus on the SMT2020 model, a gigafab-style layout of our
+## The replay (docs/REPLAY.md): two copies of one campus from the SMT2020 testbed, a gigafab-style layout of our
 ## own design and not a real fab. Same seed, same hours: today's rule on the left, a written rule on the
 ## right, on one clock and one camera. The panels count from the window's start, from viz/replay.py's series.
 ##
@@ -52,7 +52,7 @@ func _ready() -> void:
 	heads[1].text = rule["name"] + ("  (hand-written)" if rule["hand_written"] else "  (written by the model)")
 	var score: String = rule["card"] if rule["card"] != null else (
 		"This rule is not scored on the held-out seeds: the counts above are one seed, one run, not an effect.")
-	foot.text = "%s\nThe replay runs the campus layout's shop; a card's score is on the SMT2020 model with its own transport times. Watched: %s, %s.\n%s" % [
+	foot.text = "%s\nThe replay runs the campus layout's shop; a card's score is from the SMT2020 testbed with its own transport times. Watched: %s, %s.\n%s" % [
 		score, R["watch"]["name"], R["watch"]["why"], KEYS]
 	var args := OS.get_cmdline_user_args()
 	var si := args.find("--speed")
@@ -159,7 +159,7 @@ func _apply() -> void:
 		panels[i].text = txt
 		if i < tags.size():
 			tags[i].text = "%s: %d waiting" % [w["name"], q]
-	title.text = "Same campus, same seed (%d), %s, ×%d%s · on the SMT2020 model · not a real fab" % [
+	title.text = "Same campus, same seed (%d), %s, ×%d%s · from the SMT2020 testbed · not a real fab" % [
 		int(R["seed"]), _clock(t), int(round(speed * 60.0)), "  (paused)" if paused else ""]
 
 

@@ -1,4 +1,4 @@
-"""D10 (docs/PERMIT.md): what a wider service chase costs the fab, on the SMT2020 model.
+"""D10 (docs/PERMIT.md): what a wider service chase costs the fab, from the SMT2020 testbed.
 
 If the authority treats the chases behind the tools as service corridors, IBC 415.11.3.4 asks 5 ft (1.524 m); Fab
 Gym's chases are 1.5 m. This lays the campus out again with a 1.6 m chase (`fabsim layout --real --chase 1.6`), then
@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 FABSIM = ROOT / "target/release/fabsim"
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 
 
 def sh(args):

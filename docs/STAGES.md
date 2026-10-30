@@ -1,7 +1,7 @@
 # Stages: what each hall does to the silicon
 
 Written 27 Oct 2026, before the code (tests in `web/tests/stages.test.mjs`).
-Everything here is on the SMT2020 model of a fab (Kopp, Hassoun, Kalir, Mönch 2020), a published model, not a
+Everything here is on the SMT2020 testbed (Kopp, Hassoun, Kalir, Mönch 2020), a published set of a fab's tool groups, routes and times, not a
 real fab. The model holds steps, tool groups, times, batches and breakdowns; it holds no chemistry. The
 drawings are generic textbook steps of our own, marked "Illustration, not to scale", and every number beside
 them comes from the page's own data (`web/data/shop.txt`, `web/data/areas.tsv`).
@@ -50,7 +50,7 @@ since they come between most steps. The loop is simplified; the strip shows the 
 2. `web/index.html`: a "How a chip is made" button in the title card, and a panel (`section#stages`, a
    dialog, hidden at first) holding the loop, the chosen stage's cross-section, what, why, its steps on each
    product's route and its tool groups, a "Show its hall" button, and the strip of the chosen product's route
-   with the chosen stage lit. The panel says "on the SMT2020 model", "not a real fab" and "Illustration, not to
+   with the chosen stage lit. The panel says "from the SMT2020 testbed", "not a real fab" and "Illustration, not to
    scale". `stages.js` loads before `app.js`.
 3. `web/app.js`: opens and closes the panel (the button, a close button, Escape); fills it from the routes the
    simulator returns and the areas file; "Show its hall" closes the panel and calls `flyToHall(i)`, which

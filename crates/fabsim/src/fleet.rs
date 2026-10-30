@@ -354,7 +354,7 @@ impl FleetTrace {
         let mut s = String::new();
         let _ = write!(
             s,
-            "{{\"model\":\"SMT2020\",\"what\":\"The overhead track and the fleet on the SMT2020 model, a gigafab-style layout of our own design; not a real fab. One-way loops, a port per tool, stocker spurs; vehicle numbers assumed or cited (docs/FLEET.md).\",\"from\":{},\"to\":{},\"spine\":{},\"offsets\":[{}],\"vehicles\":{},",
+            "{{\"model\":\"SMT2020\",\"what\":\"The overhead track and the fleet from the SMT2020 testbed, a gigafab-style layout of our own design; not a real fab. One-way loops, a port per tool, stocker spurs; vehicle numbers assumed or cited (docs/FLEET.md).\",\"from\":{},\"to\":{},\"spine\":{},\"offsets\":[{}],\"vehicles\":{},",
             r(self.from),
             r(self.to),
             r(self.spine),

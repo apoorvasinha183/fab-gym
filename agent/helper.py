@@ -7,8 +7,7 @@ to the page), asks a model for a scenario, checks it, runs `fabsim score` native
 time) and hands the report to the page. The model is Meta's muse-spark-1.3-contributor at low effort by default
 (`--preset meta`); `--preset open` asks Muse Spark Open on Baseten for the runs shown in the submission. Spend is
 counted from each answer's usage and capped (`--spend-cap`, $5 by default; docs/BASETEN-PRICING.md). Without a key
-it answers the recorded example questions and runs scenarios a person writes. On the SMT2020 model, a published
-model of a fab; not a real fab."""
+it answers the recorded example questions and runs scenarios a person writes. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab."""
 
 import argparse
 import hashlib

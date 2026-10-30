@@ -2,7 +2,7 @@
 page printed to PDF by headless Chrome, a DXF of the plans, the IFC model and the brief, all drawn from one building
 model (model.py) for a country profile (profiles.py, places/<id>.json).
 
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Every placement number is assumed
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Every placement number is assumed
 unless the brief cites a source. A concept for review, NOT FOR CONSTRUCTION.
 
     python3 viz/blueprint/blueprint.py [--place intl|us] [--scene data/layout-real/scene-optimised.json]
@@ -947,7 +947,7 @@ def brief_blocks(S, L, sha):
     B.append(("p", f"Drawn from results/layout-real/layout.json (sha256 {sha}). Concept for review, NOT FOR CONSTRUCTION. "
                    "Every placement number is assumed unless a source is named below."))
     B.append(("h2", "How the layout was made"))
-    B.append(("p", "Each tool group of the SMT2020 model (105 groups and a holding group) is placed in the phase that sends it most "
+    B.append(("p", "Each tool group of the SMT2020 testbed (105 groups and a holding group) is placed in the phase that sends it most "
                    "of its lots. Within a phase, areas are packed into bays on both sides of a central spine, and an optimiser "
                    f"orders the bays to cut hoist travel: {f(L['plans']['optimised']['metres_per_day'] / 1000, 0)} km a day "
                    f"against {f(L['plans']['plain']['metres_per_day'] / 1000, 0)} km for a plain alphabetical plan. A hoist move "
@@ -1016,8 +1016,8 @@ def brief_blocks(S, L, sha):
     B.append(("p", "Exits, stairs and lifts; fire walls; gowning rooms and air showers; sub-fab equipment; utility routes "
                    "(exhaust, process gases, chemicals, ultrapure water, power); the office's inside. The model holds none of "
                    "them, and we would rather ask than invent them."))
-    B.append(("p", "The SMT2020 model: Kopp, Hassoun, Kalir and Mönch, \"SMT2020: A semiconductor manufacturing testbed\", "
-                   "IEEE Transactions on Semiconductor Manufacturing, 2020. A published model, not a real fab."))
+    B.append(("p", "The SMT2020 testbed: Kopp, Hassoun, Kalir and Mönch, \"SMT2020: A semiconductor manufacturing testbed\", "
+                   "IEEE Transactions on Semiconductor Manufacturing, 2020. A published testbed, not a real fab."))
     return B
 
 
@@ -1117,7 +1117,7 @@ def cover_sheet(S, L):
     notes = [
         f"Units are {PR.unit_words}. Levels are above the support floor's slab, {PR.level(0)}; the clean floor is at {PR.level(S['clean_z'])}.",
         "Plan origin: the west end of phase 1's spine, on its centre line; x east, y north.",
-        "The layout is our own design, made by an optimiser over the SMT2020 model's tool groups and lot flows. It is not a real fab.",
+        "The layout is our own design, made by an optimiser over the SMT2020 testbed's tool groups and lot flows. It is not a real fab.",
         "Tools are generic boxes at the size of their kind (A-900), not any maker's equipment.",
         "Every placement number is assumed unless A-900 cites a source. The site outside the two fab buildings is drawn only.",
         "Not drawn: exits, stairs, fire walls, gowning, sub-fab equipment, utility routes. A-900 asks about them.",

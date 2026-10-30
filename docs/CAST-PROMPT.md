@@ -1,6 +1,6 @@
 # The cast: prompt for the icon sheets
 
-Written 30 Oct 2026 for an image model (Gemini, Meta's Muse Image, or Argon). On the SMT2020 model; the machines
+Written 30 Oct 2026 for an image model (Gemini, Meta's Muse Image, or Argon). From the SMT2020 testbed; the machines
 are generic types, never a real company's tools. Default style: the boot-camp comic of `docs/img/fabgym-hero.jpg`
 (not yet chosen by the founder; to change it, replace the STYLE block only).
 

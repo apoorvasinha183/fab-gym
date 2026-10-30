@@ -1,6 +1,6 @@
 """The map editor's helper endpoints (docs/EDITOR.md): the base shop, the checks and a run with moods, all from the
 real simulator. Written before the code. Run: python3 -m unittest agent.tests.test_editor (from the repo root).
-On the SMT2020 model and a small fab of our own; not a real fab."""
+From the SMT2020 testbed and a small fab of our own; not a real fab."""
 
 import json
 import os

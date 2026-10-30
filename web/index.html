@@ -11,8 +11,9 @@
 <canvas id="floor" aria-label="The fab floor: halls of tools around a spine belt"></canvas>
 
 <header class="card brand">
-  <div class="title">Fab Gym</div>
-  <div class="sub">A wafer fab on the SMT2020 model, simulated in your browser</div>
+  <div class="brand-row"><div class="title">Fab Gym</div>
+    <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#ask" data-page="ask">Ask</a></nav></div>
+  <div class="sub">A fab built from the SMT2020 testbed, simulated in your browser</div>
   <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
 </header>
 
@@ -219,7 +220,7 @@
     <div id="stages-strip" class="stages-strip" aria-label="Route steps"></div>
     <div id="stages-readout" class="note">Hover over a square to see its step.</div>
   </div>
-  <p class="note small">The drawings are our own simple sketches and are not to scale. The model itself holds only steps, tools and times, with no chemistry. Every count here is on the SMT2020 model (Kopp, Hassoun, Kalir, Mönch 2020), a published research model of a wafer fab. No real fab's data is used.</p>
+  <p class="note small">The drawings are our own simple sketches and are not to scale. The model itself holds only steps, tools and times, with no chemistry. Every count here is from the SMT2020 testbed (Kopp, Hassoun, Kalir, Mönch 2020), a published set of a fab's tool groups, routes and times. No real fab's data is used.</p>
 </section>
 
 <section id="key" class="card key" aria-label="What the marks on the floor mean">
@@ -252,16 +253,29 @@
 </footer>
 
 <section id="opening" class="opening" aria-labelledby="open-title">
-  <div class="eyebrow">Fab Gym · a wafer fab on the SMT2020 model</div>
-  <h1 id="open-title">So, what are we doing today?</h1>
-  <form id="open-form" class="open-form" autocomplete="off">
-    <label for="open-q" class="sr">Your question</label>
-    <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
-    <button type="submit" class="primary">Go</button>
-  </form>
-  <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
+  <div class="eyebrow">Fab Gym · from the SMT2020 testbed</div>
+  <h1 id="open-title">A gym for wafer fabs.</h1>
+  <p class="open-sub">Build a fab, watch every machine work out, and fix what hurts. Meta's models propose changes, the simulator scores them, and a person signs off.</p>
+  <div id="open-doors" class="open-doors">
+    <a class="door door-play" href="editor.html">
+      <span class="door-cast" aria-hidden="true"><img src="cast/base/10-cmp.webp" alt=""><img src="cast/base/01-litho.webp" alt=""><img src="cast/base/03-dry.webp" alt=""></span>
+      <span class="door-k">Play a challenge</span>
+      <span class="door-s">Rush hour on the spine and three more. A small fab opens already running; change it, run it again and beat the target.</span>
+      <span class="door-go">Open the challenges →</span>
+    </a>
+    <div class="door door-ask">
+      <span class="door-k">Ask the fab</span>
+      <span class="door-s">Ask about the full fab; Meta's model proposes changes and the simulator scores them on paired runs.</span>
+      <form id="open-form" class="open-form" autocomplete="off">
+        <label for="open-q" class="sr">Your question</label>
+        <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
+        <button type="submit" class="primary">Go</button>
+      </form>
+      <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
+    </div>
+  </div>
   <button id="open-explore" type="button" class="link explore">or explore the floor</button>
-  <p class="fine">Agents propose changes, the simulator scores them, and a person signs off. Everything runs on the SMT2020 model, a published research model of a wafer fab.</p>
+  <p class="fine">Every fab here starts from SMT2020 (Kopp, Hassoun, Kalir, Mönch 2020), a published testbed of a fab's tool groups, routes and times. No real fab's data.</p>
 </section>
 
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>

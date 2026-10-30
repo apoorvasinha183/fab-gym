@@ -2,10 +2,10 @@
 
 Every element says where its numbers come from: "model" (SMT2020's groups and the layout file), "assumed", or
 "cited: <source>". The sheets, the DXF and the IFC are all drawn from this, so they never disagree.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 """
 
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 STATUS = "Concept for review, NOT FOR CONSTRUCTION"
 GRID = 12.0          # assumed column grid
 WALL = 0.3           # assumed wall thickness

@@ -1,8 +1,7 @@
 # Money with full business logic: a profit and loss in dollars
 
 Written 29 October 2026, before the code. Decided by quiz the same day (`~/HACKATHON-README.md`): a full profit and
-loss with payback, in US dollars, every figure assumed, labelled and swept over a range. On the SMT2020 model, a
-published research model of a wafer fab. No real fab's prices or data are used. Agents propose, the simulator
+loss with payback, in US dollars, every figure assumed, labelled and swept over a range. From the SMT2020 testbed, a published set of a fab's tool groups, routes and times. No real fab's prices or data are used. Agents propose, the simulator
 scores, a person signs.
 
 ## Why

@@ -8,7 +8,7 @@ once the runs are done; nothing above the line changes after that.
 A WIP cap (CONWIP) holds new lots back while the fab holds a set number of lots. A low cap
 shortens cycle time (Little's law) and can starve the busiest tools; breakdowns make the fab
 need more lots on hand to keep those tools fed. So a cap that costs no wafers on a calm fab may
-cost wafers when breakdowns rise. On the SMT2020 model, at which cap and which breakdown rate
+cost wafers when breakdowns rise. From the SMT2020 testbed, at which cap and which breakdown rate
 does that happen?
 
 ## What exploration showed (14-day runs, uncommitted scripts, seeds 0 to 29)
@@ -43,7 +43,7 @@ Seeds 0 to 29 are therefore not used below.
   cap, `uq::crossover` over k on wafers out. A cap is "free" at k when its wafers-out verdict
   is not worse.
 - **Compute:** at most 4 threads, niced; results do not depend on the thread count.
-- **Reported:** every cell, whatever it shows. "On the SMT2020 model" on every result;
+- **Reported:** every cell, whatever it shows. "From the SMT2020 testbed" on every result;
   real-fab effect: cannot say.
 
 ## Code
@@ -63,7 +63,7 @@ design above. The loader then read two metrology groups' first maintenance (give
 minutes, as the reference compile does; `fabsim lean-long --reference` reproduces these results.
 A rerun with the units read correctly is reported after the tables. Every run is in `results/lean-long/runs.tsv`; the intervals in `summary.json`.
 
-**What it shows, on the SMT2020 model:**
+**What it shows, from the SMT2020 testbed:**
 
 - **The flip.** A cap of 1,800 lots is free on today's fab (wafers out −0.5 a day, 95%
   −8.8 to +7.8) and costs wafers when breakdowns double (−33.8 a day, −48.8 to −18.7, about
@@ -81,7 +81,7 @@ A rerun with the units read correctly is reported after the tables. Every run is
 
 Real-fab effect: cannot say.
 
-On the SMT2020 model. 10 seeds (1000..1009), 300 days, window days 120 to 300. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over 15 cells (each at level 0.0033), so all cover at once with probability at least 95%. Real-fab effect: cannot say.
+From the SMT2020 testbed. 10 seeds (1000..1009), 300 days, window days 120 to 300. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over 15 cells (each at level 0.0033), so all cover at once with probability at least 95%. Real-fab effect: cannot say.
 
 ### wafers out a day
 
@@ -109,10 +109,10 @@ On the SMT2020 model. 10 seeds (1000..1009), 300 days, window days 120 to 300. E
 
 ### Where each cap stops being free (wafers out, over breakdown rate)
 
-- cap 1800: x1: free, x1.5: free, x2: costs wafers — worse on the SMT2020 model at some rates, no clear effect at the others
-- cap 2100: x1: free, x1.5: free, x2: free — better on the SMT2020 model at some rates, no clear effect at the others
-- cap 2400: x1: free, x1.5: free, x2: free — same verdict at every rate: better on the SMT2020 model
-- cap 2700: x1: free, x1.5: free, x2: free — better on the SMT2020 model at some rates, no clear effect at the others
+- cap 1800: x1: free, x1.5: free, x2: costs wafers — worse from the SMT2020 testbed at some rates, no clear effect at the others
+- cap 2100: x1: free, x1.5: free, x2: free — better from the SMT2020 testbed at some rates, no clear effect at the others
+- cap 2400: x1: free, x1.5: free, x2: free — same verdict at every rate: better from the SMT2020 testbed
+- cap 2700: x1: free, x1.5: free, x2: free — better from the SMT2020 testbed at some rates, no clear effect at the others
 - cap 3000: x1: free, x1.5: free, x2: free — no clear effect at any rate
 
 
@@ -131,7 +131,7 @@ design and seeds (503 s). The findings hold:
 
 The page shows this run. Files: `results/lean-long-units/`.
 
-On the SMT2020 model. 10 seeds (1000..1009), 300 days, window days 120 to 300. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over 15 cells (each at level 0.0033), so all cover at once with probability at least 95%. Real-fab effect: cannot say. Files read with their units.
+From the SMT2020 testbed. 10 seeds (1000..1009), 300 days, window days 120 to 300. Each cap minus no cap at the same breakdown rate, paired; intervals Bonferroni over 15 cells (each at level 0.0033), so all cover at once with probability at least 95%. Real-fab effect: cannot say. Files read with their units.
 
 ### wafers out a day
 
@@ -159,8 +159,8 @@ On the SMT2020 model. 10 seeds (1000..1009), 300 days, window days 120 to 300. E
 
 ### Where each cap stops being free (wafers out, over breakdown rate)
 
-- cap 1800: x1: free, x1.5: free, x2: costs wafers — worse on the SMT2020 model at some rates, no clear effect at the others
-- cap 2100: x1: free, x1.5: free, x2: free — better on the SMT2020 model at some rates, no clear effect at the others
-- cap 2400: x1: free, x1.5: free, x2: free — same verdict at every rate: better on the SMT2020 model
-- cap 2700: x1: free, x1.5: free, x2: free — better on the SMT2020 model at some rates, no clear effect at the others
+- cap 1800: x1: free, x1.5: free, x2: costs wafers — worse from the SMT2020 testbed at some rates, no clear effect at the others
+- cap 2100: x1: free, x1.5: free, x2: free — better from the SMT2020 testbed at some rates, no clear effect at the others
+- cap 2400: x1: free, x1.5: free, x2: free — same verdict at every rate: better from the SMT2020 testbed
+- cap 2700: x1: free, x1.5: free, x2: free — better from the SMT2020 testbed at some rates, no clear effect at the others
 - cap 3000: x1: free, x1.5: free, x2: free — no clear effect at any rate

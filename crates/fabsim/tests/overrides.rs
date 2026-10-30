@@ -1,5 +1,5 @@
 //! Failure and recovery per tool and per rail piece (docs/OVERRIDES.md): a JSON overrides file beside the fab file;
-//! with none, every run is today's. Written before the code. On the SMT2020 model; numbers here are test settings.
+//! with none, every run is today's. Written before the code. From the SMT2020 testbed; numbers here are test settings.
 
 mod common;
 

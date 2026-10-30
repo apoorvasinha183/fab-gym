@@ -1,5 +1,5 @@
 """Tests for the architectural construction documents of the whole fab (docs/ARCH-DOCS.md). Written before the code.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Every sheet stays NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_arch_cd      (from the repo root)
 
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCENE = ROOT / "data/layout-real-dd/scene-optimised.json"
 LAYOUT = ROOT / "results/layout-real-dd/layout.json"
 RUN = ROOT / "viz/permit/run.py"
-TRUTH = "On the SMT2020 model. A layout of our own design. Not a real fab."
+TRUTH = "From the SMT2020 testbed. A layout of our own design. Not a real fab."
 ARCH = ["A-001", "A-100", "A-111", "A-112", "A-121", "A-122", "A-131", "A-132", "A-141", "A-142", "A-202", "A-311",
         "A-411", "A-412", "A-413", "A-414", "A-521", "A-531", "A-541", "A-551", "A-611", "A-612", "A-613", "A-614",
         "A-701", "A-702"]

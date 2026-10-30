@@ -1,5 +1,5 @@
 //! The track is what you drew (docs/FAB-RAILS.md): with plan links, vehicles drive on the plan's own nodes and links.
-//! Written before the code. On the SMT2020 model; layouts here are of our own design.
+//! Written before the code. From the SMT2020 testbed; layouts here are of our own design.
 
 mod common;
 

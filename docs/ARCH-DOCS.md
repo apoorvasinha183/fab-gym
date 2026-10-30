@@ -1,6 +1,6 @@
 # Architectural construction documents for the whole fab
 
-A gigafab-style layout of our own design on the SMT2020 model. Not a real fab. Every sheet stays NOT FOR
+A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab. Every sheet stays NOT FOR
 CONSTRUCTION; a permit still needs a real site and the seals of licensed people.
 
 Decided by quiz on 28 Oct 2026 (the founder: "finish the arch drawing completely"): architecture for the whole fab,

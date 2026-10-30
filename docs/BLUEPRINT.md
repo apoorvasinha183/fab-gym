@@ -1,7 +1,7 @@
 # Blueprint: the campus as a drawing set for an architect
 
 Written 27 Oct 2026, before the code (tests in `viz/tests/test_blueprint.py`).
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. Every placement number is
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. Every placement number is
 assumed unless the brief cites a source. The set is a concept for review, marked NOT FOR CONSTRUCTION.
 
 The founder asked for "a architecture like blueprint for the fab" to validate with an architect. Decided by
@@ -37,7 +37,7 @@ spine on its centre line; levels in metres above the support floor's slab (+0.00
 - Not drawn, and asked in the brief: exits and stairs, fire walls, gowning, sub-fab equipment, utility routes.
 
 Each sheet has a title block: the project ("Fab Gym campus"), the sheet number and title, the scale, the date,
-revision "P1 for review", the line "On the SMT2020 model. A layout of our own design. Not a real fab.",
+revision "P1 for review", the line "From the SMT2020 testbed. A layout of our own design. Not a real fab.",
 "NOT FOR CONSTRUCTION", and the sha256 (first 12) of the layout file it was drawn from.
 
 ## Files

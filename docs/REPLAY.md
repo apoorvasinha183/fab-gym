@@ -1,7 +1,7 @@
 # Replay: a rule against today's rule, side by side
 
 Written 27 Oct 2026, before the code (tests in `viz/tests/test_replay.py`).
-Everything here runs on the SMT2020 model of a fab, on a gigafab-style layout of our own design. Not a real
+Everything here runs on the SMT2020 testbed, on a gigafab-style layout of our own design. Not a real
 fab. Agents propose, the simulator scores, a person signs.
 
 ## What it shows
@@ -45,11 +45,11 @@ so.
 - Both sides draw all 1,043 tools from the same layout; their clocks and camera poses are equal after
   any number of frames.
 - The panels show the series' numbers for the current time.
-- The screen says "on the SMT2020 model", "not a real fab", names "Today's rule" and the rule, and says
+- The screen says "from the SMT2020 testbed", "not a real fab", names "Today's rule" and the rule, and says
   "hand-written" when it is.
 - The counters are from one seed, so they show one run, not an effect. The rule's scored effect is the
   card's, from paired seeds; the panel quotes it when a card is given, and otherwise says "not scored".
-  The card is scored on the SMT2020 model with its own transport times; the replay runs the campus
+  The card is scored from the SMT2020 testbed with its own transport times; the replay runs the campus
   layout's shop, and the panel says so.
 
 Not in this step: a model-written rule (it waits on the key), a voice-over, the Blender version.

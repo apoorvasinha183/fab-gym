@@ -2,9 +2,9 @@
 
 About 2 minutes 7 seconds, 1920×1080, 24 fps. Rendered in Blender; the same
 scene is explorable in Godot. A gigafab-style layout of our own design on the
-SMT2020 model; not a real fab.
+SMT2020 testbed; not a real fab.
 
-**The story in one line.** Follow one lot for eight hours on the SMT2020 model
+**The story in one line.** Follow one lot for eight hours from the SMT2020 testbed
 and find where its time goes: about 26 minutes moving, nearly three hours
 waiting. That sets up Fab Gym's question: which lot should go next?
 
@@ -50,7 +50,7 @@ Across all lots in the clip's hours: 50.4% of lot time waiting for a tool,
 campus at 350 m height; slow push in and descent to 450 m away, 160 m high,
 drifting 10° round. Dawn behind the cooling towers, steam rising, cars arriving
 in the lot, the hoist bridges' glass catching the light.
-*Caption:* "A wafer fab campus of our own design, run on the SMT2020 model."
+*Caption:* "A wafer fab campus of our own design, run from the SMT2020 testbed."
 
 **Shot 2 (0:10–0:22). Round the campus.** 24 mm. Orbit north at 300 m past the
 gas yard and office, revealing Phase 1, the bridge, Phase 2 and the empty pad.
@@ -127,7 +127,7 @@ morning light, ending on Shot 1's angle.
 simulator scores, a person signs."
 
 **End card (2:01–2:07).** "Fab Gym. A gigafab-style layout of our own design on
-the SMT2020 model. Not a real fab." Small: SMT2020 (Kopp, Hassoun, Kalir and
+the SMT2020 testbed. Not a real fab." Small: SMT2020 (Kopp, Hassoun, Kalir and
 Mönch, 2020); the CC0 sources by name.
 
 ## Settled by the founder (27 Oct)

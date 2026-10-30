@@ -1,4 +1,4 @@
-"""Build the gigafab-style campus (our own design on the SMT2020 model; not a real fab) in
+"""Build the gigafab-style campus (our own design from the SMT2020 testbed; not a real fab) in
 Blender from viz/prep.py's scene file, animate the lots, and render a film.
 
     Blender -b -P viz/blender/build.py -- SCENE.json OUT_DIR [--frames N] [--still F]

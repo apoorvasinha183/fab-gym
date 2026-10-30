@@ -2,7 +2,7 @@
 // holds the lot's steps [step, group, tool, arrive, start, end], its rail stays [stretch, in, out, loaded] and its
 // hoists [node, up, start, end]. It plays as waits, work and moves, each at its own pace in seconds, so a 56-day
 // journey can be watched: long queue waits pass quickly, work and moves slowly. In the page this defines
-// window.FabJourney; under Node, module.exports. On the SMT2020 model, a gigafab-style layout of our own design.
+// window.FabJourney; under Node, module.exports. From the SMT2020 testbed, a gigafab-style layout of our own design.
 (function (root) {
   "use strict";
 

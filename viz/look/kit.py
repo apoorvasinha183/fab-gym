@@ -2,7 +2,7 @@
 hoist car as parts (boxes and cylinders) at the sizes of viz/look/sizes.json. Blender and Godot
 both build their meshes from these parts, so the two views show the same models.
 
-A gigafab-style layout of our own design on the SMT2020 model; the shapes are generic and of our
+A gigafab-style layout of our own design from the SMT2020 testbed; the shapes are generic and of our
 own design, after no maker's tool.
 
 Frame of a tool: x along the bay wall (its width W), y into the bay from the aisle (its depth D;
@@ -502,7 +502,7 @@ def clean_floor_z():
 
 def export():
     return {
-        "what": "Parts for every model of the realistic fab: a gigafab-style layout of our own design on the SMT2020 model. Generic shapes of our own; no maker's tool.",
+        "what": "Parts for every model of the realistic fab: a gigafab-style layout of our own design from the SMT2020 testbed. Generic shapes of our own; no maker's tool.",
         "frame": "x along the wall (W), y into the bay from the aisle (D), z up from the raised floor",
         "materials": MATERIALS,
         "kinds": {k: model(k) for k in BUILDERS},

@@ -1,6 +1,6 @@
 """The replay's data: the campus under today's rule and under a written rule, on one seed (docs/REPLAY.md).
 
-On the SMT2020 model, on a gigafab-style layout of our own design; not a real fab.
+From the SMT2020 testbed, on a gigafab-style layout of our own design; not a real fab.
 
     python3 viz/replay.py RULE.rs --name NAME [--hand-written] [--card CARD.json]
         [--seed 3000] [--day 30] [--hours 6] [--out data/layout-real/replay] [--copy]
@@ -27,7 +27,7 @@ LAYOUT = ROOT / "results" / "layout-real" / "layout.json"
 DATA = ROOT / "data" / "layout-real"
 TODAY = "pub fn key(c: &Cand, _x: &Ctx) -> f64 { if c.is_default > 0.5 { 0.0 } else { 1.0 } }"
 EVERY = 10.0
-WHAT = ("Two copies of one campus on the SMT2020 model, a gigafab-style layout of our own design; not a real fab. "
+WHAT = ("Two copies of one campus from the SMT2020 testbed, a gigafab-style layout of our own design; not a real fab. "
         "Same seed, same hours: today's rule on one side, the written rule on the other.")
 
 

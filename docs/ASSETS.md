@@ -16,4 +16,4 @@ git); this list says where each came from.
 
 The tools, the carrier, the hoist and the buildings stay our own, shaped in
 code (`viz/look/kit.py`). A gigafab-style layout of our own design on the
-SMT2020 model; not a real fab.
+SMT2020 testbed; not a real fab.

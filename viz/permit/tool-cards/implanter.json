@@ -1,6 +1,6 @@
 {
  "kind": "implanter",
- "note": "Assumed by kind, with a range; SMT2020 holds no masses, utilities or chemistry and no maker's number is used. On the SMT2020 model. A layout of our own design. Not a real fab.",
+ "note": "Assumed by kind, with a range; SMT2020 holds no masses, utilities or chemistry and no maker's number is used. From the SMT2020 testbed. A layout of our own design. Not a real fab.",
  "clearance_m": {
   "front": {
    "value": 1.0,

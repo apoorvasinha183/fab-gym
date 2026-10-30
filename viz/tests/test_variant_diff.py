@@ -1,5 +1,5 @@
 """Tests for the difference sheet between today's fab and the variant with copies (docs/NARRATIVE.md, deliverable 3).
-Written before the code. A gigafab-style layout of our own design on the SMT2020 model; not a real fab.
+Written before the code. A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab.
 NOT FOR CONSTRUCTION.
 
     .venv/bin/python -m unittest viz.tests.test_variant_diff      (from the repo root)
@@ -118,9 +118,9 @@ class Difference(unittest.TestCase):
         for c in self.v["copies"]:
             self.assertIn(c["copy"], svg)
         self.assertIn("NOT FOR CONSTRUCTION", svg)
-        self.assertIn("SMT2020 model", svg)
+        self.assertIn("SMT2020 testbed", svg)
         md = (self.out / "difference.md").read_text()
-        self.assertIn("SMT2020 model", md)
+        self.assertIn("SMT2020 testbed", md)
 
     def test_the_same_inputs_give_the_same_bytes(self):
         with tempfile.TemporaryDirectory() as t:

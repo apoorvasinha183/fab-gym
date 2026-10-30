@@ -5,7 +5,7 @@ gowning rooms' fit-out, hatch ladders), placed so nothing clashes. post(C) runs 
 element its shape, inside its box: parts (swept solids in world coordinates), repeats (one shape placed many times),
 openings and what fills them, aggregates (a stair's flights, landings and handrails), and a material.
 Only --stage cd calls this, so the schematic and design development sets keep their bytes.
-A gigafab-style layout of our own design on the SMT2020 model; not a real fab. NOT FOR CONSTRUCTION.
+A gigafab-style layout of our own design from the SMT2020 testbed; not a real fab. NOT FOR CONSTRUCTION.
 """
 
 import math

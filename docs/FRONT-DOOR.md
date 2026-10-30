@@ -19,3 +19,8 @@ fold on a laptop. Options page (private). Chosen by quiz:
 
 `web/tests/frontdoor.test.mjs`; the wording asserts in `stages`, `ui`, `results` and `agent/tests/test_loop.py` now look
 for the testbed.
+
+## Changes
+
+- 31 Oct, while building: `web/tests/ask.test.mjs` also matched the summary's old wording (`/SMT2020 model/`) and was
+  missed in the tests commit; it now looks for the testbed. Found by the full test run, changed with the code.

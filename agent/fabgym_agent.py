@@ -1,6 +1,6 @@
 """The agent loop (docs/AGENT.md): a model writes dispatch rules, the simulator scores them, a person signs.
 
-Everything runs on the SMT2020 model of a fab. The model sees only training scores (seeds 100 and up);
+Everything runs on the SMT2020 testbed. The model sees only training scores (seeds 100 and up);
 the finalists are scored once on the held-out seeds after the search ends, and nothing from that
 scoring is ever sent to the model.
 
@@ -42,8 +42,8 @@ MEASURE_WORDS = {
     "mean_wip": "lots in the fab (mean)",
 }
 
-SPEC = """You write dispatch rules for a simulated wafer fab (the SMT2020 model of a fab, a published
-research model; no real fab or real data). Whenever a free tool could start work, the simulator hands
+SPEC = """You write dispatch rules for a simulated wafer fab (built from the SMT2020 testbed, a published set
+of a fab's tool groups, routes and times; no real fab or real data). Whenever a free tool could start work, the simulator hands
 every waiting candidate (a lot, or a batch of lots) to your function, and the tool starts the candidate
 with the smallest key. Ties keep the simulator's own pick (today's rule); a NaN key counts as the largest.
 
@@ -377,7 +377,7 @@ def _card_hash(card):
 def _render(card):
     L = ["# Rule card", ""]
     L.append(
-        "Everything here runs on the SMT2020 model of a fab (a published research model; no real fab or real data)."
+        "Everything here runs on the SMT2020 testbed (a published set of a fab's tool groups, routes and times; no real fab or real data)."
     )
     L.append("Agents propose, the simulator scores, a person signs.")
     L.append("")
@@ -466,7 +466,7 @@ def finalise(s, scorer, top=2, out_dir=None):
         )
     card = {
         "kind": CARD_KIND,
-        "on": "the SMT2020 model",
+        "on": "the SMT2020 testbed",
         "question": s.question,
         "model": s.model_name,
         "scorer": s.scorer,

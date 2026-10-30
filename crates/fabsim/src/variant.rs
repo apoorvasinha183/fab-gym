@@ -1,7 +1,7 @@
 //! The decision as a fab (docs/NARRATIVE.md, deliverable 2). A signed answer, copies of the groups prototypes load
 //! most, becomes a variant of today's realistic campus. Today's optimised plan is kept block for block and each copy
 //! is placed right after its original, so the plans, the BIM and the bill of materials differ only around the copies.
-//! A gigafab-style layout of our own design on the SMT2020 model; every placement number is assumed.
+//! A gigafab-style layout of our own design from the SMT2020 testbed; every placement number is assumed.
 
 use crate::layout::{Block, Config, Plan, Problem};
 use crate::pl::{capital, Added, Capital, Place, Sheet};

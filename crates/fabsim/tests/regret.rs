@@ -1,4 +1,4 @@
-//! Regret options B and D (docs/LONG-RESCORE.md). Written before the code. On the SMT2020 model's rules, with the toy
+//! Regret options B and D (docs/LONG-RESCORE.md). Written before the code. From the SMT2020 testbed's rules, with the toy
 //! shop for speed.
 //!
 //! B, the foresight audit: at sampled picks of a policy's own run, every lot the tool could have taken is tried on a

@@ -1,5 +1,5 @@
 """Build the realistic fab in Blender and render the film "Where the Time Goes"
-(docs/FAB-FILM-SCRIPT.md). A gigafab-style layout of our own design on the SMT2020 model; not a
+(docs/FAB-FILM-SCRIPT.md). A gigafab-style layout of our own design from the SMT2020 testbed; not a
 real fab. Every model comes from viz/look/kit.py's parts, every carrier and tool state from the
 run (viz/look/scene.py), the lot, the captions and the clock from viz/film/film.py.
 
@@ -1885,7 +1885,7 @@ def overlay(frames):
 
 
 if REPORT:
-    rep = {"what": "Where the drawn-only workers and cars are; on the SMT2020 model, a layout of our own design.",
+    rep = {"what": "Where the drawn-only workers and cars are; from the SMT2020 testbed, a layout of our own design.",
            "sky": SKY_SEEN, "textures": sorted(TEXTURES), "parked": PARKED, "moving": MOVING, "workers": [], "placed": [], "visor": []}
     near, ok, n = 1e9, 0, 0
     for i, w in enumerate(WORKERS):
