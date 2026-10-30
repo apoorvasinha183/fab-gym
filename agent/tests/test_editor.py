@@ -94,3 +94,30 @@ class Editor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(FABSIM.exists(), "needs cargo build --release")
+class TakeTwo(unittest.TestCase):
+    """Editor take two (docs/EDITOR-TAKE-TWO.md): runs take an overrides file, and a replay window comes back."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.h = helper.Helper(web=ROOT / "web", key_file=self.tmp / "none.key", jobs=self.tmp / "jobs", quick=True)
+
+    def test_a_run_takes_an_overrides_file(self):
+        ov = {"fabgym-overrides": 1, "groups": {"A": {"breakdowns": {"kind": "random", "mttf_minutes": 30, "mttr_minutes": 30}}}}
+        plain = self.h.fab_run(OWN, seed=1, days=0.5, every=60)
+        broken = self.h.fab_run(OWN, seed=1, days=0.5, every=60, overrides=ov)
+        self.assertNotIn("error", broken)
+        self.assertLess(broken["moods"]["score"]["wafers_per_day"], plain["moods"]["score"]["wafers_per_day"])
+
+    def test_a_bad_overrides_file_is_refused_plainly(self):
+        r = self.h.fab_run(OWN, seed=1, days=0.5, every=60, overrides={"fabgym-overrides": 1, "groups": {"Nope": {}}})
+        self.assertIn("error", r)
+        self.assertIn("Nope", r["error"])
+
+    def test_a_replay_window_comes_back(self):
+        r = self.h.fab_replay(OWN, seed=1, start=300, minutes=15)
+        self.assertNotIn("error", r)
+        self.assertTrue(r["stays"])
+        self.assertEqual(r["fields"][:3], ["vehicle", "from", "to"])

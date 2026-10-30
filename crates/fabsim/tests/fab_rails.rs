@@ -145,3 +145,21 @@ fn bad_spots_and_a_fleet_with_no_track_are_refused() {
     let e = Shop::parse(bare).expect_err("a fleet with no track");
     assert!(e.contains("fleet"), "{e}");
 }
+
+#[test]
+fn going_round_starts_at_the_split_before_the_break() {
+    // the break is one stretch past the split (m>b, after a>m); a vehicle bound for b plans round it at a, the last
+    // split before it, through the bypass a>p>b (editor take two, docs/EDITOR-TAKE-TWO.md)
+    let s = own();
+    let set = |rec: &str| Overrides::parse(&format!(
+        r#"{{"fabgym-overrides": 1, "rails": {{"m>b": {{"breakdowns": {{"kind": "random", "mttf_minutes": 60, "mttr_minutes": 30}}, "recovery": {{"kind": "{rec}"}}}}}}}}"#), &s).unwrap();
+    let o = RunOptions { seed: 1, until: Some(2.0 * 1440.0), record: true };
+    let around = run_with(&s, &o, None, &set("route_around"));
+    let wait = run_with(&s, &o, None, &set("wait"));
+    let (fa, fw) = (around.fleet.as_ref().unwrap(), wait.fleet.as_ref().unwrap());
+    assert!(fa.held_min < fw.held_min, "going round from the split: {} held minutes, waiting: {}", fa.held_min, fw.held_min);
+    // the bypass is used while m>b is down
+    let t = Track::from_shop(&fabsim::engine::native_floor(&s).unwrap());
+    let ap = (0..t.edges().len()).find(|&i| t.name(t.edges()[i].from) == "a" && t.name(t.edges()[i].to) == "p").unwrap();
+    assert!(fa.entries.iter().any(|e| e.edge == ap), "some vehicle took a>p");
+}
