@@ -1317,6 +1317,60 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
         Some("bench") => bench(&args[1..]),
+        // moods from a run (docs/RUN-MOODS.md): a frame every --every minutes, as JSON
+        Some("moods") => {
+            use fabsim::moods::{Moods, Settings, LOT_MOODS, TOOL_MOODS};
+            let shop = Shop::parse(&std::fs::read_to_string(args.get(1).expect("fabsim moods SHOP SEED --until T --every M")).expect("read the shop"))
+                .unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                });
+            let seed: u64 = args.get(2).and_then(|s| s.parse().ok()).expect("a seed");
+            let until = argf(&args, "--until", 1440.0);
+            let every = argf(&args, "--every", 60.0);
+            let ov = match args.iter().position(|a| a == "--overrides").and_then(|i| args.get(i + 1)) {
+                Some(p) => fabsim::overrides::Overrides::parse(&std::fs::read_to_string(p).expect("read the overrides"), &shop).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                }),
+                None => fabsim::overrides::Overrides::default(),
+            };
+            let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(until), record: true }, None, &ov);
+            let m = Moods::new(&shop, &r, &Settings::default());
+            let ti = |s: &str| TOOL_MOODS.iter().position(|m| *m == s).unwrap();
+            let mut frames = vec![];
+            let mut t = 0.0;
+            let mut stretches = vec![];
+            while t <= until + 1e-9 {
+                let s = m.at(t);
+                let mut counts = serde_json::Map::new();
+                for name in LOT_MOODS {
+                    counts.insert(name.into(), serde_json::json!(s.lots.iter().filter(|l| l.mood == name).count()));
+                }
+                let hot: Vec<serde_json::Value> = s.lots.iter().filter(|l| l.hot).map(|l| serde_json::json!([l.lot, l.mood])).collect();
+                if stretches.is_empty() {
+                    stretches = s.rails.iter().map(|x| x.stretch.clone()).collect();
+                }
+                frames.push(serde_json::json!({
+                    "t": t,
+                    "tools": s.tools.iter().map(|x| ti(x.mood)).collect::<Vec<_>>(),
+                    "lots": counts,
+                    "hot": hot,
+                    "rails": s.rails.iter().map(|x| (x.jam * 100.0).round() / 100.0).collect::<Vec<_>>(),
+                }));
+                t += every;
+            }
+            let out = serde_json::json!({
+                "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). On the SMT2020 model or a layout of its own; not a real fab.",
+                "tool_moods": TOOL_MOODS,
+                "lot_moods": LOT_MOODS,
+                "tools": r.tools.iter().map(|x| x.name.clone()).collect::<Vec<_>>(),
+                "groups": r.tools.iter().map(|x| x.group.clone()).collect::<Vec<_>>(),
+                "stretches": stretches,
+                "frames": frames,
+            });
+            println!("{out}");
+        }
         // the checks a layout must pass (docs/FAB-CHECKS.md): exit 0 with no errors, 2 with errors
         Some("fab-check") => {
             let path = args.get(1).expect("fabsim fab-check FILE [--json]");

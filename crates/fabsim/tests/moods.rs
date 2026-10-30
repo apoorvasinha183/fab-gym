@@ -22,6 +22,15 @@ fn tool<'a>(snap: &'a Snapshot, name: &str) -> &'a str {
     snap.tools.iter().find(|t| t.tool == name).unwrap_or_else(|| panic!("no tool {name}")).mood
 }
 
+/// A lot's steps from the run's trace: (step, arrive, start, end), in start order. (A run keeps every lot's steps
+/// in its trace; `LotOut::steps` is filled only for a followed lot.)
+fn steps_of(r: &RunResult, id: &str) -> Vec<(usize, f64, f64, f64)> {
+    let li = r.lots.iter().position(|l| l.id == id).unwrap() as u32;
+    let mut v: Vec<(usize, f64, f64, f64)> = r.trace.iter().filter(|t| t.lot == li).map(|t| (t.step as usize, t.arrive, t.start, t.end)).collect();
+    v.sort_by(|a, b| a.2.total_cmp(&b.2));
+    v
+}
+
 fn lot<'a>(snap: &'a Snapshot, id: &str) -> Option<&'a fabsim::moods::LotMood> {
     snap.lots.iter().find(|l| l.lot == id)
 }
@@ -76,7 +85,7 @@ fn little_work_dozes_and_too_much_is_gassed() {
 
 #[test]
 fn a_batch_tool_with_too_few_lots_waits_for_the_class() {
-    let s = Shop::parse("fabgym-shop 1\ntransport\t0.0\t0.0\ngroup\tB\t1\t0.0\t0.0\t-\t-\t-\nroute\tr\nstep\tB\tbatch\t30.0\t0.0\t4.0\t4.0\t-\t-\t-\t-\t-\t-\t-\t-\nrelease\tr\t25\t1.0\t600.0\t0.0\t-\tL\n").unwrap();
+    let s = Shop::parse("fabgym-shop 1\ntransport\t0.0\t0.0\ngroup\tB\t1\t0.0\t0.0\t-\t-\t-\nroute\tr\nstep\tB\tbatch\t30.0\t0.0\t100.0\t100.0\t-\t-\t-\t-\t-\t-\t-\t-\nrelease\tr\t25\t1.0\t600.0\t0.0\t-\tL\n").unwrap();
     assert_eq!(tool(&snapshot(&s, &go(&s, 2.0), 700.0, &Settings::default()), "B#1"), "batch");
 }
 
@@ -131,16 +140,16 @@ fn lots_finish_work_wait_and_ride() {
     let light = one_tool(600.0, 5.0, "");
     let r = go(&light, 2.0);
     let l1 = r.lots.iter().find(|l| l.release == 600.0).expect("the lot released at 600");
-    let st = &l1.steps[0];
-    assert_eq!(lot(&snapshot(&light, &r, (st.start + st.end) / 2.0, &set), &l1.id).unwrap().mood, "bench");
-    assert_eq!(lot(&snapshot(&light, &r, st.end + 50.0, &set), &l1.id).unwrap().mood, "grad");
+    let st = steps_of(&r, &l1.id)[0];
+    assert_eq!(lot(&snapshot(&light, &r, (st.2 + st.3) / 2.0, &set), &l1.id).unwrap().mood, "bench");
+    assert_eq!(lot(&snapshot(&light, &r, st.3 + 50.0, &set), &l1.id).unwrap().mood, "grad");
     assert!(lot(&snapshot(&light, &r, 599.0, &set), &l1.id).is_none(), "not released yet");
 
     let heavy = one_tool(4.0, 5.0, "");
     let r = go(&heavy, 4.0);
     let at = |t: f64| snapshot(&heavy, &r, t, &set);
     let waiting_since = |t: f64, from: f64, to: f64| {
-        r.lots.iter().find(|l| l.release >= from && l.release <= to && l.steps.first().is_none_or(|s| s.start > t)).expect("a lot waiting").id.clone()
+        r.lots.iter().find(|l| l.release >= from && l.release <= to && steps_of(&r, &l.id).first().is_none_or(|s| s.2 > t)).expect("a lot waiting").id.clone()
     };
     let t = 4000.0;
     let fresh = waiting_since(t, t - 30.0, t - 1.0);
@@ -172,10 +181,10 @@ fn a_breach_shows_missed_and_a_running_limit_shows_on_the_clock() {
     let mut found = false;
     'outer: for l in &r.lots {
         let route = s.route(&l.route).unwrap();
-        for w in l.steps.windows(2) {
-            if let Some((_, limit)) = route.steps[w[0].step].cqt {
-                if w[1].start - w[0].end > 2.0 && w[1].start - w[0].end < limit && w[1].step == w[0].step + 1 {
-                    let t = w[0].end + 1.0;
+        for w in steps_of(&r, &l.id).windows(2) {
+            if let Some((_, limit)) = route.steps[w[0].0].cqt {
+                if w[1].2 - w[0].3 > 2.0 && w[1].2 - w[0].3 < limit && w[1].0 == w[0].0 + 1 {
+                    let t = w[0].3 + 1.0;
                     assert_eq!(lot(&snapshot(&s, &r, t, &set), &l.id).unwrap().mood, "clock", "{} at {t}", l.id);
                     found = true;
                     break 'outer;

@@ -15,6 +15,7 @@ pub mod hash;
 pub mod layout;
 pub mod measure;
 pub mod money;
+pub mod moods;
 pub mod overrides;
 pub mod pl;
 pub mod policy;

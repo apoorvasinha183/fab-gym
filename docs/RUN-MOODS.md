@@ -65,3 +65,12 @@ speed. Zero on a free stretch.
    inside a limit shows On the clock.
 7. A stretch with vehicles queuing behind a broken one shows more jam than without the break.
 8. `fabsim moods` writes a frame every M minutes with a mood for every tool.
+
+## Changes
+
+- 31 Oct, the first run: a recorded run keeps every lot's steps in its trace (`RunResult::trace`); `LotOut::steps` is
+  filled only for a followed lot. The moods and the tests read steps from the trace.
+- The batch test first gave a batch of 4 to 4 **wafers**, smaller than one lot of 25 (SMT2020 counts batches in
+  wafers): the engine started an empty batch and stopped. The test now batches 100 wafers (four lots). Follow-up for
+  the checks (docs/FAB-CHECKS.md): refuse a batch step whose largest batch is smaller than a lot, since a person or a
+  model writing a fab could make the same mistake.
