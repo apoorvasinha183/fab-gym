@@ -117,7 +117,7 @@ test("the page's words: no 'X, not Y' and no stacked labels", () => {
     for (const bad of [", not a real", "not a real one", "Real-fab effect", "(written by us, not by a model)", "Hover a step."])
       assert.ok(!src.includes(bad), `${name} still says "${bad}"`);
   }
-  assert.match(html, /on the SMT2020 model/);
+  assert.match(html, /from the SMT2020 testbed/);
 });
 
 // The Flows view as one wafer's journey (the founder, 29 Oct: "make it an animation ... that highlights the movement

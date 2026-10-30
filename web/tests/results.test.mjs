@@ -28,7 +28,7 @@ test("every saved experiment is an entry with its settings, its numbers and its 
     assert.ok(e.numbers.rows.every(r => r.length === e.numbers.columns.length), e.id);
     assert.ok(e.headline, e.id);
     assert.ok(e.files.length >= 1 && e.files.every(f => existsSync(join(ROOT, f))), e.id);
-    assert.match(e.note, /SMT2020 model/, e.id);
+    assert.match(e.note, /SMT2020 testbed/, e.id);
   }
   // newest first
   for (let i = 1; i < entries.length; i++) assert.ok(entries[i - 1].when >= entries[i].when);
@@ -42,6 +42,6 @@ test("a run in the page becomes an entry of the same shape", () => {
   });
   assert.equal(e.kind, "what-if");
   assert.ok(e.id && e.when && e.files.length === 0);
-  assert.match(e.note, /SMT2020 model/);
+  assert.match(e.note, /SMT2020 testbed/);
   assert.equal(e.numbers.rows[0].length, e.numbers.columns.length);
 });

@@ -78,7 +78,7 @@ class Loop(unittest.TestCase):
                 self.assertEqual(f["held_out"], again)
                 self.assertTrue(f["held_out"]["held_out"])
             md = (Path(d) / "card.md").read_text()
-            self.assertIn("SMT2020 model", md)
+            self.assertIn("SMT2020 testbed", md)
             self.assertIn("Not signed", md)
             for f in card["finalists"]:
                 rew = [m for m in f["held_out"]["vs_today"] if m["key"] == "reward"][0]["interval"]
