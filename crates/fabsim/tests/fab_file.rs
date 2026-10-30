@@ -108,6 +108,7 @@ fn smt2020_with_a_plan_keeps_its_golden_shop_and_log() {
         stockers: vec![],
         entry: vec!["a".into()],
         exit: vec!["a".into()],
+        stores: vec![],
     });
     let back = Shop::parse(&shop.to_text()).expect("SMT2020 with a plan reads back");
     assert_eq!(back, shop);

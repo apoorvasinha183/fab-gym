@@ -59,3 +59,10 @@ spine, north negative and south positive. Station rectangles are the box round a
    total metres, a stop for every tool's port, a node for every stocker port, and entry and exit at the start; the
    exported file reads back to the same shop.
 6. `fabsim fab-export` writes a file that reads back.
+
+## Changes
+
+- 31 Oct, with the checks (`docs/FAB-CHECKS.md`): a ninth plan record, `store` (group), for a group with no tools on
+  the floor whose lots wait in a stocker for their time: SMT2020's `Delay_32`, 400 slots of waiting. Written last.
+  `fabsim fab-export` writes one for every group the layout places in a stocker. The test that builds a plan by hand
+  names the new field (`stores: vec![]`).

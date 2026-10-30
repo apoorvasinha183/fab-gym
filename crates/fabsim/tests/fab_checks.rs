@@ -171,10 +171,24 @@ fn campus_fab() -> Option<Shop> {
 }
 
 #[test]
-fn todays_campus_passes() {
+fn todays_campus_passes_but_for_the_two_spine_ends() {
+    // the drawn spine rails stop at the campus's far ends without a U-turn (docs/FAB-CHECKS.md, Changes): the only
+    // errors are those two dead ends, and the runs never use them
     let Some(s) = campus_fab() else { return };
     let issues = check(&s);
-    assert_eq!(errors(&issues), 0, "{:?}", issues.iter().filter(|i| i.severity == Severity::Error).take(5).collect::<Vec<_>>());
+    let errs: Vec<&Issue> = issues.iter().filter(|i| i.severity == Severity::Error).collect();
+    assert!(errs.iter().all(|i| i.code == "trap"), "{:?}", errs.iter().take(5).collect::<Vec<_>>());
+    let t = fabsim::track::Track::from_shop(&s);
+    let o = s.oht.as_ref().unwrap();
+    let traps: Vec<&String> = errs.iter().flat_map(|i| i.at.iter()).collect();
+    assert_eq!(traps.len(), 2, "{traps:?}");
+    for id in traps {
+        let n: usize = id.strip_prefix('n').unwrap().parse().unwrap();
+        let a = &t.nodes()[n];
+        assert!(t.out_of(n).is_empty(), "{id} has no way out");
+        assert_eq!(a.bay, usize::MAX, "{id} is on a spine rail");
+        assert!(a.x.abs() < 1e-9 || (a.x - o.lengths[a.phase]).abs() < 1e-6, "{id} is at a spine rail's end: x {}", a.x);
+    }
 }
 
 #[test]

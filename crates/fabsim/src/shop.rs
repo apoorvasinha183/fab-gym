@@ -218,6 +218,8 @@ pub struct Plan {
     pub entry: Vec<String>,
     /// node ids where finished lots leave
     pub exit: Vec<String>,
+    /// groups with no tools on the floor, whose lots wait in a stocker for their time (SMT2020's delay group)
+    pub stores: Vec<String>,
 }
 
 /// Dollars to buy one tool of the group, and dollars a day to run it.
@@ -613,7 +615,7 @@ impl Shop {
                         }
                     }
                 }
-                "price" | "node" | "link" | "station" | "stop" | "stocker" | "entry" | "exit" => {
+                "price" | "node" | "link" | "station" | "stop" | "stocker" | "entry" | "exit" | "store" => {
                     let ln = no + 2;
                     let p = s.plan.get_or_insert_with(Plan::default);
                     match f[0] {
@@ -642,6 +644,11 @@ impl Shop {
                             p.links.push(Link { from: f[1].into(), to: f[2].into(), len });
                             plan_lines.push((ln, PlanRef::Node(f[1].into())));
                             plan_lines.push((ln, PlanRef::Node(f[2].into())));
+                        }
+                        "store" => {
+                            need(2)?;
+                            p.stores.push(f[1].into());
+                            plan_lines.push((ln, PlanRef::Group(f[1].into(), None)));
                         }
                         "station" => {
                             need(6)?;
@@ -864,7 +871,7 @@ impl Shop {
             for st in &p.stops {
                 let _ = writeln!(o, "stop\t{}\t{}\t{}", st.group, st.tool, st.node);
             }
-            for (tag, list) in [("stocker", &p.stockers), ("entry", &p.entry), ("exit", &p.exit)] {
+            for (tag, list) in [("stocker", &p.stockers), ("entry", &p.entry), ("exit", &p.exit), ("store", &p.stores)] {
                 for n in list {
                     let _ = writeln!(o, "{tag}\t{n}");
                 }

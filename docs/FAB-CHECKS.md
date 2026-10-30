@@ -49,3 +49,14 @@ sentence what is wrong and how to fix it.
 4. Each warning likewise: an unreachable stocker, a group with no price, overlapping stations, a link shorter than
    the straight line.
 5. `fabsim fab-check --json` prints the issues as JSON and exits 2 with errors, 0 without.
+
+## Changes
+
+- 31 Oct, the first run: **today's campus has two traps.** The drawn spine rails (`Track::drawn`, viz/look/scene.py)
+  stop at the campus's far ends with no U-turn: the south rail's west end (n35 on the exported plan) and the north
+  rail's east end (n110). A vehicle there could go nowhere. Runs never send one there, since a vehicle only takes a
+  stretch from which its target can be reached, so no result changes; but the layout has two dead ends. Test 1 now
+  says what holds: the only errors are traps, exactly two, each a spine rail's end with no way out. Adding U-turns
+  would change the drawn building and is the founder's call. Probe: `crates/fabsim/examples/trap_probe.rs`.
+- The `store` record (docs/FAB-FILE.md, Changes) came with this deliverable: SMT2020's delay group has no tools on
+  the floor, so it needs no stops; route checks reach a stored group through any stocker.

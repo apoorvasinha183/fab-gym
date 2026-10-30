@@ -1317,6 +1317,28 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
         Some("bench") => bench(&args[1..]),
+        // the checks a layout must pass (docs/FAB-CHECKS.md): exit 0 with no errors, 2 with errors
+        Some("fab-check") => {
+            let path = args.get(1).expect("fabsim fab-check FILE [--json]");
+            let shop = Shop::parse(&std::fs::read_to_string(path).expect("read the fab file")).unwrap_or_else(|e| {
+                eprintln!("refused: {e}");
+                std::process::exit(1)
+            });
+            let issues = fabsim::checks::check(&shop);
+            if args.iter().any(|a| a == "--json") {
+                let v: Vec<serde_json::Value> = issues
+                    .iter()
+                    .map(|i| serde_json::json!({"severity": i.severity.name(), "code": i.code, "message": i.message, "at": i.at}))
+                    .collect();
+                println!("{}", serde_json::Value::Array(v));
+            } else {
+                for i in &issues {
+                    println!("{}\t{}\t{}", i.severity.name(), i.code, i.message);
+                }
+            }
+            let errors = issues.iter().any(|i| i.severity == fabsim::checks::Severity::Error);
+            std::process::exit(if errors { 2 } else { 0 });
+        }
         // a shop with drawn rails written as a fab file (docs/FAB-FILE.md), to stdout
         Some("fab-export") => {
             let path = args.get(1).expect("fabsim fab-export SHOP");

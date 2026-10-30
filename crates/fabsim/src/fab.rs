@@ -41,5 +41,7 @@ pub fn plan_from_track(shop: &Shop) -> Result<Plan, String> {
     }
     let stockers = t.nodes().iter().enumerate().filter(|(_, a)| a.stocker).map(|(i, _)| id(i)).collect();
     let start = id(t.node_of(&o.start));
-    Ok(Plan { prices: vec![], nodes, links, stations, stops, stockers, entry: vec![start.clone()], exit: vec![start] })
+    // a group the layout holds in a stocker (its place is a stocker) has no tools on the floor
+    let stores = o.places.iter().filter(|(_, p)| p.is_none()).map(|(g, _)| g.clone()).collect();
+    Ok(Plan { prices: vec![], nodes, links, stations, stops, stockers, entry: vec![start.clone()], exit: vec![start], stores })
 }
