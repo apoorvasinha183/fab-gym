@@ -845,6 +845,146 @@ fn follow_cmd(args: &[String]) {
     );
 }
 
+/// Uncertainty layer 4 (docs/UQ-INPUTS.md): the pre-registered study. Each draw of the inputs is run and kept in
+/// `OUT/draw-<d>.json` (a draw already kept is skipped); `--summary` reads them all and writes `OUT/summary.json`.
+/// `fabsim uq-inputs [SHOP] [--draws 10] [--sigma 0.2] [--threads 4] [--out results/uq-inputs] [--summary]`
+fn uq_inputs(args: &[String]) {
+    use fabsim::dials::Dials;
+    use fabsim::policy::{picker, Policy};
+    use fabsim::sweep::{run_grid, Config};
+    use fabsim::window::Window;
+    use std::fmt::Write as _;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
+    let dir = args.first().filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
+    let draws = arg(args, "--draws", 10);
+    let sigma = argf(args, "--sigma", 0.2);
+    let threads = arg(args, "--threads", 4) as usize;
+    let out = PathBuf::from(flag(args, "--out", "results/uq-inputs"));
+    std::fs::create_dir_all(&out).unwrap();
+    let policies = [Policy::Today, Policy::CriticalRatio, Policy::Spt, Policy::Fifo];
+    let lean = [("k=1 none", 1.0, None), ("k=1 cap=1800", 1.0, Some(1800)), ("k=2 none", 2.0, None), ("k=2 cap=1800", 2.0, Some(1800))];
+    if args.iter().any(|a| a == "--summary") {
+        uq_inputs_summary(&out, draws, &policies, &lean);
+        return;
+    }
+    let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    let w1 = Window { from: 130.0 * 1440.0, to: 190.0 * 1440.0 };
+    let w2 = Window { from: 120.0 * 1440.0, to: 300.0 * 1440.0 };
+    for d in 1..=draws {
+        let path = out.join(format!("draw-{d}.json"));
+        if path.exists() {
+            continue;
+        }
+        let t0 = Instant::now();
+        let s = fabsim::inputs::perturb(&shop, d, sigma);
+        // claim 1: the policies on long-v1, seeds 0 to 4
+        let jobs: Vec<(Policy, u64)> = policies.iter().flat_map(|&p| (0..5u64).map(move |seed| (p, seed))).collect();
+        let res: Mutex<Vec<Option<fabsim::window::WindowScore>>> = Mutex::new(vec![None; jobs.len()]);
+        let next = AtomicUsize::new(0);
+        std::thread::scope(|sc| {
+            for _ in 0..threads.max(1) {
+                sc.spawn(|| loop {
+                    let i = next.fetch_add(1, Ordering::SeqCst);
+                    if i >= jobs.len() {
+                        break;
+                    }
+                    let (p, seed) = jobs[i];
+                    let mut pick = picker(&s, p, seed);
+                    let mut ask = |dd: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(dd));
+                    let e = fabsim::gym::episode(&s, seed, w1, &mut ask);
+                    res.lock().unwrap()[i] = Some(e.score);
+                });
+            }
+        });
+        let res = res.into_inner().unwrap();
+        // claim 2: the WIP cap over 300 days, seeds 1000 to 1004
+        let configs: Vec<Config> = lean.iter().map(|&(l, k, cap)| Config { label: l.into(), dials: Dials { breakdowns: k, cap, ..Dials::default() } }).collect();
+        let seeds: Vec<u64> = (1000..1005).collect();
+        let rows = run_grid(&s, &configs, &seeds, w2.to, &w2, threads).expect("the cap grid runs");
+        let mut j = format!("{{\"draw\":{d},\"sigma\":{sigma},\"model\":\"SMT2020\",\"policies\":[");
+        for (i, ((p, seed), sc)) in jobs.iter().zip(&res).enumerate() {
+            let sc = sc.as_ref().unwrap();
+            let _ = write!(j, "{}{{\"policy\":\"{}\",\"seed\":{seed},\"wafers_per_day\":{},\"cycle_days\":{},\"reward\":{}}}", if i > 0 { "," } else { "" }, p.name(), sc.wafers_per_day, sc.cycle_days, sc.reward);
+        }
+        j.push_str("],\"cap\":[");
+        for (i, r) in rows.iter().enumerate() {
+            let _ = write!(j, "{}{{\"config\":\"{}\",\"seed\":{},\"wafers_per_day\":{}}}", if i > 0 { "," } else { "" }, lean[r.config].0, r.seed, r.score.wafers_per_day);
+        }
+        j.push_str("]}\n");
+        std::fs::write(&path, j).unwrap();
+        println!("draw {d}: {:.0} s", t0.elapsed().as_secs_f64());
+    }
+}
+
+fn uq_inputs_summary(out: &std::path::Path, draws: u64, policies: &[fabsim::policy::Policy], lean: &[(&str, f64, Option<i64>)]) {
+    use fabsim::uq::nested_paired;
+    use std::fmt::Write as _;
+    let num = |line: &str, key: &str| -> f64 {
+        let pat = format!("\"{key}\":");
+        let i = line.find(&pat).unwrap() + pat.len();
+        let rest = &line[i..];
+        let end = rest.find([',', '}']).unwrap();
+        rest[..end].trim().parse().unwrap_or(f64::NAN)
+    };
+    let text = |line: &str, key: &str| -> String {
+        let pat = format!("\"{key}\":\"");
+        let i = line.find(&pat).unwrap() + pat.len();
+        line[i..i + line[i..].find('"').unwrap()].to_string()
+    };
+    // per draw: (policy or config, seed) -> measures
+    let mut pol: Vec<std::collections::HashMap<(String, u64), (f64, f64, f64)>> = vec![];
+    let mut cap: Vec<std::collections::HashMap<(String, u64), f64>> = vec![];
+    for d in 1..=draws {
+        let s = std::fs::read_to_string(out.join(format!("draw-{d}.json"))).unwrap_or_else(|_| panic!("draw {d} is not run yet"));
+        let (a, b) = s.split_once("],\"cap\":[").unwrap();
+        let mut m = std::collections::HashMap::new();
+        for obj in a.split("{\"policy\"").skip(1) {
+            let o = format!("{{\"policy\"{obj}");
+            m.insert((text(&o, "policy"), num(&o, "seed") as u64), (num(&o, "wafers_per_day"), num(&o, "cycle_days"), num(&o, "reward")));
+        }
+        pol.push(m);
+        let mut c = std::collections::HashMap::new();
+        for obj in b.split("{\"config\"").skip(1) {
+            let o = format!("{{\"config\"{obj}");
+            c.insert((text(&o, "config"), num(&o, "seed") as u64), num(&o, "wafers_per_day"));
+        }
+        cap.push(c);
+    }
+    let alpha = 0.05 / 5.0; // Bonferroni over the five comparisons
+    let mut j = String::from("{\"model\":\"SMT2020\",\"level\":\"99% each (95% over the five, Bonferroni)\",\"comparisons\":[");
+    let mut first = true;
+    let mut emit = |name: &str, measure: &str, base: Vec<Vec<f64>>, cand: Vec<Vec<f64>>| {
+        let n = nested_paired(&base, &cand, alpha);
+        let _ = write!(
+            j,
+            "{}{{\"comparison\":\"{name}\",\"measure\":\"{measure}\",\"mean\":{},\"lo\":{},\"hi\":{},\"draws\":{},\"between_var\":{},\"within_var_of_mean\":{},\"share_same_sign\":{},\"share_clear\":{}}}",
+            if first { "" } else { "," }, n.interval.mean, n.interval.lo, n.interval.hi, n.interval.n, n.between_var, n.within_var_of_mean, n.share_same_sign, n.share_clear
+        );
+        first = false;
+        println!("{name:<28} {measure:<15} {:>9.2} ({:.2} to {:.2})  same sign {:.0}%  clear {:.0}%", n.interval.mean, n.interval.lo, n.interval.hi, 100.0 * n.share_same_sign, 100.0 * n.share_clear);
+    };
+    for p in &policies[1..] {
+        for (mi, measure) in ["wafers_per_day", "cycle_days", "reward"].iter().enumerate() {
+            let get = |name: &str, dm: &std::collections::HashMap<(String, u64), (f64, f64, f64)>, seed: u64| {
+                let v = dm[&(name.to_string(), seed)];
+                [v.0, v.1, v.2][mi]
+            };
+            let base: Vec<Vec<f64>> = pol.iter().map(|dm| (0..5).map(|s| get("today", dm, s)).collect()).collect();
+            let cand: Vec<Vec<f64>> = pol.iter().map(|dm| (0..5).map(|s| get(p.name(), dm, s)).collect()).collect();
+            emit(&format!("{} against today", p.name()), measure, base, cand);
+        }
+    }
+    for k in ["k=1", "k=2"] {
+        let base: Vec<Vec<f64>> = cap.iter().map(|c| (1000..1005).map(|s| c[&(format!("{k} none"), s)]).collect()).collect();
+        let cand: Vec<Vec<f64>> = cap.iter().map(|c| (1000..1005).map(|s| c[&(format!("{k} cap=1800"), s)]).collect()).collect();
+        emit(&format!("cap 1800 against none, {k}"), "wafers_per_day", base, cand);
+    }
+    let _ = lean;
+    j.push_str("]}\n");
+    std::fs::write(out.join("summary.json"), j).unwrap();
+}
+
 /// Regret option C (docs/LONG-RESCORE.md): the capacity ceiling of a shop, its bottleneck and the next groups.
 fn bound_cmd(args: &[String]) {
     use std::fmt::Write as _;
@@ -1068,6 +1208,7 @@ fn main() {
         Some("track") => track_cmd(&args[1..]),
         Some("follow") => follow_cmd(&args[1..]),
         Some("bound") => bound_cmd(&args[1..]),
+        Some("uq-inputs") => uq_inputs(&args[1..]),
         Some("regret") => regret_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");

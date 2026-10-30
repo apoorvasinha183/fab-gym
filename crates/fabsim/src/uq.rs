@@ -522,3 +522,56 @@ pub fn verdict(iv: &Interval, higher_is_better: bool) -> Verdict {
 
 /// What every card says about a real fab: the simulator is a published model, not a fab.
 pub const REAL_FAB_EFFECT: &str = "Real-fab effect: cannot say";
+
+/// Layer 4 (docs/UQ-INPUTS.md): paired runs nested in draws of the inputs. `base[p][s]` and `cand[p][s]` are draw p's
+/// runs on seed s.
+#[derive(Clone, Debug)]
+pub struct Nested {
+    /// the mean of the draws' mean differences, with a t interval over the draws
+    pub interval: Interval,
+    /// the variance of the draws' mean differences (luck and input doubt together)
+    pub between_var: f64,
+    /// the luck alone in a draw's mean: the mean within-draw variance over the seeds per draw
+    pub within_var_of_mean: f64,
+    /// the share of draws whose mean difference has the overall mean's sign
+    pub share_same_sign: f64,
+    /// the share of draws whose own paired interval (level 1 - alpha) excludes zero on the overall mean's side
+    pub share_clear: f64,
+}
+
+pub fn nested_paired(base: &[Vec<f64>], cand: &[Vec<f64>], alpha: f64) -> Nested {
+    assert_eq!(base.len(), cand.len(), "the same draws on both sides");
+    let per: Vec<Interval> = base.iter().zip(cand).map(|(b, c)| paired(b, c, alpha)).collect();
+    let means: Vec<f64> = per.iter().map(|i| i.mean).collect();
+    let p = means.len();
+    let (mean, sd) = mean_sd(&means);
+    let (lo, hi) = if p < 2 {
+        (f64::NEG_INFINITY, f64::INFINITY)
+    } else {
+        let half = t_quantile(1.0 - alpha / 2.0, (p - 1) as f64) * sd / (p as f64).sqrt();
+        (mean - half, mean + half)
+    };
+    let within = per.iter().map(|i| if i.n > 1 { i.sd * i.sd / i.n as f64 } else { f64::NAN }).sum::<f64>() / p as f64;
+    let up = mean >= 0.0;
+    let same = means.iter().filter(|&&m| (m >= 0.0) == up).count() as f64 / p as f64;
+    let clear = per.iter().filter(|i| if up { i.lo > 0.0 } else { i.hi < 0.0 }).count() as f64 / p as f64;
+    Nested {
+        interval: Interval {
+            mean,
+            lo,
+            hi,
+            n: p,
+            sd,
+            alpha,
+            guarantee: format!(
+                "probable: {} t interval over {p} draws of the inputs, each the mean paired difference over its seeds; \
+                 covers the luck and the input doubt as modelled",
+                pct(alpha)
+            ),
+        },
+        between_var: sd * sd,
+        within_var_of_mean: within,
+        share_same_sign: same,
+        share_clear: clear,
+    }
+}

@@ -8,6 +8,7 @@ pub mod evolve;
 pub mod fleet;
 pub mod gp;
 pub mod gym;
+pub mod inputs;
 pub mod hash;
 pub mod layout;
 pub mod measure;
