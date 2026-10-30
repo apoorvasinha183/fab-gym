@@ -123,3 +123,34 @@ F2 is smaller over days 190 to 250 than over 130 to 190, it drains.
 
 **Tests first.** `crates/fabsim/tests/inputs.rs`: at equal load, each draw's release-to-ceiling ratio equals the
 published one; at σ = 0 equal load is the published shop.
+
+---
+
+### Follow-up results (30 Oct; `results/uq-inputs/follow-up/`, `fabsim uq-inputs --follow-up`)
+
+All ten draws ran (4.5 to 13 minutes each). Mean difference, 99.29% t-interval over the 10 draws (95% over the
+seven together), the share of draws pointing the same way as the mean, and the share clear that way:
+
+| Comparison | Today's rule (or no cap) | Difference | Same way | Clear |
+| --- | --- | --- | --- | --- |
+| F1 critical ratio against today, equal load | 1,008 | −27 (−242 to +187) | 60% | 60% |
+| F1 shortest first against today, equal load | 1,008 | −265 (−481 to −48) | 90% | 80% |
+| F1 FIFO against today, equal load | 1,008 | −257 (−519 to +5) | 80% | 80% |
+| F2 critical ratio against today, days 130 to 190 | 978 | +105 (−36 to +245) | 90% | 80% |
+| F2 critical ratio against today, days 190 to 250 | 972 | −88 (−300 to +125) | 70% | 50% |
+| F3 cap 1,800 against none, k = 1, equal load | 1,009 | +6 (−39 to +51) | 40% | 20% |
+| F3 cap 1,800 against none, k = 2, equal load | 955 | +9 (−46 to +64) | 50% | 20% |
+
+- **Critical ratio's flip came from the overload, and it drains.** At equal load its edge is gone (−27, no clear
+  effect). At the first study's load it leads over days 130 to 190 (+105, the same runs as before: the first study
+  gave +104.57 too) and falls behind over days 190 to 250 (−88): it empties lots already in the fab, then pays for it.
+- **Shortest first stays clearly worse** at equal load. FIFO is worse in 8 of 10 draws, but at the seven-way level its
+  interval just touches zero.
+- **The cap's cost at doubled breakdowns does not survive input doubt**, at either load (+9, no clear effect). The
+  published-number result (−44.9 wafers a day, `docs/LEAN-LONG.md`) holds for SMT2020's own numbers only.
+- Input doubt is again 98 to 100% of the variance between draws.
+
+**What changes in what we claim.** On the SMT2020 model with its published numbers, the earlier results stand as
+measured. For a fab whose numbers are estimates about 20% off: shortest first is worse than today's rule; FIFO is
+probably worse; today's rule against critical ratio is not settled once loads are matched, and critical ratio's
+short-window wins are a drain; the cap's cost under doubled breakdowns cannot be claimed.

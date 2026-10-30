@@ -48,4 +48,11 @@ if the outage runs past N hours. How long will it be?").
 A verdict is three-valued: better, worse, or no clear effect, always "on the SMT2020 model". Every
 card also says "Real-fab effect: cannot say".
 
-Layer 4 (redrawing the SMT2020 model's own breakdown and repair numbers) comes later.
+## Layer 4: doubt about the input numbers
+
+Built 30 Oct (`docs/UQ-INPUTS.md`, `crates/fabsim/src/inputs.rs`, `uq::nested_paired`): each tool group's processing
+time, time to failure, time to repair and maintenance length redrawn (lognormal, mean 1, σ = 0.2, assumed); runs
+paired within each draw; a t-interval over the draws' means, with the share of draws that agree. With σ = 0.2 the
+input doubt is 98 to 100% of the variance of a verdict, so layer-1 intervals alone are far too narrow for a fab whose
+numbers are estimated. Redrawing every group also lowers the fab's capacity (its slowest group gets slower), so a
+fair comparison scales releases to each draw's ceiling (equal load).
