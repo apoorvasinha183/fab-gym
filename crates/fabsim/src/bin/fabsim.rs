@@ -1343,7 +1343,6 @@ fn main() {
         }
         // moods from a run (docs/RUN-MOODS.md): a frame every --every minutes, as JSON
         Some("moods") => {
-            use fabsim::moods::{Moods, Settings, LOT_MOODS, TOOL_MOODS};
             let shop = Shop::parse(&std::fs::read_to_string(args.get(1).expect("fabsim moods SHOP SEED --until T --every M")).expect("read the shop"))
                 .unwrap_or_else(|e| {
                     eprintln!("refused: {e}");
@@ -1360,46 +1359,7 @@ fn main() {
                 None => fabsim::overrides::Overrides::default(),
             };
             let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(until), record: true }, None, &ov);
-            let m = Moods::new(&shop, &r, &Settings::default());
-            let ti = |s: &str| TOOL_MOODS.iter().position(|m| *m == s).unwrap();
-            let mut frames = vec![];
-            let mut t = 0.0;
-            let mut stretches = vec![];
-            while t <= until + 1e-9 {
-                let s = m.at(t);
-                let mut counts = serde_json::Map::new();
-                for name in LOT_MOODS {
-                    counts.insert(name.into(), serde_json::json!(s.lots.iter().filter(|l| l.mood == name).count()));
-                }
-                let hot: Vec<serde_json::Value> = s.lots.iter().filter(|l| l.hot).map(|l| serde_json::json!([l.lot, l.mood])).collect();
-                if stretches.is_empty() {
-                    stretches = s.rails.iter().map(|x| x.stretch.clone()).collect();
-                }
-                frames.push(serde_json::json!({
-                    "t": t,
-                    "queues": shop.groups.iter().map(|g| m.group_queue(&g.name, t)).collect::<Vec<_>>(),
-                    "tools": s.tools.iter().map(|x| ti(x.mood)).collect::<Vec<_>>(),
-                    "lots": counts,
-                    "hot": hot,
-                    "rails": s.rails.iter().map(|x| (x.jam * 100.0).round() / 100.0).collect::<Vec<_>>(),
-                }));
-                t += every;
-            }
-            let sc = fabsim::moods::score(&shop, &r, &Settings::default(), every);
-            let fin = |x: f64| if x.is_finite() { serde_json::json!((x * 100.0).round() / 100.0) } else { serde_json::Value::Null };
-            let score_json = serde_json::json!({"wafers_per_day": fin(sc.wafers_per_day), "cycle_days": fin(sc.cycle_days), "worst_group": sc.worst_group,
-                "worst_queue": sc.worst_queue, "jams": sc.jams, "spend_usd": sc.spend_usd});
-            let out = serde_json::json!({
-                "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). On the SMT2020 model or a layout of its own; not a real fab.",
-                "tool_moods": TOOL_MOODS,
-                "lot_moods": LOT_MOODS,
-                "tools": r.tools.iter().map(|x| x.name.clone()).collect::<Vec<_>>(),
-                "groups": r.tools.iter().map(|x| x.group.clone()).collect::<Vec<_>>(),
-                "stretches": stretches,
-                "group_names": shop.groups.iter().map(|g| g.name.clone()).collect::<Vec<_>>(),
-                "score": score_json,
-                "frames": frames,
-            });
+            let out = fabsim::moods::frames_json(&shop, &r, until, every);
             println!("{out}");
         }
         // the checks a layout must pass (docs/FAB-CHECKS.md): exit 0 with no errors, 2 with errors

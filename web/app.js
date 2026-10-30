@@ -75,7 +75,16 @@ function simulate(opts) {
   const states = new Float64Array(e.memory.buffer, e.fg_states_ptr(), e.fg_states_len()).slice();
   const fleetE = e.fg_fleet_entries_len ? new Float32Array(e.memory.buffer, e.fg_fleet_entries_ptr(), e.fg_fleet_entries_len()).slice() : new Float32Array(0);
   const fleetH = e.fg_fleet_hoists_len ? new Float32Array(e.memory.buffer, e.fg_fleet_hoists_ptr(), e.fg_fleet_hoists_len()).slice() : new Float32Array(0);
-  return { j, trace, states, secs, fleetE, fleetH };
+  // the editor's moods for this run, every 30 minutes, from the same Rust code as `fabsim moods` (docs/FLOOR-LOOK.md)
+  const moods = e.fg_moods && e.fg_moods(MOOD_EVERY) === 0 ? readJson() : null;
+  return { j, trace, states, secs, fleetE, fleetH, moods };
+}
+const MOOD_EVERY = 30;
+/** A group's mood on the floor now (null before moods are in). */
+function moodNow(g) {
+  const m = P && P.moods;
+  if (!m) return null;
+  return FabLook.groupMood(m, Math.max(0, Math.min(m.frames.length - 1, Math.floor(t / MOOD_EVERY))), P.j.groups[g][0]);
 }
 
 // ------------------------------------------------------------------ the layout
@@ -969,8 +978,13 @@ function showTip(h) {
   const avgWait = G0[4] ? G0[3] / G0[4] : 0;
   const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">●</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
   const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
-  tip.innerHTML = `<b>${P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}<br>${parts.join("<br>")}` +
-    `<div class="tip-q"><span>${cur.queue[g]}</span> lots waiting now · <span>${avgWait.toFixed(0)} min</span> mean wait</div>`;
+  const area = FabLook.areaOf(sim.area[G0[0]]), mood = moodNow(g) || "work", M = FabLook.MOOD[mood];
+  const art = area ? `<div class="tip-art" style="background:${FabLook.FAM[area]}33"><img src="cast/${area}/${mood}.webp" alt="${FabLook.AREA[area].name}, ${M.name.toLowerCase()}" width="224" height="224"></div><div class="tip-mood" style="background:${M.color}">${P.moods ? M.name : "Before a run"}</div>` : "";
+  tip.classList.toggle("tcard", !!area);
+  tip.style.setProperty("--fam", area ? FabLook.FAM[area] : "transparent");
+  tip.innerHTML = `<b>${area ? FabLook.label(G0[0], area) : P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}${art}${parts.join("<br>")}` +
+    `<div class="tip-q"><span>${cur.queue[g]}</span> lots waiting now · <span>${avgWait.toFixed(0)} min</span> mean wait</div>` +
+    (area ? `<div class="tip-ex">${FabLook.AREA[area].exercise}. ${FabLook.AREA[area].about}</div>` : "");
   tip.hidden = false;
   const p = FabUI.tipPlace(h.mx, h.my, tip.offsetWidth, tip.offsetHeight, innerWidth, innerHeight);
   tip.style.left = p.x + "px";
@@ -1252,6 +1266,7 @@ function rerun() {
 function load(run) {
   const hallOfGroup = HALLS_L.hallOfGroup;
   P = prepare(run, HALLS_L, hallOfGroup);
+  P.moods = run.moods || null;
   P.groupTools = Array.from({ length: P.nG }, () => []);
   P.toolGroup.forEach((g, k) => P.groupTools[g].push(k));
   P.plain = P.j.groups.map(g => plainGroup(g[0], sim.area[g[0]]));
@@ -1460,6 +1475,7 @@ async function main() {
   setupInput();
   chromeSetup();
   stagesSetup();
+  $("moodkey").innerHTML = FabLook.TOOL_MOODS.map(m => `<li><span class="badge" style="background:${FabLook.MOOD[m].color}">${FabLook.svg(FabLook.MOOD[m].badge, "#15191C")}</span>${FabLook.MOOD[m].name.toLowerCase()}</li>`).join("");
   requestAnimationFrame(frame);
   try {
     await loadSim();
@@ -1910,6 +1926,7 @@ function drawReal(s) {
   const followTool = UI.lens === "flows" && R.follow >= 0 ? realToolOfLot(R, R.follow) : -1;
   const jr = JOURNEY.on ? journeyNow() : null;
   if (jr) ctx.globalAlpha = 1;
+  const lights = [];
   for (const [, i] of order) {
     const b = B.tools[i], k = R.toolOfBox[i];
     const st = k >= 0 ? cur.toolState[k] : 1;
@@ -1920,13 +1937,29 @@ function drawReal(s) {
       block(b[1], b[2], b[3], b[4], b[7], here ? LOOK.proto : been ? "#3d5a5e" : "#283236", here && jr.kind === "work" ? "#c25aa6" : null, null);
       continue;
     }
-    if (UI.lens === "heat" && k >= 0) { const q = cur.queue[P.toolGroup[k]]; if (q > 0) top = FabUI.heatColor(Math.min(1, q / 30)); }
+    // the editor's look: a dark body, the area's colour as the top panel, and a light for the tool's state
+    const area = k >= 0 ? FabLook.areaOf(sim.area[P.j.groups[P.toolGroup[k]][0]]) : null;
+    top = "#33434B"; panel = area ? FabLook.FAM[area] : "#8FB3AE";
+    if (UI.lens === "heat" && k >= 0) { const q = cur.queue[P.toolGroup[k]]; panel = q > 0 ? FabUI.heatColor(Math.min(1, q / 30)) : "#3A4A52"; }
     if (k === followTool) { ctx.globalAlpha = 1; top = LOOK.proto; }
-    block(b[1], b[2], b[3], b[4], b[7], top, panel, st === 1 ? STATE_COLORS[1] : null);
-    if (dimTools) ctx.globalAlpha = 0.35;
+    if (st === 1 && !dimTools && UI.lens !== "heat") ctx.globalAlpha = 0.55;
+    const hz = block(b[1], b[2], b[3], b[4], b[7], top, panel, "rgba(8,16,20,.9)");
+    ctx.globalAlpha = dimTools ? 0.35 : 1;
+    if (k >= 0 && st !== 1 && s >= 3) lights.push([b, hz, STATE_COLORS[st]]);
   }
   ctx.globalAlpha = 1;
-  for (const st of B.stockers) block(st[0], st[1], st[2], st[3], 4, REAL_LOOK.stockerTop, REAL_LOOK.stocker, null);
+  // state lights: a small disc on the top's corner of every tool that is not idle
+  if (lights.length) {
+    screenSpace();
+    const r = Math.max(1.6, Math.min(4, 0.28 * s));
+    for (const [b, hz, col] of lights) {
+      const [X, Y] = S(...rw(b[1] + 0.22 * (b[2] - b[1]), b[3] + 0.78 * (b[4] - b[3])));
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X, Y - hz, r, 0, 7); ctx.fill();
+      if (r > 2.2) { ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+    floorSpace();
+  }
+  for (const st of B.stockers) { block(st[0], st[1], st[2], st[3], 4, "#33434B", "#8FB3AE", "rgba(8,16,20,.9)"); }
   if (jr) { followDraw(jr, s); drawFlash(); return; }
   // wafers at a tool: the lot's 25 as a 5 by 5 grid on the working tool's panel, filled one by one over the step
   if (s >= 8) {
@@ -1951,15 +1984,7 @@ function drawReal(s) {
   if (TILT.on) for (const f of halls) { const [x, y] = rw(f[0], f[3]); hallWalls(x, y, f[1] - f[0], f[3] - f[2], wallH, true); }
   // labels and queues
   if (detail.names) for (const l of B.labels) { const [X, Y] = W(...rw(l[1], l[2])); ctx.textBaseline = "middle"; plateText(l[0], X, Y, Math.min(22, Math.max(11, 1.6 * s)), 700, LOOK.section); }
-  if (detail.chips) {
-    R.mid.forEach((m, g) => {
-      const n = cur.queue[g];
-      if (!m[2] || n <= 0) return;
-      const [X, Y] = W(...rw(m[0] / m[2], m[1] / m[2]));
-      ctx.textBaseline = "top";
-      plateText(`${n} waiting`, X, Y, Math.min(16, Math.max(11, 1.2 * s)), 600, LOOK.sub);
-    });
-  }
+  if (detail.names) groupBadges(R, s, detail);
   // the fleet: each vehicle where the simulator had it, carrying its lot
   const now = FabBuilding.vehicles(R.F, N, E, t);
   R.now = now.counts;
@@ -1980,6 +2005,34 @@ function drawReal(s) {
     ctx.globalAlpha = 1;
   }
   drawFlash();
+}
+
+/** Each group at its tools' centre in the editor's look: an icon tile in the area's colour, its label, its mood badge
+ * and, zoomed in further, its lots waiting as pods. */
+function groupBadges(R, s, detail) {
+  screenSpace();
+  const size = Math.max(10, Math.min(15, 0.95 * s));
+  R.mid.forEach((m, g) => {
+    if (!m[2] || g === P.holdingGroup) return;
+    const name = P.j.groups[g][0], area = FabLook.areaOf(sim.area[name]);
+    if (!area) return;
+    const [x0, y0] = S(...rw(m[0] / m[2], m[1] / m[2]));
+    const y = y0 - (TILT.on ? 3 * view.s * 0.55 : 0);
+    const text = `${FabLook.label(name, area)} ×${P.j.groups[g][1]}`;
+    ctx.font = `600 ${size}px "Chakra Petch",sans-serif`;
+    const tw = ctx.measureText(text).width + 8, ic = size * 1.35, w = ic + 3 + tw;
+    const xl = x0 - w / 2;
+    // the icon tile
+    ctx.fillStyle = FabLook.FAM[area]; ctx.beginPath(); ctx.roundRect(xl, y - ic / 2, ic, ic, 3); ctx.fill();
+    FabLook.icon(ctx, area, xl + ic / 2, y, ic * 0.78, "#0B1418", 2);
+    // the label
+    const h = FabLook.pill(ctx, text, xl + ic + 3 + tw / 2, y - Math.max(13, size * 1.35) / 2, size);
+    // the mood badge on the label's end
+    const mood = moodNow(g);
+    if (mood) FabLook.badge(ctx, mood, xl + w + size * 0.55, y, size * 0.62);
+    if (detail.chips && cur.queue[g] > 0) FabLook.pods(ctx, x0, y + h / 2 + 2, cur.queue[g], h);
+  });
+  floorSpace();
 }
 
 function realToolOfLot(R, lot) {

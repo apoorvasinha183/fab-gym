@@ -24,3 +24,8 @@ published model of a fab; never a real fab.
 the same run; no moods before a run), `web/tests/look.test.mjs` (every area's icon, colour, names and cast art; the ten
 moods in the simulator's order; every SMT2020 area mapped; labels; the group mood equals the editor's; both pages load
 the shared look; the floor asks the browser build for moods; the command line's moods keep their shape).
+
+## Changes
+
+- 31 Oct, while building: the group-mood test expected "hurt" for group B in its second frame, whose tools are "work"
+  and "physio"; the tie goes to "physio", and "hurt" is group A's. The test now checks both.

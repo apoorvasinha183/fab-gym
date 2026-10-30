@@ -10,57 +10,12 @@
   const DN = ["E", "S", "W", "N"], DLONG = ["east", "south", "west", "north"];
   const WINDOW = 30; // fab minutes in one replay window
 
-  // ---------- the cast
-  const FAM = { litho: "#F2B33D", lithomet: "#C9D3DA", dry: "#FF8A5B", wet: "#FF8A5B", diff: "#FF5E7A", diel: "#5FA8FF", tf: "#5FA8FF", tfmet: "#C9D3DA", imp: "#B48CFF", cmp: "#3FD0C4", defmet: "#C9D3DA" };
-  const AREA = {
-    litho: ["Lithography", "Posing under the spotlight", "Prints the circuit pattern with light through a mask."],
-    lithomet: ["Litho metrology", "The posing judge", "Checks each printed layer lines up and has the right width."],
-    dry: ["Dry etch", "Heavy bag", "Cuts the pattern into the layer with plasma."],
-    wet: ["Wet etch and clean", "Laps in its own tank", "Cleans and etches in chemical baths."],
-    diff: ["Diffusion", "Hot yoga", "Furnaces that grow and anneal layers, in batches."],
-    diel: ["Dielectric", "Squat with layered plates", "Lays down insulating layers."],
-    tf: ["Thin film", "Kettlebell swing", "Deposits metal and other thin films."],
-    tfmet: ["Thin film metrology", "Tiny curls on a scale", "Measures film thickness."],
-    imp: ["Ion implant", "Medicine-ball launcher", "Fires ions into the wafer to set its electrical behaviour."],
-    cmp: ["Polishing (CMP)", "The plank", "Polishes the wafer flat between layers."],
-    defmet: ["Defect inspection", "Spotting the bench press", "Looks for defects and sends bad lots back."],
-  };
-  const MOOD = {
-    work: ["In the zone", "#3DDC84", "b_work"], sleep: ["Dozing off", "#AAB4BA", "b_sleep"], tired: ["Gassed", "#FFB020", "b_tired"],
-    full: ["Hands full", "#FFB020", "b_full"], batch: ["Waiting for the class", "#AAB4BA", "b_batch"], setup: ["Changing kit", "#5FA8FF", "b_setup"],
-    pm: ["Rest day", "#5FA8FF", "b_pm"], hurt: ["Pulled a muscle", "#FF4D4F", "b_hurt"], physio: ["At the physio", "#FF4D4F", "b_physio"], hold: ["Benched", "#FFB020", "b_hold"],
-  };
-  const LOT = { fresh: "Fresh", line: "In line", impatient: "Impatient", hot: "Hot", clock: "On the clock", missed: "Missed", bench: "On the bench", ride: "Riding", batch: "Class", redo: "Do-over", hold: "Quarantined", grad: "Graduated" };
-  const IC = {
-    litho: "M12 2v3 M9 5h6l-1.5 4h-3z M10.5 9 6 17 M13.5 9 18 17 M4 19h16 M6 17h12",
-    lithomet: "M10 4a6 6 0 1 0 0 12a6 6 0 1 0 0-12z M10 7v6 M7 10h6 M14.5 14.5 20 20",
-    dry: "M4 18h16 M6 18v2h12v-2 M13 3l-4 7h4l-3 6",
-    wet: "M3 12h18v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 15h18 M8 4c0 2 2 3 2 5a2 2 0 0 1-4 0c0-2 2-3 2-5z M16 6c0 1.5 1.5 2.2 1.5 3.5a1.5 1.5 0 0 1-3 0c0-1.3 1.5-2 1.5-3.5z",
-    diff: "M4 10h16v6H4z M8 10v6 M12 10v6 M16 10v6 M8 3c-1 1.5 1 2.5 0 4 M12 3c-1 1.5 1 2.5 0 4 M16 3c-1 1.5 1 2.5 0 4 M6 16v3 M18 16v3",
-    diel: "M3 17l9 4 9-4 M3 13l9 4 9-4 M3 9l9-4 9 4-9 4z",
-    tf: "M3 18h18 M3 21h18 M7 3v9 M4.5 9.5 7 12l2.5-2.5 M17 3v9 M14.5 9.5 17 12l2.5-2.5 M12 5v7 M9.5 9.5 12 12l2.5-2.5",
-    tfmet: "M4 20h16 M4 16h16 M8 4v10 M16 4v10 M8 8h8 M10.5 6 8 8l2.5 2 M13.5 6 16 8l-2.5 2",
-    imp: "M3 7h8 M3 12h10 M3 17h8 M15 4v16 M18.5 8.5v.01 M18.5 12v.01 M18.5 15.5v.01 M21 10.2v.01 M21 13.8v.01",
-    cmp: "M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16z M14 10a3 3 0 1 0 0 6a3 3 0 1 0 0-6z M5.5 6.5A9 9 0 0 1 10 3.2 M10 3.2 8 2 M10 3.2 8.6 5",
-    defmet: "M12 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M12 2v4 M12 18v4 M2 12h4 M18 12h4 M10 10l4 4 M14 10l-4 4",
-    rail: "M3 7h18 M3 17h18 M6 9.5l2.5 2.5L6 14.5 M11 9.5l2.5 2.5-2.5 2.5 M16 9.5l2.5 2.5-2.5 2.5",
-    split: "M3 12h8 M11 12l8-7 M11 12l8 7 M16 4h3v3 M16 20h3v-3",
-    stocker: "M4 3h16v18H4z M4 9h16 M4 15h16 M7 5h4v3H7z M13 11h4v3h-4z M7 17h4v3H7z",
-    entry: "M2 12h9 M8 9l3 3-3 3 M14 4h7v16h-7 M17.5 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z",
-    exit: "M3 4h7v16H3 M10 12h11 M18 9l3 3-3 3 M6.5 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z",
-    select: "M5 3l14 8-6 2-2 6z",
-    erase: "M16 3l5 5-11 11H5l-2-2z M9 9l6 6 M5 21h15",
-    fab: "M3 21V9l6 4V9l6 4V5h6v16z M7 17h2 M12 17h2 M17 17h2",
-    bolt: "M13 2 6 13h5l-1 9 7-11h-5z",
-    b_work: "M7 12l3 3 7-7", b_sleep: "M6 7h6l-6 7h6 M14 4h5l-5 5h5", b_tired: "M12 3c3 5 6 8 6 11a6 6 0 0 1-12 0c0-3 3-6 6-11z",
-    b_full: "M4 8h7v9H4z M13 8h7v9h-7z M6 8V5h3v3 M15 8V5h3v3", b_batch: "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z M12 7v5l3 2",
-    b_setup: "M4 9h13l-4-4 M20 15H7l4 4", b_pm: "M4 5h16v15H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3v3H8z", b_hurt: "M13 2 6 13h5l-1 9 7-11h-5z",
-    b_physio: "M9 3h6v6h6v6h-6v6H9v-6H3V9h6z", b_hold: "M5 21V4 M5 4h12l-3 4 3 4H5",
-  };
-  const PATH = {};
-  for (const k in IC) PATH[k] = new Path2D(IC[k]);
-  const svg = (n, col) => `<svg viewBox="0 0 24 24" fill="none" stroke="${col || "currentColor"}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
-  const SHORT = { litho: "Litho", lithomet: "Litho Met", dry: "Dry etch", wet: "Wet etch", diff: "Diffusion", diel: "Dielectric", tf: "Thin film", tfmet: "TF Met", imp: "Implant", cmp: "CMP", defmet: "Defect" };
+  // ---------- the cast, from the shared look (web/look.js)
+  const L = window.FabLook;
+  const FAM = FabLook.FAM, LOT = FabLook.LOTS, IC = FabLook.ICONS, svg = FabLook.svg;
+  const AREA = {}, SHORT = {}, MOOD = {};
+  for (const a in L.AREA) { AREA[a] = [L.AREA[a].name, L.AREA[a].exercise, L.AREA[a].about]; SHORT[a] = L.AREA[a].short; }
+  for (const m in L.MOOD) MOOD[m] = [L.MOOD[m].name, L.MOOD[m].color, L.MOOD[m].badge];
   const INFRA = { stocker: ["Stocker", "Holds lots between steps when a tool's ports are full."], entry: ["Wafer start", "New lots enter the fab here."], exit: ["Ship point", "Finished lots leave here."] };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const money = (d) => (Math.abs(d) >= 1e6 ? `$${(d / 1e6).toFixed(d % 1e6 ? 1 : 0)}M` : `$${Math.round(d).toLocaleString()}`);
@@ -102,7 +57,7 @@
   const P = (x, y, z) => [F.ox + (x * F.co - y * F.sn) * F.s, F.oy + (x * F.sn + y * F.co) * ISO.q * F.s - (z || 0) * F.s];
   const unP = (sx, sy) => { const X = (sx - F.ox) / F.s, Y = (sy - F.oy) / (ISO.q * F.s); return [X * F.co + Y * F.sn, -X * F.sn + Y * F.co]; };
   function poly(pts) { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); }
-  function icon(name, cx, cy, size, col, lw) { ctx.save(); ctx.translate(cx - size / 2, cy - size / 2); ctx.scale(size / 24, size / 24); ctx.strokeStyle = col; ctx.lineWidth = lw || 1.8; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke(PATH[name]); ctx.restore(); }
+  const icon = (name, cx, cy, size, col, lw) => L.icon(ctx, name, cx, cy, size, col, lw);
   function prism(bs, tp, side, top) {
     const faces = [0, 1, 2, 3].map((q) => ({ p: [bs[q], bs[(q + 1) % 4], tp[(q + 1) % 4], tp[q]], d: (bs[q][1] + bs[(q + 1) % 4][1]) / 2 })).sort((a, c) => a.d - c.d);
     faces.forEach((f, k) => { poly(f.p); ctx.fillStyle = k >= 2 ? side : "#141D22"; ctx.fill(); ctx.strokeStyle = "rgba(8,16,20,.9)"; ctx.lineWidth = 1; ctx.stroke(); });

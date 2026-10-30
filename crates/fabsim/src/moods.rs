@@ -387,3 +387,49 @@ pub fn replay(shop: &Shop, run: &RunResult, from: f64, to: f64) -> Vec<Stay> {
     out.sort_by(|a, b| a.vehicle.cmp(&b.vehicle).then(a.t_in.total_cmp(&b.t_in)));
     out
 }
+
+/// The frames `fabsim moods` writes (docs/RUN-MOODS.md): every tool's mood, each group's queue, lot moods counted, hot
+/// lots and rail jams, every `every` minutes from 0 to `until`, with the run's score. Shared by the command line and
+/// the browser build, so both pages show the same moods.
+pub fn frames_json(shop: &Shop, run: &RunResult, until: f64, every: f64) -> serde_json::Value {
+    let set = Settings::default();
+    let m = Moods::new(shop, run, &set);
+    let ti = |s: &str| TOOL_MOODS.iter().position(|m| *m == s).unwrap();
+    let mut frames = vec![];
+    let mut stretches = vec![];
+    let mut t = 0.0;
+    while t <= until + 1e-9 {
+        let s = m.at(t);
+        let mut counts = serde_json::Map::new();
+        for name in LOT_MOODS {
+            counts.insert(name.into(), serde_json::json!(s.lots.iter().filter(|l| l.mood == name).count()));
+        }
+        let hot: Vec<serde_json::Value> = s.lots.iter().filter(|l| l.hot).map(|l| serde_json::json!([l.lot, l.mood])).collect();
+        if stretches.is_empty() {
+            stretches = s.rails.iter().map(|x| x.stretch.clone()).collect();
+        }
+        frames.push(serde_json::json!({
+            "t": t,
+            "queues": shop.groups.iter().map(|g| m.group_queue(&g.name, t)).collect::<Vec<_>>(),
+            "tools": s.tools.iter().map(|x| ti(x.mood)).collect::<Vec<_>>(),
+            "lots": counts,
+            "hot": hot,
+            "rails": s.rails.iter().map(|x| (x.jam * 100.0).round() / 100.0).collect::<Vec<_>>(),
+        }));
+        t += every;
+    }
+    let sc = score(shop, run, &set, every);
+    let fin = |x: f64| if x.is_finite() { serde_json::json!((x * 100.0).round() / 100.0) } else { serde_json::Value::Null };
+    serde_json::json!({
+        "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). On the SMT2020 model or a layout of its own; not a real fab.",
+        "tool_moods": TOOL_MOODS,
+        "lot_moods": LOT_MOODS,
+        "tools": run.tools.iter().map(|x| x.name.clone()).collect::<Vec<_>>(),
+        "groups": run.tools.iter().map(|x| x.group.clone()).collect::<Vec<_>>(),
+        "stretches": stretches,
+        "group_names": shop.groups.iter().map(|g| g.name.clone()).collect::<Vec<_>>(),
+        "score": {"wafers_per_day": fin(sc.wafers_per_day), "cycle_days": fin(sc.cycle_days), "worst_group": sc.worst_group,
+            "worst_queue": sc.worst_queue, "jams": sc.jams, "spend_usd": sc.spend_usd},
+        "frames": frames,
+    })
+}

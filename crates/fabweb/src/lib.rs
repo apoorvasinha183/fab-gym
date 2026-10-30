@@ -21,6 +21,8 @@ struct State {
     shop: Option<Shop>,
     dials: Dials,
     res: Option<RunResult>,
+    /// the shop the last run used (the loaded one with the dials and any outage applied)
+    ran: Option<Shop>,
     json: String,
     quick: String,
     trace: Vec<f64>,
@@ -279,10 +281,26 @@ pub extern "C" fn fg_run(seed: f64, days: f64, policy: i32, down_group: i32, dow
         st.fleet_h = fh;
         st.json = summary(&shop, &res);
         st.res = Some(res);
+        st.ran = Some(shop);
         0
     })
 }
 
+/// The editor's moods for the last run (docs/FLOOR-LOOK.md): `fabsim moods`'s frames every `every` minutes, as JSON
+/// read through `fg_json_ptr` and `fg_json_len`. 1 with no run yet.
+#[no_mangle]
+pub extern "C" fn fg_moods(every: f64) -> i32 {
+    ST.with(|st| {
+        let mut st = st.borrow_mut();
+        let (Some(shop), Some(res)) = (st.ran.as_ref(), st.res.as_ref()) else { return 1 };
+        if every <= 0.0 {
+            return 1;
+        }
+        let j = fabsim::moods::frames_json(shop, res, res.until, every).to_string();
+        st.json = j;
+        0
+    })
+}
 
 pub fn summary(shop: &Shop, res: &RunResult) -> String {
     let mut o = String::from("{");

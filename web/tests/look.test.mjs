@@ -60,7 +60,8 @@ test("a group's mood on the floor is the editor's: the commonest of its tools, a
   const m = { tool_moods: TOOL_MOODS, groups: ["A", "A", "B", "B"], frames: [{ tools: [0, 2, 1, 1] }, { tools: [7, 7, 0, 8] }] };
   for (let f = 0; f < 2; f++) for (const g of ["A", "B"]) assert.equal(L.groupMood(m, f, g), E.blockMood(m, f, g), `frame ${f} group ${g}`);
   assert.equal(L.groupMood(m, 0, "A"), "tired");
-  assert.equal(L.groupMood(m, 1, "B"), "hurt");
+  assert.equal(L.groupMood(m, 1, "A"), "hurt");
+  assert.equal(L.groupMood(m, 1, "B"), "physio", "work and physio tie; physio is the more serious");
 });
 
 test("both pages load the shared look, and neither keeps its own icon table", () => {

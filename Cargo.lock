@@ -270,6 +270,7 @@ name = "fabweb"
 version = "0.0.0"
 dependencies = [
  "fabsim",
+ "serde_json",
 ]
 
 [[package]]

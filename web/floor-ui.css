@@ -331,6 +331,13 @@ details.advanced summary { cursor: pointer; color: var(--muted2); font-size: 13p
 .hint[hidden] { display: none; }
 /* a compact hover card */
 .tip { max-width: 260px; font-size: 12px; line-height: 1.5; }
+.tip.tcard { width: 220px; border: 2px solid var(--fam); border-radius: 12px; }
+.tip .tip-art { border-radius: 8px; overflow: hidden; line-height: 0; margin: 6px 0; }
+.tip .tip-art img { width: 100%; height: auto; display: block; }
+.tip .tip-mood { font: 700 13px "Chakra Petch", sans-serif; padding: 3px 8px; border-radius: 5px; text-align: center; color: #111; margin-bottom: 6px; }
+.tip .tip-ex { margin-top: 4px; font-size: 12px; color: var(--muted2); }
+.legend .badge { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 2px; }
+.legend .badge svg { width: 11px; height: 11px; }
 .tip .tip-q { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); color: var(--muted2); }
 .tip .tip-q span { color: var(--text); font-weight: 600; }
 button.gl { text-decoration-color: rgba(126, 232, 216, 0.35); }
