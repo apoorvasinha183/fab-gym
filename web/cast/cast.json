@@ -1,0 +1,152 @@
+{
+ "_about": "The Fab Gym cast (docs/CAST-PROMPT.md): machines as gym trainees, moods read from a run. Art made with Meta's Muse Image (muse-image-1.0), 30 Oct 2026. Images: <machine>/<mood>.webp, lots/<mood>.webp, base/<nn>-<name>.webp. On the SMT2020 model; generic machines, no real fab.",
+ "machines": {
+  "litho": {
+   "name": "Lithography",
+   "nickname": "The Poser",
+   "exercise": "Posing under the spotlight"
+  },
+  "lithomet": {
+   "name": "Litho metrology",
+   "nickname": "The Balancer",
+   "exercise": "One-leg balance"
+  },
+  "dry": {
+   "name": "Dry etch",
+   "nickname": "The Boxer",
+   "exercise": "Heavy bag"
+  },
+  "wet": {
+   "name": "Wet etch and clean",
+   "nickname": "The Swimmer",
+   "exercise": "Laps in its own tank"
+  },
+  "diff": {
+   "name": "Diffusion",
+   "nickname": "The Yogi",
+   "exercise": "Hot yoga, tree pose"
+  },
+  "diel": {
+   "name": "Dielectric",
+   "nickname": "The Squatter",
+   "exercise": "Squat with layered plates"
+  },
+  "tf": {
+   "name": "Thin film",
+   "nickname": "The Kettlebell",
+   "exercise": "Kettlebell swing under chalk dust"
+  },
+  "tfmet": {
+   "name": "Thin film metrology",
+   "nickname": "The Little Lifter",
+   "exercise": "Tiny curls on a bathroom scale"
+  },
+  "imp": {
+   "name": "Ion implant",
+   "nickname": "The Thrower",
+   "exercise": "Medicine-ball launcher"
+  },
+  "cmp": {
+   "name": "Polishing (CMP)",
+   "nickname": "The Plank",
+   "exercise": "Forearm plank with a spirit level"
+  },
+  "defmet": {
+   "name": "Defect inspection",
+   "nickname": "The Spotter",
+   "exercise": "Spotting through a magnifier"
+  }
+ },
+ "moods": {
+  "work": {
+   "name": "In the zone",
+   "signal": "productive, queue within its usual range"
+  },
+  "sleep": {
+   "name": "Dozing off",
+   "signal": "standby most of the window, nothing waiting (threshold open)"
+  },
+  "tired": {
+   "name": "Gassed",
+   "signal": "productive nearly all the window, queue growing (threshold open)"
+  },
+  "full": {
+   "name": "Hands full",
+   "signal": "finished lots fill the ports, no vehicle yet"
+  },
+  "batch": {
+   "name": "Waiting for the class",
+   "signal": "standby with lots waiting, fewer than the batch minimum"
+  },
+  "setup": {
+   "name": "Changing kit",
+   "signal": "scheduled down, reason setup"
+  },
+  "pm": {
+   "name": "Rest day",
+   "signal": "scheduled down, maintenance calendar"
+  },
+  "hurt": {
+   "name": "Pulled a muscle",
+   "signal": "unscheduled down begins (breakdown)"
+  },
+  "physio": {
+   "name": "At the physio",
+   "signal": "unscheduled down, under repair"
+  },
+  "hold": {
+   "name": "Benched",
+   "signal": "unscheduled down, reason hold"
+  }
+ },
+ "lots": {
+  "fresh": {
+   "name": "Fresh recruit",
+   "signal": "released"
+  },
+  "line": {
+   "name": "In line",
+   "signal": "waiting in a queue"
+  },
+  "impatient": {
+   "name": "Losing patience",
+   "signal": "waiting longer than a set time (threshold open)"
+  },
+  "hot": {
+   "name": "Hot lot",
+   "signal": "priority at the hot level"
+  },
+  "clock": {
+   "name": "On the clock",
+   "signal": "inside a queue-time limit"
+  },
+  "missed": {
+   "name": "Missed the clock",
+   "signal": "queue-time breach"
+  },
+  "bench": {
+   "name": "On the bench",
+   "signal": "being processed"
+  },
+  "ride": {
+   "name": "Riding the rail",
+   "signal": "in transport"
+  },
+  "batch": {
+   "name": "Waiting for the class",
+   "signal": "in a batch not yet full"
+  },
+  "redo": {
+   "name": "Do-over",
+   "signal": "sent back by rework"
+  },
+  "hold": {
+   "name": "Quarantined",
+   "signal": "on a defect hold"
+  },
+  "grad": {
+   "name": "Graduate",
+   "signal": "finished"
+  }
+ }
+}
