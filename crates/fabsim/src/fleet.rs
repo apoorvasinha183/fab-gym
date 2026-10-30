@@ -140,6 +140,8 @@ pub(crate) struct FleetState {
     /// overrides (docs/OVERRIDES.md): stretches broken now, and those whose vehicles wait rather than go round
     pub down: Vec<bool>,
     pub wait_down: Vec<bool>,
+    /// broken stretches set to go round (docs/EDITOR-TAKE-TWO.md): while any, vehicles plan round them at every split
+    pub downs_round: usize,
 }
 
 impl FleetState {
@@ -178,6 +180,7 @@ impl FleetState {
             out: FleetOut { vehicles, deliver_least: f64::INFINITY, ..FleetOut::default() },
             down: vec![false; ne],
             wait_down: vec![false; ne],
+            downs_round: 0,
         }
     }
 
@@ -215,6 +218,14 @@ impl FleetState {
     /// stretch out of n with room, the one with the shortest way on (a detour). `None` when nothing can be entered now.
     pub fn way(&self, n: usize, target: usize, t: f64) -> (usize, Option<usize>) {
         let e2 = self.track.next(n, target).expect("the track reaches every stop");
+        if self.downs_round > 0 {
+            // plan round every broken stretch from here, at the split before the break (docs/EDITOR-TAKE-TWO.md)
+            if let Some(f) = self.around(n, target) {
+                if f != e2 {
+                    return if self.can_enter(f, t) { (e2, Some(f)) } else { (f, None) };
+                }
+            }
+        }
         if self.can_enter(e2, t) {
             return (e2, Some(e2));
         }

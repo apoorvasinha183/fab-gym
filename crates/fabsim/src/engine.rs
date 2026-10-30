@@ -2381,7 +2381,13 @@ impl<'a, 'c> Sim<'a, 'c> {
                     let name = { let fl = sim.fl.as_ref().unwrap(); let ed = &fl.track.edges()[e as usize]; format!("{}>{}", fl.track.name(ed.from), fl.track.name(ed.to)) };
                     let mut r = PyRandom::from_str_seed(&format!("{}/railbreak/{name}/{}", seed, t as i64));
                     let m = r.expovariate(1.0 / mttr);
-                    sim.fl.as_mut().unwrap().down[e as usize] = true;
+                    {
+                        let fl = sim.fl.as_mut().unwrap();
+                        if !fl.down[e as usize] && !fl.wait_down[e as usize] {
+                            fl.downs_round += 1;
+                        }
+                        fl.down[e as usize] = true;
+                    }
                     if sim.full {
                         sim.due.push(Due { what: "rail", tool: name.clone(), t, minutes: m });
                     }
@@ -2391,6 +2397,9 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
                 Ev::RailUp(e) => {
                     let fl = sim.fl.as_mut().unwrap();
+                    if fl.down[e as usize] && !fl.wait_down[e as usize] {
+                        fl.downs_round -= 1;
+                    }
                     fl.down[e as usize] = false;
                     let wake: Vec<u32> = std::mem::take(&mut fl.edge_wait[e as usize]);
                     for w in wake {

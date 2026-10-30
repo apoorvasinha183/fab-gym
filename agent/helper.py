@@ -241,23 +241,51 @@ class Helper:
         issues = json.loads(p.stdout or "[]")
         return {"ok": p.returncode == 0, "issues": issues}
 
-    def fab_run(self, text, seed=1, days=2.0, every=60.0):
-        """The checks, then, with no errors, a run's moods (`fabsim moods`), niced, one at a time."""
+    def _ov_file(self, overrides):
+        """An overrides file (docs/OVERRIDES.md) on disk, or None when there is none."""
+        if not overrides:
+            return None
+        t = json.dumps(overrides, sort_keys=True)
+        d = self.jobs_dir.parent / "fab"
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / f"{hashlib.sha256(t.encode()).hexdigest()[:16]}.overrides.json"
+        f.write_text(t)
+        return f
+
+    def _fab_cmd(self, text, overrides, args):
+        """Check, then run `fabsim ARGS...` niced, one at a time: (result, None) or (None, error dict)."""
         checks = self.fab_check(text)
         if not checks.get("ok"):
-            return {"error": checks.get("error") or "The layout has errors; fix them before running.", "checks": checks}
+            return None, {"error": checks.get("error") or "The layout has errors; fix them before running.", "checks": checks}
         if not self.fab_lock.acquire(blocking=False):
-            return {"error": "A run is going; wait for it.", "busy": True}
+            return None, {"error": "A run is going; wait for it.", "busy": True}
         try:
-            cmd = ["nice", "-n", "10", str(self.fabsim), "moods", str(self._fab_file(text)), str(seed),
-                   "--until", str(days * 1440.0), "--every", str(every)]
+            cmd = ["nice", "-n", "10", str(self.fabsim), args[0], str(self._fab_file(text)), *args[1:]]
+            ov = self._ov_file(overrides)
+            if ov:
+                cmd += ["--overrides", str(ov)]
             t = time.time()
             p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
             if p.returncode != 0:
-                return {"error": (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1], "checks": checks}
-            return {"moods": json.loads(p.stdout), "checks": checks, "seconds": round(time.time() - t, 1)}
+                msg = (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1]
+                return None, {"error": msg.replace(str(ov), "the overrides") if ov else msg, "checks": checks}
+            return (json.loads(p.stdout), checks, round(time.time() - t, 1)), None
         finally:
             self.fab_lock.release()
+
+    def fab_run(self, text, seed=1, days=2.0, every=60.0, overrides=None):
+        """The checks, then, with no errors, a run's moods (`fabsim moods`), niced, one at a time."""
+        r, err = self._fab_cmd(text, overrides, ["moods", str(seed), "--until", str(days * 1440.0), "--every", str(every)])
+        if err:
+            return err
+        return {"moods": r[0], "checks": r[1], "seconds": r[2]}
+
+    def fab_replay(self, text, seed=1, start=0.0, minutes=30.0, overrides=None):
+        """Every vehicle's stays on the rail between START and START+MINUTES (`fabsim replay`), for the page to draw."""
+        r, err = self._fab_cmd(text, overrides, ["replay", str(seed), "--from", str(start), "--to", str(start + minutes)])
+        if err:
+            return err
+        return {**r[0], "seconds": r[2]}
 
     def arm_shop(self, jid, k):
         j = self.jobs.get(jid)
@@ -317,7 +345,10 @@ def serve(h, port=8766):
                 r = h.fab_check(body.get("fab") or "")
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
-                              every=float(body.get("every", 60)))
+                              every=float(body.get("every", 60)), overrides=body.get("overrides"))
+            elif self.path == "/api/fab/replay":
+                r = h.fab_replay(body.get("fab") or "", seed=int(body.get("seed", 1)), start=float(body.get("start", 0)),
+                                 minutes=float(body.get("minutes", 30)), overrides=body.get("overrides"))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(409 if r.get("busy") else 200, r)

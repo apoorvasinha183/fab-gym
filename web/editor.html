@@ -7,97 +7,164 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* The floor page's dark teal look; layout: palette | 2.5D map with the run's time slider | checks, inspector, lots. */
-:root{--bg:#0B1418;--panel:#11202599;--panel2:#12262D;--line:#21404A;--ink:#E8F2F0;--sub:#8FB3AE;--teal:#7EE8D8;--amber:#F2B33D;--bad:#FF8A7A;--ok:#6CD394;--warn:#F2C060;
-  --display:"Chakra Petch",system-ui,sans-serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;color-scheme:dark}
+/* Editor take two (docs/EDITOR-TAKE-TWO.md). Top: challenge banner and five scores. Then palette | the running floor
+   (2.5D, an exact replay of the simulator) | checks, the selection widget, lots at this moment. */
+:root{
+  --bg:#ECEFF1;--panel:#F8F9FA;--ink:#14191D;--muted:#56616A;--line:#CDD4D9;
+  --amber:#B87A00;--amber-soft:#F5E3B8;--teal:#0D7377;--bad:#B42318;--bad-soft:#FBE3E0;--ok:#1F7A3F;--ok-soft:#DDF1E3;--warn:#9A6200;--warn-soft:#FBEBC8;
+  --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;--body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1215;--panel:#161B1F;--ink:#E4E9EC;--muted:#93A0A9;--line:#2A3238;
+  --amber:#F2B33D;--amber-soft:#3A2D10;--teal:#4FC4C0;--bad:#FF8A7A;--bad-soft:#3B1915;--ok:#6CD394;--ok-soft:#14301F;--warn:#F2C060;--warn-soft:#352A10;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1215;--panel:#161B1F;--ink:#E4E9EC;--muted:#93A0A9;--line:#2A3238;
+  --amber:#F2B33D;--amber-soft:#3A2D10;--teal:#4FC4C0;--bad:#FF8A7A;--bad-soft:#3B1915;--ok:#6CD394;--ok-soft:#14301F;--warn:#F2C060;--warn-soft:#352A10;color-scheme:dark}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 30%,#16323A,#0B1418 60%,#070C0F);color:var(--ink);font:14px/1.45 var(--body)}
-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px}
-h1{margin:0;font:600 20px var(--display);letter-spacing:.01em}
-h1 span{color:var(--sub);font-weight:500}
-.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-button,select{font:13px var(--body);color:var(--ink);background:#14272D;border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
-button:hover,select:hover{border-color:var(--teal)}
-button.primary{background:var(--teal);color:#08201C;border-color:var(--teal);font-weight:600}
-button[aria-pressed="true"]{border-color:var(--teal);background:#1A3A40}
-button:disabled{opacity:.5;cursor:default}
-button:focus-visible,select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-main{display:grid;grid-template-columns:200px minmax(0,1fr) 300px;gap:12px;padding:0 16px 16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.pal{display:flex;flex-direction:column;gap:4px}
-.pal h4,.side h4{margin:8px 0 2px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
-.pal h4:first-child,.side h4:first-child{margin-top:0}
-.pal button{text-align:left}
-.pal select{width:100%}
-.mapwrap{position:relative}
-canvas{display:block;width:100%;border-radius:12px;border:1px solid var(--line);touch-action:none;cursor:crosshair}
-.status{font:12px var(--mono);color:var(--sub);min-height:1.5em;margin-top:6px}
-.time{display:flex;gap:10px;align-items:center;margin-top:8px}
-.time input{flex:1}
-.time .t{font:600 14px var(--mono);min-width:7.5em;text-align:right}
-.side{display:grid;gap:12px;align-content:start}
-.issues{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:220px;overflow:auto}
-.issues li{display:grid;grid-template-columns:auto 1fr;gap:8px;font-size:12.5px;cursor:pointer}
-.chip{font:10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px}
-.chip.error{background:#3B1915;color:var(--bad)}.chip.warning{background:#352A10;color:var(--warn)}.chip.ok{background:#14301F;color:var(--ok)}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.5 var(--body)}
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 40px;display:grid;gap:12px}
+h1{margin:0;font:700 24px/1.1 var(--display);letter-spacing:.01em}
+h1 span{color:var(--muted);font-weight:500}
+p{margin:0}
+.note{font-size:13px;color:var(--muted)}
+header.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tab{font:600 14px var(--display);border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab .met{color:var(--ok);margin-left:4px}
+.tab[aria-pressed="true"] .met{color:#6CD394}
+.btn{font:13px var(--body);border:1px solid var(--line);background:transparent;color:var(--ink);padding:5px 10px;border-radius:6px;cursor:pointer}
+.btn[aria-pressed="true"]{background:var(--amber-soft);border-color:var(--amber)}
+.btn.go{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:hover:not(:disabled),.tab:hover,.pal button:hover:not(:disabled){border-color:var(--amber)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+select,input[type=number]{font:13px var(--body);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px;max-width:100%}
+input[type=number]{width:5.5em;font-family:var(--mono)}
+
+/* challenge banner and score */
+.banner{display:grid;grid-template-columns:auto 1fr minmax(180px,260px);gap:14px;align-items:center;background:#0F1D22;color:#E8F2F0;border:1px solid #2C5560;border-radius:12px;padding:10px 16px}
+.banner .eyebrow{font:12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#F2B33D}
+.ch-ico{font-size:28px}
+.ch-text{display:grid;gap:2px;font-size:14px;min-width:0}
+.ch-text span{color:#B9D3CF}
+.goalbar{position:relative;height:10px;border-radius:5px;background:#1F3A42;overflow:hidden}
+.goalbar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#3FD0C4,#7EE8D8);border-radius:5px;transition:width .6s}
+.goalbar.met i{background:linear-gradient(90deg,#3DDC84,#9BF0B8)}
+.goalbar span{position:absolute;top:-3px;bottom:-3px;width:2px;background:#F2B33D}
+.goaltext{color:#B9D3CF;font-size:13px;margin-top:5px}
+.goaltext b{color:#E8F2F0}
+.banner .btn{color:#E8F2F0;border-color:#2C5560;margin-top:6px}
+.score{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.sc{border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--panel);display:grid;min-width:0}
+.sc .k{font-size:12px;color:var(--muted)}
+.sc .n{font:700 20px/1.2 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc .n small{font:500 12px var(--body);color:var(--muted)}
+.sc .dl{font:12px var(--mono);color:var(--muted)}
+.sc .dl.good{color:var(--ok)}.sc .dl.bad{color:var(--bad)}
+.sc.bad{border-color:var(--bad)}
+.sc.stale{opacity:.6}
+
+/* editor */
+.editor{display:grid;grid-template-columns:190px minmax(0,1fr) 300px;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.pal{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pal h4,.card h4{margin:8px 0 2px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pal h4:first-child{margin-top:0}
+.pal button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid transparent;background:transparent;color:var(--ink);padding:4px 6px;border-radius:6px;cursor:pointer;font:13px var(--body)}
+.pal button[aria-pressed="true"]{border-color:var(--amber);background:var(--amber-soft)}
+.pal button:disabled{opacity:.42;cursor:default}
+.pal svg{width:20px;height:20px;flex:none}
+.pal kbd{margin-left:auto;font:10px var(--mono);color:var(--muted)}
+.running .pal button[data-t]:not([data-t="select"]){opacity:.55}
+.mapcol{display:grid;gap:8px;min-width:0;align-content:start}
+.maptools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mode .tab{border:0;border-radius:0}
+.clock{font:13px var(--mono);padding:5px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mapbox{border-radius:8px;overflow:hidden;border:1px solid var(--line);line-height:0;position:relative;background:#0B1418}
+canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
+.time{display:flex;gap:10px;align-items:center}
+.time input{flex:1;accent-color:var(--teal)}
+.status{font:12px var(--mono);color:var(--muted);min-height:1.5em}
+.side{display:grid;gap:12px;align-content:start;min-width:0}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:8px;background:var(--bg)}
+.card h4{margin:0;display:flex;justify-content:space-between;gap:8px}
+.issues{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:210px;overflow:auto}
+.issues li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;font-size:13px;line-height:1.4;cursor:pointer}
+.chip{font:10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.chip.error{background:var(--bad-soft);color:var(--bad)}.chip.warning{background:var(--warn-soft);color:var(--warn)}.chip.ok{background:var(--ok-soft);color:var(--ok)}
 .insp{display:grid;gap:8px;font-size:13px}
-.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.lots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.lots div{display:grid;justify-items:center;font:11px var(--mono);color:var(--sub)}
-.lots img{width:48px;height:48px}
+.insp .row{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.insp .sub{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;font-size:12px;color:var(--muted)}
+.insp .ttl{display:flex;align-items:center;gap:8px;font:600 15px var(--display)}
+.insp .ttl svg{width:22px;height:22px;flex:none}
+.count{display:flex;align-items:center;gap:6px;font-family:var(--mono)}
+.count button{width:26px;height:26px;padding:0}
+.dirs4{display:flex;gap:4px}
+.dirs4 .btn{width:30px;padding:4px 0;font-family:var(--mono)}
+.lots{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.lots div{display:grid;justify-items:center;font:10.5px/1.25 var(--mono);color:var(--muted);text-align:center}
+.lots img{width:42px;height:42px;border-radius:6px}
 .lots b{color:var(--ink);font-size:13px}
-.note{font-size:12px;color:var(--sub)}
-.hover{position:absolute;z-index:5;pointer-events:none;width:220px}
-.hover[hidden]{display:none}
-.card{border-radius:12px;padding:8px;display:grid;gap:6px;background:#1B1E22;border:2px solid var(--fam,#7EE8D8);box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:12px}
-.card .hd{display:flex;justify-content:space-between;gap:6px;align-items:center}
-.card .nm{font:700 13px var(--display)}
-.card .fm{font:9.5px var(--mono);text-transform:uppercase;background:var(--fam);color:#111;padding:1px 5px;border-radius:3px}
-.card .art{border-radius:8px;line-height:0}
-.card .art img{width:100%;height:auto}
-.card .st{font:700 13px var(--display);padding:3px 8px;border-radius:5px;text-align:center;color:#111}
-.card .ex{color:#B9C2C8;font-size:11px}
-@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}.pal{flex-direction:row;flex-wrap:wrap}.pal h4{width:100%}}
+.lots .zero{opacity:.35}
+
+/* hover cards */
+.hover{position:absolute;z-index:5;pointer-events:none;line-height:1.4;width:220px}
+.hover[hidden]{display:none!important}
+.tcard{border-radius:12px;padding:8px;display:grid;gap:6px;background:#1B1E22;color:#F2F4F5;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:12px;border:2px solid var(--fam,#888)}
+.tcard .hd{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tcard .nm{font:700 14px/1.1 var(--display)}
+.tcard .fm{font:9.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:var(--fam,#888);color:#111;padding:1px 5px;border-radius:3px;white-space:nowrap}
+.tcard .art{border-radius:8px;overflow:hidden;line-height:0;position:relative}
+.tcard .art img{width:100%;height:auto;display:block}
+.tcard .st{font:700 13px var(--display);padding:3px 8px;border-radius:5px;text-align:center;color:#111}
+.tcard .ex{font-size:11px;color:#B9C2C8}
+.tcard .kv{display:grid;grid-template-columns:1fr auto;gap:1px 8px;font:11px var(--mono);color:#D5DCE0}
+
+@media (max-width:1100px){.editor{grid-template-columns:minmax(0,1fr)}.pal{flex-direction:row;flex-wrap:wrap}.pal h4{width:100%}.pal button{width:auto}.pal kbd{display:none}}
+@media (max-width:900px){.banner{grid-template-columns:1fr}.ch-ico{display:none}.score{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<header>
-  <h1>Fab Gym <span>· Build your own fab</span></h1>
-  <div class="bar">
-    <label for="template" class="note">Start from</label>
-    <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 model</option></select>
-    <button id="check">Check</button>
-    <label for="days" class="note">Run</label>
-    <select id="days"><option value="1">1 day</option><option value="2" selected>2 days</option><option value="3">3 days</option></select>
-    <button id="run" class="primary">Run</button>
-  </div>
-</header>
-<main>
-  <nav class="panel pal" id="pal" aria-label="Pieces">
-    <h4>Tools</h4>
-    <button data-tool="select" aria-pressed="true">Select and move</button>
-    <button data-tool="rail" aria-pressed="false">Rail (drag)</button>
-    <button data-tool="erase" aria-pressed="false">Erase</button>
-    <h4>Place</h4>
-    <select id="group" aria-label="Tool group to place"></select>
-    <button data-tool="group" aria-pressed="false">Tool group</button>
-    <button data-tool="stocker" aria-pressed="false">Stocker</button>
-    <button data-tool="entry" aria-pressed="false">Wafer start</button>
-    <button data-tool="exit" aria-pressed="false">Ship</button>
-    <h4>About</h4>
-    <p class="note" style="margin:0">One block is a tool group; a tile is 3 m. Rail is one-way: drag to lay it, select a piece to give it more ways out. The simulator checks and runs the fab. On the SMT2020 model or a teaching fab of our own; not a real fab.</p>
-  </nav>
-  <section>
-    <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The fab floor, tilted"></canvas><div class="hover" id="hover" hidden></div></div>
-    <div class="status" id="status">Hover a block to read it.</div>
-    <div class="time" id="time" hidden><span class="note">Fab time</span><input type="range" id="slider" min="0" max="0" value="0" aria-label="Fab time"><span class="t" id="tlabel"></span></div>
+<div class="wrap">
+  <header class="top">
+    <h1>Fab Gym <span>· Build your own fab</span></h1>
+    <div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
+  </header>
+
+  <section class="banner" aria-live="polite">
+    <div class="ch-ico" aria-hidden="true">🏁</div>
+    <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
+    <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span></div><div class="goaltext" id="goaltext">Running the simulator…</div>
+      <button class="btn" id="showfix">Stuck? Show one fix</button></div>
   </section>
-  <aside class="side">
-    <div class="panel"><h4>Checks <span id="verdict"></span></h4><ul class="issues" id="issues"><li><span class="chip ok">ready</span><span>Press Check, or Run.</span></li></ul></div>
-    <div class="panel"><h4>Selected</h4><div class="insp" id="insp"><p class="note" style="margin:0">Click a block or a rail piece.</p></div></div>
-    <div class="panel"><h4>Lots at this moment</h4><div class="lots" id="lots"><p class="note" style="grid-column:1/-1;margin:0">Run the fab to see them.</p></div></div>
-  </aside>
-</main>
+  <section class="score" id="score" aria-label="Score of the last run"></section>
+
+  <section class="editor running" id="editor">
+    <nav class="pal" id="pal" aria-label="Palette"></nav>
+    <div class="mapcol">
+      <div class="maptools">
+        <span class="mode" role="group" aria-label="Mode"><button class="tab" id="modeRun" aria-pressed="true">▶ Run</button><button class="tab" id="modeBuild" aria-pressed="false">✎ Build</button></span>
+        <button class="btn" id="play" aria-label="Pause">❚❚</button>
+        <select id="speed" aria-label="Replay speed"><option value="15">15× slow motion</option><option value="60" selected>60×</option><option value="240">240×</option></select>
+        <span class="clock" id="clock">Day 1 · 00:00:00</span>
+        <button class="btn go" id="again" hidden>Run again with my changes</button>
+        <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 model</option></select></span>
+      </div>
+      <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor, tilted, with vehicles moving as the simulator ran them"></canvas><div class="hover" id="hover" hidden></div></div>
+      <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
+      <div class="status" id="status">Hover a machine or a vehicle to read it.</div>
+    </div>
+    <aside class="side">
+      <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
+      <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
+      <div class="card"><h4><span>Lots at this hour</span></h4><div class="lots" id="lots"></div></div>
+    </aside>
+  </section>
+  <p class="note">The motion is an exact replay of the simulator's run of this layout: every vehicle where the simulator had it, every machine's mood and queue from the same run, on one seed. A tile is 3 m. Prices are assumed for the gym. On a teaching fab of our own and the SMT2020 model, a published model of a fab; never a real fab.</p>
+</div>
 <script src="editor-core.js"></script>
 <script src="editor.js"></script>
 </body>

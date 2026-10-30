@@ -175,8 +175,114 @@
         fleet = true;
       }
     }
-    return [...out, ...toPlan(s), ""].join("\n");
+    if (s.cap) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, `cap\t${s.cap}`);
+    const prices = (opts && opts.prices === false) ? [] : s.blocks.filter((b) => b.kind === "group" && PRICE[b.area])
+      .map((b) => `price\t${b.group}\t${PRICE[b.area].toFixed(1)}\t${(PRICE[b.area] / 2000).toFixed(1)}`);
+    return [...out, ...toPlan(s), ...prices, ""].join("\n");
   }
+
+  // Dollars to buy one tool of an area (assumed for the gym; not any vendor's price). Running cost a day is 1/2000.
+  const PRICE = { litho: 60e6, lithomet: 8e6, dry: 6e6, wet: 4e6, diff: 5e6, diel: 6e6, tf: 7e6, tfmet: 3e6, imp: 9e6, cmp: 5e6, defmet: 10e6 };
+
+  /** Dollars spent on tools, spares included. */
+  function spend(s) {
+    let d = 0;
+    for (const b of s.blocks) {
+      if (b.kind !== "group" || !PRICE[b.area]) continue;
+      d += b.count * PRICE[b.area];
+      if (b.rec && b.rec.kind === "swap_to_spare") d += (b.rec.spares || 0) * PRICE[b.area];
+    }
+    return d;
+  }
+
+  /** The selection widget's failures and recoveries as an overrides file (docs/OVERRIDES.md); null when none is set. */
+  function overridesFor(s) {
+    const groups = {}, rails = {};
+    for (const b of s.blocks) {
+      if (b.kind !== "group" || !(b.fail || b.rec)) continue;
+      groups[b.group] = {};
+      if (b.fail) groups[b.group].breakdowns = b.fail;
+      if (b.rec) groups[b.group].recovery = b.rec;
+    }
+    for (const k of Object.keys(s.rail)) {
+      const v = s.rail[k];
+      if (!v.fail) continue;
+      const [x, y] = k.split(",").map(Number);
+      v.o.forEach((on, d) => {
+        const nx = x + D[d][0], ny = y + D[d][1];
+        if (on && s.rail[key(nx, ny)]) rails[`${nodeId(x, y)}>${nodeId(nx, ny)}`] = { breakdowns: v.fail, recovery: v.rec || { kind: "wait" } };
+      });
+    }
+    if (!Object.keys(groups).length && !Object.keys(rails).length) return null;
+    const ov = { "fabgym-overrides": 1 };
+    if (Object.keys(groups).length) ov.groups = groups;
+    if (Object.keys(rails).length) ov.rails = rails;
+    return ov;
+  }
+
+  /** Does a run's score meet a challenge's target, having spent `extra` dollars on top? */
+  function meets(score, target, extra) {
+    if (!score || !(score.wafers_per_day >= target.wafers)) return false;
+    if (target.jams != null && score.jams > target.jams) return false;
+    if (target.budget != null && extra > target.budget) return false;
+    return true;
+  }
+
+  /** Where each vehicle is at `t` in a replay window: stays are [vehicle, from, to, t_in, t_out|null, loaded, hot]. */
+  function vehicleAt(stays, t) {
+    const out = [];
+    for (const [vehicle, from, to, tin, tout, loaded, hot] of stays) {
+      if (t < tin || (tout != null && t >= tout)) continue;
+      const a = cellOfNode(from), b = cellOfNode(to);
+      if (!a || !b) continue;
+      const f = tout == null || tout <= tin ? 0 : (t - tin) / (tout - tin);
+      out.push({ vehicle, x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, loaded, hot });
+    }
+    return out;
+  }
+
+  // ---------- the challenges (docs/EDITOR-TAKE-TWO.md), calibrated on the simulator on 31 Oct, two days, seed 1
+  const teach = () => ({ state: template("teaching"), base: TEACHING_SHOP, overrides: null });
+  const groupBlock = (st, g) => st.blocks.find((b) => b.group === g);
+  const withOverrides = (x) => ((x.overrides = overridesFor(x.state)), x);
+  function laneCell(st, x) {
+    const ys = Math.min(...Object.keys(st.rail).filter((k) => st.rail[k].spine).map((k) => Number(k.split(",")[1])));
+    return key(x, ys);
+  }
+  const CHALLENGES = [
+    {
+      id: "rush", title: "Rush hour on the spine", days: 2,
+      problem: "The spine stretch past the lithography bay keeps breaking, and every vehicle behind it just waits.",
+      goal: "Get 670 wafers a day out. The bay's own loop goes round the break: tell the vehicles to use it.",
+      target: { wafers: 670, budget: 0 },
+      setup() { const x = teach(); const v = x.state.rail[laneCell(x.state, 3)]; v.fail = { kind: "random", mttf_minutes: 120, mttr_minutes: 90 }; v.rec = { kind: "wait" }; return withOverrides(x); },
+      fix(x) { x.state.rail[laneCell(x.state, 3)].rec = { kind: "route_around" }; return withOverrides(x); },
+    },
+    {
+      id: "polisher", title: "The gassed polisher", days: 2,
+      problem: "One polisher (CMP) for the whole fab. It is gassed and the lots pile up in front of it.",
+      goal: "Get 780 wafers a day out, spending at most one more polisher.",
+      target: { wafers: 780, budget: PRICE.cmp },
+      setup() { const x = teach(); groupBlock(x.state, "Planar_T").count = 1; return x; },
+      fix(x) { groupBlock(x.state, "Planar_T").count = 2; return x; },
+    },
+    {
+      id: "breakdown", title: "Breakdown, no spare", days: 2,
+      problem: "Lithography breaks every few hours and takes three to repair where it stands.",
+      goal: "Get 550 wafers a day out, spending at most one more lithography tool (or one spare).",
+      target: { wafers: 550, budget: PRICE.litho },
+      setup() { const x = teach(); const b = groupBlock(x.state, "Litho_T"); b.fail = { kind: "random", mttf_minutes: 240, mttr_minutes: 180 }; return withOverrides(x); },
+      fix(x) { groupBlock(x.state, "Litho_T").rec = { kind: "swap_to_spare", spares: 1, swap_minutes: 20 }; return withOverrides(x); },
+    },
+    {
+      id: "lean", title: "Lean or redundant?", days: 2,
+      problem: "On day two the polishers go down for ten hours. Capping the work in the fab keeps it lean; a spare keeps it moving.",
+      goal: "Get 650 wafers a day out through the outage, spending at most one more polisher.",
+      target: { wafers: 650, budget: PRICE.cmp },
+      setup() { const x = teach(); x.base = TEACHING_SHOP.replace(/(group\tPlanar_T\t\d+\t[^\n]*)/, "$1\ndown\t1800.0\t2400.0"); return x; },
+      fix(x) { groupBlock(x.state, "Planar_T").count = 3; return x; },
+    },
+  ];
 
   /** A block's mood at a frame: the most common mood among its group's tools; a tie to the more serious. */
   function blockMood(m, frame, group) {
@@ -194,7 +300,7 @@
     return moods[0];
   }
 
-  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, template, toPlan, fabText, blockMood, cellOfNode, beside, key };
+  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);
