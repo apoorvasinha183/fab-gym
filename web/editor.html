@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fab Gym · Build your own fab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* The floor page's dark teal look; layout: palette | 2.5D map with the run's time slider | checks, inspector, lots. */
+:root{--bg:#0B1418;--panel:#11202599;--panel2:#12262D;--line:#21404A;--ink:#E8F2F0;--sub:#8FB3AE;--teal:#7EE8D8;--amber:#F2B33D;--bad:#FF8A7A;--ok:#6CD394;--warn:#F2C060;
+  --display:"Chakra Petch",system-ui,sans-serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 30%,#16323A,#0B1418 60%,#070C0F);color:var(--ink);font:14px/1.45 var(--body)}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px}
+h1{margin:0;font:600 20px var(--display);letter-spacing:.01em}
+h1 span{color:var(--sub);font-weight:500}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button,select{font:13px var(--body);color:var(--ink);background:#14272D;border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
+button:hover,select:hover{border-color:var(--teal)}
+button.primary{background:var(--teal);color:#08201C;border-color:var(--teal);font-weight:600}
+button[aria-pressed="true"]{border-color:var(--teal);background:#1A3A40}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+main{display:grid;grid-template-columns:200px minmax(0,1fr) 300px;gap:12px;padding:0 16px 16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.pal{display:flex;flex-direction:column;gap:4px}
+.pal h4,.side h4{margin:8px 0 2px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
+.pal h4:first-child,.side h4:first-child{margin-top:0}
+.pal button{text-align:left}
+.pal select{width:100%}
+.mapwrap{position:relative}
+canvas{display:block;width:100%;border-radius:12px;border:1px solid var(--line);touch-action:none;cursor:crosshair}
+.status{font:12px var(--mono);color:var(--sub);min-height:1.5em;margin-top:6px}
+.time{display:flex;gap:10px;align-items:center;margin-top:8px}
+.time input{flex:1}
+.time .t{font:600 14px var(--mono);min-width:7.5em;text-align:right}
+.side{display:grid;gap:12px;align-content:start}
+.issues{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:220px;overflow:auto}
+.issues li{display:grid;grid-template-columns:auto 1fr;gap:8px;font-size:12.5px;cursor:pointer}
+.chip{font:10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px}
+.chip.error{background:#3B1915;color:var(--bad)}.chip.warning{background:#352A10;color:var(--warn)}.chip.ok{background:#14301F;color:var(--ok)}
+.insp{display:grid;gap:8px;font-size:13px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.lots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.lots div{display:grid;justify-items:center;font:11px var(--mono);color:var(--sub)}
+.lots img{width:48px;height:48px}
+.lots b{color:var(--ink);font-size:13px}
+.note{font-size:12px;color:var(--sub)}
+.hover{position:absolute;z-index:5;pointer-events:none;width:220px}
+.hover[hidden]{display:none}
+.card{border-radius:12px;padding:8px;display:grid;gap:6px;background:#1B1E22;border:2px solid var(--fam,#7EE8D8);box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:12px}
+.card .hd{display:flex;justify-content:space-between;gap:6px;align-items:center}
+.card .nm{font:700 13px var(--display)}
+.card .fm{font:9.5px var(--mono);text-transform:uppercase;background:var(--fam);color:#111;padding:1px 5px;border-radius:3px}
+.card .art{border-radius:8px;line-height:0}
+.card .art img{width:100%;height:auto}
+.card .st{font:700 13px var(--display);padding:3px 8px;border-radius:5px;text-align:center;color:#111}
+.card .ex{color:#B9C2C8;font-size:11px}
+@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}.pal{flex-direction:row;flex-wrap:wrap}.pal h4{width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fab Gym <span>· Build your own fab</span></h1>
+  <div class="bar">
+    <label for="template" class="note">Start from</label>
+    <select id="template"><option value="teaching">Teaching fab</option><option value="smt2020">SMT2020 model</option></select>
+    <button id="check">Check</button>
+    <label for="days" class="note">Run</label>
+    <select id="days"><option value="1">1 day</option><option value="2" selected>2 days</option><option value="3">3 days</option></select>
+    <button id="run" class="primary">Run</button>
+  </div>
+</header>
+<main>
+  <nav class="panel pal" id="pal" aria-label="Pieces">
+    <h4>Tools</h4>
+    <button data-tool="select" aria-pressed="true">Select and move</button>
+    <button data-tool="rail" aria-pressed="false">Rail (drag)</button>
+    <button data-tool="erase" aria-pressed="false">Erase</button>
+    <h4>Place</h4>
+    <select id="group" aria-label="Tool group to place"></select>
+    <button data-tool="group" aria-pressed="false">Tool group</button>
+    <button data-tool="stocker" aria-pressed="false">Stocker</button>
+    <button data-tool="entry" aria-pressed="false">Wafer start</button>
+    <button data-tool="exit" aria-pressed="false">Ship</button>
+    <h4>About</h4>
+    <p class="note" style="margin:0">One block is a tool group; a tile is 3 m. Rail is one-way: drag to lay it, select a piece to give it more ways out. The simulator checks and runs the fab. On the SMT2020 model or a teaching fab of our own; not a real fab.</p>
+  </nav>
+  <section>
+    <div class="mapwrap" id="mapwrap"><canvas id="map" role="img" aria-label="The fab floor, tilted"></canvas><div class="hover" id="hover" hidden></div></div>
+    <div class="status" id="status">Hover a block to read it.</div>
+    <div class="time" id="time" hidden><span class="note">Fab time</span><input type="range" id="slider" min="0" max="0" value="0" aria-label="Fab time"><span class="t" id="tlabel"></span></div>
+  </section>
+  <aside class="side">
+    <div class="panel"><h4>Checks <span id="verdict"></span></h4><ul class="issues" id="issues"><li><span class="chip ok">ready</span><span>Press Check, or Run.</span></li></ul></div>
+    <div class="panel"><h4>Selected</h4><div class="insp" id="insp"><p class="note" style="margin:0">Click a block or a rail piece.</p></div></div>
+    <div class="panel"><h4>Lots at this moment</h4><div class="lots" id="lots"><p class="note" style="grid-column:1/-1;margin:0">Run the fab to see them.</p></div></div>
+  </aside>
+</main>
+<script src="editor-core.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

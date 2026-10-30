@@ -63,6 +63,7 @@ class Helper:
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
         self.lock = threading.Lock()
+        self.fab_lock = threading.Lock()
         self.ids = itertools.count(1)
 
     def __repr__(self):
@@ -213,6 +214,51 @@ class Helper:
         j = self.jobs.get(jid)
         return bool(j and j.get("card") and j["card"]["sha256"] == self._hashes(j))
 
+    # ------------------------------------------------------------------ the map editor (docs/EDITOR.md)
+
+    def fab_base(self, name):
+        """A template's base shop and its areas: SMT2020's, from the floor page's data."""
+        if name != "smt2020":
+            return {"error": f"no base {name!r}; the teaching fab is built into the editor"}
+        d = self.web / "data"
+        try:
+            return {"shop": (d / "shop.txt").read_text(), "areas": (d / "areas.tsv").read_text()}
+        except OSError:
+            return {"error": "the SMT2020 data is not built yet: run web/build.sh"}
+
+    def _fab_file(self, text):
+        d = self.jobs_dir.parent / "fab"
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / f"{hashlib.sha256(text.encode()).hexdigest()[:16]}.fab.txt"
+        f.write_text(text)
+        return f
+
+    def fab_check(self, text):
+        """The simulator's checks on a fab file: {"ok", "issues"}, or {"ok": False, "error"} for text it refuses."""
+        p = subprocess.run([str(self.fabsim), "fab-check", str(self._fab_file(text)), "--json"], capture_output=True, text=True)
+        if p.returncode not in (0, 2):
+            return {"ok": False, "error": (p.stderr.strip().splitlines() or ["the simulator refused the file"])[-1].removeprefix("refused: ")}
+        issues = json.loads(p.stdout or "[]")
+        return {"ok": p.returncode == 0, "issues": issues}
+
+    def fab_run(self, text, seed=1, days=2.0, every=60.0):
+        """The checks, then, with no errors, a run's moods (`fabsim moods`), niced, one at a time."""
+        checks = self.fab_check(text)
+        if not checks.get("ok"):
+            return {"error": checks.get("error") or "The layout has errors; fix them before running.", "checks": checks}
+        if not self.fab_lock.acquire(blocking=False):
+            return {"error": "A run is going; wait for it.", "busy": True}
+        try:
+            cmd = ["nice", "-n", "10", str(self.fabsim), "moods", str(self._fab_file(text)), str(seed),
+                   "--until", str(days * 1440.0), "--every", str(every)]
+            t = time.time()
+            p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if p.returncode != 0:
+                return {"error": (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1], "checks": checks}
+            return {"moods": json.loads(p.stdout), "checks": checks, "seconds": round(time.time() - t, 1)}
+        finally:
+            self.fab_lock.release()
+
     def arm_shop(self, jid, k):
         j = self.jobs.get(jid)
         arms = (j or {}).get("report", {}) or {}
@@ -238,6 +284,10 @@ def serve(h, port=8766):
             path = self.path.split("?")[0]
             if path == "/api/status":
                 return self._send(200, h.status())
+            if path == "/api/fab/base":
+                q = self.path.split("?", 1)[1] if "?" in self.path else ""
+                name = dict(p.split("=", 1) for p in q.split("&") if "=" in p).get("name", "smt2020")
+                return self._send(200, h.fab_base(name))
             if path.startswith("/api/job/"):
                 parts = path.split("/")
                 if len(parts) == 6 and parts[4] == "arm" and parts[5].isdigit():
@@ -263,6 +313,11 @@ def serve(h, port=8766):
                 r = h.run_text(body.get("scenario"))
             elif self.path == "/api/sign":
                 r = h.sign(str(body.get("job", "")), body.get("name"))
+            elif self.path == "/api/fab/check":
+                r = h.fab_check(body.get("fab") or "")
+            elif self.path == "/api/fab/run":
+                r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
+                              every=float(body.get("every", 60)))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(409 if r.get("busy") else 200, r)

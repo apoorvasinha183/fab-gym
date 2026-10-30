@@ -7,7 +7,7 @@ On the SMT2020 model or a teaching fab of our own; never a real fab.
 
 ## What a person does
 
-1. Start from a template: the **teaching fab** (eight groups, one per cast area, a short route) or **SMT2020** (all
+1. Start from a template: the **teaching fab** (eleven small groups, one per cast area, an 18-step route, a lot every 30 minutes; all assumed) or **SMT2020** (all
    105 groups, laid out in bays by area along a two-lane spine with U-turns at both ends, the delay group held in a
    stocker).
 2. Place, move and remove blocks (a tool group, its count set in the inspector), stockers, the entry and the exit;
@@ -41,3 +41,10 @@ the SMT2020 template places every group once with its count, holds the delay gro
 block's mood. `agent/tests/test_editor.py`: a good fab passes and a bad one is named; a run gives moods frames; a
 fab with errors is not run; text that is not a fab is refused plainly; the base shop is served; the endpoints and
 the page answer over HTTP.
+
+## First runs (31 Oct)
+
+Through the helper, as the page sends them: the teaching fab (17 × 13 tiles, 78 rail cells) passes the checks with
+no notes and a 2-day run finishes 65 lots; the SMT2020 template (53 × 21 tiles, 105 groups in bays, 402 rail cells,
+U-turns at both spine ends) passes with no notes and a 1-day run with 120 vehicles takes 0.6 s, ending with 123 tools'
+hands full and 80 of 417 stretches jammed: 120 vehicles (assumed) look too few for this layout. Not scored runs.
