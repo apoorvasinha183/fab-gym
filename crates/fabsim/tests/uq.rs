@@ -267,3 +267,25 @@ fn minimum_detectable_effect() {
     let want = (2.2621571627982049992 + 0.88340385968553470914) * 2.0 / (10.0f64).sqrt();
     assert!(close(min_detectable_effect(2.0, 10, 0.05, 0.8), want, 1e-9));
 }
+
+// ------------------------------------------------------------------ layer 4: input doubt (docs/UQ-INPUTS.md)
+
+#[test]
+fn the_nested_interval_is_t_over_the_draws_means() {
+    use fabsim::uq::nested_paired;
+    // three draws of the inputs, two seeds each; differences cand - base per draw: [1, 3], [2, 2], [5, 7]
+    let base = vec![vec![10.0, 10.0], vec![10.0, 10.0], vec![10.0, 10.0]];
+    let cand = vec![vec![11.0, 13.0], vec![12.0, 12.0], vec![15.0, 17.0]];
+    let n = nested_paired(&base, &cand, 0.05);
+    // draw means 2, 2, 6: mean 10/3, sd of draw means sqrt(16/3)
+    assert!(close(n.interval.mean, 10.0 / 3.0, 1e-12));
+    let half = t_quantile(0.975, 2.0) * (16.0f64 / 3.0).sqrt() / 3f64.sqrt();
+    assert!(close(n.interval.hi - n.interval.mean, half, 1e-9));
+    assert_eq!(n.interval.n, 3);
+    // the split: variance of the draw means 16/3; within-draw variance of a mean = mean of (var within) / 2
+    assert!(close(n.between_var, 16.0 / 3.0, 1e-12));
+    assert!(close(n.within_var_of_mean, ((2.0 + 0.0 + 2.0) / 3.0) / 2.0, 1e-12));
+    // every draw's mean points up; with two seeds, only a draw whose own interval is clear counts as clear
+    assert!(close(n.share_same_sign, 1.0, 1e-12));
+    assert!(n.share_clear >= 0.0 && n.share_clear <= 1.0);
+}
