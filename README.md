@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/fabgym-hero.jpg" width="820" alt="Cartoon of a cleanroom boot camp: a wafer in a red headband yells &quot;You call that planar?&quot; at a sweating CMP robot holding a spirit level, while engineers in bunny suits lift dumbbells and the etch tool naps."></p>
+
 # Fab Gym
 
 Ask a simulated wafer fab a question in plain words, and get back tested options that a person signs.
