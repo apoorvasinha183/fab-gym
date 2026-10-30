@@ -75,8 +75,9 @@ same way, and the share whose own interval is clear that way:
 
 - Cycle time and reward agree with wafers out for shortest first and FIFO (both clearly worse); for critical ratio
   both intervals hold zero.
-- **The input doubt is nearly all the uncertainty**: the variance between draws is about 98 to 100 times the luck
-  inside a draw's five-seed mean (`summary.json`, `between_var` against `within_var_of_mean`). Layer-1 intervals,
+- **The input doubt is nearly all the uncertainty**: of the variance between the draws' means, 98 to 100% is the
+  input doubt and the rest the luck inside a draw's five-seed mean (`summary.json`, `between_var` against
+  `within_var_of_mean`). Layer-1 intervals,
   which hold the luck only, are far too narrow for any claim about a fab whose numbers are estimated.
 
 ### Exploratory, after the pre-registered analysis (`fabsim uq-inputs --ceilings`, `ceilings.json`)
