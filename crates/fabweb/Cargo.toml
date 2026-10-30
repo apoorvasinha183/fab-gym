@@ -11,3 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 fabsim = { path = "../fabsim" }
+
+[dev-dependencies]
+# the moods tests read the export as JSON; from the local cache, no download
+serde_json = "1"
