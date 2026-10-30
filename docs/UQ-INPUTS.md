@@ -93,3 +93,33 @@ same way, and the share whose own interval is clear that way:
 - So the study, as designed, mixes two things: doubt about the numbers, and a fab pushed further into overload. Two
   checks would separate them: redraws with releases scaled to each draw's ceiling (the same load as published), and a
   longer window to see whether critical ratio's edge is a drain.
+
+---
+
+## Follow-up, pre-registered 30 Oct after the exploratory finding (decided by quiz: one follow-up run, then the supervisor)
+
+Results go below this section's own line; nothing above it changes.
+
+**Question.** Is critical ratio's edge over today's rule, and the cap's change at k = 2, a matter of doubt about the
+numbers, or of the redrawn fabs being more overloaded? And is critical ratio's edge a drain that fades?
+
+**Equal load.** For each draw, every release rate is multiplied by the draw's ceiling over the published ceiling
+(1,301.9), so each redrawn fab releases the same multiple of its own capacity as the published fab does (1.098).
+`fabsim::inputs::equal_load`.
+
+**Runs** (the same 10 draws and σ = 0.2):
+
+- F1, equal load, long-v1 (window days 130 to 190): today's rule against critical ratio, shortest first and FIFO,
+  seeds 0 to 4. Wafers out a day.
+- F2, the first study's load, window days 130 to 250: today's rule against critical ratio, seeds 0 to 4. Wafers out a
+  day over days 130 to 190 and over days 190 to 250, from the same runs' daily output.
+- F3, equal load, the cap: 1,800 against none at k = 1 and k = 2, 300 days, window days 120 to 300, seeds 1000 to 1004.
+
+**Analysis.** As above (t over the 10 draws' means). Seven comparisons (three in F1, two in F2, two in F3):
+Bonferroni, each at 1 − 0.05/7.
+
+**Reading it.** If critical ratio's edge vanishes at equal load (F1), the flip came from the overload. If its edge in
+F2 is smaller over days 190 to 250 than over 130 to 190, it drains.
+
+**Tests first.** `crates/fabsim/tests/inputs.rs`: at equal load, each draw's release-to-ceiling ratio equals the
+published one; at σ = 0 equal load is the published shop.

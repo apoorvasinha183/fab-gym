@@ -79,3 +79,22 @@ fn factors_average_one_and_spread_by_sigma() {
     assert!((sd - 0.2).abs() < 0.01, "log spread {sd}");
     assert!(logs.iter().all(|l| l.is_finite()));
 }
+
+#[test]
+fn equal_load_keeps_the_published_release_to_ceiling_ratio() {
+    use fabsim::bound::capacity;
+    use fabsim::inputs::equal_load;
+    let s = shop();
+    let c0 = capacity(&s);
+    let ratio0 = c0.released_per_day / c0.wafers_per_day;
+    for d in 1..6 {
+        let e = equal_load(&s, d, 0.2);
+        let c = capacity(&e);
+        assert!((c.released_per_day / c.wafers_per_day - ratio0).abs() < 1e-9, "draw {d}");
+        // the same factors as the plain redraw; only releases differ
+        let p = perturb(&s, d, 0.2);
+        assert_eq!(e.groups, p.groups);
+        assert_eq!(e.routes, p.routes);
+    }
+    assert_eq!(equal_load(&s, 3, 0.0), s);
+}
