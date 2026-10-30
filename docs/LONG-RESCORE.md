@@ -111,9 +111,11 @@ Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less
   own run replayed, 60 evenly spaced picks on seeds 0 to 2 (defects off), and at each the lots it could have taken
   tried on copies of the fab for one day with today's rule after; at most 64 lots a pick (one of each kind, the
   policy's own pick, the rest spread evenly), which on FIFO's picks finds 86% of the full audit's regret. Mean regret
-  a pick, in reward over the day (95% interval over the 180 picks):
-  - shortest first 0.29 (0.19 to 0.38), PPO 0.56 (0.44 to 0.68), critical ratio 0.77 (0.59 to 0.95), today 0.81
-    (0.69 to 0.93), FIFO 1.22 (0.95 to 1.49), random 1.32 (1.03 to 1.61);
+  a pick, in reward over the day (95% t-interval over the three seeds' means, 2 degrees of freedom):
+  - shortest first 0.29 (0.18 to 0.39), PPO 0.56 (0.25 to 0.87), critical ratio 0.77 (0.35 to 1.19), today 0.81
+    (0.64 to 0.98), FIFO 1.22 (0.68 to 1.76), random 1.32 (0.88 to 1.77);
+  - corrected 30 Oct: the first intervals pooled the 180 picks as if independent, but picks within one run are
+    related, so they were too narrow (by up to about half); the means are unchanged;
   - 73 to 84% of picks had a better lot within the day.
   - The ranking is nearly the reverse of the long window's (today 1,263 wafers a day, shortest first 668). As with
     D, a day's look-ahead favours finishing short steps now. So B over one day measures how greedy a policy is,
@@ -122,7 +124,8 @@ Means over seeds 0 to 9, days 130 to 190. Defects off; defects on differ by less
   (`regret-b/runs/`), for the day-by-day graphs; each matches the contest's run exactly. Their picks are kept
   locally, not in git.
 - **Regret B over 7 days** (30 Oct; `results/long-rescore/regret-b7/`): the same audit on seed 0, 30 picks a
-  policy, the alternatives played for 7 days with today's rule after. Mean regret a pick (95% over the 30 picks):
+  policy, the alternatives played for 7 days with today's rule after. Mean regret a pick (approximate 95% intervals
+  over the 30 picks of one run, which are related to each other, so these intervals are too narrow):
   shortest first 10.4 (6.7 to 14.1), today 14.8 (10.9 to 18.7), critical ratio 19.9 (11.8 to 28.0), PPO 22.1 (14.8
   to 29.4), FIFO 22.3 (14.2 to 30.5), random 31.1 (20.1 to 42.1).
   - The intervals overlap; shortest first still scores lowest, so the ranking does not turn over to match the
