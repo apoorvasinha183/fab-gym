@@ -1338,8 +1338,16 @@ fn main() {
         Some("log") => {
             let shop = Shop::parse(&std::fs::read_to_string(&args[1]).unwrap()).unwrap();
             let seed = args[2].parse().unwrap();
-            let until = args.get(3).map(|u| u.parse().unwrap());
-            print!("{}", run(&shop, &RunOptions { seed, until, record: true }, None).log_text());
+            let until = args.get(3).filter(|a| !a.starts_with("--")).map(|u| u.parse().unwrap());
+            // failure and recovery overrides (docs/OVERRIDES.md)
+            let ov = match args.iter().position(|a| a == "--overrides").and_then(|i| args.get(i + 1)) {
+                Some(p) => fabsim::overrides::Overrides::parse(&std::fs::read_to_string(p).expect("read the overrides"), &shop).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                }),
+                None => fabsim::overrides::Overrides::default(),
+            };
+            print!("{}", fabsim::engine::run_with(&shop, &RunOptions { seed, until, record: true }, None, &ov).log_text());
         }
         Some("web-data") => {
             // the shop text and each group's area, for the browser page (not committed)

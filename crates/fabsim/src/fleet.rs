@@ -137,6 +137,9 @@ pub(crate) struct FleetState {
     pub group_ports: Vec<Vec<usize>>,
     pub port_load: Vec<u32>,
     pub out: FleetOut,
+    /// overrides (docs/OVERRIDES.md): stretches broken now, and those whose vehicles wait rather than go round
+    pub down: Vec<bool>,
+    pub wait_down: Vec<bool>,
 }
 
 impl FleetState {
@@ -173,6 +176,8 @@ impl FleetState {
             group_ports,
             port_load: vec![0; nn],
             out: FleetOut { vehicles, deliver_least: f64::INFINITY, ..FleetOut::default() },
+            down: vec![false; ne],
+            wait_down: vec![false; ne],
         }
     }
 
@@ -213,7 +218,15 @@ impl FleetState {
         if self.can_enter(e2, t) {
             return (e2, Some(e2));
         }
-        if self.edge_q[e2].len() < self.cap[e2] {
+        if self.down[e2] {
+            // broken (docs/OVERRIDES.md): wait for the repair, or take the shortest way to the target that avoids every
+            // broken stretch; a local detour here would cross over and straight back to the same break
+            if self.wait_down[e2] {
+                return (e2, None);
+            }
+            return (e2, self.around(n, target).filter(|&e3| self.can_enter(e3, t)));
+        }
+        if !self.down[e2] && self.edge_q[e2].len() < self.cap[e2] {
             return (e2, None); // only the gap to the vehicle ahead: wait for it
         }
         let mut best: Option<(f64, usize)> = None;
@@ -228,8 +241,44 @@ impl FleetState {
         (e2, best.map(|b| b.1))
     }
 
+    /// The first stretch of the shortest way from n to `target` over stretches that are not broken; `None` when the
+    /// breaks cut n off from the target.
+    pub fn around(&self, n: usize, target: usize) -> Option<usize> {
+        use std::cmp::Reverse;
+        use std::collections::BinaryHeap;
+        let nn = self.track.nodes().len();
+        let mut dist = vec![f64::INFINITY; nn];
+        let mut first = vec![usize::MAX; nn];
+        let mut heap = BinaryHeap::new();
+        dist[n] = 0.0;
+        heap.push(Reverse((0u64, n)));
+        while let Some(Reverse((dbits, u))) = heap.pop() {
+            let d = f64::from_bits(dbits);
+            if d > dist[u] {
+                continue;
+            }
+            if u == target {
+                return (first[u] != usize::MAX).then_some(first[u]);
+            }
+            for &e in self.track.out_of(u) {
+                if self.down[e] {
+                    continue;
+                }
+                let ed = &self.track.edges()[e];
+                let nd = d + ed.len;
+                if nd < dist[ed.to] {
+                    dist[ed.to] = nd;
+                    first[ed.to] = if u == n { e } else { first[u] };
+                    // non-negative floats order as their bits
+                    heap.push(Reverse((nd.to_bits(), ed.to)));
+                }
+            }
+        }
+        None
+    }
+
     pub fn can_enter(&self, e: usize, t: f64) -> bool {
-        self.edge_q[e].len() < self.cap[e] && t + 1e-12 >= self.last_in[e] + self.headway
+        !self.down[e] && self.edge_q[e].len() < self.cap[e] && t + 1e-12 >= self.last_in[e] + self.headway
     }
 }
 

@@ -7,3 +7,5 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# reads the failure and recovery overrides file (docs/OVERRIDES.md); from the local cache, no download
+serde_json = "1"

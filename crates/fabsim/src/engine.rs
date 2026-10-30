@@ -236,6 +236,33 @@ pub struct RunResult {
     pub holds: Vec<Hold>,
     /// the fleet's results (docs/FLEET.md); None without a `fleet` record
     pub fleet: Option<FleetOut>,
+    /// every breakdown and maintenance down as it fell due, and every rail stretch's breakdown (only with `record`;
+    /// docs/OVERRIDES.md)
+    pub due: Vec<Due>,
+}
+
+/// A down as it fell due: `what` is breakdown, maintenance or rail; `tool` the tool (`GROUP#k`) or stretch
+/// (`FROM>TO`); `minutes` how long it is down for (the swap time when a spare was used).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Due {
+    pub what: &'static str,
+    pub tool: String,
+    pub t: f64,
+    pub minutes: f64,
+}
+
+/// One tool's breakdowns, maintenance and recovery for a run (docs/OVERRIDES.md): its group's records unless the
+/// overrides file says otherwise.
+#[derive(Clone)]
+struct Beh {
+    pm: Vec<crate::shop::Pm>,
+    pmp: Vec<crate::shop::Pm>,
+    /// random breakdowns (mean minutes to failure, to repair)
+    bd: Option<(f64, f64)>,
+    /// breakdowns with use: every so many wafers, down uniform(lo, hi), and the wafers since the last
+    wear: Option<(f64, f64, f64)>,
+    worn: f64,
+    rec: crate::overrides::Recovery,
 }
 
 fn hx(x: f64) -> String {
@@ -351,6 +378,10 @@ enum Ev {
     VehEnd(u32),
     VehTry(u32),
     Hoisted(u32),
+    /// overrides (docs/OVERRIDES.md): a repaired unit returns to its group's spares; a rail stretch breaks; is repaired
+    SpareBack(u32),
+    RailBreak(u32),
+    RailUp(u32),
 }
 
 /// A release or a listed lot held by its family's cap: (release, n, log row) or (lot, log row).
@@ -541,6 +572,13 @@ struct Sim<'a, 'c> {
     /// one lot followed from start to finish (docs/LIVE-REAL.md): its steps and moves are kept without `record`
     follow: Option<String>,
     follow_lot: Option<u32>,
+    // overrides (docs/OVERRIDES.md); with none, every tool's `Beh` is its group's records and nothing changes a run
+    beh: Vec<Beh>,
+    /// per group, spare units free
+    spares: Vec<u32>,
+    /// per rail stretch, random breakdowns (mean minutes to failure, to repair)
+    rail_bd: Vec<Option<(f64, f64)>>,
+    due: Vec<Due>,
 }
 
 /// A defect finding: the tool that did the step, when, the step, the lot found, and the lots held with it.
@@ -1149,16 +1187,30 @@ impl<'a, 'c> Sim<'a, 'c> {
         self.tools[ti as usize].busy = false;
         let g = self.tools[ti as usize].group;
         let done: i64 = batch.iter().map(|x| self.lots[*x as usize].size).sum();
-        let npp = self.shop.groups[g as usize].pm_pieces.len();
+        let _ = g;
+        let npp = self.beh[ti as usize].pmp.len();
         for k in 0..npp {
-            let pm = &self.shop.groups[g as usize].pm_pieces[k];
+            let (every, lo, hi) = { let pm = &self.beh[ti as usize].pmp[k]; (pm.every, pm.lo, pm.hi) };
             let tool = &mut self.tools[ti as usize];
             tool.counts[k] += done as f64;
-            if tool.counts[k] >= pm.every {
+            if tool.counts[k] >= every {
                 tool.counts[k] = 0.0;
                 let mut r = PyRandom::from_str_seed(&format!("{}/pmc/{}/{}/{}", self.seed, tool.name, k, t as i64));
-                let m = r.uniform(pm.lo, pm.hi);
+                let m = r.uniform(lo, hi);
                 tool.pending.push_back((SCHEDULED, m));
+                self.note_due("maintenance", ti, t, m);
+            }
+        }
+        // breakdowns that come with use (docs/OVERRIDES.md): due once the tool has processed `every` wafers since the last
+        if let Some((every, lo, hi)) = self.beh[ti as usize].wear {
+            self.beh[ti as usize].worn += done as f64;
+            if self.beh[ti as usize].worn >= every {
+                self.beh[ti as usize].worn = 0.0;
+                let mut r = PyRandom::from_str_seed(&format!("{}/wear/{}/{}", self.seed, self.tools[ti as usize].name, t as i64));
+                let m = r.uniform(lo, hi);
+                // as maintenance by wafers does: down once this job's end is done
+                let d = self.breakdown(ti, t, m);
+                self.tools[ti as usize].pending.push_back((UNSCHEDULED, d));
             }
         }
         self.set_state(ti, t, STANDBY, "");
@@ -1208,6 +1260,15 @@ impl<'a, 'c> Sim<'a, 'c> {
                 self.go_down_why(ti, t, UNSCHEDULED, d.hold_tool_minutes, "hold");
                 self.dispatch(self.tools[ti as usize].group, t);
                 return;
+            }
+        } else if let crate::overrides::Recovery::HoldLots { lookback, .. } = self.beh[ti as usize].rec {
+            // a tool that holds lots when it breaks remembers what it finished lately
+            let recent = &mut self.recent[ti as usize];
+            for x in finished {
+                recent.push_back((x.0, x.1, t));
+            }
+            while recent.front().is_some_and(|e| e.2 < t - lookback) {
+                recent.pop_front();
             }
         }
         if let Some((kind, m)) = self.tools[ti as usize].pending.pop_front() {
@@ -1288,6 +1349,48 @@ impl<'a, 'c> Sim<'a, 'c> {
             self.hold_lot(l, t + d.hold_lot_minutes);
         }
         self.holds.push(Hold { tool: ti, t, step: step as u32, lot: found, lots });
+    }
+
+    /// Record a down as it falls due (only with `record`).
+    fn note_due(&mut self, what: &'static str, ti: u32, t: f64, minutes: f64) {
+        if self.full {
+            self.due.push(Due { what, tool: self.tools[ti as usize].name.clone(), t, minutes });
+        }
+    }
+
+    /// A breakdown falls due with `m` minutes of repair: the tool recovers as its behaviour says (docs/OVERRIDES.md).
+    /// Returns the minutes the tool is down for.
+    fn breakdown(&mut self, ti: u32, t: f64, m: f64) -> f64 {
+        use crate::overrides::Recovery;
+        match self.beh[ti as usize].rec.clone() {
+            Recovery::Swap { swap, .. } => {
+                let g = self.tools[ti as usize].group;
+                if self.spares[g as usize] > 0 {
+                    // a spare goes in; the broken unit is repaired off the floor and joins the spares when done
+                    self.spares[g as usize] -= 1;
+                    self.at(t + m, Ev::SpareBack(g));
+                    self.note_due("breakdown", ti, t, swap);
+                    return swap;
+                }
+            }
+            Recovery::HoldLots { lookback, hold } => {
+                let mut lots: Vec<u32> = vec![];
+                for &(l, s, end) in &self.recent[ti as usize] {
+                    let lot = &self.lots[l as usize];
+                    let _ = s;
+                    if end >= t - lookback && end <= t && lot.last_start <= end && lot.done.is_none() && !lots.contains(&l) {
+                        lots.push(l);
+                    }
+                }
+                for &l in &lots {
+                    self.hold_lot(l, t + hold);
+                }
+                self.holds.push(Hold { tool: ti, t, step: u32::MAX, lot: u32::MAX, lots });
+            }
+            Recovery::InPlace => {}
+        }
+        self.note_due("breakdown", ti, t, m);
+        m
     }
 
     fn down_due(&mut self, ti: u32, t: f64, kind: u8, minutes: f64) {
@@ -1567,6 +1670,30 @@ impl<'a, 'c> Sim<'a, 'c> {
     /// to free.
     fn fleet_wait(&mut self, v: u32, n: usize, e: usize, t: f64) {
         let fl = self.fl.as_mut().unwrap();
+        if fl.down[e] {
+            // a broken stretch (docs/OVERRIDES.md): woken when it is repaired, and when going round, also when another
+            // way out frees
+            if !fl.edge_wait[e].contains(&v) {
+                fl.edge_wait[e].push(v);
+            }
+            if fl.wait_down[e] {
+                return;
+            }
+            // going round: wait only on the first stretch of the way round, for its gap or for a vehicle to leave it;
+            // with no way round, only for the repair
+            let target = fl.veh[v as usize].target;
+            if let Some(f) = fl.around(n, target) {
+                if fl.edge_q[f].len() >= fl.cap[f] {
+                    if !fl.edge_wait[f].contains(&v) {
+                        fl.edge_wait[f].push(v);
+                    }
+                } else {
+                    let at = fl.last_in[f] + fl.headway;
+                    self.at(at.max(t), Ev::VehTry(v));
+                }
+            }
+            return;
+        }
         if fl.edge_q[e].len() >= fl.cap[e] {
             let outs: Vec<usize> = fl.track.out_of(n).to_vec();
             for e3 in outs {
@@ -1575,7 +1702,8 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
             }
             // a way out held only by its gap frees by itself
-            let soonest = fl.track.out_of(n).iter().filter(|&&e3| fl.edge_q[e3].len() < fl.cap[e3]).map(|&e3| fl.last_in[e3] + fl.headway).fold(f64::INFINITY, f64::min);
+            // (a broken stretch never frees by its gap: it waits for its repair)
+            let soonest = fl.track.out_of(n).iter().filter(|&&e3| !fl.down[e3] && fl.edge_q[e3].len() < fl.cap[e3]).map(|&e3| fl.last_in[e3] + fl.headway).fold(f64::INFINITY, f64::min);
             if soonest.is_finite() {
                 self.at(soonest.max(t), Ev::VehTry(v));
             }
@@ -1726,6 +1854,12 @@ pub fn run_vehicles<'c>(
     run_inner(shop, opts, chooser, vchooser, None)
 }
 
+/// `run` with failure and recovery overrides (docs/OVERRIDES.md); with none it is `run`.
+pub fn run_with(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decision) -> usize>, ov: &crate::overrides::Overrides) -> RunResult {
+    run_inner_ov(shop, opts, chooser, None, None, ov)
+}
+
+#[allow(clippy::too_many_arguments)]
 fn build<'a, 'c>(
     shop: &'a Shop,
     opts: &RunOptions,
@@ -1733,6 +1867,7 @@ fn build<'a, 'c>(
     vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
     follow: Option<String>,
     player: Option<Player>,
+    ov: &crate::overrides::Overrides,
 ) -> Sim<'a, 'c> {
     // compile the shop into indexes
     let gidx: HashMap<&str, u32> = shop.groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i as u32)).collect();
@@ -1936,7 +2071,78 @@ fn build<'a, 'c>(
         vchooser: Hook(vchooser),
         follow,
         follow_lot: None,
+        beh: vec![],
+        spares: vec![0; shop.groups.len()],
+        rail_bd: vec![],
+        due: vec![],
     };
+
+    // each tool's breakdowns, maintenance and recovery: its group's records unless the overrides say otherwise
+    {
+        use crate::overrides::{Breakdowns, Maintenance, Recovery};
+        let mut any_hold = false;
+        for ti in 0..sim.tools.len() {
+            let g = &shop.groups[sim.tools[ti].group as usize];
+            let set = ov.tool(&g.name, &sim.tools[ti].name);
+            let mut b = Beh { pm: g.pm.clone(), pmp: g.pm_pieces.clone(), bd: g.breakdown, wear: None, worn: 0.0, rec: Recovery::InPlace };
+            match set.breakdowns {
+                None => {}
+                Some(Breakdowns::None) => b.bd = None,
+                Some(Breakdowns::Random { mttf, mttr }) => b.bd = Some((mttf, mttr)),
+                Some(Breakdowns::ByWafers { every, lo, hi }) => {
+                    b.bd = None;
+                    b.wear = Some((every, lo, hi));
+                }
+            }
+            match set.maintenance {
+                None => {}
+                Some(Maintenance::None) => {
+                    b.pm.clear();
+                    b.pmp.clear();
+                }
+                Some(Maintenance::Calendar { every, lo, hi }) => {
+                    b.pm = vec![crate::shop::Pm { every, lo, hi, first: None }];
+                    b.pmp.clear();
+                }
+                Some(Maintenance::ByWafers { every, lo, hi }) => {
+                    b.pm.clear();
+                    b.pmp = vec![crate::shop::Pm { every, lo, hi, first: None }];
+                }
+            }
+            if let Some(r) = set.recovery {
+                if let Recovery::Swap { spares, .. } = r {
+                    let gi = sim.tools[ti].group as usize;
+                    sim.spares[gi] = sim.spares[gi].max(spares);
+                }
+                any_hold |= matches!(r, Recovery::HoldLots { .. });
+                b.rec = r;
+            }
+            sim.tools[ti].counts = vec![0.0; b.pmp.len()];
+            sim.beh.push(b);
+        }
+        if any_hold && sim.recent.is_empty() {
+            sim.recent = (0..sim.tools.len()).map(|_| VecDeque::new()).collect();
+        }
+    }
+    // rail stretches: none fails unless the overrides say so
+    if let Some(fl) = sim.fl.as_mut() {
+        use crate::overrides::{RailBreakdowns, RailRecovery};
+        let ne = fl.track.edges().len();
+        sim.rail_bd = vec![None; ne];
+        for (&e, set) in &ov.rails {
+            if let Some(RailBreakdowns::Random { mttf, mttr }) = set.breakdowns {
+                sim.rail_bd[e] = Some((mttf, mttr));
+            }
+            fl.wait_down[e] = set.recovery == Some(RailRecovery::Wait);
+        }
+    }
+    for e in 0..sim.rail_bd.len() {
+        if let Some((mttf, _)) = sim.rail_bd[e] {
+            let (a, b) = { let ed = &sim.fl.as_ref().unwrap().track.edges()[e]; (ed.from, ed.to) };
+            let x = PyRandom::from_str_seed(&format!("{}/rail/n{a}>n{b}", opts.seed)).expovariate(1.0 / mttf);
+            sim.at(x, Ev::RailBreak(e as u32));
+        }
+    }
 
     // downs: given windows, maintenance calendars, breakdowns
     for (gi, g) in shop.groups.iter().enumerate() {
@@ -1945,28 +2151,29 @@ fn build<'a, 'c>(
             for &(s, e) in &g.down {
                 sim.at(s, Ev::Down(ti, SCHEDULED, e - s));
             }
-            let needs_rng = g.pm.iter().any(|p| p.first.is_none())
-                || g.pm_pieces.iter().any(|p| p.first.is_none())
-                || g.breakdown.is_some_and(|b| b.0 > 0.0);
+            let b = sim.beh[ti as usize].clone();
+            let needs_rng = b.pm.iter().any(|p| p.first.is_none())
+                || b.pmp.iter().any(|p| p.first.is_none())
+                || b.bd.is_some_and(|b| b.0 > 0.0);
             let mut r = if needs_rng {
                 Some(PyRandom::from_str_seed(&format!("{}/tool/{}", opts.seed, sim.tools[ti as usize].name)))
             } else {
                 None
             };
-            for (pk, pm) in g.pm.iter().enumerate() {
+            for (pk, pm) in b.pm.iter().enumerate() {
                 let first = match pm.first {
                     Some(f) => f,
                     None => r.as_mut().unwrap().uniform(0.0, pm.every),
                 };
                 sim.at(first, Ev::Pm(ti, pk as u32, pm.every));
             }
-            for (pk, pm) in g.pm_pieces.iter().enumerate() {
+            for (pk, pm) in b.pmp.iter().enumerate() {
                 sim.tools[ti as usize].counts[pk] = match pm.first {
                     Some(f) => pm.every - f,
                     None => r.as_mut().unwrap().uniform(0.0, pm.every),
                 };
             }
-            if let Some((mttf, _)) = g.breakdown {
+            if let Some((mttf, _)) = b.bd {
                 if mttf > 0.0 {
                     let x = r.as_mut().unwrap().expovariate(1.0 / mttf);
                     sim.at(x, Ev::Break(ti));
@@ -2120,21 +2327,43 @@ impl<'a, 'c> Sim<'a, 'c> {
                 Ev::End(ti, batch) => sim.finish(ti, t, batch),
                 Ev::Down(ti, how, minutes) => sim.down_due(ti, t, how, minutes),
                 Ev::Pm(ti, k, every) => {
-                    let g = sim.tools[ti as usize].group as usize;
-                    let pm = &shop.groups[g].pm[k as usize];
+                    let (lo, hi) = { let pm = &sim.beh[ti as usize].pm[k as usize]; (pm.lo, pm.hi) };
                     let mut r = PyRandom::from_str_seed(&format!("{}/pm/{}/{}/{}", seed, sim.tools[ti as usize].name, k, t as i64));
-                    let m = r.uniform(pm.lo, pm.hi);
+                    let m = r.uniform(lo, hi);
+                    sim.note_due("maintenance", ti, t, m);
                     sim.down_due(ti, t, SCHEDULED, m);
                     sim.at(t + every, Ev::Pm(ti, k, every));
                 }
                 Ev::Break(ti) => {
-                    let g = sim.tools[ti as usize].group as usize;
-                    let (mttf, mttr) = shop.groups[g].breakdown.unwrap();
+                    let (mttf, mttr) = sim.beh[ti as usize].bd.unwrap();
                     let mut r = PyRandom::from_str_seed(&format!("{}/break/{}/{}", seed, sim.tools[ti as usize].name, t as i64));
                     let m = r.expovariate(1.0 / mttr);
-                    sim.down_due(ti, t, UNSCHEDULED, m);
+                    let d = sim.breakdown(ti, t, m);
+                    sim.down_due(ti, t, UNSCHEDULED, d);
                     let next = r.expovariate(1.0 / mttf);
                     sim.at(t + next, Ev::Break(ti));
+                }
+                Ev::SpareBack(g) => sim.spares[g as usize] += 1,
+                Ev::RailBreak(e) => {
+                    let (mttf, mttr) = sim.rail_bd[e as usize].unwrap();
+                    let (a, b) = { let ed = &sim.fl.as_ref().unwrap().track.edges()[e as usize]; (ed.from, ed.to) };
+                    let mut r = PyRandom::from_str_seed(&format!("{}/railbreak/n{a}>n{b}/{}", seed, t as i64));
+                    let m = r.expovariate(1.0 / mttr);
+                    sim.fl.as_mut().unwrap().down[e as usize] = true;
+                    if sim.full {
+                        sim.due.push(Due { what: "rail", tool: format!("n{a}>n{b}"), t, minutes: m });
+                    }
+                    sim.at(t + m, Ev::RailUp(e));
+                    let next = r.expovariate(1.0 / mttf);
+                    sim.at(t + m + next, Ev::RailBreak(e));
+                }
+                Ev::RailUp(e) => {
+                    let fl = sim.fl.as_mut().unwrap();
+                    fl.down[e as usize] = false;
+                    let wake: Vec<u32> = std::mem::take(&mut fl.edge_wait[e as usize]);
+                    for w in wake {
+                        sim.at(t, Ev::VehTry(w));
+                    }
                 }
                 Ev::Wake(g) => sim.dispatch(g, t),
                 Ev::VehEnd(v) => {
@@ -2224,6 +2453,7 @@ impl<'a, 'c> Sim<'a, 'c> {
                 }
                 f.out
             }),
+            due: std::mem::take(&mut sim.due),
         }
     }
 }
@@ -2235,8 +2465,19 @@ fn run_inner<'c>(
     vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
     follow: Option<String>,
 ) -> RunResult {
+    run_inner_ov(shop, opts, chooser, vchooser, follow, &crate::overrides::Overrides::default())
+}
+
+fn run_inner_ov<'c>(
+    shop: &Shop,
+    opts: &RunOptions,
+    chooser: Option<&'c mut dyn FnMut(&Decision) -> usize>,
+    vchooser: Option<&'c mut dyn FnMut(&VehicleAsk) -> usize>,
+    follow: Option<String>,
+    ov: &crate::overrides::Overrides,
+) -> RunResult {
     let horizon = opts.until.unwrap_or(f64::INFINITY);
-    let mut sim = build(shop, opts, chooser, vchooser, follow, None);
+    let mut sim = build(shop, opts, chooser, vchooser, follow, None, ov);
     sim.advance_to(horizon);
     sim.into_result(horizon)
 }
@@ -2381,7 +2622,7 @@ pub struct Stepper<'a> {
 
 impl<'a> Stepper<'a> {
     pub fn new(shop: &'a Shop, opts: &RunOptions, player: Option<Player>) -> Stepper<'a> {
-        Stepper { sim: build(shop, opts, None, None, None, player), horizon: opts.until.unwrap_or(f64::INFINITY) }
+        Stepper { sim: build(shop, opts, None, None, None, player, &crate::overrides::Overrides::default()), horizon: opts.until.unwrap_or(f64::INFINITY) }
     }
 
     /// Run every event up to `until` (never past the horizon).

@@ -105,3 +105,18 @@ the file the same way.
 9. A rail stretch with breakdowns: no vehicle enters it while it is down; `route_around` records detours and every
    move still arrives; `wait` holds vehicles up longer than `route_around` on the same seed.
 10. `fabsim log --overrides` reads the file.
+
+## Changes (30 to 31 Oct, while building)
+
+- **Test 5's window.** The shortest SMT2020 maintenance calendar is 7 days, its first drawn within the period, so a
+  3-day run could show none for the group tested. The removal check now runs 7 days; the calendar check is unchanged.
+- **Going round a break.** Reusing today's detour rule made vehicles cross over and straight back to the same break,
+  every few seconds of fab time for the whole repair, and two waits retried at the same instant forever. Now a
+  vehicle whose next stretch is broken takes the shortest way to its target that avoids every broken stretch, and
+  waits, without retrying at the same instant, when there is none; a broken stretch never counts as about to free.
+- **Test 9, and a finding.** Today's campus has no stretch with a way round: each of the 158 stretches leaving a
+  split cuts part of the track off when it breaks (with the busiest, n17>n18, down, 388 of 1,259 nodes stay reachable
+  from its start). So going round and waiting gave the same run, and test 9 now checks what holds: no vehicle enters
+  a broken stretch, every move arrives or is under way, breaking the busiest stretch lowers deliveries, and going
+  round is never worse than waiting. The going-round rule is tested properly once a map with a bypass can be built
+  (deliverables 3 and 7). Probes: `crates/fabsim/examples/rail_probe.rs`, `rail_reach.rs`.
