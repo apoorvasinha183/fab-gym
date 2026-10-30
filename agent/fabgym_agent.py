@@ -98,7 +98,7 @@ class HttpModel:
     """An OpenAI-compatible chat endpoint (Baseten, or Meta's API). The key is read from a file and is
     never printed, logged or put in a message."""
 
-    def __init__(self, base_url, model, key_file=DEFAULT_KEY, temperature=0.7, max_tokens=2000, timeout=300):
+    def __init__(self, base_url, model, key_file=DEFAULT_KEY, temperature=0.7, max_tokens=8000, timeout=300):
         key_file = Path(key_file).expanduser()
         if not key_file.is_file():
             raise FileNotFoundError(f"no key file at {key_file}; put the key there (one line, mode 600)")
@@ -123,8 +123,25 @@ class HttpModel:
         raise TypeError("HttpModel holds a key and is not pickled")
 
     def complete(self, messages):
+        """The reply's text. The model thinks before it answers and the thinking counts against max_tokens,
+        so a reply cut off at the limit is asked again once with twice the room (docs/BASETEN-PRICING.md)."""
+        budget = self.max_tokens
+        for attempt in (1, 2):
+            choice = self._ask(messages, budget)
+            text = choice["message"].get("content") or ""
+            if choice.get("finish_reason") != "length":
+                return text
+            if attempt == 1:
+                budget *= 2
+        if not text:
+            raise RuntimeError(
+                f"the model used all {budget} max_tokens thinking and wrote no reply; raise max_tokens"
+            )
+        return text
+
+    def _ask(self, messages, max_tokens):
         body = json.dumps(
-            {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": self.max_tokens}
+            {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
         ).encode()
         req = urllib.request.Request(
             self.base_url + "/chat/completions",
@@ -138,7 +155,7 @@ class HttpModel:
         except urllib.error.HTTPError as e:
             detail = e.read()[:500].decode("utf-8", "replace").replace(self.__key, "[key]")
             raise RuntimeError(f"the model endpoint answered {e.code}: {detail}") from None
-        return out["choices"][0]["message"]["content"] or ""
+        return out["choices"][0]
 
 
 # ------------------------------------------------------------------ the scorer
