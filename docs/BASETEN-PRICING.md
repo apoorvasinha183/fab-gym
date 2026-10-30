@@ -153,3 +153,19 @@ login headers read from files, never shown (tests `Options`, 1cdbcc8; code 5307d
 ```
 
 Still open: it drops `usage`, so spend is not counted yet, and `agent/helper.py` still asks Baseten with no effort.
+
+## The ask box on Meta, and counting spend (design, written before the code, 30 Oct)
+
+- **The ask box's model.** `agent/helper.py` asks Meta's `muse-spark-1.3-contributor` at `reasoning_effort: low`
+  by default (key `~/.config/fab-gym/meta.key`). A preset `open` asks Muse Spark Open on Baseten
+  (`meta-models/muse-spark-open-1026`) for the runs shown in the submission. `--preset meta|open` picks one.
+- **Spend from `usage`.** `agent/spend.py` reads the prices in `agent/baseten_pricing.json` by provider and model
+  (a model with no price there is refused, never counted as free) and turns each answer's `usage` into dollars:
+  uncached input, cached input (`prompt_tokens_details.cached_tokens`) and output, each at its own price. An answer
+  with no `usage` is an error.
+- **The meter.** Counts calls and dollars, keeps them in a file so a restart does not reset them
+  (`data/ask/spend.json` beside the jobs), and refuses to send a request once the total reaches the cap: $5 by
+  default (assumed, `--spend-cap`). `HttpModel(meter=...)` counts every request it sends, the retry included, and
+  keeps the last `usage`.
+- **What the page sees.** `/api/status` names the model and its provider and reports calls, dollars and the cap.
+  Tests: `agent/tests/test_spend.py`.
