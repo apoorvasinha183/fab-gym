@@ -1317,6 +1317,30 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
         Some("bench") => bench(&args[1..]),
+        // a replay window (docs/EDITOR-REPLAY.md): every vehicle's stays on rail stretches overlapping [--from, --to]
+        Some("replay") => {
+            let shop = Shop::parse(&std::fs::read_to_string(args.get(1).expect("fabsim replay SHOP SEED --from T --to T2")).expect("read the shop"))
+                .unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                });
+            let seed: u64 = args.get(2).and_then(|s| s.parse().ok()).expect("a seed");
+            let from = argf(&args, "--from", 0.0);
+            let to = argf(&args, "--to", from + 15.0);
+            let ov = match args.iter().position(|a| a == "--overrides").and_then(|i| args.get(i + 1)) {
+                Some(p) => fabsim::overrides::Overrides::parse(&std::fs::read_to_string(p).expect("read the overrides"), &shop).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                }),
+                None => fabsim::overrides::Overrides::default(),
+            };
+            let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(to), record: true }, None, &ov);
+            let stays: Vec<serde_json::Value> = fabsim::moods::replay(&shop, &r, from, to)
+                .iter()
+                .map(|x| serde_json::json!([x.vehicle, x.from, x.to, (x.t_in * 1000.0).round() / 1000.0, if x.t_out.is_finite() { serde_json::json!((x.t_out * 1000.0).round() / 1000.0) } else { serde_json::Value::Null }, x.loaded, x.hot]))
+                .collect();
+            println!("{}", serde_json::json!({"from": from, "to": to, "vehicles": shop.fleet.as_ref().map(|f| f.vehicles).unwrap_or(0), "fields": ["vehicle", "from", "to", "t_in", "t_out", "loaded", "hot"], "stays": stays}));
+        }
         // moods from a run (docs/RUN-MOODS.md): a frame every --every minutes, as JSON
         Some("moods") => {
             use fabsim::moods::{Moods, Settings, LOT_MOODS, TOOL_MOODS};
@@ -1353,6 +1377,7 @@ fn main() {
                 }
                 frames.push(serde_json::json!({
                     "t": t,
+                    "queues": shop.groups.iter().map(|g| m.group_queue(&g.name, t)).collect::<Vec<_>>(),
                     "tools": s.tools.iter().map(|x| ti(x.mood)).collect::<Vec<_>>(),
                     "lots": counts,
                     "hot": hot,
@@ -1360,6 +1385,10 @@ fn main() {
                 }));
                 t += every;
             }
+            let sc = fabsim::moods::score(&shop, &r, &Settings::default(), every);
+            let fin = |x: f64| if x.is_finite() { serde_json::json!((x * 100.0).round() / 100.0) } else { serde_json::Value::Null };
+            let score_json = serde_json::json!({"wafers_per_day": fin(sc.wafers_per_day), "cycle_days": fin(sc.cycle_days), "worst_group": sc.worst_group,
+                "worst_queue": sc.worst_queue, "jams": sc.jams, "spend_usd": sc.spend_usd});
             let out = serde_json::json!({
                 "about": "Moods from a Fab Gym run (docs/RUN-MOODS.md). On the SMT2020 model or a layout of its own; not a real fab.",
                 "tool_moods": TOOL_MOODS,
@@ -1367,6 +1396,8 @@ fn main() {
                 "tools": r.tools.iter().map(|x| x.name.clone()).collect::<Vec<_>>(),
                 "groups": r.tools.iter().map(|x| x.group.clone()).collect::<Vec<_>>(),
                 "stretches": stretches,
+                "group_names": shop.groups.iter().map(|g| g.name.clone()).collect::<Vec<_>>(),
+                "score": score_json,
                 "frames": frames,
             });
             println!("{out}");

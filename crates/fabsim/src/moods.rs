@@ -126,6 +126,11 @@ impl<'a> Moods<'a> {
         Moods { shop, run, set: set.clone(), rows, waits, batch_groups, done_at, hoists, holds, steps, ports, rails }
     }
 
+    /// Lots that have arrived at a group and not started, at `t`.
+    pub fn group_queue(&self, group: &str, t: f64) -> usize {
+        self.queue(group, t)
+    }
+
     fn queue(&self, group: &str, t: f64) -> usize {
         self.waits.get(group).map(|v| v.iter().filter(|w| w.0 <= t && w.1 > t).count()).unwrap_or(0)
     }
@@ -273,4 +278,112 @@ impl<'a> Moods<'a> {
 /// Moods at one moment (indexes the run each call; for many moments use `Moods`).
 pub fn snapshot(shop: &Shop, run: &RunResult, t: f64, set: &Settings) -> Snapshot {
     Moods::new(shop, run, set).at(t)
+}
+
+/// The five scores of a run (docs/EDITOR-REPLAY.md).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Score {
+    pub wafers_per_day: f64,
+    /// by Little's law: the average wafers in the fab over the frames, over wafers out a day; infinite with none out
+    pub cycle_days: f64,
+    pub worst_group: String,
+    pub worst_queue: usize,
+    pub jams: usize,
+    pub spend_usd: Option<f64>,
+}
+
+/// The run's score, its frames every `every` minutes from 0 to the run's end.
+pub fn score(shop: &Shop, run: &RunResult, set: &Settings, every: f64) -> Score {
+    let m = Moods::new(shop, run, set);
+    let days = run.until / 1440.0;
+    let out: i64 = run.lots.iter().filter(|l| l.done.is_some_and(|d| d <= run.until)).map(|l| l.size).sum();
+    let wafers_per_day = if days > 0.0 { out as f64 / days } else { 0.0 };
+    let mut frames = vec![];
+    let mut t = 0.0;
+    while t <= run.until + 1e-9 {
+        frames.push(t);
+        t += every;
+    }
+    let mut wip = 0.0;
+    let (mut worst_group, mut worst_queue) = (String::new(), 0usize);
+    for &t in &frames {
+        wip += (0..run.lots.len()).filter(|&li| m.lot_mood(li, t).is_some_and(|x| x != "grad")).map(|li| run.lots[li].size as f64).sum::<f64>();
+        for g in &shop.groups {
+            let q = m.queue(&g.name, t);
+            if q > worst_queue {
+                worst_group = g.name.clone();
+                worst_queue = q;
+            }
+        }
+    }
+    wip /= frames.len().max(1) as f64;
+    let cycle_days = if wafers_per_day > 0.0 { wip / wafers_per_day } else { f64::INFINITY };
+    let jams = m
+        .rails
+        .iter()
+        .filter(|(_, free, stays)| {
+            let done: Vec<f64> = stays.iter().filter(|s| s.1.is_finite()).map(|s| (s.1 - s.0 - free).max(0.0)).collect();
+            !done.is_empty() && done.iter().sum::<f64>() / done.len() as f64 > 1.0
+        })
+        .count();
+    let spend_usd = shop.plan.as_ref().filter(|p| !p.prices.is_empty()).map(|p| {
+        p.prices.iter().map(|r| shop.group(&r.group).map(|g| g.count as f64 * r.buy).unwrap_or(0.0)).sum()
+    });
+    Score { wafers_per_day, cycle_days, worst_group, worst_queue, jams, spend_usd }
+}
+
+/// One stay of a vehicle on a rail stretch (docs/EDITOR-REPLAY.md).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stay {
+    pub vehicle: u32,
+    pub edge: usize,
+    pub from: String,
+    pub to: String,
+    pub t_in: f64,
+    /// infinite while the vehicle is still on the stretch at the run's end
+    pub t_out: f64,
+    pub loaded: bool,
+    pub hot: bool,
+}
+
+/// Every vehicle's stays on rail stretches that overlap `[from, to]`, by vehicle and time; empty without a fleet.
+pub fn replay(shop: &Shop, run: &RunResult, from: f64, to: f64) -> Vec<Stay> {
+    let Some(f) = &run.fleet else { return vec![] };
+    let floor = crate::engine::native_floor(shop);
+    let s = floor.as_ref().unwrap_or(shop);
+    if s.oht.is_none() {
+        return vec![];
+    }
+    let track = crate::track::Track::from_shop(s);
+    // per vehicle, its hoists in time order: (t0, up, lot)
+    let mut hoists: HashMap<u32, Vec<(f64, bool, u32)>> = HashMap::new();
+    for h in &f.hoists {
+        hoists.entry(h.vehicle).or_default().push((h.t0, h.up, h.lot));
+    }
+    for v in hoists.values_mut() {
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+    }
+    let aboard = |v: u32, t: f64| -> Option<u32> {
+        let hs = hoists.get(&v)?;
+        let mut lot = None;
+        for &(t0, up, l) in hs {
+            if t0 > t {
+                break;
+            }
+            lot = if up { Some(l) } else { None };
+        }
+        lot
+    };
+    let mut out: Vec<Stay> = f
+        .entries
+        .iter()
+        .filter(|e| e.t_out >= from && e.t_in <= to)
+        .map(|e| {
+            let ed = &track.edges()[e.edge];
+            let hot = e.loaded && aboard(e.vehicle, e.t_in).is_some_and(|l| run.lots.get(l as usize).is_some_and(|x| x.priority >= crate::dials::HOT_PRIORITY));
+            Stay { vehicle: e.vehicle, edge: e.edge, from: track.name(ed.from), to: track.name(ed.to), t_in: e.t_in, t_out: e.t_out, loaded: e.loaded, hot }
+        })
+        .collect();
+    out.sort_by(|a, b| a.vehicle.cmp(&b.vehicle).then(a.t_in.total_cmp(&b.t_in)));
+    out
 }
