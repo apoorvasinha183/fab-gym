@@ -44,7 +44,7 @@ test("2. the bottom bar holds only time controls, labelled", () => {
 
 test("3. the floor key names every mark on the floor", () => {
   const key = between(html, 'id="key"', "</section>");
-  for (const w of ["working", "idle", "changing setup", "maintenance", "broken down", "a lot", "hot lot", "prototype lot", "+N", "Holding"])
+  for (const w of ["working", "idle", "changing setup", "maintenance", "broken down", "a lot", "urgent lot", "prototype lot", "+N", "Holding"])
     assert.ok(key.includes(w), `key lacks ${w}`);
 });
 
@@ -80,7 +80,7 @@ test("5. detail grows with zoom: names, then chips, then queue belts", () => {
 test("6. the views", () => {
   const lenses = between(html, '<nav class="lenses"', "</nav>").match(/>([^<]+)<\/button>/g).map(s => s.slice(1, -9));
   // a Rails lens came and went on 29 Oct: Live shows the real building and its rails (docs/LIVE-REAL.md)
-  assert.deepEqual(lenses, ["Live", "Waiting heat", "Prototype lots", "Flows"]);
+  assert.deepEqual(lenses, ["Live", "Queues", "Prototypes", "Routes"]);
 });
 
 test("7. the hover card stays inside the screen and off the cursor", () => {
@@ -96,7 +96,7 @@ test("8. a candidate is named by what it changes", () => {
   assert.equal(U.candidateName([["policy", "bfirst"]]), "Prototypes first");
   assert.equal(U.candidateName([["floor", "copies"], ["policy", "cap"]]), "Copies in the halls, capped at the door");
   assert.equal(U.candidateName([["rule", "fifo"]]), "First come, first served");
-  assert.equal(U.candidateName([["cap", "2400"]]), "A WIP cap of 2,400 lots");
+  assert.equal(U.candidateName([["cap", "2400"]]), "A cap of 2,400 lots inside");
   assert.equal(U.policyWord("P1 family B first"), "Prototypes first");
   assert.equal(U.floorWord("D3 copies"), "Copies in the halls");
 });
