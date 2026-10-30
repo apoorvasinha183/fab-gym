@@ -61,7 +61,9 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
    `data/fabs/`). The walkthrough's shot of the copies is still to do.
 5. **The colleague**: the character, the chat panel, "show me" walking you there, places taken from the layout, the
    tool workflow, the stand-in until the key is in.
-6. **The movie hall**: the room, the screen, Silicon Odyssey then the Robot Construction Crew trailer.
+6. **The movie hall**: the room, the screen, Silicon Odyssey then the Robot Construction Crew trailer. Decided 30 Oct by
+   quiz: it stands on the ground floor of a visitor wing beside the fab, joined to it by a glass corridor that looks
+   into the clean room (a theater under the clean room would shake the tools, so real fabs keep visitors next door).
 7. **Voice**: spoken questions through Muse Voice Transcribe (the page and the game); the film's narration.
 8. **The critic**: Muse Glimmer on the Linux server reads each candidate and its scores and flags rules that game
    the metric or break a queue-time limit; its note sits on the card before the signature.
@@ -73,6 +75,11 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
     one clock or a labelled replay for Follow a batch, Follow a batch on the front, the key and summary kept at every
     width, plain units in Numbers, a visible Fit. The true building and its rails stay; the review's layering of track,
     carriers and queues is applied to it.
+4c. **Kid words everywhere, with an expert switch** (decided 30 Oct by quiz, after Intel's "What does it take to build
+    a fab?" poster, 2022, read for its layers and tone only): every page, the colleague, the film and the game speak
+    in words a 10-year-old follows, with comparisons made from our own numbers on the SMT2020 model; a switch on each
+    page shows the expert version (units, intervals, standards). The building explained as a cake: roof and fans, the
+    clean room, the waffle floor, the sub-fab, the utility building next door, and the visitor wing with the theater.
 12. **If time permits (the founder, 30 Oct): a layout sandbox for the nerds.** A 2D space known to hold at least
     one full set of SMT2020's tools; people lay down bays, tools, rails and stockers and write their own scheduling
     rule, and the simulator scores the pair under the defined defect model on paired seeds (wafers a day, cycle time,
