@@ -59,6 +59,36 @@ and by factor). It says nothing about doubt of another shape, or about the model
 
 ---
 
-## Results
+## Results (30 Oct; `results/uq-inputs/`, `fabsim uq-inputs`)
 
-(to come)
+All ten draws ran (3 to 8.5 minutes each on the laptop, 4 threads). Overall mean difference against the comparison,
+99% t-interval over the 10 draws (95% over the five comparisons together), the share of draws whose mean points the
+same way, and the share whose own interval is clear that way:
+
+| Comparison | Published inputs (long-v1 or lean-long) | With input doubt | Same way | Clear | Survives |
+| --- | --- | --- | --- | --- | --- |
+| Critical ratio against today, wafers a day | −205 | **+105 (−27 to +236)** | 90% (higher) | 80% | **No**: the sign flips and the interval holds zero |
+| Shortest first against today | −595 | −271 (−474 to −67) | 100% | 90% | Yes |
+| FIFO against today | −668 | −336 (−581 to −92) | 90% | 80% | Yes |
+| Cap 1,800 against none, k = 1 | −2.4, no clear effect | +38 (−26 to +102) | 70% | 50% | Yes (still no clear effect) |
+| Cap 1,800 against none, k = 2 | −44.9 (cap loses) | +28 (−32 to +87) | 70% | 50% | **No** |
+
+- Cycle time and reward agree with wafers out for shortest first and FIFO (both clearly worse); for critical ratio
+  both intervals hold zero.
+- **The input doubt is nearly all the uncertainty**: the variance between draws is about 98 to 100 times the luck
+  inside a draw's five-seed mean (`summary.json`, `between_var` against `within_var_of_mean`). Layer-1 intervals,
+  which hold the luck only, are far too narrow for any claim about a fab whose numbers are estimated.
+
+### Exploratory, after the pre-registered analysis (`fabsim uq-inputs --ceilings`, `ceilings.json`)
+
+- **Every draw lowered the capacity ceiling**: 873 to 1,204 wafers a day against the published 1,302, with the
+  bottleneck moving to thin film, lithography or the back-end polishers. Each group's factors average 1, but the
+  ceiling is set by the slowest of 105 groups, and with every group redrawn at least one usually comes out slower.
+  Releases stay at 1,430 a day, so every redrawn fab is more overloaded than the published one.
+- In that heavier overload, critical ratio's 60-day output exceeds its draw's expected ceiling by up to 25% (draw 2:
+  1,333 against 1,153). Over a long run nothing passes the bottleneck faster than its capacity, so this points to
+  critical ratio emptying lots already past the bottleneck in the window, a transient; today's rule stays at or near
+  the ceiling (0.83 to 1.06 of it).
+- So the study, as designed, mixes two things: doubt about the numbers, and a fab pushed further into overload. Two
+  checks would separate them: redraws with releases scaled to each draw's ceiling (the same load as published), and a
+  longer window to see whether critical ratio's edge is a drain.

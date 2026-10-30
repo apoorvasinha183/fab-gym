@@ -869,6 +869,18 @@ fn uq_inputs(args: &[String]) {
         return;
     }
     let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    // exploratory (after the pre-registered runs): each draw's capacity ceiling and bottleneck
+    if args.iter().any(|a| a == "--ceilings") {
+        let mut j = String::from("[");
+        for d in 0..=draws {
+            let c = fabsim::bound::capacity(&fabsim::inputs::perturb(&shop, d, if d == 0 { 0.0 } else { sigma }));
+            println!("draw {d}: ceiling {:.1} wafers a day (strict {:.1}), released {:.1}, bottleneck {}", c.wafers_per_day, c.strict_wafers_per_day, c.released_per_day, c.bottleneck);
+            j.push_str(&format!("{}{{\"draw\":{d},\"ceiling\":{},\"strict\":{},\"released\":{},\"bottleneck\":\"{}\"}}", if d > 0 { "," } else { "" }, c.wafers_per_day, c.strict_wafers_per_day, c.released_per_day, c.bottleneck));
+        }
+        j.push_str("]\n");
+        std::fs::write(out.join("ceilings.json"), j).unwrap();
+        return;
+    }
     let w1 = Window { from: 130.0 * 1440.0, to: 190.0 * 1440.0 };
     let w2 = Window { from: 120.0 * 1440.0, to: 300.0 * 1440.0 };
     for d in 1..=draws {
