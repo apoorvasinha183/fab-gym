@@ -1,0 +1,325 @@
+{
+  "_about": "Prices, limits and measured behaviour of the model the agent calls. Read by code that plans or caps token spend. Measured 30 Oct 2026 with the founder's hackathon key; see docs/BASETEN-PRICING.md.",
+  "provider": "baseten",
+  "base_url": "https://inference.baseten.co/v1",
+  "model": "meta-models/muse-spark-open-1026",
+  "refused_aliases": {
+    "meta-models/muse-spark-open": 403
+  },
+  "usd_per_million_tokens": {
+    "input": 1.25,
+    "input_cached": 0.15,
+    "output": 4.25
+  },
+  "output_includes_thinking": true,
+  "context_tokens": 1048576,
+  "max_completion_tokens": 1048576,
+  "features": [
+    "tools",
+    "json_mode",
+    "reasoning",
+    "image_input"
+  ],
+  "sampling": [
+    "temperature",
+    "top_p",
+    "top_k",
+    "stop",
+    "presence_penalty",
+    "frequency_penalty"
+  ],
+  "limits": {
+    "requests_per_minute": 100,
+    "tokens_per_minute": 2000000,
+    "tokens_counted": "input plus output, cached input included",
+    "refill": "continuous",
+    "retry_on": [
+      429,
+      529
+    ]
+  },
+  "credits_usd": 100,
+  "measured": {
+    "hidden_prompt_tokens": 145,
+    "hidden_prompt_cached_tokens": 128,
+    "thinking_can_be_disabled": false,
+    "thinking_switches_tried": [
+      "reasoning_effort=low",
+      "reasoning.enabled=false",
+      "reasoning.effort=none",
+      "thinking.type=disabled",
+      "chat_template_kwargs.enable_thinking=false",
+      "system /no_think"
+    ],
+    "thinking_tokens_trivial_prompt": [
+      19,
+      270
+    ],
+    "thinking_tokens_real_task": [
+      1936,
+      2027
+    ],
+    "output_tokens_per_second": [
+      240,
+      290
+    ],
+    "seconds_floor": 1.0,
+    "examples": [
+      {
+        "task": "300-word answer",
+        "prompt": 161,
+        "completion": 2432,
+        "thinking": 2027,
+        "seconds": 8.5,
+        "usd": 0.01054
+      },
+      {
+        "task": "one dispatch choice as JSON",
+        "prompt": 199,
+        "completion": 2050,
+        "thinking": 1936,
+        "seconds": 8.4,
+        "usd": 0.00896
+      },
+      {
+        "task": "300-word answer, max_tokens 1500",
+        "prompt": 161,
+        "completion": 1500,
+        "thinking": 1497,
+        "seconds": 5.7,
+        "usd": 0.0066,
+        "reply": "empty, finish_reason length"
+      }
+    ]
+  },
+  "advice": {
+    "min_max_tokens": 4000,
+    "cache": "fixed text first, changing text last; same x-session-affinity header for every call of one task",
+    "spend_tracking": "sum the usage field of each response; GET /v1/model_apis/usage answers 403 for this key"
+  },
+  "modal": {
+    "_about": "The same weights on the founder's Modal shared endpoint, measured 30 Oct 2026. URL, token id and secret in ~/.config/fab-gym/modal.url, modal.id, modal.secret (mode 600).",
+    "base_url_file": "~/.config/fab-gym/modal.url",
+    "auth": "headers Modal-Key: <modal.id> and Modal-Secret: <modal.secret>; Bearer answers 401",
+    "model": "meta-models/Muse-Spark-Open-816B-A42B",
+    "usd_per_million_tokens": null,
+    "_price_note": "per-token billing; the price page needs a Modal sign-in, read it from the dashboard",
+    "credits_usd": 100,
+    "context_tokens": 1000000,
+    "max_completion_tokens": 262144,
+    "features": [
+      "tools",
+      "json_mode",
+      "structured_outputs",
+      "reasoning",
+      "image_input",
+      "video_input",
+      "audio_input"
+    ],
+    "sampling": [
+      "temperature",
+      "top_p",
+      "stop",
+      "max_tokens"
+    ],
+    "reasoning_effort": [
+      "low",
+      "medium",
+      "high",
+      "xhigh"
+    ],
+    "thinking_returned_in": "reasoning_content",
+    "rate_limit_headers": false,
+    "measured": {
+      "examples": [
+        {
+          "task": "one dispatch choice as JSON",
+          "effort": "default",
+          "prompt": 198,
+          "completion": 1516,
+          "seconds": 5.5
+        },
+        {
+          "task": "one dispatch choice as JSON",
+          "effort": "low",
+          "prompt": 198,
+          "completion": 1044,
+          "seconds": 4.2
+        }
+      ],
+      "reasoning_tokens_reported": false
+    }
+  },
+  "fireworks": {
+    "_about": "The same weights on Fireworks' serverless API, measured 30 Oct 2026. Key in ~/.config/fab-gym/fireworks.key (mode 600).",
+    "base_url": "https://api.fireworks.ai/inference/v1",
+    "auth": "Authorization: Bearer <fireworks.key>",
+    "model": "accounts/fireworks/models/muse-spark-open",
+    "usd_per_million_tokens": {
+      "input": 1.25,
+      "input_cached": 0.15,
+      "output": 4.25
+    },
+    "_price_source": "https://fireworks.ai/models/fireworks/muse-spark-open",
+    "credits_usd": 100,
+    "context_tokens": 1048576,
+    "features": [
+      "tools",
+      "image_input",
+      "reasoning"
+    ],
+    "reasoning_effort": [
+      "low",
+      "medium",
+      "high",
+      "xhigh"
+    ],
+    "reasoning_effort_default": "xhigh",
+    "refused": {
+      "reasoning_effort=none": "reasoning model; disabling thinking is not supported",
+      "thinking.budget_tokens": "integer budgets not supported"
+    },
+    "rate_limit_headers": [
+      "x-ratelimit-over-limit"
+    ],
+    "measured": {
+      "output_tokens_per_second": [
+        70,
+        80
+      ],
+      "examples": [
+        {
+          "task": "one dispatch choice as JSON",
+          "effort": "xhigh (default)",
+          "prompt": 198,
+          "completion": 5033,
+          "thinking": 4888,
+          "seconds": 64.9,
+          "usd": 0.0214
+        },
+        {
+          "task": "one dispatch choice as JSON",
+          "effort": "low",
+          "prompt": 198,
+          "completion": 2348,
+          "thinking": 2196,
+          "seconds": 33.3,
+          "usd": 0.01
+        }
+      ]
+    },
+    "advice": "always send reasoning_effort; the default is the most expensive"
+  },
+  "meta": {
+    "_about": "Meta's own API, measured 30 Oct 2026. Key in ~/.config/fab-gym/meta.key (mode 600). Prices and limits from https://dev.meta.ai/docs/pricing-rate-limits/ (limits per team).",
+    "base_url": "https://api.meta.ai/v1",
+    "auth": "Authorization: Bearer <meta.key>",
+    "models": {
+      "muse-spark-1.3": {
+        "usd_per_million_tokens": {
+          "input": 1.25,
+          "input_cached": 0.15,
+          "output": 4.25
+        },
+        "requests_per_minute": 3000,
+        "tokens_per_minute": 4000000
+      },
+      "muse-spark-1.2": {
+        "usd_per_million_tokens": {
+          "input": 1.25,
+          "input_cached": 0.15,
+          "output": 4.25
+        },
+        "requests_per_minute": 3000,
+        "tokens_per_minute": 4000000
+      },
+      "muse-spark-1.1": {
+        "usd_per_million_tokens": {
+          "input": 1.25,
+          "input_cached": 0.15,
+          "output": 4.25
+        },
+        "requests_per_minute": 3000,
+        "tokens_per_minute": 4000000
+      },
+      "muse-spark-1.3-contributor": {
+        "usd_per_million_tokens": {
+          "input": 0.1,
+          "input_cached": 0.002,
+          "output": 0.2
+        },
+        "requests_per_minute": 150,
+        "tokens_per_minute": 3000000,
+        "terms": "Meta may train on prompts, code, files and replies; chosen by the founder 30 Oct"
+      },
+      "muse-spark-1.2-contributor": {
+        "usd_per_million_tokens": {
+          "input": 0.1,
+          "input_cached": 0.002,
+          "output": 0.2
+        },
+        "requests_per_minute": 150,
+        "tokens_per_minute": 3000000,
+        "terms": "Meta may train on prompts, code, files and replies; chosen by the founder 30 Oct"
+      },
+      "muse-wonder-1.0": {
+        "usd_per_million_tokens": {
+          "input": 4.0,
+          "input_cached": 0.2,
+          "output": 20.0
+        },
+        "requests_per_minute": 3000,
+        "tokens_per_minute": 4000000
+      }
+    },
+    "other": {
+      "muse-image-1.0": "$0.01 per image, 150 a minute",
+      "sam-3.1": "$2.50 per 1,000 images or $0.20 per 1,000 video frames",
+      "muse-voice-transcribe-1.0": "256 concurrent streams, 16,000 an hour"
+    },
+    "credits_usd": 150,
+    "_credits_note": "hackathon credit; claimed by form, applied in batches, a card must be on the account",
+    "reasoning_effort": "low works (not in the rate sheet)",
+    "hidden_prompt_tokens": 0,
+    "rate_limit_headers": true,
+    "measured": {
+      "examples": [
+        {
+          "model": "muse-spark-1.3",
+          "task": "one dispatch choice as JSON",
+          "effort": "default",
+          "prompt": 62,
+          "completion": 3336,
+          "thinking": 3277,
+          "seconds": 19.3,
+          "usd": 0.0142
+        },
+        {
+          "model": "muse-spark-1.3",
+          "task": "one dispatch choice as JSON",
+          "effort": "low",
+          "prompt": 62,
+          "completion": 528,
+          "thinking": 466,
+          "seconds": 3.7,
+          "usd": 0.0023
+        },
+        {
+          "model": "muse-spark-1.3-contributor",
+          "task": "one dispatch choice as JSON",
+          "effort": "low",
+          "prompt": 62,
+          "completion": 1120,
+          "thinking": 1062,
+          "seconds": 13.3,
+          "usd": 0.00023
+        }
+      ]
+    }
+  },
+  "use": {
+    "ideation": "meta / muse-spark-1.3-contributor",
+    "final": "Muse Spark Open (open weights): baseten meta-models/muse-spark-open-1026, or modal / fireworks",
+    "_why": "founder 30 Oct: ideate on the contributor model, submit with the open-weights one (open-weights bonus)"
+  }
+}
