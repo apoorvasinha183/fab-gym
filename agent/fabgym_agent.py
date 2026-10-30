@@ -94,33 +94,53 @@ class StandInModel:
         return r
 
 
-class HttpModel:
-    """An OpenAI-compatible chat endpoint (Baseten, or Meta's API). The key is read from a file and is
-    never printed, logged or put in a message."""
+def _read_secret(path, what):
+    """One secret from a file (one line, mode 600); an error names the file, never the value."""
+    if not path.is_file():
+        raise FileNotFoundError(f"no {what} file at {path}; put it there (one line, mode 600)")
+    value = path.read_text().strip()
+    if not value:
+        raise ValueError(f"the {what} file at {path} is empty")
+    return value
 
-    def __init__(self, base_url, model, key_file=DEFAULT_KEY, temperature=0.7, max_tokens=8000, timeout=300):
-        key_file = Path(key_file).expanduser()
-        if not key_file.is_file():
-            raise FileNotFoundError(f"no key file at {key_file}; put the key there (one line, mode 600)")
-        key = key_file.read_text().strip()
-        if not key:
-            raise ValueError(f"the key file at {key_file} is empty")
-        self.__key = key
+
+class HttpModel:
+    """An OpenAI-compatible chat endpoint (Baseten, Fireworks, Modal or Meta's API). The key, and any login
+    header read from a file (Modal's Modal-Key and Modal-Secret), are never printed, logged or put in a message.
+    `key_file=None` sends no Bearer line; `reasoning_effort` (low, medium, high, xhigh) is sent only when set."""
+
+    def __init__(self, base_url, model, key_file=DEFAULT_KEY, temperature=0.7, max_tokens=8000, timeout=300,
+                 reasoning_effort=None, header_files=None):
+        self.__key = None
+        if key_file is not None:
+            key_file = Path(key_file).expanduser()
+            self.__key = _read_secret(key_file, "key")
+        self.__headers = {n: _read_secret(Path(f).expanduser(), n) for n, f in (header_files or {}).items()}
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.name = model
         self.key_file = key_file
+        self.header_names = sorted(self.__headers)
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.reasoning_effort = reasoning_effort
         self.timeout = timeout
 
     def __repr__(self):
-        return f"HttpModel(base_url={self.base_url!r}, model={self.model!r}, key_file={str(self.key_file)!r})"
+        kf = None if self.key_file is None else str(self.key_file)
+        return (f"HttpModel(base_url={self.base_url!r}, model={self.model!r}, key_file={kf!r}, "
+                f"headers={self.header_names!r})")
 
     __str__ = __repr__
 
     def __getstate__(self):
         raise TypeError("HttpModel holds a key and is not pickled")
+
+    def _scrub(self, text):
+        for secret in (self.__key, *self.__headers.values()):
+            if secret:
+                text = text.replace(secret, "[secret]")
+        return text
 
     def complete(self, messages):
         """The reply's text. The model thinks before it answers and the thinking counts against max_tokens,
@@ -140,20 +160,20 @@ class HttpModel:
         return text
 
     def _ask(self, messages, max_tokens):
-        body = json.dumps(
-            {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
-        ).encode()
+        payload = {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
+        if self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
+        headers = {"Content-Type": "application/json", **self.__headers}
+        if self.__key:
+            headers["Authorization"] = "Bearer " + self.__key
         req = urllib.request.Request(
-            self.base_url + "/chat/completions",
-            data=body,
-            headers={"Content-Type": "application/json", "Authorization": "Bearer " + self.__key},
-            method="POST",
+            self.base_url + "/chat/completions", data=json.dumps(payload).encode(), headers=headers, method="POST"
         )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
-            detail = e.read()[:500].decode("utf-8", "replace").replace(self.__key, "[key]")
+            detail = self._scrub(e.read()[:2000].decode("utf-8", "replace"))[:500]
             raise RuntimeError(f"the model endpoint answered {e.code}: {detail}") from None
         return out["choices"][0]
 
@@ -477,7 +497,7 @@ def sign(card_path, name):
 # ------------------------------------------------------------------ command line
 
 
-def main(argv=None):
+def build_parser():
     ap = argparse.ArgumentParser(prog="fabgym_agent")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
@@ -497,10 +517,29 @@ def main(argv=None):
     m.add_argument("--stand-in", help="a JSON list of written replies")
     m.add_argument("--model")
     r.add_argument("--base-url")
-    r.add_argument("--key-file", default=str(DEFAULT_KEY))
+    r.add_argument("--key-file", default=str(DEFAULT_KEY), help="'none' sends no Bearer line")
+    r.add_argument("--reasoning-effort", choices=["low", "medium", "high", "xhigh"])
+    r.add_argument("--header-file", action="append", default=[], metavar="NAME=PATH",
+                   help="a login header read from a file, e.g. Modal-Secret=~/.config/fab-gym/modal.secret")
     sg = sub.add_parser("sign")
     sg.add_argument("card")
     sg.add_argument("--name", required=True)
+    return ap
+
+
+def http_model_from_args(a):
+    headers = {}
+    for item in a.header_file:
+        name, sep, path = item.partition("=")
+        if not (sep and name and path):
+            raise ValueError(f"--header-file takes NAME=PATH, got {item!r}")
+        headers[name] = path
+    key_file = None if a.key_file.lower() == "none" else a.key_file
+    return HttpModel(a.base_url, a.model, key_file, reasoning_effort=a.reasoning_effort, header_files=headers)
+
+
+def main(argv=None):
+    ap = build_parser()
     a = ap.parse_args(argv)
     if a.cmd == "sign":
         card = sign(a.card, a.name)
@@ -513,7 +552,7 @@ def main(argv=None):
     else:
         if not a.base_url:
             ap.error("--model needs --base-url")
-        model = HttpModel(a.base_url, a.model, a.key_file)
+        model = http_model_from_args(a)
     s = search(a.question, model, scorer, a.generations, a.per_generation)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
