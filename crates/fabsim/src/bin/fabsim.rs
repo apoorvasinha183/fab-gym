@@ -869,6 +869,10 @@ fn uq_inputs(args: &[String]) {
         return;
     }
     let shop = fabsim::smt2020::load(&dir).expect("SMT2020 loads");
+    if args.iter().any(|a| a == "--follow-up") {
+        uq_follow_up(&shop, &out.join("follow-up"), draws, sigma, threads, args.iter().any(|a| a == "--summary-only"));
+        return;
+    }
     // exploratory (after the pre-registered runs): each draw's capacity ceiling and bottleneck
     if args.iter().any(|a| a == "--ceilings") {
         let mut j = String::from("[");
@@ -927,6 +931,129 @@ fn uq_inputs(args: &[String]) {
         std::fs::write(&path, j).unwrap();
         println!("draw {d}: {:.0} s", t0.elapsed().as_secs_f64());
     }
+}
+
+/// The follow-up of docs/UQ-INPUTS.md: F1 equal load, long-v1; F2 the first study's load, window days 130 to 250;
+/// F3 the cap at equal load. Each draw kept in `OUT/draw-<d>.json`; then the seven comparisons in `OUT/summary.json`.
+fn uq_follow_up(shop: &Shop, out: &std::path::Path, draws: u64, sigma: f64, threads: usize, summary_only: bool) {
+    use fabsim::dials::Dials;
+    use fabsim::policy::{picker, Policy};
+    use fabsim::sweep::{run_grid, Config};
+    use fabsim::uq::nested_paired;
+    use fabsim::window::Window;
+    use std::fmt::Write as _;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
+    std::fs::create_dir_all(out).unwrap();
+    let pols = [Policy::Today, Policy::CriticalRatio, Policy::Spt, Policy::Fifo];
+    let lean = [("k=1 none", 1.0, None), ("k=1 cap=1800", 1.0, Some(1800)), ("k=2 none", 2.0, None), ("k=2 cap=1800", 2.0, Some(1800))];
+    // (draw) -> name -> seed -> value
+    type Table = std::collections::BTreeMap<String, Vec<f64>>;
+    let mut tables: Vec<Table> = vec![];
+    for d in 1..=draws {
+        let path = out.join(format!("draw-{d}.json"));
+        if !path.exists() && !summary_only {
+            let t0 = Instant::now();
+            let eq = fabsim::inputs::equal_load(shop, d, sigma);
+            let plain = fabsim::inputs::perturb(shop, d, sigma);
+            // F1 and F2 as one job list: (shop, policy, seed, window)
+            let w1 = Window { from: 130.0 * 1440.0, to: 190.0 * 1440.0 };
+            let w2 = Window { from: 130.0 * 1440.0, to: 250.0 * 1440.0 };
+            let mut jobs: Vec<(&Shop, Policy, u64, Window, String)> = vec![];
+            for &p in &pols {
+                for seed in 0..5u64 {
+                    jobs.push((&eq, p, seed, w1, format!("F1 {}", p.name())));
+                }
+            }
+            for &p in &pols[..2] {
+                for seed in 0..5u64 {
+                    jobs.push((&plain, p, seed, w2, format!("F2 {}", p.name())));
+                }
+            }
+            let res: Mutex<Vec<Option<Vec<f64>>>> = Mutex::new(vec![None; jobs.len()]);
+            let next = AtomicUsize::new(0);
+            std::thread::scope(|sc| {
+                for _ in 0..threads.max(1) {
+                    sc.spawn(|| loop {
+                        let i = next.fetch_add(1, Ordering::SeqCst);
+                        if i >= jobs.len() {
+                            break;
+                        }
+                        let (s, p, seed, w, _) = &jobs[i];
+                        let mut pick = picker(s, *p, *seed);
+                        let mut ask = |dd: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(dd));
+                        let e = fabsim::gym::episode(s, *seed, *w, &mut ask);
+                        let v = if e.daily_wafers.len() == 120 {
+                            vec![e.daily_wafers[..60].iter().sum::<f64>() / 60.0, e.daily_wafers[60..].iter().sum::<f64>() / 60.0]
+                        } else {
+                            vec![e.score.wafers_per_day]
+                        };
+                        res.lock().unwrap()[i] = Some(v);
+                    });
+                }
+            });
+            let res = res.into_inner().unwrap();
+            let w3 = Window { from: 120.0 * 1440.0, to: 300.0 * 1440.0 };
+            let configs: Vec<Config> = lean.iter().map(|&(l, k, cap)| Config { label: l.into(), dials: Dials { breakdowns: k, cap, ..Dials::default() } }).collect();
+            let seeds: Vec<u64> = (1000..1005).collect();
+            let rows = run_grid(&eq, &configs, &seeds, w3.to, &w3, threads).expect("the cap grid runs");
+            let mut t: Table = Default::default();
+            for ((_, _, _, _, name), v) in jobs.iter().zip(&res) {
+                let v = v.as_ref().unwrap();
+                if v.len() == 2 {
+                    t.entry(format!("{name} days 130-190")).or_default().push(v[0]);
+                    t.entry(format!("{name} days 190-250")).or_default().push(v[1]);
+                } else {
+                    t.entry(name.clone()).or_default().push(v[0]);
+                }
+            }
+            for r in &rows {
+                t.entry(format!("F3 {}", lean[r.config].0)).or_default().push(r.score.wafers_per_day);
+            }
+            let mut j = format!("{{\"draw\":{d},\"sigma\":{sigma},\"model\":\"SMT2020\",\"values\":{{");
+            for (i, (k, v)) in t.iter().enumerate() {
+                let _ = write!(j, "{}\"{k}\":{:?}", if i > 0 { "," } else { "" }, v);
+            }
+            j.push_str("}}\n");
+            std::fs::write(&path, j).unwrap();
+            println!("follow-up draw {d}: {:.0} s", t0.elapsed().as_secs_f64());
+        }
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("follow-up draw {d} is not run yet"));
+        let body = &text[text.find("\"values\":{").unwrap() + 10..];
+        let mut t: Table = Default::default();
+        for part in body.split("],") {
+            let Some((k, v)) = part.split_once("\":[") else { continue };
+            let k = k.trim_start_matches(['{', ',', '"']).to_string();
+            let v: Vec<f64> = v.trim_end_matches([']', '}', '\n']).split(',').filter_map(|x| x.trim().parse().ok()).collect();
+            t.insert(k, v);
+        }
+        tables.push(t);
+    }
+    let alpha = 0.05 / 7.0;
+    let comps: [(&str, &str, &str); 7] = [
+        ("F1 cr against today, equal load", "F1 today", "F1 cr"),
+        ("F1 spt against today, equal load", "F1 today", "F1 spt"),
+        ("F1 fifo against today, equal load", "F1 today", "F1 fifo"),
+        ("F2 cr against today, days 130-190", "F2 today days 130-190", "F2 cr days 130-190"),
+        ("F2 cr against today, days 190-250", "F2 today days 190-250", "F2 cr days 190-250"),
+        ("F3 cap 1800 against none, k=1, equal load", "F3 k=1 none", "F3 k=1 cap=1800"),
+        ("F3 cap 1800 against none, k=2, equal load", "F3 k=2 none", "F3 k=2 cap=1800"),
+    ];
+    let mut j = format!("{{\"model\":\"SMT2020\",\"level\":\"{:.2}% each (95% over the seven, Bonferroni)\",\"comparisons\":[", 100.0 * (1.0 - alpha));
+    for (i, (name, b, c)) in comps.iter().enumerate() {
+        let base: Vec<Vec<f64>> = tables.iter().map(|t| t[*b].clone()).collect();
+        let cand: Vec<Vec<f64>> = tables.iter().map(|t| t[*c].clone()).collect();
+        let n = nested_paired(&base, &cand, alpha);
+        let bm = base.iter().flatten().sum::<f64>() / base.iter().flatten().count() as f64;
+        let _ = write!(
+            j,
+            "{}{{\"comparison\":\"{name}\",\"base_mean\":{bm},\"mean\":{},\"lo\":{},\"hi\":{},\"between_var\":{},\"within_var_of_mean\":{},\"share_same_sign\":{},\"share_clear\":{}}}",
+            if i > 0 { "," } else { "" }, n.interval.mean, n.interval.lo, n.interval.hi, n.between_var, n.within_var_of_mean, n.share_same_sign, n.share_clear
+        );
+        println!("{name:<44} base {bm:>7.1}  diff {:>8.2} ({:.2} to {:.2})  same sign {:.0}%  clear {:.0}%", n.interval.mean, n.interval.lo, n.interval.hi, 100.0 * n.share_same_sign, 100.0 * n.share_clear);
+    }
+    j.push_str("]}\n");
+    std::fs::write(out.join("summary.json"), j).unwrap();
 }
 
 fn uq_inputs_summary(out: &std::path::Path, draws: u64, policies: &[fabsim::policy::Policy], lean: &[(&str, f64, Option<i64>)]) {

@@ -59,3 +59,19 @@ pub fn perturb(shop: &Shop, draw: u64, sigma: f64) -> Shop {
     }
     s
 }
+
+/// The redrawn shop with every release rate multiplied by its ceiling over the published ceiling, so it releases the
+/// same multiple of its own capacity as the published shop does (docs/UQ-INPUTS.md, the follow-up).
+pub fn equal_load(shop: &Shop, draw: u64, sigma: f64) -> Shop {
+    if sigma == 0.0 {
+        return shop.clone();
+    }
+    let mut s = perturb(shop, draw, sigma);
+    let m = crate::bound::capacity(&s).wafers_per_day / crate::bound::capacity(shop).wafers_per_day;
+    for r in s.releases.iter_mut() {
+        if r.every > 0.0 {
+            r.every /= m;
+        }
+    }
+    s
+}
