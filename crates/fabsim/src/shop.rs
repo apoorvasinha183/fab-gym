@@ -220,6 +220,23 @@ pub struct Plan {
     pub exit: Vec<String>,
     /// groups with no tools on the floor, whose lots wait in a stocker for their time (SMT2020's delay group)
     pub stores: Vec<String>,
+    /// where each node sits on today's campus (docs/FAB-RAILS.md): written by `fabsim fab-export`, so the track built
+    /// from the plan is the drawn one; empty for a plan of its own
+    pub spots: Vec<Spot>,
+}
+
+/// A node's place on the campus: phase, side, bay (`usize::MAX` on a spine lane), metres along and into the bay, the
+/// shop's port it serves, and whether it is a stocker's port.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Spot {
+    pub node: String,
+    pub phase: usize,
+    pub side: usize,
+    pub bay: usize,
+    pub x: f64,
+    pub y: f64,
+    pub port: Option<usize>,
+    pub stocker: bool,
 }
 
 /// Dollars to buy one tool of the group, and dollars a day to run it.
@@ -615,7 +632,7 @@ impl Shop {
                         }
                     }
                 }
-                "price" | "node" | "link" | "station" | "stop" | "stocker" | "entry" | "exit" | "store" => {
+                "price" | "node" | "link" | "station" | "stop" | "stocker" | "entry" | "exit" | "store" | "spot" => {
                     let ln = no + 2;
                     let p = s.plan.get_or_insert_with(Plan::default);
                     match f[0] {
@@ -644,6 +661,21 @@ impl Shop {
                             p.links.push(Link { from: f[1].into(), to: f[2].into(), len });
                             plan_lines.push((ln, PlanRef::Node(f[1].into())));
                             plan_lines.push((ln, PlanRef::Node(f[2].into())));
+                        }
+                        "spot" => {
+                            need(9)?;
+                            let port = pio::<usize>(f[7])?;
+                            p.spots.push(Spot {
+                                node: f[1].into(),
+                                phase: pi(f[2])?,
+                                side: pi(f[3])?,
+                                bay: read_bay(f[4])?,
+                                x: pf(f[5])?,
+                                y: pf(f[6])?,
+                                port,
+                                stocker: f[8] == "1",
+                            });
+                            plan_lines.push((ln, PlanRef::Node(f[1].into())));
                         }
                         "store" => {
                             need(2)?;
@@ -702,8 +734,8 @@ impl Shop {
             return Err("ports need a layout (an oht record)".into());
         }
         if let Some(f) = &s.fleet {
-            if s.oht.is_none() {
-                return Err("a fleet needs a layout (an oht record)".into());
+            if s.oht.is_none() && !s.plan.as_ref().is_some_and(|p| !p.links.is_empty()) {
+                return Err("a fleet needs a track: a layout (an oht record) or a plan with links".into());
             }
             // written so that a NaN fails too
             let ok = f.vehicles > 0 && f.ports > 0 && f.gap > 0.0 && f.hoist >= 0.0 && f.cross >= 0.0 && ["nearest", "first"].contains(&f.controller.as_str());
@@ -875,6 +907,9 @@ impl Shop {
                 for n in list {
                     let _ = writeln!(o, "{tag}\t{n}");
                 }
+            }
+            for s in &p.spots {
+                let _ = writeln!(o, "spot\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}", s.node, s.phase, s.side, s.bay, pyrepr(s.x), pyrepr(s.y), optn(s.port), u8::from(s.stocker));
             }
         }
         o

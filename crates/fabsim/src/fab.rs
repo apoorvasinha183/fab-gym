@@ -2,7 +2,7 @@
 //! links, every tool's port as a stop, the stocker ports, and entry and exit at the campus start. A gigafab-style
 //! layout of our own design on the SMT2020 model; the plan coordinates and station boxes are for drawing only.
 
-use crate::shop::{Link, Node, Plan, Shop, Station, Stop};
+use crate::shop::{Link, Node, Plan, Shop, Spot, Station, Stop};
 use crate::track::{NodeAt, Track};
 
 /// The shop's track as a plan. Plan coordinates: x along the campus west to east (phases end to end with their
@@ -43,5 +43,12 @@ pub fn plan_from_track(shop: &Shop) -> Result<Plan, String> {
     let start = id(t.node_of(&o.start));
     // a group the layout holds in a stocker (its place is a stocker) has no tools on the floor
     let stores = o.places.iter().filter(|(_, p)| p.is_none()).map(|(g, _)| g.clone()).collect();
-    Ok(Plan { prices: vec![], nodes, links, stations, stops, stockers, entry: vec![start.clone()], exit: vec![start], stores })
+    // where each node sits on the campus, so the track read back is the drawn one (docs/FAB-RAILS.md)
+    let spots = t
+        .nodes()
+        .iter()
+        .enumerate()
+        .map(|(i, a)| Spot { node: id(i), phase: a.phase, side: a.side, bay: a.bay, x: a.x, y: a.y, port: a.tool, stocker: a.stocker })
+        .collect();
+    Ok(Plan { prices: vec![], nodes, links, stations, stops, stockers, entry: vec![start.clone()], exit: vec![start], stores, spots })
 }

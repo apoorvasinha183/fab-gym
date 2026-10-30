@@ -253,15 +253,16 @@ impl Overrides {
                     if rails.is_empty() {
                         continue;
                     }
-                    if shop.fleet.is_none() || shop.oht.is_none() {
-                        return Err("rails: rail settings need a fleet (a fleet record and a layout)".into());
+                    let plan_links = shop.plan.as_ref().is_some_and(|p| !p.links.is_empty());
+                    if shop.fleet.is_none() || (shop.oht.is_none() && !plan_links) {
+                        return Err("rails: rail settings need a fleet (a fleet record and a track)".into());
                     }
                     let track = Track::from_shop(shop);
+                    let by_name: std::collections::HashMap<String, usize> = (0..track.nodes().len()).map(|i| (track.name(i), i)).collect();
                     for (id, s) in rails {
                         let p = format!("rails.{id}");
                         let e = id.split_once('>').and_then(|(a, b)| {
-                            let a: usize = a.strip_prefix('n')?.parse().ok()?;
-                            let b: usize = b.strip_prefix('n')?.parse().ok()?;
+                            let (a, b) = (*by_name.get(a)?, *by_name.get(b)?);
                             track.edges().iter().position(|e| e.from == a && e.to == b)
                         });
                         let e = e.ok_or_else(|| format!("{p}: the track has no such stretch (named FROM>TO by plan node, as fabsim fab-export writes)"))?;

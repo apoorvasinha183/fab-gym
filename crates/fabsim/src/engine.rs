@@ -1854,6 +1854,38 @@ pub fn run_vehicles<'c>(
     run_inner(shop, opts, chooser, vchooser, None)
 }
 
+/// A plan of its own with a fleet and no `oht` (docs/FAB-RAILS.md): the shop with a floor made from its plan. The plan's
+/// points shifted so none is negative; a group's place is its first stop (a stored group's, a stocker); new lots enter
+/// at the entry; vehicles at 150 m a minute (today's, assumed). None for every other shop.
+pub fn native_floor(shop: &Shop) -> Option<Shop> {
+    let p = shop.plan.as_ref()?;
+    if shop.oht.is_some() || shop.fleet.is_none() || p.links.is_empty() {
+        return None;
+    }
+    let (x0, y0) = crate::track::plan_origin(p);
+    let at = |id: &str| p.nodes.iter().find(|n| n.id == id).map(|n| (n.x - x0, n.y - y0)).unwrap_or((0.0, 0.0));
+    let len = p.nodes.iter().map(|n| n.x - x0).fold(0.0, f64::max) + 1.0;
+    let (sx, sy) = at(p.entry.first().map(|s| s.as_str()).unwrap_or(""));
+    let places = shop
+        .groups
+        .iter()
+        .map(|g| {
+            let first = p.stops.iter().filter(|s| s.group == g.name).min_by_key(|s| s.tool);
+            let pl = match first {
+                Some(s) if !p.stores.contains(&g.name) => {
+                    let (x, y) = at(&s.node);
+                    Some(Place { phase: 0, side: 0, bay: 0, x, y })
+                }
+                _ => None,
+            };
+            (g.name.clone(), pl)
+        })
+        .collect();
+    let mut s = shop.clone();
+    s.oht = Some(Oht { overhead: 0.0, speed: 150.0, jitter: 0.0, bridge: 0.0, spine: 0.0, lengths: vec![len], start: Place { phase: 0, side: 0, bay: 0, x: sx, y: sy }, places });
+    Some(s)
+}
+
 /// `run` with failure and recovery overrides (docs/OVERRIDES.md); with none it is `run`.
 pub fn run_with(shop: &Shop, opts: &RunOptions, chooser: Option<&mut dyn FnMut(&Decision) -> usize>, ov: &crate::overrides::Overrides) -> RunResult {
     run_inner_ov(shop, opts, chooser, None, None, ov)
@@ -2138,8 +2170,8 @@ fn build<'a, 'c>(
     }
     for e in 0..sim.rail_bd.len() {
         if let Some((mttf, _)) = sim.rail_bd[e] {
-            let (a, b) = { let ed = &sim.fl.as_ref().unwrap().track.edges()[e]; (ed.from, ed.to) };
-            let x = PyRandom::from_str_seed(&format!("{}/rail/n{a}>n{b}", opts.seed)).expovariate(1.0 / mttf);
+            let name = { let fl = sim.fl.as_ref().unwrap(); let ed = &fl.track.edges()[e]; format!("{}>{}", fl.track.name(ed.from), fl.track.name(ed.to)) };
+            let x = PyRandom::from_str_seed(&format!("{}/rail/{name}", opts.seed)).expovariate(1.0 / mttf);
             sim.at(x, Ev::RailBreak(e as u32));
         }
     }
@@ -2346,12 +2378,12 @@ impl<'a, 'c> Sim<'a, 'c> {
                 Ev::SpareBack(g) => sim.spares[g as usize] += 1,
                 Ev::RailBreak(e) => {
                     let (mttf, mttr) = sim.rail_bd[e as usize].unwrap();
-                    let (a, b) = { let ed = &sim.fl.as_ref().unwrap().track.edges()[e as usize]; (ed.from, ed.to) };
-                    let mut r = PyRandom::from_str_seed(&format!("{}/railbreak/n{a}>n{b}/{}", seed, t as i64));
+                    let name = { let fl = sim.fl.as_ref().unwrap(); let ed = &fl.track.edges()[e as usize]; format!("{}>{}", fl.track.name(ed.from), fl.track.name(ed.to)) };
+                    let mut r = PyRandom::from_str_seed(&format!("{}/railbreak/{name}/{}", seed, t as i64));
                     let m = r.expovariate(1.0 / mttr);
                     sim.fl.as_mut().unwrap().down[e as usize] = true;
                     if sim.full {
-                        sim.due.push(Due { what: "rail", tool: format!("n{a}>n{b}"), t, minutes: m });
+                        sim.due.push(Due { what: "rail", tool: name.clone(), t, minutes: m });
                     }
                     sim.at(t + m, Ev::RailUp(e));
                     let next = r.expovariate(1.0 / mttf);
@@ -2477,6 +2509,15 @@ fn run_inner_ov<'c>(
     ov: &crate::overrides::Overrides,
 ) -> RunResult {
     let horizon = opts.until.unwrap_or(f64::INFINITY);
+    // a plan of its own runs on its own floor (docs/FAB-RAILS.md)
+    let native;
+    let shop = match native_floor(shop) {
+        Some(s) => {
+            native = s;
+            &native
+        }
+        None => shop,
+    };
     let mut sim = build(shop, opts, chooser, vchooser, follow, None, ov);
     sim.advance_to(horizon);
     sim.into_result(horizon)

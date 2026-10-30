@@ -119,7 +119,8 @@ fn a_fab_of_its_own_runs_with_a_fleet() {
     let r = run(&s, &RunOptions { seed: 1, until: Some(2.0 * 1440.0), record: true }, None);
     assert!(r.finished > 100, "lots finish: {}", r.finished);
     let f = r.fleet.as_ref().unwrap();
-    assert!(f.delivered > 200, "moves delivered: {}", f.delivered);
+    // each lot makes one move, from A to B (it starts at A's stop and leaves from B)
+    assert!(f.delivered >= r.finished, "moves delivered: {}, lots finished: {}", f.delivered, r.finished);
 }
 
 #[test]

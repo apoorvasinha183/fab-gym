@@ -56,6 +56,10 @@ pub struct Track {
     /// dist[to][from]: metres from `from` to `to`; next[to][from]: the first edge on that way
     dist: Vec<Vec<f64>>,
     next: Vec<Vec<u32>>,
+    /// built from a plan of its own (docs/FAB-RAILS.md): places are plan points, found by straight-line distance
+    native: bool,
+    /// node names: the plan's ids when built from a plan, else none (named n0, n1, ...)
+    names: Vec<String>,
 }
 
 #[derive(PartialEq)]
@@ -74,6 +78,13 @@ impl Ord for Item {
 
 fn key(x: f64) -> i64 {
     (x * 1000.0).round() as i64
+}
+
+/// The corner a plan of its own is shifted from, so no point is negative: the least x and y of its nodes.
+pub fn plan_origin(p: &crate::shop::Plan) -> (f64, f64) {
+    let x0 = p.nodes.iter().map(|n| n.x).fold(f64::INFINITY, f64::min);
+    let y0 = p.nodes.iter().map(|n| n.y).fold(f64::INFINITY, f64::min);
+    (if x0.is_finite() { x0 } else { 0.0 }, if y0.is_finite() { y0 } else { 0.0 })
 }
 
 /// The drawn rails' constants (viz/look/scene.py): the spine rails at +-2.2 m from the spine's middle, a stocker on
@@ -96,6 +107,9 @@ impl Track {
     /// The track a shop's fleet runs on: the drawn rails when the shop lists its bays' rails, else the track built
     /// from its ports or its groups' places.
     pub fn from_shop(shop: &crate::shop::Shop) -> Track {
+        if shop.plan.as_ref().is_some_and(|p| !p.links.is_empty()) {
+            return Track::from_plan(shop);
+        }
         let o = shop.oht.as_ref().expect("a track needs a layout");
         if shop.bayrails.is_empty() {
             Track::with_ports(o, &shop.ports, shop.fleet.as_ref().map(|f| f.cross).unwrap_or(60.0))
@@ -121,6 +135,8 @@ impl Track {
             lanes: HashMap::new(),
             dist: vec![],
             next: vec![],
+            native: false,
+            names: vec![],
         };
         let nph = o.lengths.len();
         let lane_y = INTERBAY_Y - o.spine / 2.0; // depth from the spine's edge: inside the spine
@@ -265,6 +281,91 @@ impl Track {
 }
 
 impl Track {
+    /// The track a plan draws (docs/FAB-RAILS.md): its nodes in order and its links in order. With a spot for every
+    /// node (today's campus as a file) each node is where the spot says, so the track is the drawn one; without, the
+    /// plan's points shifted so none is negative, found by straight-line distance.
+    pub fn from_plan(shop: &crate::shop::Shop) -> Track {
+        let p = shop.plan.as_ref().expect("a plan");
+        let idx: HashMap<&str, usize> = p.nodes.iter().enumerate().map(|(i, n)| (n.id.as_str(), i)).collect();
+        let spots: HashMap<&str, &crate::shop::Spot> = p.spots.iter().map(|s| (s.node.as_str(), s)).collect();
+        let native = spots.len() < p.nodes.len();
+        let (x0, y0) = plan_origin(p);
+        let stocker: std::collections::HashSet<&str> = p.stockers.iter().map(|s| s.as_str()).collect();
+        // in a plan of its own, a stop node carries the index of its first stop, so vehicles park at stops
+        let mut first_stop: HashMap<&str, usize> = HashMap::new();
+        for (k, s) in p.stops.iter().enumerate() {
+            first_stop.entry(s.node.as_str()).or_insert(k);
+        }
+        let nodes: Vec<NodeAt> = p
+            .nodes
+            .iter()
+            .map(|n| match (native, spots.get(n.id.as_str())) {
+                (false, Some(s)) => NodeAt { phase: s.phase, side: s.side, x: s.x, y: s.y, bay: s.bay, group: None, tool: s.port, spur: false, stocker: s.stocker },
+                _ => NodeAt {
+                    phase: 0,
+                    side: 0,
+                    x: n.x - x0,
+                    y: n.y - y0,
+                    bay: 0,
+                    group: None,
+                    tool: first_stop.get(n.id.as_str()).copied(),
+                    spur: false,
+                    stocker: stocker.contains(n.id.as_str()),
+                },
+            })
+            .collect();
+        let mut t = Track {
+            nodes,
+            edges: p.links.iter().map(|l| Edge { from: idx[l.from.as_str()], to: idx[l.to.as_str()], len: l.len }).collect(),
+            out: vec![],
+            stops: HashMap::new(),
+            ports: HashMap::new(),
+            spurs: HashMap::new(),
+            lanes: HashMap::new(),
+            dist: vec![],
+            next: vec![],
+            native,
+            names: p.nodes.iter().map(|n| n.id.clone()).collect(),
+        };
+        // each group's stops in the order of its tools; the first is its stop
+        let mut by_group: HashMap<&str, Vec<(usize, usize)>> = HashMap::new();
+        for s in &p.stops {
+            by_group.entry(s.group.as_str()).or_default().push((s.tool, idx[s.node.as_str()]));
+        }
+        for (g, mut v) in by_group {
+            v.sort();
+            t.ports.insert(g.to_string(), v.iter().map(|x| x.1).collect());
+            t.stops.insert(g.to_string(), v[0].1);
+        }
+        for (n, a) in t.nodes.iter().enumerate() {
+            if a.stocker {
+                t.spurs.entry((a.phase, a.side)).or_default().push((a.x, n));
+            }
+            if !native && a.bay == usize::MAX {
+                t.lanes.entry((a.phase, a.side)).or_default().push((a.x, n));
+            }
+        }
+        for v in t.lanes.values_mut() {
+            v.sort_by(|a, b| a.0.total_cmp(&b.0));
+        }
+        t.out = vec![vec![]; t.nodes.len()];
+        for (i, e) in t.edges.iter().enumerate() {
+            t.out[e.from].push(i);
+        }
+        t.routes();
+        t
+    }
+
+    /// A node's name: its plan id, or n0, n1, ... on a track built from settings.
+    pub fn name(&self, n: usize) -> String {
+        self.names.get(n).cloned().unwrap_or_else(|| format!("n{n}"))
+    }
+
+    /// True for a track built from a plan of its own (no spots).
+    pub fn is_native(&self) -> bool {
+        self.native
+    }
+
     /// The track with one stop per tool group, at the group's place.
     pub fn new(o: &Oht, cross: f64) -> Track {
         Track::with_ports(o, &[], cross)
@@ -282,6 +383,8 @@ impl Track {
             lanes: HashMap::new(),
             dist: vec![],
             next: vec![],
+            native: false,
+            names: vec![],
         };
         let nph = o.lengths.len();
         // the bays and their stops: (index, place); the index is a port's when ports are listed, else a place's
@@ -510,6 +613,22 @@ impl Track {
     /// Where a place is on the track: a stop standing at it; for a stocker (bay `usize::MAX`) the nearest stocker
     /// spur on its lane; else the nearest point of its lane.
     pub fn node_of(&self, p: &Place) -> usize {
+        if self.native {
+            // a plan of its own: for a stocker the nearest stocker (else any node), else a stop at the place, else the
+            // nearest node, all by straight-line distance; ties to the lower node
+            let d = |a: &NodeAt| (a.x - p.x).powi(2) + (a.y - p.y).powi(2);
+            let pick = |f: &dyn Fn(&NodeAt) -> bool| {
+                self.nodes.iter().enumerate().filter(|(_, a)| f(a)).min_by(|a, b| d(a.1).total_cmp(&d(b.1)).then(a.0.cmp(&b.0))).map(|x| x.0)
+            };
+            if p.bay == usize::MAX {
+                if let Some(n) = pick(&|a: &NodeAt| a.stocker) {
+                    return n;
+                }
+            } else if let Some(n) = pick(&|a: &NodeAt| a.tool.is_some() && key(a.x) == key(p.x) && key(a.y) == key(p.y)) {
+                return n;
+            }
+            return pick(&|_: &NodeAt| true).unwrap_or(0);
+        }
         let ph = p.phase.min(self.lanes.keys().map(|k| k.0).max().unwrap_or(0));
         let side = p.side.min(1);
         if p.bay == usize::MAX {

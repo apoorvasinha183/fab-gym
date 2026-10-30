@@ -33,3 +33,9 @@ unchanged; they now run on any shape.
 5. On that fab, with the main stretch breaking, going round beats waiting: fewer vehicle-minutes held up, at least as
    many moves delivered (the test promised in docs/OVERRIDES.md, Changes).
 6. A spot naming an unknown node, and a `fleet` with neither `oht` nor plan links, are refused with their line.
+
+## Changes
+
+- 31 Oct, the first run: test 4 asked for more than 200 moves in two days, counting two moves a lot. A lot there
+  makes one move (it starts at A's stop and leaves from B), so 192 lots made 192. The test now asks that every
+  finished lot made its move.
