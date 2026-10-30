@@ -1317,6 +1317,24 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(|s| s.as_str()) {
         Some("bench") => bench(&args[1..]),
+        // a shop with drawn rails written as a fab file (docs/FAB-FILE.md), to stdout
+        Some("fab-export") => {
+            let path = args.get(1).expect("fabsim fab-export SHOP");
+            let mut shop = Shop::parse(&std::fs::read_to_string(path).expect("read the shop")).unwrap_or_else(|e| {
+                eprintln!("refused: {e}");
+                std::process::exit(1)
+            });
+            match fabsim::fab::plan_from_track(&shop) {
+                Ok(p) => {
+                    shop.plan = Some(p);
+                    print!("{}", shop.to_text());
+                }
+                Err(e) => {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                }
+            }
+        }
         Some("log") => {
             let shop = Shop::parse(&std::fs::read_to_string(&args[1]).unwrap()).unwrap();
             let seed = args[2].parse().unwrap();

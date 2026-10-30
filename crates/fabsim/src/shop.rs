@@ -199,6 +199,67 @@ pub struct Shop {
     pub ports: Vec<(String, Place)>,
     /// each bay's two rails, one over each wall's ports (docs/FLEET.md); read only by a fleet
     pub bayrails: Vec<BayRail>,
+    /// the floor plan (docs/FAB-FILE.md): prices, rail nodes and links, stations, stops, stockers, entry and exit;
+    /// None for a shop with no plan records, which then writes exactly as before
+    pub plan: Option<Plan>,
+}
+
+/// A fab's floor plan (docs/FAB-FILE.md). Written after every other record, kind by kind in the order of the fields.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct Plan {
+    pub prices: Vec<Price>,
+    pub nodes: Vec<Node>,
+    pub links: Vec<Link>,
+    pub stations: Vec<Station>,
+    pub stops: Vec<Stop>,
+    /// node ids of stocker ports
+    pub stockers: Vec<String>,
+    /// node ids where new lots come onto the rail
+    pub entry: Vec<String>,
+    /// node ids where finished lots leave
+    pub exit: Vec<String>,
+}
+
+/// Dollars to buy one tool of the group, and dollars a day to run it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Price {
+    pub group: String,
+    pub buy: f64,
+    pub day: f64,
+}
+
+/// A point of the rail on the floor plan, in metres.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Node {
+    pub id: String,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// A one-way stretch of rail and its length in metres.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Link {
+    pub from: String,
+    pub to: String,
+    pub len: f64,
+}
+
+/// Where a group's tools stand on the plan: a rectangle in metres, for drawing.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Station {
+    pub group: String,
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+}
+
+/// The node where a group's tool number `tool` (from 0) loads and unloads.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stop {
+    pub group: String,
+    pub tool: usize,
+    pub node: String,
 }
 
 /// A bay's rails (docs/FLEET.md): the bay, its phase and side, the x of the rail over wall 0's and wall 1's ports
@@ -355,6 +416,9 @@ impl Shop {
             return Err("not a fabgym-shop 1 file".into());
         }
         let mut s = Shop::default();
+        // plan records keep their line numbers so references can be checked after the whole file is read
+        let mut plan_lines: Vec<(usize, PlanRef)> = vec![];
+        let mut node_ids: std::collections::HashSet<String> = Default::default();
         for (no, line) in lines.enumerate() {
             if line.is_empty() {
                 continue;
@@ -549,7 +613,79 @@ impl Shop {
                         }
                     }
                 }
+                "price" | "node" | "link" | "station" | "stop" | "stocker" | "entry" | "exit" => {
+                    let ln = no + 2;
+                    let p = s.plan.get_or_insert_with(Plan::default);
+                    match f[0] {
+                        "price" => {
+                            need(4)?;
+                            let (buy, day) = (pf(f[2])?, pf(f[3])?);
+                            if !(buy >= 0.0 && day >= 0.0) {
+                                return Err(format!("line {ln}: price wants dollars to buy and a day, none negative"));
+                            }
+                            p.prices.push(Price { group: f[1].into(), buy, day });
+                            plan_lines.push((ln, PlanRef::Group(f[1].into(), None)));
+                        }
+                        "node" => {
+                            need(4)?;
+                            if !node_ids.insert(f[1].to_string()) {
+                                return Err(format!("line {ln}: node {:?} is defined twice", f[1]));
+                            }
+                            p.nodes.push(Node { id: f[1].into(), x: pf(f[2])?, y: pf(f[3])? });
+                        }
+                        "link" => {
+                            need(4)?;
+                            let len = pf(f[3])?;
+                            if !(len >= 0.0) {
+                                return Err(format!("line {ln}: link wants a length of zero or more metres"));
+                            }
+                            p.links.push(Link { from: f[1].into(), to: f[2].into(), len });
+                            plan_lines.push((ln, PlanRef::Node(f[1].into())));
+                            plan_lines.push((ln, PlanRef::Node(f[2].into())));
+                        }
+                        "station" => {
+                            need(6)?;
+                            p.stations.push(Station { group: f[1].into(), x: pf(f[2])?, y: pf(f[3])?, w: pf(f[4])?, h: pf(f[5])? });
+                            plan_lines.push((ln, PlanRef::Group(f[1].into(), None)));
+                        }
+                        "stop" => {
+                            need(4)?;
+                            let tool: usize = pi(f[2])?;
+                            p.stops.push(Stop { group: f[1].into(), tool, node: f[3].into() });
+                            plan_lines.push((ln, PlanRef::Group(f[1].into(), Some(tool))));
+                            plan_lines.push((ln, PlanRef::Node(f[3].into())));
+                        }
+                        kind => {
+                            need(2)?;
+                            let list = match kind {
+                                "stocker" => &mut p.stockers,
+                                "entry" => &mut p.entry,
+                                _ => &mut p.exit,
+                            };
+                            list.push(f[1].into());
+                            plan_lines.push((ln, PlanRef::Node(f[1].into())));
+                        }
+                    }
+                }
                 other => return Err(format!("line {}: unknown record {other:?}", no + 2)),
+            }
+        }
+        for (ln, r) in &plan_lines {
+            match r {
+                PlanRef::Node(id) if !node_ids.contains(id) => {
+                    return Err(format!("line {ln}: names node {id:?}, which is not defined"));
+                }
+                PlanRef::Group(g, tool) => match s.group(g) {
+                    None => return Err(format!("line {ln}: names group {g:?}, which the shop does not have")),
+                    Some(gr) => {
+                        if let Some(k) = tool {
+                            if *k >= gr.count {
+                                return Err(format!("line {ln}: stop for tool {k} of {g}, which has {} tool(s)", gr.count));
+                            }
+                        }
+                    }
+                },
+                _ => {}
             }
         }
         if let Some(o) = &s.oht {
@@ -712,8 +848,37 @@ impl Shop {
         if let Some(d) = self.defects {
             let _ = writeln!(o, "defects\t{}\t{}\t{}", pyrepr(d.hold_tool_minutes), pyrepr(d.lookback_minutes), pyrepr(d.hold_lot_minutes));
         }
+        if let Some(p) = &self.plan {
+            for r in &p.prices {
+                let _ = writeln!(o, "price\t{}\t{}\t{}", r.group, pyrepr(r.buy), pyrepr(r.day));
+            }
+            for n in &p.nodes {
+                let _ = writeln!(o, "node\t{}\t{}\t{}", n.id, pyrepr(n.x), pyrepr(n.y));
+            }
+            for l in &p.links {
+                let _ = writeln!(o, "link\t{}\t{}\t{}", l.from, l.to, pyrepr(l.len));
+            }
+            for st in &p.stations {
+                let _ = writeln!(o, "station\t{}\t{}\t{}\t{}\t{}", st.group, pyrepr(st.x), pyrepr(st.y), pyrepr(st.w), pyrepr(st.h));
+            }
+            for st in &p.stops {
+                let _ = writeln!(o, "stop\t{}\t{}\t{}", st.group, st.tool, st.node);
+            }
+            for (tag, list) in [("stocker", &p.stockers), ("entry", &p.entry), ("exit", &p.exit)] {
+                for n in list {
+                    let _ = writeln!(o, "{tag}\t{n}");
+                }
+            }
+        }
         o
     }
+}
+
+/// What a plan record names, checked once the whole file is read.
+enum PlanRef {
+    Node(String),
+    /// a group, and for a stop the tool number
+    Group(String, Option<usize>),
 }
 
 #[cfg(test)]

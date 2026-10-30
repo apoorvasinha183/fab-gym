@@ -5,6 +5,7 @@ pub mod bound;
 pub mod dials;
 pub mod engine;
 pub mod evolve;
+pub mod fab;
 pub mod fleet;
 pub mod gp;
 pub mod gym;
