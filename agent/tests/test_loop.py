@@ -172,5 +172,72 @@ class Key(unittest.TestCase):
         self.assertIn("/nonexistent/fab-gym.key", str(e.exception))
 
 
+class Budget(unittest.TestCase):
+    """The model thinks before it answers (about 2,000 tokens a real task, docs/BASETEN-PRICING.md), and the
+    thinking counts against max_tokens. A reply cut off at the limit is asked again once with twice the room;
+    a reply still empty after that is an error, never a silent empty string."""
+
+    def serve(self, replies):
+        """A stand-in endpoint answering each request with the next (content, finish_reason) in `replies`."""
+        heard = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                heard.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+                content, finish = replies[min(len(heard), len(replies)) - 1]
+                msg = {"role": "assistant", "content": content}
+                out = json.dumps({"choices": [{"message": msg, "finish_reason": finish}]}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(out)))
+                self.end_headers()
+                self.wfile.write(out)
+
+            def log_message(self, *a):
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.shutdown)
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        kf = Path(d.name) / "key"
+        kf.write_text("sk-TEST\n")
+        os.chmod(kf, 0o600)
+        return f"http://127.0.0.1:{srv.server_port}/v1", kf, heard
+
+    def test_the_default_leaves_room_to_think_and_answer(self):
+        url, kf, heard = self.serve([(fenced(FIFO), "stop")])
+        HttpModel(base_url=url, model="m", key_file=kf).complete([{"role": "user", "content": "write a rule"}])
+        self.assertGreaterEqual(heard[0]["max_tokens"], 4000)
+
+    def test_a_reply_cut_off_is_asked_again_with_twice_the_room(self):
+        url, kf, heard = self.serve([(None, "length"), (fenced(FIFO), "stop")])
+        m = HttpModel(base_url=url, model="m", key_file=kf, max_tokens=1500)
+        reply = m.complete([{"role": "user", "content": "write a rule"}])
+        self.assertIn("```rust", reply)
+        self.assertEqual([h["max_tokens"] for h in heard], [1500, 3000])
+        self.assertEqual(heard[0]["messages"], heard[1]["messages"])
+
+    def test_a_reply_cut_off_twice_with_no_text_is_an_error(self):
+        url, kf, heard = self.serve([(None, "length")])
+        m = HttpModel(base_url=url, model="m", key_file=kf, max_tokens=1500)
+        with self.assertRaises(RuntimeError) as e:
+            m.complete([{"role": "user", "content": "write a rule"}])
+        self.assertEqual(len(heard), 2)
+        self.assertIn("max_tokens", str(e.exception))
+
+    def test_a_reply_cut_off_twice_with_some_text_returns_that_text(self):
+        url, kf, heard = self.serve([("```rust\npub fn key(", "length")])
+        m = HttpModel(base_url=url, model="m", key_file=kf, max_tokens=1500)
+        self.assertEqual(m.complete([{"role": "user", "content": "write a rule"}]), "```rust\npub fn key(")
+        self.assertEqual(len(heard), 2)
+
+    def test_a_finished_reply_is_asked_once(self):
+        url, kf, heard = self.serve([(fenced(FIFO), "stop")])
+        HttpModel(base_url=url, model="m", key_file=kf, max_tokens=1500).complete([{"role": "user", "content": "x"}])
+        self.assertEqual(len(heard), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
