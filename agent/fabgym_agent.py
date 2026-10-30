@@ -107,10 +107,13 @@ def _read_secret(path, what):
 class HttpModel:
     """An OpenAI-compatible chat endpoint (Baseten, Fireworks, Modal or Meta's API). The key, and any login
     header read from a file (Modal's Modal-Key and Modal-Secret), are never printed, logged or put in a message.
-    `key_file=None` sends no Bearer line; `reasoning_effort` (low, medium, high, xhigh) is sent only when set."""
+    `key_file=None` sends no Bearer line; `reasoning_effort` (low, medium, high, xhigh) is sent only when set.
+    With a `meter` (agent/spend.py) every request is checked against its cap first and its `usage` counted."""
 
     def __init__(self, base_url, model, key_file=DEFAULT_KEY, temperature=0.7, max_tokens=8000, timeout=300,
-                 reasoning_effort=None, header_files=None):
+                 reasoning_effort=None, header_files=None, meter=None):
+        self.meter = meter
+        self.last_usage = None
         self.__key = None
         if key_file is not None:
             key_file = Path(key_file).expanduser()
@@ -169,12 +172,17 @@ class HttpModel:
         req = urllib.request.Request(
             self.base_url + "/chat/completions", data=json.dumps(payload).encode(), headers=headers, method="POST"
         )
+        if self.meter is not None:
+            self.meter.check()
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
             detail = self._scrub(e.read()[:2000].decode("utf-8", "replace"))[:500]
             raise RuntimeError(f"the model endpoint answered {e.code}: {detail}") from None
+        self.last_usage = out.get("usage")
+        if self.meter is not None:
+            self.meter.add(self.last_usage)
         return out["choices"][0]
 
 

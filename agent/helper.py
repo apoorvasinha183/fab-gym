@@ -3,9 +3,12 @@
     python3 -m agent.helper [--port 8766] [--smt2020 data/smt2020/hvlm] [--quick]
 
 Serves `web/` and an API on 127.0.0.1 only. It holds the model key (read from its file, never logged and never sent
-to the page), asks Muse Spark Open on Baseten for a scenario, checks it, runs `fabsim score` natively (4 threads,
-niced, one job at a time) and hands the report to the page. Without a key it answers the recorded example questions
-and runs scenarios a person writes. On the SMT2020 model, a published model of a fab; not a real fab."""
+to the page), asks a model for a scenario, checks it, runs `fabsim score` natively (4 threads, niced, one job at a
+time) and hands the report to the page. The model is Meta's muse-spark-1.3-contributor at low effort by default
+(`--preset meta`); `--preset open` asks Muse Spark Open on Baseten for the runs shown in the submission. Spend is
+counted from each answer's usage and capped (`--spend-cap`, $5 by default; docs/BASETEN-PRICING.md). Without a key
+it answers the recorded example questions and runs scenarios a person writes. On the SMT2020 model, a published
+model of a fab; not a real fab."""
 
 import argparse
 import hashlib
@@ -18,26 +21,44 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from agent import ask
+from agent import ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_URL = "https://inference.baseten.co/v1"
-MODEL = "meta-models/muse-spark-open-1026"
+KEYS = Path.home() / ".config" / "fab-gym"
+PRESETS = {
+    # ideas and trials (the founder, 30 Oct): Meta's contributor model; Meta may train on what is sent and returned
+    "meta": {"provider": "meta", "label": "Meta", "base_url": "https://api.meta.ai/v1", "model": "muse-spark-1.3-contributor",
+             "key_file": KEYS / "meta.key", "reasoning_effort": "low"},
+    # the runs shown in the submission: the open-weights model
+    "open": {"provider": "baseten", "label": "Baseten", "base_url": "https://inference.baseten.co/v1",
+             "model": "meta-models/muse-spark-open-1026", "key_file": DEFAULT_KEY, "reasoning_effort": None},
+}
+BASE_URL = PRESETS["open"]["base_url"]
+MODEL = PRESETS["open"]["model"]
+SPEND_CAP = 5.0  # dollars, assumed
 QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", "300"]
 
 
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
-                 key_file=DEFAULT_KEY, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=BASE_URL, model=MODEL, threads=4):
+                 key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
+                 preset="meta", spend_cap=SPEND_CAP):
+        p = PRESETS[preset]
+        self.preset = preset
+        self.provider = p["provider"]
+        self.provider_label = p["label"]
         self.web = Path(web).resolve()
         self.fabsim = Path(fabsim)
         self.smt2020 = Path(smt2020)
-        self.key_file = Path(key_file).expanduser()
+        self.key_file = Path(key_file if key_file is not None else p["key_file"]).expanduser()
         self.jobs_dir = Path(jobs)
         self.quick = quick
-        self.base_url = base_url
-        self.model_name = model
+        self.base_url = base_url or p["base_url"]
+        self.model_name = model or p["model"]
+        self.reasoning_effort = p["reasoning_effort"]
+        self.meter = spend.Meter(spend.price(self.provider, self.model_name), cap_usd=spend_cap,
+                                 path=self.jobs_dir.parent / "spend.json")
         self.threads = threads
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
@@ -59,11 +80,17 @@ class Helper:
     def status(self):
         return {
             "model_connected": self.model_connected(),
-            "model": f"{self.model_name} on Baseten" if self.model_connected() else None,
+            "model": f"{self.model_name} on {self.provider_label}" if self.model_connected() else None,
             "examples": [{"question": e["question"]} for e in ask.examples()],
             "busy": self.busy(),
             "quick": self.quick,
+            "spend": self.meter.summary(),
         }
+
+    def client(self):
+        """The model the ask box talks to: the preset's effort, and every request counted by the meter."""
+        return HttpModel(self.base_url, self.model_name, key_file=self.key_file, temperature=0.2,
+                         reasoning_effort=self.reasoning_effort, meter=self.meter)
 
     # ------------------------------------------------------------------ jobs
 
@@ -102,8 +129,12 @@ class Helper:
         try:
             if work == "model":
                 job["stage"] = "asking the model"
-                model = HttpModel(self.base_url, self.model_name, key_file=self.key_file, temperature=0.2)
-                reply, answer = ask.ask_model(model, job["question"], self.groups)
+                before = self.meter.usd
+                model = self.client()
+                try:
+                    reply, answer = ask.ask_model(model, job["question"], self.groups)
+                finally:
+                    job["model_usd"] = round(self.meter.usd - before, 6)
                 job["reply"] = reply
                 job["answer"] = answer
             if work in ("model", "answer"):
@@ -244,10 +275,15 @@ def main():
     a.add_argument("--port", type=int, default=8766)
     a.add_argument("--smt2020", default=str(ROOT / "data" / "smt2020" / "hvlm"))
     a.add_argument("--quick", action="store_true", help="smoke runs: 3 seeds, short windows (not for results)")
+    a.add_argument("--preset", choices=sorted(PRESETS), default="meta",
+                   help="meta: muse-spark-1.3-contributor at low effort (ideas, trials); open: Muse Spark Open on Baseten (submission runs)")
+    a.add_argument("--spend-cap", type=float, default=SPEND_CAP, help="stop asking the model once this many dollars are spent")
     o = a.parse_args()
-    h = Helper(smt2020=o.smt2020, quick=o.quick)
+    h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap)
     srv = serve(h, o.port)
-    print(f"Fab Gym on http://127.0.0.1:{o.port}  (model {'connected' if h.model_connected() else 'not connected: examples and hand-written scenarios only'})")
+    state = f"{h.model_name} on {h.provider_label}" if h.model_connected() else "not connected: examples and hand-written scenarios only"
+    s = h.meter.summary()
+    print(f"Fab Gym on http://127.0.0.1:{o.port}  (model {state}; spent ${s['usd']:.4f} of ${s['cap_usd']:g} in {s['calls']} calls)")
     srv.serve_forever()
 
 
