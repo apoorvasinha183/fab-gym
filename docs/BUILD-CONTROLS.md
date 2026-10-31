@@ -102,3 +102,10 @@ on the track, and a group may have several station rectangles, so a group's mach
     BC3 read each panel's text without checking it showed; it now checks that only the open tab's panel shows.
 - 1 Nov, results: BC1 to BC7 pass, with Build's other tests (review, game, basics, moves, top, room, speed, third
   star, sketch, race, poster, random runs, curves, demo path).
+- 1 Nov, part 2, while writing the code: a group's machines were counted from one block, its stops numbered from 0 in
+  each block and its spares counted per block; all three now run across the group's places. Taking a machine in hand
+  no longer refuses when every group of its kind is placed: it places one more machine of the group. The AI's "set
+  machines" move sets the group's total across its places. The hint for a machine in hand dropped "R turns it", which
+  does nothing for a square machine. The page gains read-only test hooks (`freeBeside`, `freeRowBeside`, `select`,
+  `spend`, `overrides`, `checks`); the row search looks both ways along the track.
+- 1 Nov, part 2, results: BP1 to BP6 pass, with Build's other tests, the helper's Build tests and R9.

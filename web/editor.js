@@ -43,7 +43,7 @@
   /** Take a tool in hand, as the palette, a hotbar key or Q does; a piece goes to the front of the recent list. */
   function take(t) {
     if (!allowed(t)) { $("status").textContent = "This challenge needs only the tools in the palette."; return false; }
-    if (E.AREAS.includes(t) && !nextGroup(t)) { $("status").textContent = `Every ${AREA[t][0].toLowerCase()} group is placed. Add machines with + under Selected.`; return false; }
+    // a machine in hand places one where it is clicked, in its group, or the group itself if not yet placed (docs/BUILD-CONTROLS.md)
     tool = t; handTurned = false; pasting = false;
     if (PIECES.has(t)) { recent = [t, ...recent.filter((x) => x !== t)].slice(0, 6); buildPalette(); }
     if (tool !== "select" && mode === "run") setMode("build");
@@ -503,7 +503,10 @@
       const b = s.blocks.find((z) => z.group === group);
       if (!b) return refuse(`No machine group called ${group}.`);
       if (!int(count) || count < 1) return refuse("count is a whole number, 1 or more.");
-      b.count = count;
+      // the group's total across its places (docs/BUILD-CONTROLS.md, part 2): the first place takes the difference
+      const others = s.blocks.filter((z) => z.group === group && z !== b).reduce((a, z) => a + z.count, 0);
+      if (count - others < 1) return refuse(`${group} stands in several places; ${others + 1} is the fewest it can have.`);
+      b.count = count - others;
       return done(`${AREA[b.area][0]} now has ${count} machine${count > 1 ? "s" : ""}.`);
     },
     set_when_it_breaks({ group, x, y, kind, spares }) {
@@ -821,10 +824,11 @@
     $("pal").innerHTML = h;
     $("pal").querySelectorAll("button[data-t]").forEach((b) => (b.onclick = () => take(b.dataset.t)));
     $("pal").querySelectorAll("button[data-kind]").forEach((bt) => (bt.onclick = () => {
-      const b = s.blocks.find((z) => z.kind === "group" && z.area === bt.dataset.kind);
-      if (!b) { $("status").textContent = `No ${AREA[bt.dataset.kind][0].toLowerCase()} on the floor yet.`; return; }
-      if (tool !== "select") take("select");
-      sel = { id: b.id }; ctlTab("sel"); inspector(); draw();
+      const a = bt.dataset.kind, b = s.blocks.find((z) => z.kind === "group" && z.area === a);
+      take(a); // in hand: a click places one machine, Shift-drag fills (part 2)
+      if (b) { sel = { id: b.id }; ctlTab("sel"); inspector(); }
+      $("status").textContent = `${AREA[a][0]} in hand: click to place one, Shift-drag to fill, Esc to put it down.`;
+      draw();
     }));
     // the hotbar's numbers (docs/EDITOR-MOVES.md): 4 to 9 on the six recent pieces
     E.hotbar(recent).forEach((t, i) => {
@@ -837,17 +841,20 @@
     });
   }
   function syncPal() { $("pal").querySelectorAll("button[data-t]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
-  const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || (t in AREA && c.tools.includes("machines")); };
+  // machines are never locked: the budget is what limits them (docs/BUILD-CONTROLS.md)
+  const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || t in AREA; };
   function renderHint() {
     const h = $("hint"); if (!h) return;
     h.textContent = pasting ? "Click where the copy should go. Esc puts it down."
       : tool === "rail" ? "Drag across the floor to lay track. Cars run the way you drag."
       : tool === "erase" ? "Click or drag over track and machines to remove them."
-      : tool in AREA ? `Click an empty spot to place ${AREA[tool][0].toLowerCase()}. R turns it.`
+      : tool in AREA ? `Click to place one ${AREA[tool][0].toLowerCase()} machine; click one of them for one more there. Shift-drag fills. Esc puts it down.`
       : ["entry", "exit", "stocker"].includes(tool) ? "Click an empty spot to place it. R turns it."
       : "Click a machine or a piece of track to change it. Drag empty floor to move the view. J shows the jams.";
   }
 
+  /** Whether a w × h spot at (x, y) touches the track, so a machine there gets a stop. */
+  const beside = (x, y, w, h) => E.beside(s, { x, y, w, h }).length > 0;
   const blockAt = (x, y, skip) => s.blocks.find((b) => b !== skip && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
   function free(x, y, w, h, skip) {
     if (x < 0 || y < 0 || x + w > s.W || y + h > s.H) return false;
@@ -973,15 +980,16 @@
     if (tool === "erase") { if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) delete s.rail[k]; else return; sel = null; buildPalette(); inspector(); edited(); drag = { erase: true, recorded: true }; cv.setPointerCapture(e.pointerId); return; }
     if (tool === "rail") { if (b) return; if (!s.rail[k]) s.rail[k] = { o: [0, 0, 0, 0] }; drag = { last: k }; sel = { rail: k }; cv.setPointerCapture(e.pointerId); inspector(); edited(); return; }
     const kind = placeKind(), [w, h] = handDims(kind);
+    if (kind === "group" && b && b.kind === "group" && b.area === tool) { b.count++; sel = { id: b.id }; buildPalette(); refreshCtl(); edited(); return; }
     if (!free(x, y, w, h)) return;
-    const id = Math.max(0, ...s.blocks.map((z) => z.id)) + 1;
     if (kind === "group") {
-      const g = nextGroup(tool);
-      if (!g) return;
-      s.blocks.push({ id, kind: "group", group: g, area: tool, count: 1, x, y, w, h });
-      buildPalette();
-      if (!nextGroup(tool)) { tool = "select"; syncPal(); }
-    } else s.blocks.push({ id, kind, x, y, w, h });
+      const nb = placeMachine(tool, x, y);
+      if (!nb) return;
+      if (e.shiftKey) { drag = { fill: tool }; cv.setPointerCapture(e.pointerId); } // Shift-drag fills; the fill is one undo step
+      sel = { id: nb.id }; buildPalette(); refreshCtl(); edited(); return;
+    }
+    const id = Math.max(0, ...s.blocks.map((z) => z.id)) + 1;
+    s.blocks.push({ id, kind, x, y, w, h });
     sel = { id }; inspector(); edited();
   });
   cv.addEventListener("pointermove", (e) => {
@@ -1004,7 +1012,10 @@
     } else ghostAt = null;
     if (drag && inb) {
       const k = E.key(x, y);
-      if (drag.move) {
+      if (drag.fill) {
+        const [w, h] = handDims("group");
+        if (free(x, y, w, h)) { const nb = placeMachine(drag.fill, x, y); if (nb) { buildPalette(); edited(); } }
+      } else if (drag.move) {
         const b = drag.move, nx = x - drag.dx, ny = y - drag.dy;
         if ((nx !== b.x || ny !== b.y) && free(nx, ny, b.w, b.h, b)) { b.x = nx; b.y = ny; edited(); }
       } else if (drag.erase) {
@@ -1118,8 +1129,26 @@
     if (name === "all") allControls();
   }
   // the changes a control makes, shared by Selected and All controls
-  const setFail = (b, k) => { b.fail = k === "" ? undefined : k === "none" ? { kind: "none" } : k === "random" ? { kind: "random", mttf_minutes: 480, mttr_minutes: 120 } : { kind: "by_wafers", every: 500, minutes: [60, 120] }; };
-  const setRec = (b, k) => { b.rec = k === "" ? undefined : k === "swap_to_spare" ? { kind: "swap_to_spare", spares: 1, swap_minutes: 20 } : { kind: "repair_and_hold_lots", lookback_minutes: 60, hold_minutes: 120 }; };
+  // a group's breakdown settings are the group's, wherever its machines stand (docs/BUILD-CONTROLS.md, part 2)
+  function syncGroup(b) {
+    for (const z of s.blocks) if (z !== b && z.kind === "group" && z.group === b.group) {
+      z.fail = b.fail ? JSON.parse(JSON.stringify(b.fail)) : undefined;
+      z.rec = b.rec ? JSON.parse(JSON.stringify(b.rec)) : undefined;
+    }
+  }
+  const setFail = (b, k) => { b.fail = k === "" ? undefined : k === "none" ? { kind: "none" } : k === "random" ? { kind: "random", mttf_minutes: 480, mttr_minutes: 120 } : { kind: "by_wafers", every: 500, minutes: [60, 120] }; syncGroup(b); };
+  const setRec = (b, k) => { b.rec = k === "" ? undefined : k === "swap_to_spare" ? { kind: "swap_to_spare", spares: 1, swap_minutes: 20 } : { kind: "repair_and_hold_lots", lookback_minutes: 60, hold_minutes: 120 }; syncGroup(b); };
+  /** One machine of a kind at (x, y): its group's first placing, or a new place for a group already on the floor. */
+  function placeMachine(area, x, y) {
+    const [w, h] = handDims("group"), id = Math.max(0, ...s.blocks.map((z) => z.id)) + 1;
+    const g = nextGroup(area) || (s.blocks.find((z) => z.kind === "group" && z.area === area) || {}).group;
+    if (!g) return null;
+    const like = s.blocks.find((z) => z.kind === "group" && z.group === g);
+    const nb = { id, kind: "group", group: g, area, count: 1, x, y, w, h };
+    if (like) { if (like.fail) nb.fail = JSON.parse(JSON.stringify(like.fail)); if (like.rec) nb.rec = JSON.parse(JSON.stringify(like.rec)); }
+    s.blocks.push(nb);
+    return nb;
+  }
   const failSel = (id, f) => `<select id="${id}">${FAILS.map(([k, n]) => `<option value="${k}" ${(f.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>`;
   const recSel = (id, r) => `<select id="${id}">${RECS.map(([k, n]) => `<option value="${k}" ${(r.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>`;
   function wholeFab(el) {
@@ -1155,7 +1184,9 @@
       if (b.kind === "group") {
         const f = b.fail || {}, r = b.rec || {};
         let h = `<div class="ttl">${svg(b.area, FAM[b.area])}<span>${esc(AREA[b.area][0])}</span></div><p class="note">${esc(b.group)} · ${esc(AREA[b.area][2])} ${money(E.PRICE[b.area])} a machine (assumed).</p>`;
-        h += row("count", `<span>Machines in this group</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span>`);
+        const places = s.blocks.filter((z) => z.kind === "group" && z.group === b.group), all = places.reduce((a, z) => a + z.count, 0);
+        h += row("count", `<span>${places.length > 1 ? "Machines here" : "Machines in this group"}</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span>`);
+        if (places.length > 1) h += `<p class="note">${all} in the group in all, in ${places.length} places.</p>`;
         h += row("fail", `<label for="fsel">Breakdowns</label>${failSel("fsel", f)}`);
         if (f.kind === "random") h += `<div class="row">${num("fa", f.mttf_minutes / 60, "about every", "h")}${num("fb", f.mttr_minutes / 60, "fix takes", "h")}</div>`;
         if (f.kind === "by_wafers") h += `<div class="row">${num("fa", f.every, "after", "wafers")}${num("fb", (f.minutes || [60])[0], "fix takes", "min")}</div>`;
@@ -1168,10 +1199,10 @@
         $("fsel").onchange = (e) => { setFail(b, e.target.value); refreshCtl(); edited(); };
         $("rsel").onchange = (e) => { setRec(b, e.target.value); refreshCtl(); edited(); };
         const bind = (id, fn) => { const el = $(id); if (el) el.onchange = () => { const v = Number(el.value); if (v > 0) { fn(v); edited(); } refreshCtl(); }; };
-        bind("fa", (v) => (f.kind === "random" ? (b.fail.mttf_minutes = v * 60) : (b.fail.every = v)));
-        bind("fb", (v) => (f.kind === "random" ? (b.fail.mttr_minutes = v * 60) : (b.fail.minutes = [v, v])));
-        bind("ra", (v) => (b.rec.spares = Math.round(v)));
-        bind("rb", (v) => (b.rec.swap_minutes = v));
+        bind("fa", (v) => { f.kind === "random" ? (b.fail.mttf_minutes = v * 60) : (b.fail.every = v); syncGroup(b); });
+        bind("fb", (v) => { f.kind === "random" ? (b.fail.mttr_minutes = v * 60) : (b.fail.minutes = [v, v]); syncGroup(b); });
+        bind("ra", (v) => { b.rec.spares = Math.round(v); syncGroup(b); });
+        bind("rb", (v) => { b.rec.swap_minutes = v; syncGroup(b); });
       } else {
         ins.innerHTML = `<div class="ttl">${svg(b.kind)}<span>${INFRA[b.kind][0]}</span></div><p class="note">${INFRA[b.kind][1]}</p><div class="row"><button class="btn" id="del">Remove</button></div>`;
       }
@@ -1318,7 +1349,7 @@
     if (m[k]) take(m[k]);
     if (k === "r" && sel && sel.rail && s.rail[sel.rail]) { const v = s.rail[sel.rail]; v.o = [v.o[3], v.o[0], v.o[1], v.o[2]]; inspector(); edited(); }
     if ((k === "delete" || k === "backspace") && sel && sel.id) { s.blocks = s.blocks.filter((b) => b.id !== sel.id); sel = null; buildPalette(); inspector(); edited(); }
-    if (k === "escape") { sel = null; inspector(); draw(); }
+    if (k === "escape") { if (tool !== "select") take("select"); sel = null; inspector(); draw(); }
   });
 
   let last = 0;
@@ -1338,6 +1369,22 @@
     screenOf(x, y, z) { const r = cv.getBoundingClientRect(), p = P(x + 0.5, y + 0.5, z || 0); return [r.left + p[0], r.top + p[1]]; },
     blocks: () => s.blocks.map((b) => ({ ...b })),
     fab: () => fab(),
+    // for the placing tests (docs/BUILD-CONTROLS.md, part 2): free machine spots beside the track, a selection, spend, overrides, checks
+    freeBeside: (w, h) => { for (let y = 0; y < s.H; y++) for (let x = 0; x < s.W; x++) if (free(x, y, w, h) && E.isFree(s, x, y, w, h).ok && beside(x, y, w, h)) return [x, y]; return null; },
+    freeRowBeside: (n) => {
+      const [w, h] = handDims("group");
+      for (let y = 0; y < s.H; y++) for (let x = 0; x < s.W; x++) {
+        for (const [dx, dy] of [[w, 0], [0, h]]) { // along the track either way
+          const row = Array.from({ length: n }, (_, i) => [x + i * dx, y + i * dy]);
+          if (row.every(([a, c]) => free(a, c, w, h) && beside(a, c, w, h))) return row;
+        }
+      }
+      return null;
+    },
+    select: (id) => { sel = { id }; ctlTab("sel"); inspector(); draw(); return true; },
+    spend: () => E.spend(s),
+    overrides: () => E.overridesFor(s),
+    checks: () => checks,
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
     // the editor's basics (docs/EDITOR-BASICS.md)
     view: () => viewNow(),

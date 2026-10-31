@@ -133,10 +133,13 @@
     }
     const groups = s.blocks.filter((b) => b.kind === "group");
     for (const b of groups) lines.push(`station\t${b.group}\t${(b.x * TILE_M).toFixed(1)}\t${(b.y * TILE_M).toFixed(1)}\t${(b.w * TILE_M).toFixed(1)}\t${(b.h * TILE_M).toFixed(1)}`);
+    // a group may stand in several places (docs/BUILD-CONTROLS.md, part 2): its machines are numbered once across them
+    const nextTool = {};
     for (const b of groups) {
-      const c = beside(s, b);
+      const c = beside(s, b), base = nextTool[b.group] || 0;
+      nextTool[b.group] = base + b.count;
       if (!c.length) continue;
-      for (let k = 0; k < b.count; k++) lines.push(`stop\t${b.group}\t${k}\t${nodeId(...c[k % c.length])}`);
+      for (let k = 0; k < b.count; k++) lines.push(`stop\t${b.group}\t${base + k}\t${nodeId(...c[k % c.length])}`);
     }
     const seen = new Set();
     for (const b of s.blocks.filter((b) => b.kind === "stocker")) {
@@ -159,7 +162,7 @@
   /** The fab file: the base shop with each placed group's count set, a fleet when the base has none, and the plan. */
   function fabText(base, s, opts) {
     const counts = {};
-    for (const b of s.blocks) if (b.kind === "group") counts[b.group] = b.count;
+    for (const b of s.blocks) if (b.kind === "group") counts[b.group] = (counts[b.group] || 0) + b.count; // across its places
     const vehicles = (opts && opts.vehicles) || s.vehicles || 12;
     const out = [];
     let fleet = base.split("\n").some((l) => l.startsWith("fleet\t"));
@@ -187,10 +190,11 @@
   /** Dollars spent on tools, spares included. */
   function spend(s) {
     let d = 0;
+    const spared = new Set(); // a group's spares are the group's, counted once however many places it stands in
     for (const b of s.blocks) {
       if (b.kind !== "group" || !PRICE[b.area]) continue;
       d += b.count * PRICE[b.area];
-      if (b.rec && b.rec.kind === "swap_to_spare") d += (b.rec.spares || 0) * PRICE[b.area];
+      if (b.rec && b.rec.kind === "swap_to_spare" && !spared.has(b.group)) { spared.add(b.group); d += (b.rec.spares || 0) * PRICE[b.area]; }
     }
     return d;
   }
