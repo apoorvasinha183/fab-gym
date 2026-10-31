@@ -1,7 +1,8 @@
 /-
 The referee program (docs/LEAN-CHECK.md): `referee FILE` or `referee -` (stdin). It reads the header, then applies
 `FabCheck.step` to each event as it is read, and `FabCheck.final` at the `end` line, the same functions `check`
-folds. Prints `yes ...`, or `no RULE line N: why`. The read loop and the parser are trusted, not proved.
+folds. A version 2 receipt's finished lots (`F` lines, after the events) are kept as read and checked at the `end`
+line with `FabCheck.finishOne` and `FabCheck.finishCounts`, in the order `checkAll` does (docs/LEAN-FINISH.md). Prints `yes ...`, or `no RULE line N: why`. The read loop and the parser are trusted, not proved.
 -/
 import FabCheck.Core
 open FabCheck
@@ -72,7 +73,10 @@ partial def main (args : List String) : IO UInt32 := do
   let no (r : Rule) (n : Nat) (why : String) : IO UInt32 := do
     say s!"no {r.name} line {n}: {why}"; return 1
   let first ← input.getLine
-  if first.chomp != "fabgym-receipt 1" then return ← no .format 1 "not a fabgym-receipt 1"
+  let version : Nat ← match first.chomp with
+    | "fabgym-receipt 1" => pure 1
+    | "fabgym-receipt 2" => pure 2
+    | _ => return ← no .format 1 "not a fabgym-receipt 1 or 2"
   -- the header
   let mut h : Header := {}
   let mut n := 1
@@ -83,7 +87,7 @@ partial def main (args : List String) : IO UInt32 := do
     n := n + 1
     let ws := words line.chomp
     match ws.head? with
-    | some "S" | some "J" | some "end" => break
+    | some "S" | some "J" | some "F" | some "end" => break
     | _ =>
       if line.isEmpty then break
       if !sawRun && ws.head? != some "run" then return ← no .format n "the run line must come first"
@@ -94,23 +98,45 @@ partial def main (args : List String) : IO UInt32 := do
   let f := h.fab
   -- the events, each through `step`, then `final` at the end line
   let mut s := init f
+  -- a version 2 receipt's finished lots: (lot, time, line), checked at the end line
+  let mut fins : Array (Nat × Dy × Nat) := #[]
   repeat
     if line.isEmpty then return ← no .format n "the receipt is cut off before its end line"
     let ws := words line.chomp
     if ws.head? == some "end" then
+      let nums := (ws.drop 1).filterMap String.toNat?
+      if nums.length != (ws.length - 1) || ws.length != (if version == 1 then 5 else 7) then
+        return ← no .format n "bad end line"
+      match final s ⟨nums[0]!, nums[1]!, nums[2]!, nums[3]!⟩ with
+      | .error e => return ← no e.rule n e.why
+      | .ok () => pure ()
+      let mut done := ""
+      if version == 2 then
+        let mut fs := finInit s
+        for (lot, t, k) in fins do
+          match finishOne f s fs lot t with
+          | .ok fs' => fs := fs'
+          | .error e => return ← no e.rule k e.why
+        match finishCounts fs ⟨nums[4]!, nums[5]!⟩ with
+        | .error e => return ← no e.rule n e.why
+        | .ok () => pure ()
+        done := s!" finished={fs.n} finished_window={fs.nw}"
+      let rest ← input.getLine
+      if !rest.chomp.isEmpty then return ← no .format (n + 1) "lines after the end line"
+      say s!"yes jobs={s.jobs} states={s.states} breaches={s.bTotal} window={s.bWindow}{done}"
+      return 0
+    if ws.head? == some "F" then
+      if version != 2 then return ← no .format n "a finished lot in a version 1 receipt"
       match ws with
-      | ["end", j, st, bt, bw] =>
-        match j.toNat?, st.toNat?, bt.toNat?, bw.toNat? with
-        | some j, some st, some bt, some bw =>
-          match final s ⟨j, st, bt, bw⟩ with
-          | .ok () =>
-            let rest ← input.getLine
-            if !rest.chomp.isEmpty then return ← no .format (n + 1) "lines after the end line"
-            say s!"yes jobs={s.jobs} states={s.states} breaches={s.bTotal} window={s.bWindow}"
-            return 0
-          | .error e => return ← no e.rule n e.why
-        | _, _, _, _ => return ← no .format n "bad end line"
-      | _ => return ← no .format n "bad end line"
+      | ["F", l, t] =>
+        match l.toNat?, parseDy t with
+        | some l, some t => fins := fins.push (l, t, n)
+        | _, _ => return ← no .format n "bad finished lot"
+      | _ => return ← no .format n "bad finished lot"
+      line ← input.getLine
+      n := n + 1
+      continue
+    if !fins.isEmpty then return ← no .format n "an event after the finished lots"
     match parseEvent ws with
     | none => return ← no .format n s!"not an event: {line.chomp}"
     | some ev =>

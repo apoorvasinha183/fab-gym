@@ -1,6 +1,6 @@
 /-
 The run referee's soundness (docs/LEAN-CHECK.md): when `check` accepts a receipt, the five rules hold for every job
-in it. The rules are stated here plainly, over the list of events, with times as rational numbers of minutes; they
+in it; when `checkAll` accepts a version 2 receipt, so does rule 6 for every finished lot (docs/LEAN-FINISH.md). The rules are stated here plainly, over the list of events, with times as rational numbers of minutes; they
 use nothing of the referee's memory. Checked against Mathlib on the Mac mini.
 From the SMT2020 testbed; not a real fab.
 -/
@@ -717,5 +717,119 @@ theorem check_sound (f : Fab) (es : List Event) (c : Claims) (h : check f es c =
       exact ⟨by rw [← hbt, hinv.bt], by rw [← hbw, hinv.bw]⟩
 
 #print axioms check_sound
+
+/-! ## Rule 6: a finished lot did every step (docs/LEAN-FINISH.md) -/
+
+/-- Rule 6. No lot is finished twice, and each finished lot's last job ended by its finish, at a step after which
+every step of its route samples. With rule 2 (each job at the next step, or where rework sends the lot), a finished lot
+did every step of its route, in order, ending at the last. -/
+def FinishedInFull (f : Fab) (es : List Event) (fins : List (Nat × Dy)) : Prop :=
+  (fins.map (·.1)).Nodup ∧
+    ∀ x ∈ fins, ∃ k e, lastJob es x.1 = some (k, e) ∧ e.toQ ≤ x.2.toQ ∧ Reach f x.1 (k + 1) (routeLen f x.1)
+
+/-- The claimed finished counts are the true counts, in all and in the scored window. -/
+def FinishedCounted (f : Fab) (fins : List (Nat × Dy)) (fc : FinClaims) : Prop :=
+  fins.length = fc.total ∧ fins.countP (fun x => inWindow f x.2) = fc.window
+
+theorem finishOne_ok (f : Fab) (s : St) (fs fs' : FinSt) (lot : Nat) (t : Dy)
+    (h : finishOne f s fs lot t = .ok fs') :
+    lot < s.lots.size ∧ rd fs.seen lot = false ∧ endBy t (rd s.lots lot).last = true ∧
+      doneAfter f lot (rd s.lots lot).last = true ∧
+      fs' = { seen := wr fs.seen lot true, n := fs.n + 1, nw := fs.nw + (if inWindow f t then 1 else 0) } := by
+  simp only [finishOne, need_bind, decide_eq_true_eq, Bool.not_eq_true'] at h
+  obtain ⟨h1, h2, h3, h4, h5⟩ := h
+  exact ⟨h1, h2, h3, h4, pure_ok _ _ h5⟩
+
+theorem finishCounts_ok (fs : FinSt) (c : FinClaims) (h : finishCounts fs c = .ok ()) :
+    fs.n = c.total ∧ fs.nw = c.window := by
+  unfold finishCounts at h
+  simp only [need_bind] at h
+  obtain ⟨h1, h2⟩ := h
+  rw [need_ok] at h2
+  simp only [beq_iff_eq] at h1 h2
+  exact ⟨h1, h2⟩
+
+/-- The finished lots' fold: the counts it keeps, no lot twice, and rule 6 for each lot, from the memory `s`. -/
+theorem fin_fold (f : Fab) (s : St) : ∀ (fins : List (Nat × Dy)) (fs0 fs : FinSt),
+    fs0.seen.size = s.lots.size →
+    fins.foldlM (fun fs x => finishOne f s fs x.1 x.2) fs0 = .ok fs →
+    fs.n = fs0.n + fins.length ∧ fs.nw = fs0.nw + fins.countP (fun x => inWindow f x.2) ∧
+      (fins.map (·.1)).Nodup ∧
+      ∀ x ∈ fins, x.1 < s.lots.size ∧ rd fs0.seen x.1 = false ∧ endBy x.2 (rd s.lots x.1).last = true ∧
+        doneAfter f x.1 (rd s.lots x.1).last = true
+  | [], fs0, fs, _, h => by
+    simp only [List.foldlM_nil, pure, Except.pure, Except.ok.injEq] at h
+    subst h
+    simp
+  | x :: xs, fs0, fs, hsz, h => by
+    simp only [List.foldlM_cons, bind, Except.bind] at h
+    cases h1 : finishOne f s fs0 x.1 x.2 with
+    | error e => simp [h1] at h
+    | ok fs1 =>
+      simp only [h1] at h
+      obtain ⟨hlt, hseen, hend, hdone, hfs1⟩ := finishOne_ok f s fs0 fs1 x.1 x.2 h1
+      subst hfs1
+      have hsz1 : (wr fs0.seen x.1 true).size = s.lots.size := by rw [size_wr]; exact hsz
+      obtain ⟨hn, hnw, hnd, hall⟩ := fin_fold f s xs _ fs hsz1 h
+      have hxs : x.1 < fs0.seen.size := by rw [hsz]; exact hlt
+      refine ⟨by simp only [hn, List.length_cons]; omega, ?_, ?_, ?_⟩
+      · rw [hnw, List.countP_cons]
+        split <;> simp_all <;> omega
+      · rw [List.map_cons, List.nodup_cons]
+        refine ⟨fun hm => ?_, hnd⟩
+        obtain ⟨y, hy, hyx⟩ := List.mem_map.mp hm
+        have h2 := (hall y hy).2.1
+        rw [rd_wr, if_pos ⟨hyx.symm, hxs⟩] at h2
+        exact Bool.noConfusion h2
+      · intro y hy
+        rcases List.mem_cons.mp hy with rfl | hy
+        · exact ⟨hlt, hseen, hend, hdone⟩
+        · obtain ⟨h1, h2, h3, h4⟩ := hall y hy
+          refine ⟨h1, ?_, h3, h4⟩
+          rw [rd_wr] at h2
+          by_cases hxy : x.1 = y.1
+          · rw [if_pos ⟨hxy, hxs⟩] at h2; exact Bool.noConfusion h2
+          · rw [if_neg (fun hc => hxy hc.1)] at h2; exact h2
+
+/-- When the referee accepts a version 2 receipt, the five rules hold, every finished lot did every step of its route
+(rule 6), and the finished counts are true. -/
+theorem checkAll_sound (f : Fab) (es : List Event) (c : Claims) (fins : List (Nat × Dy)) (fc : FinClaims)
+    (h : checkAll f es c fins fc = .ok ()) :
+    (TimesInOrder es ∧ OneJobAtATime es ∧ FollowsRoutes f es ∧ BatchesFit f es ∧ NothingOnDown es ∧
+      BreachesCounted f es c) ∧ FinishedInFull f es fins ∧ FinishedCounted f fins fc := by
+  unfold checkAll at h
+  cases hs : es.foldlM (step f) (init f) with
+  | error err => simp [hs, bind, Except.bind] at h
+  | ok s =>
+    simp only [hs, bind, Except.bind] at h
+    cases hfin : final s c with
+    | error err => simp [hfin] at h
+    | ok u =>
+      simp only [hfin] at h
+      have hcheck : check f es c = .ok () := by
+        unfold check
+        simp only [hs, bind, Except.bind, hfin]
+      cases hf : fins.foldlM (fun fs x => finishOne f s fs x.1 x.2) (finInit s) with
+      | error err => simp [hf] at h
+      | ok fs =>
+        simp only [hf] at h
+        have hinv := inv_of_ok f es s hs
+        have hsz : (finInit s).seen.size = s.lots.size := by simp [finInit]
+        obtain ⟨hn, hnw, hnd, hall⟩ := fin_fold f s fins (finInit s) fs hsz hf
+        obtain ⟨hc1, hc2⟩ := finishCounts_ok fs fc h
+        refine ⟨check_sound f es c hcheck, ⟨hnd, fun x hx => ?_⟩, ?_, ?_⟩
+        · obtain ⟨hlt, -, hend, hdone⟩ := hall x hx
+          rw [← hinv.last x.1 hlt]
+          revert hend hdone
+          cases hl : (rd s.lots x.1).last with
+          | none => simp [endBy]
+          | some ke =>
+            obtain ⟨k, e⟩ := ke
+            intro hend hdone
+            exact ⟨k, e, rfl, (Dy.le_iff _ _).mp hend, Reach_of_reach f _ _ _ hdone⟩
+        · rw [← hc1, hn]; simp [finInit]
+        · rw [← hc2, hnw]; simp [finInit]
+
+#print axioms checkAll_sound
 
 end FabCheck

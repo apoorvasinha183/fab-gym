@@ -38,7 +38,7 @@ Read from `crates/fabsim/src/engine.rs` on 31 Oct; each is the engine's own rule
    repeat it). Each such pair counts once. The receipt claims the run's total and the count in the scored window
    (breaches whose late step begins in `(from, to]`, as the score counts them); the referee recounts both.
 
-## The receipt (`fabgym-receipt 1`)
+## The receipt (`fabgym-receipt 1`; version 2 adds the finished lots and rule 6, `docs/LEAN-FINISH.md`)
 
 Plain text, one record a line, fields separated by single spaces, ids dense from 0. Written by
 `fabsim receipt` from a run with `record` on (logging only; the run is the same run).

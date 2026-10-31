@@ -45,3 +45,19 @@ Lean, `lean/tests/` (hand-made receipts, with `expected.txt`):
   and their tampered copies (R8) are rejected with rule 6 named (`lean/run.sh challenges`).
 
 ## Changes
+- 1 Nov, while writing the code: R7 first read the window score from a run without probes at the window's ends; it now
+  runs the toy fab with them (`window::with_probes`). R1 (`docs/LEAN-CHECK.md`) is updated: receipts are version 2,
+  and the finished lots' `F` lines come after every event.
+- 1 Nov, while writing the code: the "unfinished" tampered copy first kept its line's finish time, which was often
+  before the relabelled lot's last job ended, so the referee rejected it as early rather than as unfinished; it now
+  finishes no earlier than that job ends, so only the steps still to do are wrong. In `lean/run.sh challenges`, the
+  shared `expect` helper set a variable the loop also used, so the tampered copies were first skipped; the loop's
+  variable is renamed.
+- 1 Nov, results:
+  - R1 to R9 pass, and the engine's whole suite passes.
+  - L6 and L7: the seven new hand-made receipts give their expected verdicts, as do all 22 version 1 receipts; the toy
+    runs' receipts pass and every tampered copy is rejected with its rule named (`lean/run.sh test`).
+  - L8: `checkAll_sound` and `check_sound` are proved with no `sorry`, each on Lean's three standard axioms only.
+  - L9: the eight challenge runs (four challenges, at their start and with their fix; seed 1, two days, as Build
+    scores them) pass, from 832 to 1,467 jobs and 25 to 65 finished lots, and each one's three tampered copies are
+    rejected under rule 6.

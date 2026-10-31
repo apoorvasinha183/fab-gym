@@ -1,7 +1,8 @@
 /-
 The run referee (docs/LEAN-CHECK.md). Plain Lean 4, no libraries: the receipt's records, exact times, and one pure
 `step` that the program applies to each event as it is read. `check` folds the same `step` over a list of events;
-`FabCheck/Proofs.lean` proves that `check` succeeding means the five rules hold.
+`FabCheck/Proofs.lean` proves that `check` succeeding means the five rules hold. Version 2 receipts add the
+finished lots; `checkAll` checks them too, rule 6 (docs/LEAN-FINISH.md).
 From the SMT2020 testbed; not a real fab.
 -/
 namespace FabCheck
@@ -78,12 +79,12 @@ deriving Repr, Inhabited
 
 /-- The rule a receipt breaks. -/
 inductive Rule where
-  | format | oneJob | route | batch | down | breach
+  | format | oneJob | route | batch | down | breach | finish
 deriving Repr, BEq, DecidableEq
 
 def Rule.name : Rule → String
   | .format => "format" | .oneJob => "one-job" | .route => "route"
-  | .batch => "batch" | .down => "down" | .breach => "breach"
+  | .batch => "batch" | .down => "down" | .breach => "breach" | .finish => "finish"
 
 structure Fault where
   rule : Rule
@@ -234,6 +235,59 @@ def final (s : St) (c : Claims) : Except Fault Unit := do
 def check (f : Fab) (es : List Event) (c : Claims) : Except Fault Unit := do
   let s ← es.foldlM (step f) (init f)
   final s c
+
+/-! ## Rule 6: a finished lot did every step (docs/LEAN-FINISH.md)
+
+A version 2 receipt lists the finished lots after its events. Each is checked against the memory after every event:
+the lot's last job, and so, with rule 2, the whole road it took. -/
+
+/-- What a version 2 receipt's last line adds: the finished lots, in all and in the scored window. -/
+structure FinClaims where
+  total : Nat
+  window : Nat
+deriving Repr, Inhabited
+
+/-- How many steps a lot's route has. -/
+def routeLen (f : Fab) (lot : Nat) : Nat :=
+  (((f.lotRoute[lot]?).bind (f.routes[·]?)).map (·.size)).getD 0
+
+/-- The lot's last job ended by `t`. -/
+def endBy (t : Dy) : Option (Nat × Dy) → Bool
+  | none => false
+  | some (_, e) => Dy.le e t
+
+/-- After the lot's last job, every step left on its route samples, so there is nothing it had to do still. -/
+def doneAfter (f : Fab) (lot : Nat) : Option (Nat × Dy) → Bool
+  | none => false
+  | some (k, _) => reach f lot (k + 1) (routeLen f lot)
+
+/-- The finished lots seen so far, and their counts. -/
+structure FinSt where
+  seen : Array Bool
+  n : Nat
+  nw : Nat
+
+def finInit (s : St) : FinSt := { seen := Array.replicate s.lots.size false, n := 0, nw := 0 }
+
+/-- Rule 6 for one finished lot, judged from the memory `s` after every event. -/
+def finishOne (f : Fab) (s : St) (fs : FinSt) (lot : Nat) (t : Dy) : Except Fault FinSt := do
+  need (lot < s.lots.size) .format s!"unknown lot {lot}"
+  need (!(rd fs.seen lot)) .finish s!"lot {lot} is finished twice"
+  need (endBy t (rd s.lots lot).last) .finish s!"lot {lot} is finished with no job, or before its last job ends"
+  need (doneAfter f lot (rd s.lots lot).last) .finish s!"lot {lot} is finished with a step of its route still to do"
+  pure { seen := wr fs.seen lot true, n := fs.n + 1, nw := fs.nw + (if inWindow f t then 1 else 0) }
+
+/-- The finished counts at the end must be the receipt's claims. -/
+def finishCounts (fs : FinSt) (c : FinClaims) : Except Fault Unit := do
+  need (fs.n == c.total) .finish s!"finished lots: counted {fs.n}, claimed {c.total}"
+  need (fs.nw == c.window) .finish s!"finished in the window: counted {fs.nw}, claimed {c.window}"
+
+/-- The whole check of a version 2 receipt: the events and their counts, then every finished lot and theirs. -/
+def checkAll (f : Fab) (es : List Event) (c : Claims) (fins : List (Nat × Dy)) (fc : FinClaims) : Except Fault Unit := do
+  let s ← es.foldlM (step f) (init f)
+  final s c
+  let fs ← fins.foldlM (fun fs x => finishOne f s fs x.1 x.2) (finInit s)
+  finishCounts fs fc
 
 /-! ## Reading a receipt (trusted, not proved) -/
 

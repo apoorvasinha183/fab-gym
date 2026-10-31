@@ -88,7 +88,8 @@ pub fn write_to(out: &mut dyn Write, shop: &Shop, r: &RunResult, m: &Meta) -> Re
         return Err("the run was not recorded (run it with record on)".into());
     }
     let policy: String = m.policy.chars().map(|c| if c.is_whitespace() { '_' } else { c }).collect();
-    writeln!(out, "fabgym-receipt 1").map_err(io)?;
+    // version 2 lists the finished lots after the events (docs/LEAN-FINISH.md)
+    writeln!(out, "fabgym-receipt 2").map_err(io)?;
     writeln!(out, "run {} {} {} {} {} {}", m.shop_sha256, m.seed, policy, ex(m.until)?, ex(m.from)?, ex(m.to)?).map_err(io)?;
     let gidx: HashMap<&str, usize> = shop.groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i)).collect();
     let group = |name: &str| gidx.get(name).copied().ok_or_else(|| format!("unknown group {name}"));
@@ -147,8 +148,19 @@ pub fn write_to(out: &mut dyn Write, shop: &Shop, r: &RunResult, m: &Meta) -> Re
         k += n;
         jobs += 1;
     }
+    // every finished lot, with its exact finish time (rule 6: it did every step of its route)
+    let (mut finished, mut fin_window) = (0usize, 0usize);
+    for (i, l) in r.lots.iter().enumerate() {
+        if let Some(d) = l.done {
+            writeln!(out, "F {i} {}", ex(d)?).map_err(io)?;
+            finished += 1;
+            if d > m.from && d <= m.to {
+                fin_window += 1;
+            }
+        }
+    }
     let window = r.breaches.iter().filter(|b| b.t > m.from && b.t <= m.to).count();
-    writeln!(out, "end {jobs} {} {} {window}", r.states.len(), r.breaches.len()).map_err(io)?;
+    writeln!(out, "end {jobs} {} {} {window} {finished} {fin_window}", r.states.len(), r.breaches.len()).map_err(io)?;
     Ok(())
 }
 
@@ -161,6 +173,9 @@ pub fn write(shop: &Shop, r: &RunResult, m: &Meta) -> Result<String, String> {
 
 /// The ways `tamper` can break a receipt, one per rule.
 pub const TAMPER_KINDS: [&str; 5] = ["overlap", "skip", "overfill", "into-down", "breach"];
+
+/// The ways `tamper` can fake a finished lot, all against rule 6 (docs/LEAN-FINISH.md).
+pub const FINISH_TAMPER_KINDS: [&str; 3] = ["early", "unfinished", "count"];
 
 /// A receipt read back just enough to break it in one place.
 struct Read<'a> {
@@ -189,6 +204,24 @@ fn read(text: &str) -> Result<Read<'_>, String> {
         }
     }
     Ok(Read { lines, tool_group, steps, lot_route })
+}
+
+/// Each lot's last job in a receipt: its step and end.
+fn last_jobs(rd: &Read<'_>) -> HashMap<usize, (usize, f64)> {
+    let mut last = HashMap::new();
+    for l in &rd.lines {
+        let f: Vec<&str> = l.split(' ').collect();
+        if f[0] != "J" {
+            continue;
+        }
+        let (Some(end), Ok(n)) = (from_exact(f[3]), f[4].parse::<usize>()) else { continue };
+        for k in 0..n {
+            if let (Ok(lot), Ok(step)) = (f[5 + 3 * k].parse::<usize>(), f[6 + 3 * k].parse::<usize>()) {
+                last.insert(lot, (step, end));
+            }
+        }
+    }
+    last
 }
 
 fn split(l: &str) -> Vec<String> {
@@ -286,6 +319,53 @@ pub fn tamper(text: &str, kind: &str) -> Result<String, String> {
             lines[i] = f.join(" ");
             Ok(lines.join("\n") + "\n")
         }
-        _ => Err(format!("unknown kind {kind}; one of {}", TAMPER_KINDS.join(", "))),
+        // a finish moved before its lot's last job ends
+        "early" => {
+            let last = last_jobs(&rd);
+            for (i, l) in rd.lines.iter().enumerate() {
+                let f: Vec<&str> = l.split(' ').collect();
+                if f[0] != "F" {
+                    continue;
+                }
+                let lot: usize = f[1].parse().map_err(|_| format!("bad line {l}"))?;
+                if let Some(&(_, end)) = last.get(&lot) {
+                    if end > 0.0 {
+                        lines[i] = format!("F {lot} {}", exact(end / 2.0).ok_or("an end that cannot be halved exactly")?);
+                        return Ok(lines.join("\n") + "\n");
+                    }
+                }
+            }
+            Err("no finished lot with a job that ends after time 0".into())
+        }
+        // a finish claimed for a lot whose last job leaves an unsampled step still to do
+        "unfinished" => {
+            let last = last_jobs(&rd);
+            let done: std::collections::HashSet<usize> =
+                rd.lines.iter().filter(|l| l.starts_with("F ")).filter_map(|l| l.split(' ').nth(1)?.parse().ok()).collect();
+            let todo = last.iter().filter(|(lot, (k, _))| {
+                let route = &rd.steps[rd.lot_route[**lot]];
+                !done.contains(*lot) && route[k + 1..].iter().any(|s| !s.2)
+            }).map(|(lot, _)| *lot).min();
+            let Some(lot) = todo else { return Err("no lot with an unsampled step still to do".into()) };
+            let i = rd.lines.iter().position(|l| l.starts_with("F ")).ok_or("no finished lot to relabel")?;
+            let f = split(&lines[i]);
+            // a finish no earlier than the lot's last job ends, so only the steps it still had to do are wrong
+            let end = last[&lot].1;
+            let at = if from_exact(&f[2]).is_some_and(|x| x >= end) { f[2].clone() } else { exact(end).ok_or("an end that cannot be written")? };
+            lines[i] = format!("F {lot} {at}");
+            Ok(lines.join("\n") + "\n")
+        }
+        // one more finished lot claimed than the receipt lists
+        "count" => {
+            let i = lines.len() - 1;
+            let mut f = split(&lines[i]);
+            if f[0] != "end" || f.len() < 7 {
+                return Err("no version 2 end line".into());
+            }
+            f[5] = (f[5].parse::<u64>().map_err(|e| e.to_string())? + 1).to_string();
+            lines[i] = f.join(" ");
+            Ok(lines.join("\n") + "\n")
+        }
+        _ => Err(format!("unknown kind {kind}; one of {}, {}", TAMPER_KINDS.join(", "), FINISH_TAMPER_KINDS.join(", "))),
     }
 }

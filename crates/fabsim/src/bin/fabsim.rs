@@ -1603,7 +1603,7 @@ fn receipt_cmd(args: &[String]) {
     use fabsim::gym::{episode_recorded, load_shop};
     use fabsim::receipt::{write_to, Meta};
     use fabsim::window::Window;
-    let usage = "fabsim receipt SHOP --seed N (--until MIN [--window-from MIN] | --warmup D --window D (--auto NAME | --picks FILE)) [--defects H,L,R]";
+    let usage = "fabsim receipt SHOP --seed N (--until MIN [--window-from MIN] [--overrides FILE] | --warmup D --window D (--auto NAME | --picks FILE)) [--defects H,L,R]";
     let src = args.first().filter(|a| !a.starts_with("--")).unwrap_or_else(|| {
         eprintln!("{usage}");
         std::process::exit(2)
@@ -1662,7 +1662,17 @@ fn receipt_cmd(args: &[String]) {
     } else {
         let until = argf(args, "--until", 1440.0);
         let from = argf(args, "--window-from", 0.0);
-        let res = run(&shop, &RunOptions { seed, until: Some(until), record: true }, None);
+        // Build's breakdown settings, as `fabsim moods` reads them, so a challenge's receipt is Build's run (docs/LEAN-FINISH.md)
+        let res = match flag("--overrides") {
+            Some(p) => {
+                let ov = fabsim::overrides::Overrides::parse(&std::fs::read_to_string(&p).expect("read the overrides"), &shop).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(2)
+                });
+                fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(until), record: true }, None, &ov)
+            }
+            None => run(&shop, &RunOptions { seed, until: Some(until), record: true }, None),
+        };
         (res, "today".to_string(), Window { from, to: until })
     };
     let m = Meta { shop_sha256: sha, seed, policy, until: w.to, from: w.from, to: w.to };
