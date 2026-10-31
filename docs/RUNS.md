@@ -72,3 +72,14 @@ The work comes in three parts, each with its tests written first:
 - `web/tests/frontdoor.test.mjs` lists the Runs tab in the top bar on both pages.
 
 ## Changes
+- 1 Nov, while writing the code:
+  - The engine's report goes to a file rather than a pipe, since a large report (3 MB) would fill the pipe and stop the
+    events coming through.
+  - A hand-written setup carries its question in its own question line, which the run now keeps.
+  - `agent/tests/test_ask.py` and `test_sign.py` give their helpers a runs folder of their own, as do the page tests
+    that ask questions (home, demo path, site cuts). Without it their runs landed in the real `data/ask/runs/`, and the
+    five that did were moved out.
+  - RN5 first started its second run while the first worked; the helper takes one at a time, so the test now waits.
+  - RN6 first watched a run that ended in about a second, before the card opened. The helper gains `--threads`; the
+    test helper uses one core and four changes, and opens the Runs page before starting the run, so the card is seen
+    while it works. RN8 waits for RN7's run to end before asking.

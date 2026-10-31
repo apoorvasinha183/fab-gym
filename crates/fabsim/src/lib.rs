@@ -19,6 +19,7 @@ pub mod moods;
 pub mod overrides;
 pub mod pl;
 pub mod policy;
+pub mod progress;
 pub mod pyrandom;
 pub mod receipt;
 pub mod regret;

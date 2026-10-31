@@ -684,3 +684,8 @@ body.opening-on .curves, body.evidence-on .curves { display: none; }
 #health.folded { padding-bottom: 10px; }
 #health.folded .chev { display: inline-block; transform: rotate(-90deg); }
 body.health-folded .maptools { right: 18px; }
+
+/* the ask panel names its run (docs/RUNS.md) */
+.ask-run { margin: 6px 0 2px; font-size: 13.5px; font-weight: 600; }
+.ask-run a { color: var(--accent); }
+

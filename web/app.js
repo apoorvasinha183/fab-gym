@@ -1998,26 +1998,34 @@ function follow(id) {
   clearInterval(ASK.timer);
   $("ask-result").innerHTML = "";
   $("ask-scenario").hidden = true;
+  // the run's number, with a link to its card on the Runs page (docs/RUNS.md)
+  const link = $("ask-run").querySelector("a");
+  link.href = `runs.html#run=${id}`;
+  link.textContent = `Run ${id} · watch it on the Runs page →`;
+  $("ask-run").hidden = false;
   ASK.timer = setInterval(async () => {
-    const j = await api(`/api/job/${id}`);
+    const j = await api(`/api/job/${id}?since=1000000`);
     if (j.error && !j.stage) { clearInterval(ASK.timer); stage(j.error); return; }
     ASK.job = j;
     if (j.scenario) showScenario(j);
     if (j.stage === "done") { clearInterval(ASK.timer); stage(`Done in ${Math.round(j.seconds)} s.`); showResult(j); }
     else if (j.stage === "failed") { clearInterval(ASK.timer); stage(j.error); }
+    else if (j.runs_total) stage(`Run ${j.runs_done} of ${j.runs_total}${j.minutes_left != null ? ` · about ${j.minutes_left < 1 ? "under a minute" : Math.round(j.minutes_left) + " min"} left` : ""}`);
     else stage(`${j.stage[0].toUpperCase()}${j.stage.slice(1)}… ${Math.round(j.elapsed)} s`);
   }, 1000);
 }
 
 function showScenario(j) {
   const s = FabAsk.scenarioLines(j.scenario);
-  const src = j.answer_source === "example" ? "an example answer we wrote by hand"
-    : j.answer_source === "model" ? "the model's answer, after checking" : "your scenario";
+  // plain words (docs/RUNS.md): where the setup came from, what you said, and each change by what it does
+  const src = j.answer_source === "example" ? "Your question matched one of our hand-written examples, so no model ran. The setup:"
+    : j.answer_source === "model" ? "Muse Spark turned your question into this setup, and the simulator checked it:" : "Your hand-written setup:";
+  const low = t => t.charAt(0).toLowerCase() + t.slice(1);
   $("ask-scenario").hidden = false;
-  $("ask-scenario").innerHTML = `<p class="note">This scenario comes from ${src}:</p>
-    <ul class="given">${s.given.map(g => `<li><span class="tag ${g.said ? "said" : "assumed"}">${g.said ? "said" : "assumed"}</span>${esc(g.text)}</li>`).join("") || "<li>Today's fab as it is.</li>"}</ul>
+  $("ask-scenario").innerHTML = `<p class="note">${src}</p>
+    <ul class="given">${s.given.map(g => `<li><span class="tag ${g.said ? "said" : "assumed"}">${g.said ? "You said" : "Assumed"}</span>${esc(low(g.text))}</li>`).join("") || "<li>Today's fab as it is.</li>"}</ul>
     <p class="note">Compared with today's fab:</p>
-    <ul class="cands">${s.candidates.map(c => `<li><b>${esc(c.name)}</b>: ${esc(c.changes.join(", "))}</li>`).join("")}</ul>`;
+    <ul class="cands">${s.candidates.map(c => `<li>${esc(c.changes.join(", and ").replace(/^./, x => x.toUpperCase()))}</li>`).join("")}</ul>`;
   $("ask-text").value = j.scenario;
 }
 

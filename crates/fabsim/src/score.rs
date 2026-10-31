@@ -136,6 +136,7 @@ where
 fn score_point(shop: &Shop, sc: &Scenario, p: &Protocol, swept: Option<f64>, alpha: f64) -> Result<Vec<CandResult>, String> {
     let w = Window { from: p.warmup_days * 1440.0, to: (p.warmup_days + p.window_days) * 1440.0 };
     let mut arms: Vec<(Shop, Policy)> = vec![];
+    let names: Vec<&str> = std::iter::once("today").chain(sc.candidates.iter().map(|c| c.name.as_str())).collect();
     let today = sc.arm(None, swept);
     arms.push((with_probes(&today.0.apply(shop)?, &w), today.1));
     for c in &sc.candidates {
@@ -144,8 +145,16 @@ fn score_point(shop: &Shop, sc: &Scenario, p: &Protocol, swept: Option<f64>, alp
     }
     let jobs: Vec<(usize, u64)> = (0..arms.len()).flat_map(|a| p.seeds.iter().map(move |&s| (a, s))).collect();
     let scores = par_map(jobs, p.threads, |&(a, seed)| {
+        let t0 = std::time::Instant::now();
         let r = run_with(&arms[a].0, &RunOptions { seed, until: Some(w.to), record: false }, arms[a].1);
-        window_score(&r, &w)
+        let s = window_score(&r, &w);
+        if let Ok(ws) = &s {
+            crate::progress::emit(|| {
+                serde_json::json!({"e": "run", "arm": names[a], "seed": seed, "measure": "reward", "value": finite(ws.reward),
+                    "moves": finite(ws.moves), "seconds": t0.elapsed().as_secs_f64(), "point": swept})
+            });
+        }
+        s
     });
     let scores: Vec<WindowScore> = scores.into_iter().collect::<Result<_, _>>()?;
     let n = p.seeds.len();
@@ -173,6 +182,21 @@ fn cand_result(c: &CandidateSpec, rule: Policy, base: &[WindowScore], cand: &[Wi
     CandResult { name: c.name.clone(), rule, measures, pl: None }
 }
 
+/// A number for an event; NaN and infinities go as null (docs/RUNS.md).
+fn finite(x: f64) -> Option<f64> {
+    x.is_finite().then_some(x)
+}
+
+/// The start of a scoring: the setups, the random runs, the days, how many runs in all and the number each run reports.
+fn start_event(sc: &Scenario, p: &Protocol, measure: &str) {
+    crate::progress::emit(|| {
+        let arms: Vec<&str> = std::iter::once("today").chain(sc.candidates.iter().map(|c| c.name.as_str())).collect();
+        let points = 1 + sc.sweep.as_ref().map(|s| s.points().len()).unwrap_or(0);
+        serde_json::json!({"e": "start", "runs": arms.len() * p.seeds.len() * points, "arms": arms, "seeds": p.seeds,
+            "warmup_days": p.warmup_days, "window_days": p.window_days, "measure": measure, "threads": p.threads})
+    });
+}
+
 pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String> {
     if sc.family.is_some() {
         return Err("a two-family question needs its family context (score_with)".into());
@@ -183,6 +207,7 @@ pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String>
     }
     let m = sc.candidates.len().max(1) as f64;
     let alpha = 0.05 / m;
+    start_event(sc, p, "reward");
     let candidates = score_point(shop, sc, p, None, alpha)?;
     let best = candidates
         .iter()
@@ -206,6 +231,7 @@ pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String>
             Some(SweepResult { shock: sw.shock.clone(), field: sw.field.clone(), points, by_point, crossovers })
         }
     };
+    crate::progress::emit(|| serde_json::json!({"e": "end", "best": best}));
     Ok(Report { families: false, arms: vec![], scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
 }
 
@@ -247,10 +273,10 @@ pub struct ArmOut {
     pub shop_text: String,
 }
 
-fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bool) -> Result<(Shop, usize, f64), String> {
+fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bool) -> Result<(Shop, usize, f64, &'static str), String> {
     let Some(areas) = &ctx.areas else {
         let s = copy_groups(two, picks, "B")?;
-        return Ok((s, picks.iter().map(|p| p.1).sum(), 0.0));
+        return Ok((s, picks.iter().map(|p| p.1).sum(), 0.0, "none"));
     };
     let key = crate::hash::sha256_hex(
         format!("{}|{picks:?}|{wing}|{}|{}|{}", two.to_text(), ctx.layout.iters, ctx.layout.restarts, ctx.layout.seed).as_bytes(),
@@ -259,7 +285,7 @@ fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bo
         if let (Ok(t), Ok(info)) = (std::fs::read_to_string(dir.join(format!("{key}.shop.txt"))), std::fs::read_to_string(dir.join(format!("{key}.info")))) {
             let mut it = info.split_whitespace();
             if let (Some(a), Some(b)) = (it.next().and_then(|x| x.parse().ok()), it.next().and_then(|x| x.parse().ok())) {
-                return Ok((Shop::parse(&t)?, a, b));
+                return Ok((Shop::parse(&t)?, a, b, "saved"));
             }
         }
     }
@@ -269,7 +295,7 @@ fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bo
         let _ = std::fs::write(dir.join(format!("{key}.shop.txt")), s.to_text());
         let _ = std::fs::write(dir.join(format!("{key}.info")), format!("{} {}", info.tools_added, info.metres_added));
     }
-    Ok((s, info.tools_added, info.metres_added))
+    Ok((s, info.tools_added, info.metres_added, "new"))
 }
 
 /// Today (no candidate) or a candidate of a two-family question as a shop: family B at the share (or the swept
@@ -293,7 +319,12 @@ pub fn family_arm(
     let picks: Vec<(String, usize)> =
         if floor == FloorKind::Share { vec![] } else { contested(&two, "B", 3).into_iter().map(|g| (g, 1)).collect() };
     let wing = floor == FloorKind::Wing;
-    let (laid, tools_added, metres_added) = laid_out(&two, ctx, &picks, wing)?;
+    let t0 = std::time::Instant::now();
+    let (laid, tools_added, metres_added, how) = laid_out(&two, ctx, &picks, wing)?;
+    crate::progress::emit(|| {
+        serde_json::json!({"e": "floor", "arm": cand.map(|c| c.name.as_str()).unwrap_or("today"), "how": how,
+            "groups": laid.groups.len(), "copies": picks.len(), "wing": wing, "seconds": t0.elapsed().as_secs_f64(), "point": swept})
+    });
     let extra_areas = match &ctx.areas {
         None => vec![],
         Some(areas) => picks
@@ -385,6 +416,7 @@ fn fam_point(base: &Shop, sc: &Scenario, p: &Protocol, ctx: &FamilyContext, swep
     let central = PriceGrid::preregistered("B").remove(0);
     let jobs: Vec<(usize, u64)> = (0..probed.len()).flat_map(|a| p.seeds.iter().map(move |&s| (a, s))).collect();
     let runs = par_map(jobs, p.threads, |&(a, seed)| -> Result<FamRun, String> {
+        let t0 = std::time::Instant::now();
         let arm = &probed[a];
         let r = run_arm(arm, seed, &w);
         let m = money(&arm.shop, &r, &w, &central, arm.tools_added, arm.metres_added);
@@ -399,8 +431,13 @@ fn fam_point(base: &Shop, sc: &Scenario, p: &Protocol, ctx: &FamilyContext, swep
         let cap = crate::pl::capital(&arm.added, &sheet);
         let b_revenue_day = crate::pl::b_revenue_day(&arm.shop, &r, &w, &sheet);
         let pl = crate::pl::run_pl(&crate::pl::RunIn { a_wafers_day: a_w / days, b_wafers_day: m.b_wafers as f64 / days, b_revenue_day }, &cap, &sheet);
+        let ws = window_score(&r, &w)?;
+        crate::progress::emit(|| {
+            serde_json::json!({"e": "run", "arm": arms[a].0, "seed": seed, "measure": "profit", "value": finite(pl.profit),
+                "a_wafers": finite(a_w / days), "moves": finite(ws.moves), "seconds": t0.elapsed().as_secs_f64(), "point": swept})
+        });
         Ok(FamRun {
-            w: window_score(&r, &w)?,
+            w: ws,
             money: m.per_day,
             profit: pl.profit,
             cash: pl.cash,
@@ -433,6 +470,7 @@ pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyC
         return Err("at least two seeds".into());
     }
     let alpha = 0.05 / sc.candidates.len().max(1) as f64;
+    start_event(sc, p, "profit");
     let (candidates, arms) = fam_point(shop, sc, p, ctx, None, alpha)?;
     let best = candidates
         .iter()
@@ -460,6 +498,7 @@ pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyC
         .into_iter()
         .map(|(name, a)| ArmOut { name, rule: a.rule, bfirst: a.bfirst, extra_areas: a.extra_areas, shop_text: a.shop.to_text() })
         .collect();
+    crate::progress::emit(|| serde_json::json!({"e": "end", "best": best}));
     Ok(Report { families: true, arms, scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
 }
 

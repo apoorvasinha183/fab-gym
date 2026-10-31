@@ -13,7 +13,7 @@
 
 <header class="card brand">
   <div class="brand-row"><div class="title">Fab Gym</div>
-    <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#evidence" data-page="evidence">Evidence</a></nav></div>
+    <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#evidence" data-page="evidence">Evidence</a><a href="runs.html">Runs</a></nav></div>
   <div class="sub"><span class="sub-floor">The full fab, 1,043 machines, running live in your browser</span><span class="sub-ev">What the simulator found, and every run behind it</span></div>
   <div class="help-row"><button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button><button id="glossary-open" class="link help-link" type="button" data-tab="glossary" aria-label="Glossary: what the words mean">? Glossary</button></div>
 </header>
@@ -105,6 +105,7 @@
     <div id="ask-examples" class="chips" aria-label="Example questions"></div>
     <p class="note" id="ask-model">Connecting to the helper…</p>
     <div id="ask-live" aria-live="polite">
+      <p id="ask-run" class="ask-run" hidden><a></a></p>
       <p id="ask-stage" class="stage" hidden></p>
       <div id="ask-scenario" hidden></div>
       <div id="ask-result"></div>

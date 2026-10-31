@@ -11,7 +11,6 @@ it answers the recorded example questions and runs scenarios a person writes. Fr
 
 import argparse
 import hashlib
-import itertools
 import re
 import json
 import mimetypes
@@ -45,7 +44,7 @@ class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
                  preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=8.0, meta_key_file=None, meta_base_url=None,
-                 poster_cap=5.0, sketch_cap=2.0, glossary_cap=5.0):
+                 poster_cap=5.0, sketch_cap=2.0, glossary_cap=5.0, runs=ROOT / "data" / "ask" / "runs"):
         p = PRESETS[preset]
         self.preset = preset
         self.provider = p["provider"]
@@ -55,6 +54,8 @@ class Helper:
         self.smt2020 = Path(smt2020)
         self.key_file = Path(key_file if key_file is not None else p["key_file"]).expanduser()
         self.jobs_dir = Path(jobs)
+        # numbered runs, kept for good (docs/RUNS.md): data/ask/runs/Q-0004/ holds the setup, the log and the report
+        self.runs_dir = Path(runs)
         self.quick = quick
         self.base_url = base_url or p["base_url"]
         self.model_name = model or p["model"]
@@ -77,7 +78,6 @@ class Helper:
         self.jobs = {}
         self.lock = threading.Lock()
         self.fab_lock = threading.Lock()
-        self.ids = itertools.count(1)
 
     def __repr__(self):
         return f"Helper(web={str(self.web)!r}, model={self.model_name!r}, key_file={str(self.key_file)!r})"
@@ -108,13 +108,48 @@ class Helper:
 
     # ------------------------------------------------------------------ jobs
 
+    # ------------------------------------------------------------------ numbered runs (docs/RUNS.md)
+
+    KIND = {"Q": "question", "S": "settings", "B": "build", "F": "floor"}
+
+    def _next_id(self, prefix="Q"):
+        """The next free number of a kind, from the runs on disk, so a number is never used twice."""
+        self.runs_dir.mkdir(parents=True, exist_ok=True)
+        used = [int(d.name[2:]) for d in self.runs_dir.iterdir() if d.is_dir() and re.fullmatch(prefix + r"-\d{4,}", d.name)]
+        n = max(used, default=0) + 1
+        while True:
+            jid = f"{prefix}-{n:04d}"
+            try:
+                (self.runs_dir / jid).mkdir()  # taken at once, so two helpers cannot pick the same number
+                return jid
+            except FileExistsError:
+                n += 1
+
+    def _dir(self, jid):
+        """A run's folder: numbered runs in the runs folder, older jobs where they were."""
+        return self.runs_dir / jid if re.fullmatch(r"[A-Z]-\d{4,}", jid or "") else self.jobs_dir / jid
+
+    META = ("id", "kind", "question", "answer_source", "model", "answer", "checks", "scenario", "stage", "started", "started_at",
+            "seconds", "error", "runs_done", "runs_total", "leader", "model_usd")
+
+    def _save(self, jid):
+        """The run's card on disk (run.json): what was asked, where its setup came from, how far it got."""
+        j = self.jobs[jid]
+        d = self._dir(jid)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "run.json").write_text(json.dumps({k: j.get(k) for k in self.META}, indent=1))
+
     def _start(self, job, work):
         with self.lock:
             if self.busy():
                 return {"error": "One question runs at a time; wait for the one running now.", "busy": True}
-            jid = str(next(self.ids))
-            job.update({"id": jid, "stage": "queued", "started": time.time(), "report": None, "error": None})
+            jid = self._next_id("Q")
+            job.update({"id": jid, "kind": "question", "stage": "queued", "started": time.time(),
+                        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "report": None, "error": None,
+                        "events": [], "runs_done": 0, "runs_total": None, "leader": None,
+                        "model": self.model_name if job.get("answer_source") == "model" else None})
             self.jobs[jid] = job
+            self._save(jid)
         threading.Thread(target=self._run, args=(jid, work), daemon=True).start()
         return {"job": jid}
 
@@ -136,13 +171,16 @@ class Helper:
     def run_text(self, text):
         if not (text or "").strip():
             return {"error": "The scenario is empty."}
-        return self._start({"question": None, "answer_source": "hand", "answer": None, "scenario": text}, "text")
+        # a hand-written setup carries its question in its own question line
+        q = next((ln.split("\t", 1)[1].strip() for ln in text.splitlines() if ln.startswith("question\t")), None)
+        return self._start({"question": q, "answer_source": "hand", "answer": None, "scenario": text}, "text")
 
     def _run(self, jid, work):
         job = self.jobs[jid]
         try:
             if work == "model":
                 job["stage"] = "asking the model"
+                self._save(jid)
                 before = self.meter.usd
                 model = self.client()
                 try:
@@ -159,35 +197,91 @@ class Helper:
                     raise ValueError("The scenario was refused: " + "; ".join(reasons))
                 job["scenario"] = ask.to_scenario(job["answer"])
             job["stage"] = "laying out and simulating"
+            self._save(jid)
             job["report"] = self._score(jid, job["scenario"])
+            job["leader"] = job["report"].get("best")
             job["stage"] = "done"
         except Exception as e:  # shown to the person; never holds the key
             job["error"] = str(e)
             job["stage"] = "failed"
         job["seconds"] = round(time.time() - job["started"], 1)
+        self._save(jid)
 
     def _score(self, jid, text):
-        d = self.jobs_dir / jid
+        """Run the simulator with --events: each event it reports is stamped with the seconds since the run began,
+        kept with the job and appended to the run's log.jsonl as it comes (docs/RUNS.md)."""
+        job = self.jobs[jid]
+        d = self._dir(jid)
         d.mkdir(parents=True, exist_ok=True)
         f = d / "scenario.txt"
         f.write_text(text)
         cmd = ["nice", "-n", "10", str(self.fabsim), "score", str(f), str(self.smt2020), "--threads", str(self.threads),
-               "--layout-cache", str(ROOT / "data" / "ask" / "layouts")]
+               "--layout-cache", str(ROOT / "data" / "ask" / "layouts"), "--events"]
         if self.quick:
             cmd += QUICK
-        p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
-        if p.returncode != 0:
-            msg = (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1]
+        out = d / "report.part"
+        other = []
+        with open(out, "w") as rep, open(d / "log.jsonl", "a") as log:
+            # the report goes to a file, so a large one never blocks the pipe the events come through
+            p = subprocess.Popen(cmd, cwd=ROOT, stdout=rep, stderr=subprocess.PIPE, text=True)
+            for line in p.stderr:
+                if not line.startswith("event "):
+                    other.append(line.rstrip())
+                    continue
+                try:
+                    ev = json.loads(line[6:])
+                except ValueError:
+                    continue
+                ev["t"] = round(time.time() - job["started"], 2)
+                log.write(json.dumps(ev) + "\n")
+                log.flush()
+                job["events"].append(ev)
+                if ev.get("e") == "start":
+                    job["runs_total"] = ev.get("runs")
+                    job["runs_began"] = ev["t"]
+                elif ev.get("e") == "run":
+                    job["runs_done"] += 1
+            code = p.wait()
+        if code != 0:
+            msg = (other or ["the simulator stopped"])[-1]
             raise ValueError(msg.removeprefix("refused: "))
-        (d / "report.json").write_text(p.stdout)
-        return json.loads(p.stdout)
+        out.replace(d / "report.json")
+        return json.loads((d / "report.json").read_text())
 
-    def job(self, jid):
-        j = self.jobs.get(jid)
+    def _load(self, jid):
+        """A run from its folder, for runs finished before this helper started."""
+        if not re.fullmatch(r"[A-Z]-\d{4,}", jid or ""):
+            return None
+        d = self.runs_dir / jid
+        try:
+            j = json.loads((d / "run.json").read_text())
+        except (OSError, ValueError):
+            return None
+        j["events"] = [json.loads(x) for x in (d / "log.jsonl").read_text().splitlines() if x.strip()] if (d / "log.jsonl").is_file() else []
+        j["report"] = json.loads((d / "report.json").read_text()) if (d / "report.json").is_file() else None
+        if (d / "signed.json").is_file():
+            j["card"] = json.loads((d / "signed.json").read_text())
+        if j.get("stage") not in ("done", "failed"):
+            j["stage"], j["error"] = "failed", "The helper stopped before this run finished."
+        j.setdefault("runs_done", sum(1 for e in j["events"] if e.get("e") == "run"))
+        self.jobs[jid] = j
+        return j
+
+    def job(self, jid, since=None):
+        j = self.jobs.get(jid) or self._load(jid)
         if j is None:
             return None
-        out = {k: v for k, v in j.items() if k != "report"}
-        out["elapsed"] = round(time.time() - j["started"], 1)
+        out = {k: v for k, v in j.items() if k not in ("report", "events")}
+        evs = j.get("events") or []
+        k = max(0, int(since)) if since is not None else 0
+        out["events"], out["since"] = evs[k:], k
+        out["elapsed"] = round((time.time() - j["started"]) if j.get("stage") not in ("done", "failed") else (j.get("seconds") or 0), 1)
+        done, total = j.get("runs_done") or 0, j.get("runs_total")
+        out["minutes_left"] = None
+        if total and 2 <= done < total and j.get("stage") not in ("done", "failed"):
+            began = j.get("runs_began") or 0
+            pace = (time.time() - j["started"] - began) / done  # seconds a run, all workers together
+            out["minutes_left"] = round(pace * (total - done) / 60, 1)
         rep = j.get("report")
         if rep is not None:
             rep = dict(rep)
@@ -195,6 +289,27 @@ class Helper:
                            for i, a in enumerate(rep.get("arms", []))]
         out["report"] = rep
         return out
+
+    def runs(self):
+        """Every numbered run on disk, newest first (docs/RUNS.md)."""
+        rows = []
+        if self.runs_dir.is_dir():
+            for d in self.runs_dir.iterdir():
+                if not (d.is_dir() and re.fullmatch(r"[A-Z]-\d{4,}", d.name)):
+                    continue
+                live = self.jobs.get(d.name)
+                try:
+                    j = live or json.loads((d / "run.json").read_text())
+                except (OSError, ValueError):
+                    continue
+                stage = j.get("stage")
+                status = "done" if stage == "done" else "failed" if stage == "failed" else "running" if live else "stopped"
+                rows.append({"id": d.name, "kind": j.get("kind") or self.KIND.get(d.name[0], "question"), "question": j.get("question"),
+                             "started": j.get("started_at"), "started_ts": j.get("started") or 0, "status": status,
+                             "runs_done": j.get("runs_done") or 0, "runs_total": j.get("runs_total"), "leader": j.get("leader"),
+                             "seconds": j.get("seconds"), "answer_source": j.get("answer_source")})
+        rows.sort(key=lambda r: (r["started_ts"], r["id"]), reverse=True)
+        return {"runs": rows}
 
     # ------------------------------------------------------------------ signing (docs/FLOOR-UI.md)
 
@@ -206,7 +321,7 @@ class Helper:
 
     def sign(self, jid, name):
         """A person signs a finished answer: their name, the time and SHA-256 of question, scenario and report."""
-        j = self.jobs.get(jid)
+        j = self.jobs.get(jid) or self._load(jid)
         name = (name or "").strip()
         if j is None:
             return {"signed": False, "error": "No such answer."}
@@ -218,7 +333,7 @@ class Helper:
             return {"signed": False, "error": "This answer is already signed.", "card": j["card"]}
         card = {"name": name[:120], "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "sha256": self._hashes(j)}
         j["card"] = card
-        d = self.jobs_dir / jid; d.mkdir(parents=True, exist_ok=True)
+        d = self._dir(jid); d.mkdir(parents=True, exist_ok=True)
         (d / "signed.json").write_text(json.dumps(card, indent=1))
         return {"signed": True, "card": card}
 
@@ -301,7 +416,7 @@ class Helper:
         return {**r[0], "seconds": r[2]}
 
     def arm_shop(self, jid, k):
-        j = self.jobs.get(jid)
+        j = self.jobs.get(jid) or self._load(jid)
         arms = (j or {}).get("report", {}) or {}
         arms = arms.get("arms", [])
         return arms[k]["shop"] if 0 <= k < len(arms) else None
@@ -433,8 +548,12 @@ def serve(h, port=8766):
                 if len(parts) == 6 and parts[4] == "arm" and parts[5].isdigit():
                     t = h.arm_shop(parts[3], int(parts[5]))
                     return self._send(200, t, "text/plain") if t else self._send(404, {"error": "no such arm"})
-                j = h.job(parts[3])
-                return self._send(200, j) if j else self._send(404, {"error": "no such job"})
+                q = self.path.split("?", 1)[1] if "?" in self.path else ""
+                since = dict(x.split("=", 1) for x in q.split("&") if "=" in x).get("since")
+                j = h.job(parts[3], int(since) if since and since.isdigit() else None)
+                return self._send(200, j) if j else self._send(404, {"error": "no such run"})
+            if path == "/api/runs":
+                return self._send(200, h.runs())
             rel = "index.html" if path in ("/", "") else path.lstrip("/")
             f = (h.web / rel).resolve()
             if h.web not in f.parents and f != h.web or not f.is_file():
@@ -483,8 +602,11 @@ def main():
                    help="meta: muse-spark-1.3-contributor at low effort (ideas, trials); open: Muse Spark Open on Baseten (submission runs)")
     a.add_argument("--spend-cap", type=float, default=SPEND_CAP, help="stop asking the model once this many dollars are spent")
     a.add_argument("--stand-in", help="answer Meta's models from recorded replies in this folder (tests, no key); spends nothing")
+    a.add_argument("--runs", default=str(ROOT / "data" / "ask" / "runs"), help="where numbered runs are kept (docs/RUNS.md)")
+    a.add_argument("--threads", type=int, default=4, help="cores the simulator uses for a question (at most 4)")
     o = a.parse_args()
-    h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap, stand_in=o.stand_in)
+    h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap, stand_in=o.stand_in, runs=o.runs,
+               threads=max(1, min(4, o.threads)))
     srv = serve(h, o.port)
     state = f"{h.model_name} on {h.provider_label}" if h.model_connected() else "not connected: examples and hand-written scenarios only"
     s = h.meter.summary()

@@ -1572,6 +1572,15 @@ fn main() {
             } else {
                 None
             };
+            // what it is doing, as it does it, for the helper's run log (docs/RUNS.md)
+            if args.iter().any(|a| a == "--events") {
+                fabsim::progress::set_sink(Some(Box::new(|line: &str| {
+                    use std::io::Write;
+                    let mut e = std::io::stderr().lock();
+                    let _ = writeln!(e, "event {line}");
+                    let _ = e.flush();
+                })));
+            }
             match parsed.and_then(|sc| fabsim::score::score_with(&shop, &sc, &p, ctx.as_ref())) {
                 Ok(r) => println!("{}", r.to_json()),
                 Err(e) => {
