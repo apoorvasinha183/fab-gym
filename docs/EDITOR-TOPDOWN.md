@@ -37,6 +37,17 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
 - **D6** the palette's buttons are raised (a shadow under them, none inset) and the chosen one is pressed (an inset
   shadow); the toolbar's play button is raised too.
 
+## The map fits the window
+
+Added 31 October 2026, before the code. The founder on the top-down map: "make the figure compact, it is too big"
+(square tiles made it 643 px tall in a 913 px window, its bottom below the fold). The map is now sized to the smaller
+of the column's width and the window's height below the map's top, never under 360 px tall, with the floor centred
+across. Square tiles, picking, zoom and pan are unchanged.
+
+- **D7** on a 1440 x 900 screen the map ends inside the window, the whole floor sits inside the map, and tiles stay
+  square.
+- **D8** in a 1440 x 640 window the map is still at least 360 px tall and the floor at least 300 px.
+
 ## Changes
 
 - 31 Oct, while writing the code: a leftover rule dimmed every palette button but Select while the run played (from

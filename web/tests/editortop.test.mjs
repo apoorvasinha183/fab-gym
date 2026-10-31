@@ -1,5 +1,5 @@
 // The editor, top down (docs/EDITOR-TOPDOWN.md): straight down, Factorio tiles, engraved icons, no text on the map,
-// raised keys. Written before the code. On a teaching fab of our own; not a real fab.
+// raised keys; the map fits the window (D7, D8). Written before the code. On a teaching fab of our own; not a real fab.
 //
 //     node --test web/tests/editortop.test.mjs   (from the repo root; D2 to D6 need Google Chrome and the .venv)
 
@@ -41,12 +41,12 @@ test("D1 an engraved icon: a cut darker than the tile and a light see-through li
 const ready = existsSync(CHROME) && existsSync(PY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function openEditor() {
+async function openEditor(size = "1440,1000") {
   const hp = 8800 + Math.floor(Math.random() * 600);
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/editor.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
-  const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,1000", "--hide-scrollbars", `--user-data-dir=${mkdtempSync(join(tmpdir(), "top-"))}`, "about:blank"], { stdio: "ignore" });
+  const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, `--window-size=${size}`, "--hide-scrollbars", `--user-data-dir=${mkdtempSync(join(tmpdir(), "top-"))}`, "about:blank"], { stdio: "ignore" });
   let ws = null;
   for (let i = 0; i < 60 && !ws; i++) { try { const l = await (await fetch(`http://127.0.0.1:${cp}/json`)).json(); const p = l.find((t) => t.type === "page"); if (p) ws = new WebSocket(p.webSocketDebuggerUrl); } catch { /* not up */ } if (!ws) await sleep(200); }
   await new Promise((r) => (ws.onopen = r));
@@ -112,5 +112,32 @@ test("D6 raised keys: palette buttons raised, the chosen one pressed; play raise
     assert.ok(o.up !== "none" && !/inset/.test(o.up), `a raised palette button: ${o.up}`);
     assert.match(o.down, /inset/, `the chosen one pressed: ${o.down}`);
     assert.ok(o.play !== "none" && !/^inset/.test(o.play), `play raised: ${o.play}`);
+  } finally { p.close(); }
+});
+
+// ---------------------------------------------------------------- the map fits the window (the founder: "make the figure compact")
+
+const WHOLE = `JSON.stringify((() => { const [W, H] = FabEditorPage.size(), a = FabEditorPage.screenOf(-0.5, -0.5), b = FabEditorPage.screenOf(W - 0.5, H - 0.5),
+  r = document.getElementById("map").getBoundingClientRect();
+  return { a, b, map: [r.left, r.top, r.right, r.bottom], inner: innerHeight }; })())`;
+
+test("D7 on a 1440 x 900 screen the whole map shows without scrolling, the whole floor inside it", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+  const p = await openEditor("1440,900");
+  try {
+    const o = JSON.parse(await p.ev(WHOLE));
+    assert.ok(o.map[3] <= o.inner + 0.5, `the map ends at ${o.map[3]}, the window at ${o.inner}`);
+    const inside = (q) => q[0] >= o.map[0] - 0.5 && q[0] <= o.map[2] + 0.5 && q[1] >= o.map[1] - 0.5 && q[1] <= o.map[3] + 0.5;
+    assert.ok(inside(o.a) && inside(o.b), `the floor's corners ${o.a} and ${o.b} sit inside the map ${o.map}`);
+    const [a, b, c] = JSON.parse(await p.ev("JSON.stringify([FabEditorPage.screenOf(3, 3), FabEditorPage.screenOf(4, 3), FabEditorPage.screenOf(3, 4)])"));
+    assert.ok(Math.abs((b[0] - a[0]) - (c[1] - a[1])) < 0.01, "tiles stay square");
+  } finally { p.close(); }
+});
+
+test("D8 in a short window the map keeps a usable height of at least 360 px", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+  const p = await openEditor("1440,640");
+  try {
+    const o = JSON.parse(await p.ev(WHOLE));
+    assert.ok(o.map[3] - o.map[1] >= 359.5, `the map is ${o.map[3] - o.map[1]} px tall`);
+    assert.ok(o.b[1] - o.a[1] >= 300, `the floor is ${o.b[1] - o.a[1]} px tall`);
   } finally { p.close(); }
 });
