@@ -158,8 +158,8 @@ class Route(unittest.TestCase):
         self.assertTrue(any(p.get("type") == "image_url" and p["image_url"]["url"] == URL for p in parts))
         self.assertEqual([p["piece"] for p in r["pieces"]], ["litho", "cmp"])
         self.assertGreater(h.sketch_meter.usd, 0)
-        self.assertEqual(h.sketch_meter.cap_usd, 1.0)
-        h.sketch_meter.usd = 1.0
+        self.assertEqual(h.sketch_meter.cap_usd, 2.0)  # raised 1 Nov by quiz
+        h.sketch_meter.usd = h.sketch_meter.cap_usd
         n = len(heard)
         self.assertIn("error", h.sketch_read({"image": URL}))
         self.assertEqual(len(heard), n, "nothing sent at the cap")

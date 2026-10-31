@@ -37,15 +37,15 @@ PRESETS = {
 }
 BASE_URL = PRESETS["open"]["base_url"]
 MODEL = PRESETS["open"]["model"]
-SPEND_CAP = 5.0  # dollars, assumed
+SPEND_CAP = 20.0  # dollars, the helper's total for every model (raised 1 Nov by quiz from $5)
 QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", "300"]
 
 
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
-                 preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=2.0, meta_key_file=None, meta_base_url=None,
-                 poster_cap=1.0, sketch_cap=1.0):
+                 preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=8.0, meta_key_file=None, meta_base_url=None,
+                 poster_cap=5.0, sketch_cap=2.0, glossary_cap=5.0):
         p = PRESETS[preset]
         self.preset = preset
         self.provider = p["provider"]
@@ -70,6 +70,8 @@ class Helper:
         self.race_meter = spend.Meter(spend.price("meta", race.MODEL), cap_usd=race_cap, path=self.jobs_dir.parent / "spend-race.json")
         self.poster_meter = spend.Meter({}, cap_usd=poster_cap, path=self.jobs_dir.parent / "spend-poster.json")
         self.sketch_meter = spend.Meter(spend.price("meta", sketch.MODEL), cap_usd=sketch_cap, path=self.jobs_dir.parent / "spend-sketch.json")
+        # the glossary's pictures, newcomer lines and questions (docs/SIM-SETTINGS.md's plan: glossary after the curves)
+        self.glossary_meter = spend.Meter(spend.price("meta", sketch.MODEL), cap_usd=glossary_cap, path=self.jobs_dir.parent / "spend-glossary.json")
         self.threads = threads
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
@@ -307,7 +309,7 @@ class Helper:
 
     # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
     def spent_total(self):
-        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd
+        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd + self.glossary_meter.usd
 
     def race_step(self, body):
         """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
@@ -320,9 +322,9 @@ class Helper:
             return {"message": race.replay(self.stand_in, messages), "model": "stand-in", "cost_usd": 0,
                     "spent_usd": round(self.race_meter.usd, 6), **base}
         if self.race_meter.usd >= self.race_meter.cap_usd:
-            return {"error": f"The AI's ${self.race_meter.cap_usd:g} for Race the AI is spent.", **base}
+            return {"error": f"Race the AI has used its ${self.race_meter.cap_usd:g} budget. Raise its cap to keep playing.", **base}
         if self.spent_total() >= self.total_cap:
-            return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+            return {"error": f"All ${self.total_cap:g} of the model budget is used. Raise the total cap to keep going.", **base}
         if not self.meta_key_file.is_file():
             return {"error": "No Meta key on this Mac, so the AI cannot play. Start the helper with --stand-in to watch a recorded game.", **base}
         m = HttpModel(self.meta_base_url, race.MODEL, key_file=self.meta_key_file, max_tokens=4000, reasoning_effort="low",
@@ -331,7 +333,7 @@ class Helper:
         try:
             msg = m.chat([{"role": "system", "content": race.SYSTEM}, *messages], tools=race.TOOLS)
         except spend.CapReached:
-            return {"error": f"The AI's ${self.race_meter.cap_usd:g} for Race the AI is spent.", **base}
+            return {"error": f"Race the AI has used its ${self.race_meter.cap_usd:g} budget. Raise its cap to keep playing.", **base}
         except Exception as e:  # noqa: BLE001 - the page shows the reason
             return {"error": f"The model did not answer: {e}", **base}
         msg = {k: msg[k] for k in ("role", "content", "tool_calls") if k in msg}
@@ -355,9 +357,9 @@ class Helper:
             png, model, cost = (self.stand_in / "poster.png").read_bytes(), "stand-in", 0
         else:
             if self.poster_meter.usd + poster.PRICE_USD > self.poster_meter.cap_usd + 1e-9:
-                return {"error": f"The poster's ${self.poster_meter.cap_usd:g} is spent.", **base}
+                return {"error": f"Posters have used their ${self.poster_meter.cap_usd:g} budget. Raise their cap to make more.", **base}
             if self.spent_total() + poster.PRICE_USD > self.total_cap + 1e-9:
-                return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+                return {"error": f"All ${self.total_cap:g} of the model budget is used. Raise the total cap to keep going.", **base}
             if not self.meta_key_file.is_file():
                 return {"error": "No Meta key on this Mac, so no poster can be made.", **base}
             from agent.fabgym_agent import _read_secret
@@ -385,9 +387,9 @@ class Helper:
             reading, model, cost = json.loads((self.stand_in / "sketch.json").read_text()), "stand-in", 0
         else:
             if self.sketch_meter.usd >= self.sketch_meter.cap_usd:
-                return {"error": f"The sketch's ${self.sketch_meter.cap_usd:g} is spent.", **base}
+                return {"error": f"Sketch reading has used its ${self.sketch_meter.cap_usd:g} budget. Raise its cap to read more.", **base}
             if self.spent_total() >= self.total_cap:
-                return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+                return {"error": f"All ${self.total_cap:g} of the model budget is used. Raise the total cap to keep going.", **base}
             if not self.meta_key_file.is_file():
                 return {"error": "No Meta key on this Mac, so no sketch can be read.", **base}
             w, h = int(body.get("width") or 0), int(body.get("height") or 0)

@@ -177,8 +177,21 @@ class AskBox(unittest.TestCase):
         s = h.status()
         self.assertEqual(s["model"], "muse-spark-1.3-contributor on Meta")
         self.assertEqual(set(s["spend"]), {"calls", "usd", "cap_usd"})
-        self.assertEqual(s["spend"]["cap_usd"], 5.0)
+        self.assertEqual(s["spend"]["cap_usd"], 20.0)  # raised 1 Nov by quiz
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Caps(unittest.TestCase):
+    """The caps raised 1 Nov by quiz ("Generous: total $20"): every model meter counts toward the total."""
+
+    def test_raised_caps_and_the_glossary_meter(self):
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        h = helper.Helper(jobs=Path(d.name) / "jobs")
+        self.assertEqual(helper.SPEND_CAP, 20.0)
+        self.assertEqual((h.race_meter.cap_usd, h.poster_meter.cap_usd, h.sketch_meter.cap_usd, h.glossary_meter.cap_usd), (8.0, 5.0, 2.0, 5.0))
+        h.glossary_meter.add_usd(0.25)
+        self.assertAlmostEqual(h.spent_total() - (h.meter.usd + h.race_meter.usd + h.poster_meter.usd + h.sketch_meter.usd), 0.25)

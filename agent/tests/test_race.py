@@ -121,14 +121,14 @@ class Live(unittest.TestCase):
         self.assertEqual([t["function"]["name"] for t in sent["tools"]], NAMES)
         self.assertEqual(sent["messages"][0]["role"], "system")
         self.assertAlmostEqual(h.race_meter.usd, 0.005280, places=9)
-        self.assertEqual(h.race_meter.cap_usd, 2.0)
+        self.assertEqual(h.race_meter.cap_usd, 8.0)  # raised 1 Nov by quiz
 
     def test_RA3_a_race_meter_at_its_cap_sends_nothing(self):
         h = self.helper()
-        h.race_meter.usd = 2.0
+        h.race_meter.usd = h.race_meter.cap_usd
         r = h.race_step({"messages": [{"role": "user", "content": "go"}]})
         self.assertIn("error", r)
-        self.assertIn("$2", r["error"])
+        self.assertIn("$8", r["error"])
         self.assertEqual(self.heard, [])
 
     def test_RA3_the_helpers_total_stops_it_too(self):

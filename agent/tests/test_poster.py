@@ -118,7 +118,7 @@ class Live(unittest.TestCase):
         self.assertEqual(r["model"], "muse-image-1.0")
         self.assertAlmostEqual(r["cost_usd"], 0.01)
         self.assertAlmostEqual(h.poster_meter.usd, 0.01)
-        self.assertEqual(h.poster_meter.cap_usd, 1.0)
+        self.assertEqual(h.poster_meter.cap_usd, 5.0)  # raised 1 Nov by quiz
         self.assertEqual(Path(r["saved"]).read_bytes(), PNG)
 
     def test_PO8_a_webp_reply_is_kept_and_labelled_as_webp(self):
@@ -132,7 +132,7 @@ class Live(unittest.TestCase):
 
     def test_PO5_a_meter_at_its_cap_sends_nothing(self):
         h = self.helper()
-        h.poster_meter.usd = 1.0
+        h.poster_meter.usd = h.poster_meter.cap_usd
         self.assertIn("error", h.poster_make(ASK))
         h = self.helper(spend_cap=1.0)
         h.meter.usd = 1.0
