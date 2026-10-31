@@ -55,6 +55,39 @@ The work comes in five parts, each with its own tests written first:
 - `web/tests/editorgame.test.mjs` **G8** reads the palette's tools (buttons with `data-t`), since the machines are now
   listed beside them.
 
+## Part 2: placing machines (written 1 November 2026, before its tests and code)
+
+The founder: "By 1 you mean it is placed there ? I would expect something of a "fill" which is what you are saying
+require some button like Ctrl or Shift or something pressed". Found before: a group is one block with a count, so a
+machine could only be added by + on its group; the fab file and the simulator already give every machine its own stop
+on the track, and a group may have several station rectangles, so a group's machines can stand in several places.
+
+1. **Pick up a machine.** Clicking a machine in the palette takes it in hand (and still opens its group's controls, as
+   in part 1). V or Esc puts it down.
+2. **A click places one machine where it is clicked.** On empty floor, a new block of that kind's group with one
+   machine; on a block of the same kind, one more machine in that block. A kind with no group on the floor yet places
+   that group, as before.
+3. **Shift-drag fills.** Holding Shift and dragging places one machine at each free spot along the drag. The whole fill
+   is one step to undo.
+4. **One group, several places.** The fab file counts a group's machines across all its blocks; every machine has its
+   own stop, numbered once; each block is a station. A group's breakdown settings belong to the group: a new block
+   takes its group's, and changing them on one block changes them on all. Spending counts every machine once and a
+   group's spares once. "Machines here" and "in the group in all" both show in Selected.
+
+## Part 2: tests (written before the code)
+
+`web/tests/buildplace.test.mjs` (headless Chrome and a helper; nothing is spent):
+- **BP1** clicking a machine in the palette takes it in hand and opens its group's controls; Esc puts it down.
+- **BP2** a click on a free spot beside the track places a new block with one machine of that group; the group's total
+  rises by one, and the fab file has that total, one station per block, and one stop per machine, numbered 0 to the
+  total minus one with none repeated.
+- **BP3** a click on a block of the same kind adds one machine to that block and makes no new block.
+- **BP4** a Shift-drag along free spots beside the track places a machine at each, and one undo takes them all away.
+- **BP5** a new block takes its group's breakdown settings; changing them on one block changes them on all; the
+  breakdown settings file has one entry for the group; spending counts each machine once and the spares once.
+- **BP6** a layout with one group in two places passes the layout checks and runs; the run counts the group's
+  machines.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
