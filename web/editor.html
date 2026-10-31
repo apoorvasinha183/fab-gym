@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fab Gym · Build your own fab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230F1D22' stroke='%237EE8D8' stroke-width='2'/%3E%3Cpath d='M8 12h16M8 16h16M8 20h16M12 8v16M16 8v16M20 8v16' stroke='%237EE8D8' stroke-width='1' opacity='.6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -137,7 +138,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 <div class="wrap">
   <header class="top">
     <div class="brandrow"><h1>Fab Gym <span>· Build your own fab</span></h1>
-      <nav class="topnav" aria-label="Pages"><a href="index.html">Home</a><a href="index.html#floor">Floor</a><a href="editor.html" aria-current="page">Build</a><a href="index.html#ask">Ask</a></nav></div>
+      <nav class="topnav" aria-label="Pages"><a href="index.html">Home</a><a href="index.html#floor">Floor</a><a href="editor.html" aria-current="page">Build</a><a href="index.html#evidence">Evidence</a></nav></div>
     <div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
   </header>
 
@@ -153,7 +154,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <nav class="pal" id="pal" aria-label="Palette"></nav>
     <div class="mapcol">
       <div class="maptools">
-        <span class="mode" role="group" aria-label="Mode"><button class="tab" id="modeRun" aria-pressed="true">▶ Run</button><button class="tab" id="modeBuild" aria-pressed="false">✎ Build</button></span>
+        
         <button class="btn" id="play" aria-label="Pause">❚❚</button>
         <button class="btn" id="undo" aria-label="Undo" title="Undo (⌘Z)" disabled>↶</button><button class="btn" id="redo" aria-label="Redo" title="Redo (⇧⌘Z)" disabled>↷</button>
         <select id="speed" aria-label="Playback speed"><option value="15">15× slow motion</option><option value="60" selected>60×</option><option value="240">240×</option></select>
@@ -168,7 +169,6 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <aside class="side">
       <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
       <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
-      <div class="card"><h4><span>The lots right now</span></h4><div class="lots" id="lots"></div></div>
     </aside>
   </section>
   <p class="note">What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p>

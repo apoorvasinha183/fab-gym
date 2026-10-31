@@ -427,3 +427,17 @@ body.dock-wide .lens-note, body.dock-wide .flow-ctl { display: none; }
   .journey-detail { grid-template-columns: 1fr; }
   .journey-detail .j-pic { max-width: 200px; }
 }
+
+/* fewer doors (docs/SITE-CUTS.md): the panel's title, the key's disclosure, Evidence as a page of its own */
+.dock-title { margin: 0; font: 600 16px/1.2 var(--display, "Chakra Petch", sans-serif); color: var(--text); padding: 4px 6px; }
+.key-more { margin-top: 6px; }
+.key-more > summary { cursor: pointer; color: var(--accent); font-size: 13px; list-style: none; padding: 2px 0; }
+.key-more > summary::-webkit-details-marker { display: none; }
+.key-more > summary::before { content: "▸ "; }
+.key-more[open] > summary::before { content: "▾ "; }
+.key-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.lenses button.on { background: rgba(126, 232, 216, 0.18); color: var(--text); }
+body.evidence-on #floor, body.evidence-on #key, body.evidence-on .kpis, body.evidence-on #rail, body.evidence-on .bar,
+body.evidence-on .cmd, body.evidence-on .lenses, body.evidence-on #lens-note, body.evidence-on #hint, body.evidence-on #ticker { visibility: hidden; }
+body.evidence-on .dock, body.evidence-on .dock.wide { left: max(18px, env(safe-area-inset-left, 0px)); right: max(18px, env(safe-area-inset-right, 0px)); width: auto; top: 112px; bottom: 18px; }
+body.evidence-on .dock-title { font-size: 20px; }

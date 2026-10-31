@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fab Gym Floor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230F1D22' stroke='%237EE8D8' stroke-width='2'/%3E%3Cpath d='M8 12h16M8 16h16M8 20h16M12 8v16M16 8v16M20 8v16' stroke='%237EE8D8' stroke-width='1' opacity='.6'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="floor-ui.css">
 </head>
@@ -12,7 +13,7 @@
 
 <header class="card brand">
   <div class="brand-row"><div class="title">Fab Gym</div>
-    <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#ask" data-page="ask">Ask</a></nav></div>
+    <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#evidence" data-page="evidence">Evidence</a></nav></div>
   <div class="sub">The full fab, 1,043 machines, running live in your browser</div>
   <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
 </header>
@@ -23,12 +24,10 @@
   <input id="cmd-q" type="text" placeholder="Ask anything about the fab…">
   <kbd>⌘K</kbd>
 </form>
-<nav class="lenses" aria-label="What the floor shows">
-  <button type="button" data-lens="day" class="on" aria-pressed="true">Live</button>
-  <button type="button" data-lens="heat" aria-pressed="false">Queues</button>
-  <button type="button" data-lens="proto" aria-pressed="false">Prototypes</button>
-  <button type="button" data-lens="flows" aria-pressed="false">Routes</button>
-</nav>
+<div class="lenses" role="group" aria-label="Follow">
+  <button type="button" id="follow-open">Follow one lot</button>
+  <button type="button" id="proto-open" hidden>Show prototypes</button>
+</div>
 <div id="lens-note" class="lens-note" aria-live="polite"></div>
 <div id="flow-ctl" class="flow-ctl" hidden>
   <button type="button" id="flow-play">Pause</button>
@@ -47,23 +46,16 @@
 <section class="card kpis" aria-label="How the fab is doing">
   <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
   <div class="kpi"><div class="v" id="k-wait">0</div><div class="l">lots waiting</div></div>
-  <div class="kpi"><div class="v" id="k-moves">0</div><div class="l">deliveries, last hour</div></div>
-  <div class="kpi"><div class="v" id="k-busy">0%</div><div class="l">machines busy</div></div>
 </section>
 
 <nav id="rail" class="rail" aria-label="Panels">
-  <button type="button" data-tab="ask"><span class="ic" aria-hidden="true">✦</span>Ask</button>
-  <button type="button" data-tab="change"><span class="ic" aria-hidden="true">⚙︎</span>Change</button>
-  <button type="button" data-tab="numbers"><span class="ic" aria-hidden="true">▦</span>Numbers</button>
-  <button type="button" data-tab="results"><span class="ic" aria-hidden="true">☰</span>Results</button>
-  <button type="button" data-tab="glossary"><span class="ic" aria-hidden="true">Aa</span>Glossary</button>
+  <button type="button" data-tab="change"><span class="ic" aria-hidden="true">⚙︎</span>Try a change</button>
+  <button type="button" data-tab="glossary" aria-label="Glossary: what the words mean"><span class="ic" aria-hidden="true">?</span>Words</button>
 </nav>
 
 <aside id="dock" class="card dock" aria-label="Panels" hidden>
   <div class="dock-head">
-    <div class="seg dock-tabs" role="tablist" aria-label="Panels">
-      <button type="button" role="tab" data-tab="ask">Ask</button><button type="button" role="tab" data-tab="change">Change</button><button type="button" role="tab" data-tab="numbers">Numbers</button><button type="button" role="tab" data-tab="results">Results</button><button type="button" role="tab" data-tab="glossary">Glossary</button>
-    </div>
+    <h2 id="dock-title" class="dock-title"></h2>
     <button type="button" class="icon close" id="dock-close" aria-label="Close the panel">✕</button>
   </div>
   <div class="dock-body" id="dock-body">
@@ -225,14 +217,20 @@
 
 <section id="key" class="card key" aria-label="What the marks on the floor mean">
   <ul class="legend">
-    <li><i class="sw s0"></i>working</li><li><i class="sw s1"></i>idle</li><li><i class="sw s4"></i>changing setup</li><li><i class="sw s2"></i>maintenance</li><li><i class="sw s3"></i>broken down</li>
+    <li><i class="sw s0"></i>working</li><li><i class="sw s3"></i>broken down</li><li><i class="dot"></i>a lot: a box of 25 wafers</li>
   </ul>
-  <p class="key-note">A machine's colour shows its area, and its light shows what it is doing. Each group's badge shows how it is coping:</p>
-  <ul class="legend" id="moodkey"></ul>
-  <ul class="legend">
-    <li><i class="dot"></i>a lot: a box of 25 wafers</li><li><i class="dot hot"></i>an urgent lot</li><li><i class="dot proto"></i>a prototype lot</li>
-  </ul>
-  <p class="key-note"><b>+N</b> means more lots are waiting than fit in the picture. <b>Holding</b> lots are resting between steps.</p>
+  <details class="key-more">
+    <summary>More about the marks</summary>
+    <ul class="legend">
+      <li><i class="sw s1"></i>idle</li><li><i class="sw s4"></i>changing setup</li><li><i class="sw s2"></i>maintenance</li>
+    </ul>
+    <p class="key-note">A machine's colour shows its area, and its light shows what it is doing. Each group's badge shows how it is coping:</p>
+    <ul class="legend" id="moodkey"></ul>
+    <ul class="legend">
+      <li><i class="dot hot"></i>an urgent lot</li><li><i class="dot proto"></i>a prototype lot</li>
+    </ul>
+    <p class="key-note"><b>+N</b> means more lots are waiting than fit in the picture. <b>Holding</b> lots are resting between steps.</p>
+  </details>
   <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
 </section>
 
@@ -240,9 +238,7 @@
   <button id="play" class="icon" aria-label="Play or pause">❚❚</button>
   <div class="clock"><span id="day">Day 1</span> <span id="time">00:00</span></div>
   <div class="speeds" role="group" aria-label="Speed">
-    <button data-speed="20">1×</button>
-    <button data-speed="60" class="on">3×</button>
-    <button data-speed="240">12×</button>
+    <button type="button" id="speed" aria-label="Speed: press to change">3×</button>
   </div>
   <span class="scrub-l">Lots waiting</span>
   <div class="scrub">
@@ -274,7 +270,6 @@
       <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
     </div>
   </div>
-  <button id="open-explore" type="button" class="link explore">or explore the floor</button>
   <p class="fine">Every fab here starts from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times (Kopp, Hassoun, Kalir, Mönch 2020). No real company's data is used.</p>
 </section>
 

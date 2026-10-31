@@ -28,7 +28,7 @@ test("two doors: play a challenge opens the editor, ask the fab keeps the questi
   assert.match(doors, /<a [^>]*href="editor\.html"[^>]*>[\s\S]*Play a challenge/);
   assert.match(doors, /Ask the fab/);
   assert.match(doors, /id="open-q"/, "the question box sits in the Ask door");
-  assert.match(index, /id="open-explore"/, "or explore the floor stays");
+  assert.ok(!/id="open-explore"/.test(index), "or explore the floor went: the nav's Floor does it (docs/SITE-CUTS.md)");
 });
 
 function navOf(html) {
@@ -37,9 +37,9 @@ function navOf(html) {
   return [...m[1].matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((x) => [x[2].trim(), x[1]]);
 }
 
-test("one top bar on both pages: Home, Floor, Build, Ask", () => {
-  assert.deepEqual(navOf(index).map((x) => x[0]), ["Home", "Floor", "Build", "Ask"]);
-  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Ask", "index.html#ask"]]);
+test("one top bar on both pages: Home, Floor, Build, Evidence (Ask became the bar, docs/SITE-CUTS.md)", () => {
+  assert.deepEqual(navOf(index).map((x) => x[0]), ["Home", "Floor", "Build", "Evidence"]);
+  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"]]);
   assert.equal(Object.fromEntries(navOf(index)).Build, "editor.html");
   assert.match(editor, /<a [^>]*href="editor\.html"[^>]*aria-current="page"/, "the editor marks Build as the page you are on");
 });

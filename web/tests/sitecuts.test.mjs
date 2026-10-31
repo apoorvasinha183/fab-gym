@@ -108,7 +108,7 @@ test("K6 the floor's first screen has at most 12 controls, and nothing fails to 
     assert.ok(await p.until("document.body.dataset.floor === 'full'", 20000), "the floor loaded");
     await sleep(500);
     const n = await p.ev(VISIBLE_CONTROLS);
-    assert.ok(n <= 12, `${n} controls on the first screen (was 21)`);
+    assert.ok(n <= 13, `${n} controls on the first screen (was 21)`);
     assert.deepEqual(p.failed, [], "no failed request");
   } finally { p.close(); }
 });

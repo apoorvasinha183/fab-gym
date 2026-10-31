@@ -28,7 +28,11 @@ test("1. one place to ask, and one dock with five tabs holding the panels", () =
   assert.ok(!/id="ask-open"/.test(html) && !/id="ask-q"/.test(html));
   const dock = between(html, '<aside id="dock"', "</aside>");
   assert.ok(dock, "a dock");
-  for (const t of ["ask", "change", "numbers", "results", "glossary"]) assert.match(dock, new RegExp(`data-tab="${t}"`), t);
+  // the dock's five tabs became a title; the rail keeps Try a change and the glossary; Evidence holds the studies and
+  // results (docs/SITE-CUTS.md)
+  assert.match(dock, /id="dock-title"/);
+  const rail = between(html, '<nav id="rail"', "</nav>");
+  for (const t of ["change", "glossary"]) assert.match(rail, new RegExp(`data-tab="${t}"`), t);
   const dockAll = html.slice(html.indexOf('<aside id="dock"'), html.indexOf("<!-- /dock -->"));
   for (const id of ["pane-ask", "pane-change", "numbers", "results", "glossary", "run", "cmp-rows", "ask-result", "long-grid"])
     assert.match(dockAll, new RegExp(`id="${id}"`), `${id} inside the dock`);
@@ -78,9 +82,10 @@ test("5. detail grows with zoom: names, then chips, then queue belts", () => {
 });
 
 test("6. the views", () => {
-  const lenses = between(html, '<nav class="lenses"', "</nav>").match(/>([^<]+)<\/button>/g).map(s => s.slice(1, -9));
-  // a Rails lens came and went on 29 Oct: Live shows the real building and its rails (docs/LIVE-REAL.md)
-  assert.deepEqual(lenses, ["Live", "Queues", "Prototypes", "Routes"]);
+  // the view bar went (docs/SITE-CUTS.md): Live is the floor; Follow one lot, and Show prototypes only while there are some
+  assert.ok(!/<nav class="lenses"/.test(html));
+  assert.match(html, /id="follow-open"/);
+  assert.match(html, /id="proto-open"/);
 });
 
 test("7. the hover card stays inside the screen and off the cursor", () => {

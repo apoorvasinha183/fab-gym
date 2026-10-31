@@ -29,14 +29,15 @@ test("the floor page's labels and panels use everyday words", () => {
   const glossary = index.indexOf('Glossary'); // the Glossary's own entries are built by script, not in the HTML
   clean("index.html", index);
   assert.ok(glossary >= 0);
-  for (const w of ["Run it and compare with today", "Which lot a free machine picks next", "Switch off a machine group", "Cap on lots inside", "Quality holds", "machines busy"])
+  for (const w of ["Run it and compare with today", "Which lot a free machine picks next", "Switch off a machine group", "Cap on lots inside", "Quality holds"])  // "machines busy" was cut (docs/SITE-CUTS.md)
     assert.ok(index.includes(w), `index.html says "${w}"`);
 });
 
 test("the editor speaks plainly, challenges included", () => {
   clean("editor.html", editor);
   for (const c of E.CHALLENGES) { clean(`challenge ${c.id}`, c.problem); clean(`challenge ${c.id}`, c.goal); }
-  for (const w of ["Days a wafer takes", "Longest line", "Extra spend", "Machines", "Wafers in", "Wafers out", "Storage"])
+  for (const w of ["Days a wafer takes", "Extra spend",  // "Longest line" was cut (docs/SITE-CUTS.md)
+                    "Machines", "Wafers in", "Wafers out", "Storage"])
     assert.ok(readFileSync(join(WEB, "editor.html"), "utf8").includes(w) || readFileSync(join(WEB, "editor.js"), "utf8").includes(w), `the editor says "${w}"`);
 });
 

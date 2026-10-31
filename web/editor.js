@@ -333,8 +333,6 @@
     $("score").innerHTML =
       card("Wafers out a day", Math.round(sc.wafers_per_day).toLocaleString(), "", sc.wafers_per_day, p && p.wafers_per_day, (d) => d > 0, c && sc.wafers_per_day < c.target.wafers) +
       card("Days a wafer takes", sc.cycle_days.toFixed(2), "days", sc.cycle_days, p && p.cycle_days, (d) => d < 0) +
-      card("Longest line", sc.worst_queue, `lots at ${esc(groupLabel(sc.worst_group))}`, sc.worst_queue, p && p.worst_queue, (d) => d < 0) +
-      card("Jammed track pieces", sc.jams, "", sc.jams, p && p.jams, (d) => d < 0, c && c.target.jams != null && sc.jams > c.target.jams) +
       card("Extra spend", money(top), c && c.target.budget ? `of ${money(c.target.budget)} allowed` : c && c.target.budget === 0 ? "no budget here" : "", top, p && p.spend, (d) => d < 0, c && c.target.budget != null && top > c.target.budget);
     if (c) {
       const w = sc.wafers_per_day, full = c.target.wafers * 1.2, ok = E.meets(sc, c.target, top);
@@ -384,7 +382,7 @@
   // ---------- modes and the clock
   function setMode(m) {
     mode = m;
-    $("modeRun").setAttribute("aria-pressed", String(m === "run")); $("modeBuild").setAttribute("aria-pressed", String(m === "build"));
+
     $("editor").classList.toggle("running", m === "run");
     $("again").hidden = !(m === "build" || stale);
     if (m === "run") { playing = !matchMedia("(prefers-reduced-motion: reduce)").matches || playing; tool = "select"; syncPal(); }
@@ -401,7 +399,7 @@
     lastHour = fi;
     $("slider").value = fi; $("slabel").textContent = hhmmss(run.frames[fi].t).replace(/:00$/, "");
     const lots = run.frames[fi].lots;
-    $("lots").innerHTML = Object.keys(LOT).map((m) => `<div class="${lots[m] ? "" : "zero"}"><img src="cast/lots/${m}.webp" alt=""><b>${lots[m] || 0}</b>${LOT[m]}</div>`).join("");
+    void lots;
   }
 
   // ---------- palette and editing
@@ -732,8 +730,6 @@
   }
 
   // ---------- controls
-  $("modeRun").onclick = () => { if (stale && !running) runNow(); else { setMode("run"); playing = true; playBtn(); } };
-  $("modeBuild").onclick = () => setMode("build");
   $("play").onclick = () => { if (stale) return runNow(); playing = !playing; if (playing && mode === "build") setMode("run"); playBtn(); };
   $("speed").onchange = (e) => { speed = +e.target.value; };
   $("again").onclick = () => runNow();

@@ -337,6 +337,7 @@ function resize() {
 }
 
 function fit() {
+  $("fit").hidden = true; // Fit shows again once the view has moved (docs/SITE-CUTS.md)
   if (!G) return;
   if (SPLIT.on && !SPLIT.fitting) { layoutSplit(); return; }
   const pad = floorPad();
@@ -857,9 +858,9 @@ function lensNote() {
   let np = 0;
   for (const tr of cur.active) if (tr[6]) np++;
   for (const q of cur.bQ || []) np += q;
-  const pb = document.querySelector('.lenses [data-lens="proto"]');
-  const off = np === 0 && UI.lens !== "proto";
-  if (pb.disabled !== off) { pb.disabled = off; pb.title = off ? "No prototype lots in this run. Ask a question about prototypes, then show an answer on the floor." : ""; }
+  // the prototypes button stands beside Follow only while prototype lots are in the fab (docs/SITE-CUTS.md)
+  const pb = $("proto-open"), hide = np === 0 && UI.lens !== "proto";
+  if (pb.hidden !== hide) pb.hidden = hide;
   if (UI.lens === "heat") txt = "Each tool group glows with the lots waiting at it. The brighter the glow, the longer the queue.";
   else if (UI.lens === "flows") txt = JOURNEY.on ? journeyNote() : G && G.real ? realFollowNote() : flowNote();
   else if (UI.lens === "proto") {
@@ -882,14 +883,6 @@ function hud() {
   let waiting = 0;
   for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup) waiting += cur.queue[g];
   $("k-wait").textContent = waiting.toLocaleString();
-  $("k-moves").textContent = (countBelow(P.starts, t) - countBelow(P.starts, t - 60)).toLocaleString();
-  let busy = 0, all = 0;
-  for (let k = 0; k < P.nT; k++) {
-    if (P.toolGroup[k] === P.holdingGroup) continue;
-    all++;
-    if (cur.toolState[k] === 0) busy++;
-  }
-  $("k-busy").textContent = `${Math.round((100 * busy) / Math.max(1, all))}%`;
   $("scrub").value = t;
   ticker();
 }
@@ -1003,6 +996,7 @@ function setupInput() {
   addEventListener("mouseup", () => { drag = null; cv.classList.remove("drag"); });
   addEventListener("mousemove", e => {
     if (drag) {
+      $("fit").hidden = false;
       if (SPLIT.on) useScene(drag.scene);
       const [ux, uy] = untilt(e.clientX, e.clientY);
       view.x = drag.vx - (ux - drag.x) / view.s;
@@ -1019,6 +1013,7 @@ function setupInput() {
   cv.addEventListener("mouseleave", () => { hover = null; $("tip").hidden = true; });
   cv.addEventListener("wheel", e => {
     e.preventDefault();
+    $("fit").hidden = false;
     splitPick(e.clientX);
     const k = Math.exp(-e.deltaY * 0.0015);
     const [ux, uy] = untilt(e.clientX, e.clientY);
@@ -1029,9 +1024,11 @@ function setupInput() {
     keepScene();
   }, { passive: false });
   $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "❚❚" : "▶"; if (playing && P && t >= P.j.until) t = 0; };
-  document.querySelectorAll(".speeds button").forEach(b => (b.onclick = () => {
-    speed = +b.dataset.speed;
-    document.querySelectorAll(".speeds button").forEach(x => x.classList.toggle("on", x === b));
+  // one speed button cycles 1×, 3×, 12× (docs/SITE-CUTS.md)
+  [$("speed")].forEach(b => (b.onclick = () => {
+    const SP = [[20, "1×"], [60, "3×"], [240, "12×"]], i = SP.findIndex(x => x[0] === speed), n = SP[(i + 1) % SP.length];
+    speed = n[0];
+    b.textContent = n[1];
   }));
   $("scrub").oninput = e => { t = +e.target.value; };
   $("fit").onclick = fit;
@@ -1778,7 +1775,8 @@ function floorPad() {
 
 // ------------------------------------------------------------------ the dock: Ask, Change, Numbers, Results, Glossary
 const DOCK = { tab: null };
-const DOCK_WIDE = new Set(["numbers", "results", "glossary"]);
+const DOCK_TITLE = { ask: "Your question", change: "Try a change", glossary: "What the words mean", evidence: "Evidence", numbers: "Evidence", results: "Evidence" };
+const DOCK_WIDE = new Set(["numbers", "results", "glossary", "evidence"]);
 function openDock(tab) {
   closeOpening();
   DOCK.tab = tab;
@@ -1787,31 +1785,44 @@ function openDock(tab) {
   dock.classList.toggle("wide", DOCK_WIDE.has(tab));
   document.body.classList.add("dock-open");
   document.body.classList.toggle("dock-wide", DOCK_WIDE.has(tab));
-  for (const [t, id] of [["ask", "pane-ask"], ["change", "pane-change"], ["numbers", "numbers"], ["results", "results"], ["glossary", "glossary"]]) $(id).hidden = t !== tab;
+  for (const [t, id] of [["ask", "pane-ask"], ["change", "pane-change"], ["numbers", "numbers"], ["results", "results"], ["glossary", "glossary"]])
+    $(id).hidden = !(t === tab || (tab === "evidence" && (t === "numbers" || t === "results")));
+  $("dock-title").textContent = DOCK_TITLE[tab] || "";
+  document.body.classList.toggle("evidence-on", tab === "evidence");
   document.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle("on", on); if (b.getAttribute("role") === "tab") b.setAttribute("aria-selected", on); });
   fit();
 }
 function closeDock() {
   $("dock").hidden = true;
   DOCK.tab = null;
-  document.body.classList.remove("dock-open", "dock-wide");
+  document.body.classList.remove("dock-open", "dock-wide", "evidence-on");
   document.querySelectorAll("[data-tab]").forEach(b => b.classList.remove("on"));
   fit();
 }
+// Evidence (docs/SITE-CUTS.md): the long studies and the results on a page of their own
+async function openEvidence() {
+  openDock("evidence");
+  await openNumbers(true);
+  await openResults(true);
+}
 function goTab(tab) {
-  if (tab === "numbers") openNumbers();
-  else if (tab === "results") openResults();
+  if (tab === "numbers" || tab === "results" || tab === "evidence") { location.hash = "#evidence"; return; }
   else if (tab === "glossary") openGlossary();
   else openDock(tab);
 }
 
 // pages by the address's hash (docs/FRONT-DOOR.md): #home the landing, #floor the floor, #ask the floor with the ask
 // panel; the top bar marks the one you are on
-function pageOfHash() { return ({ "#floor": "floor", "#ask": "ask" })[location.hash] || "home"; }
+function pageOfHash() { return ({ "#floor": "floor", "#ask": "ask", "#evidence": "evidence" })[location.hash] || "home"; }
 function applyHash() {
   const page = pageOfHash();
   if (page === "home") { closeDock(); document.body.classList.add("opening-on"); resize(); }
-  else { closeOpening(); if (page === "ask") openDock("ask"); else if (DOCK.tab === "ask") closeDock(); }
+  else {
+    closeOpening();
+    if (page === "ask") openDock("ask");
+    else if (page === "evidence") openEvidence();
+    else if (DOCK.tab === "ask" || DOCK.tab === "evidence") closeDock();
+  }
   markPage(page);
 }
 function markPage(page) { document.querySelectorAll(".topnav a").forEach(a => (a.dataset.page === page ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"))); }
@@ -1840,11 +1851,9 @@ async function chromeSetup() {
   try { st = await api("/api/status"); if (st.error) st = null; } catch { st = null; }
   try { bundled = await fetch("data/examples.json").then(r => r.json()); } catch { bundled = []; }
   const o = FabUI.openingState(st, bundled);
-  $("open-explore").textContent = o.explore;
   $("open-examples").innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
   $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(o.examples[+b.dataset.i])));
   $("open-form").onsubmit = e => { e.preventDefault(); askFrom($("open-q").value); };
-  $("open-explore").onclick = () => { location.hash = "#floor"; };
   setTimeout(() => $("open-q").focus(), 60);
 
   $("cmd").onsubmit = e => { e.preventDefault(); askFrom($("cmd-q").value); $("cmd-q").value = ""; $("cmd-q").blur(); };
@@ -1855,7 +1864,7 @@ async function chromeSetup() {
       else $("cmd-q").focus();
     } else if (e.key === "Escape") {
       if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
-      else if (!$("dock").hidden) closeDock();
+      else if (!$("dock").hidden) (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
     }
   });
   // the rail and the dock's tabs; a rail button on the open tab closes the dock
@@ -1863,7 +1872,7 @@ async function chromeSetup() {
     if (b.closest("#rail") && DOCK.tab === b.dataset.tab && !$("dock").hidden) closeDock();
     else goTab(b.dataset.tab);
   }));
-  $("dock-close").onclick = closeDock;
+  $("dock-close").onclick = () => (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
   // Flows: pause, restart, product
   $("flow-play").onclick = () => { FLOW.paused = !FLOW.paused; $("flow-play").textContent = FLOW.paused ? "Play" : "Pause"; };
   $("flow-restart").onclick = () => { FLOW.secs = 0; FLOW.paused = false; $("flow-play").textContent = "Pause"; };
@@ -1892,13 +1901,24 @@ async function chromeSetup() {
   outage();
   glossarySetup();
   journeySetup();
-  document.querySelectorAll(".lenses button").forEach(b => (b.onclick = () => {
-    UI.lens = b.dataset.lens;
-    FLOW.secs = 0;
-    document.querySelectorAll(".lenses button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
-  }));
+  // one button to follow a lot, and one for prototypes while there are some (docs/SITE-CUTS.md); Live is the floor
+  $("follow-open").onclick = () => {
+    if (UI.lens === "flows") { if (JOURNEY.on) journeyStop(); setView("day"); return; }
+    setView("flows");
+    if (G && G.real && !JOURNEY.on) journeyStart();
+  };
+  $("proto-open").onclick = () => setView(UI.lens === "proto" ? "day" : "proto");
   document.querySelectorAll("#num-metric button").forEach(b => (b.onclick = () => { UI.metric = b.dataset.m; drawNumbers(); }));
   document.querySelectorAll("#num-share button").forEach(b => (b.onclick = () => { UI.share = +b.dataset.s; drawNumbers(); }));
+}
+
+function setView(v) {
+  UI.lens = v;
+  FLOW.secs = 0;
+  $("follow-open").textContent = v === "flows" ? "Back to the floor" : "Follow one lot";
+  $("proto-open").textContent = v === "proto" ? "Back to the floor" : "Show prototypes";
+  $("follow-open").classList.toggle("on", v === "flows");
+  $("proto-open").classList.toggle("on", v === "proto");
 }
 
 // ------------------------------------------------------------------ the real building (docs/LIVE-REAL.md)
@@ -2459,8 +2479,8 @@ const VERDICT_COLOR = { better: "#4FE3A3", worse: "#FF6262", "no clear effect": 
 
 function fmtN(v, d = 1) { return v === null || v === undefined ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
 
-async function openNumbers() {
-  openDock("numbers");
+async function openNumbers(within) {
+  if (!within) openDock("numbers");
   if (!UI.sweep) {
     try {
       UI.sweep = await fetch("data/two-families.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))));
@@ -2469,7 +2489,7 @@ async function openNumbers() {
     catch (err) { $("num-lead").textContent = "The sweep's results are not in this build (run web/build.sh)."; return; }
   }
   drawNumbers();
-  $("dock-close").focus();
+  if (!within) $("dock-close").focus();
 }
 
 // a forest plot: one row per change, the mean as a dot, the 95% interval as a bar, the exact numbers on the right
@@ -2726,8 +2746,8 @@ function logAsk(j) {
   if (!$("results").hidden) drawResults();
 }
 
-async function openResults() {
-  openDock("results");
+async function openResults(within) {
+  if (!within) openDock("results");
   if (!RESULTS.saved) {
     try { RESULTS.saved = await fetch("data/results.json").then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status)))); }
     catch (err) { RESULTS.saved = []; }
@@ -2738,7 +2758,8 @@ async function openResults() {
     document.querySelectorAll("#res-kind button").forEach(b => (b.onclick = () => { document.querySelectorAll("#res-kind button").forEach(x => x.classList.toggle("on", x === b)); drawResults(); }));
   }
   drawResults();
-  $("res-q").focus();
+  if (!within) $("res-q").focus();
+  else $("dock-body").scrollTop = 0;
 }
 
 function drawResults() {
