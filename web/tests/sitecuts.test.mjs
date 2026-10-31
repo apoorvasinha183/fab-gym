@@ -50,7 +50,7 @@ test("K3 Home keeps its two doors and drops 'or explore the floor'", () => {
   assert.ok(!/id="open-explore"/.test(index), "no 'or explore the floor'");
 });
 
-test("K4 the floor: no view bar; Follow one lot; a health panel; a sectioned key; one speed button; a rail of two", () => {
+test("K4 the floor: no view bar; Follow one lot; a health panel; a sectioned key; one speed button; Try a change and Glossary in reach", () => {
   assert.ok(!/<nav class="lenses"/.test(index), "no view bar");
   assert.match(index, /<button[^>]*id="follow-open"[^>]*>Follow one lot<\/button>/);
   assert.match(index, /<button[^>]*id="proto-open"[^>]*hidden[^>]*>Show prototypes<\/button>/);
@@ -62,9 +62,10 @@ test("K4 the floor: no view bar; Follow one lot; a health panel; a sectioned key
   assert.match(textOf(key), /working/); assert.match(textOf(key), /broken down/); assert.match(textOf(key), /25 wafers/);
   const bar = between(index, 'class="speeds"', "</div>");
   assert.equal((bar.match(/<button/g) || []).length, 1, "one speed button");
-  const rail = between(index, '<nav id="rail"', "</nav>");
-  assert.deepEqual([...rail.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1]), ["change", "glossary"]);
-  assert.match(textOf(rail), /Try a change/);
+  // the rail of two went: Try a change sits by the ask bar, Glossary by How a chip is made (docs/FLOOR-REVIEW.md)
+  assert.ok(!/<nav id="rail"/.test(index), "no rail");
+  assert.match(index, /<button[^>]*id="change-open"[^>]*data-tab="change"[^>]*>[^<]*Try a change/);
+  assert.match(index, /<button[^>]*id="glossary-open"[^>]*data-tab="glossary"[^>]*>[^<]*Glossary/);
   for (const gone of ["data-tab=\"ask\"", "data-tab=\"numbers\"", "data-tab=\"results\""]) assert.ok(!index.includes(gone), `${gone} is gone`);
 });
 
@@ -111,7 +112,8 @@ test("K6 the floor's first screen has at most 12 controls, and nothing fails to 
     assert.ok(await p.until("document.body.dataset.floor === 'full'", 20000), "the floor loaded");
     await sleep(500);
     const n = await p.ev(VISIBLE_CONTROLS);
-    assert.ok(n <= 13, `${n} controls on the first screen (was 21)`);
+    // 13 after the cuts; docs/FLOOR-REVIEW.md adds the map's four buttons and the legend's fold (the strip and help row swap two for two)
+    assert.ok(n <= 17, `${n} controls on the first screen (was 21)`);
     assert.deepEqual(p.failed, [], "no failed request");
   } finally { p.close(); }
 });

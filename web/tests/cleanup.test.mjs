@@ -31,12 +31,13 @@ test("1. one place to ask, and one dock with five tabs holding the panels", () =
   // the dock's five tabs became a title; the rail keeps Try a change and the glossary; Evidence holds the studies and
   // results (docs/SITE-CUTS.md)
   assert.match(dock, /id="dock-title"/);
-  const rail = between(html, '<nav id="rail"', "</nav>");
-  for (const t of ["change", "glossary"]) assert.match(rail, new RegExp(`data-tab="${t}"`), t);
+  // the rail went (docs/FLOOR-REVIEW.md): Try a change sits in the top strip, the glossary by How a chip is made
+  const strip = between(html, '<div id="topbar"', "</div>"), help = between(html, '<div class="help-row"', "</div>");
+  assert.match(strip, /data-tab="change"/, "change"); assert.match(help, /data-tab="glossary"/, "glossary");
   const dockAll = html.slice(html.indexOf('<aside id="dock"'), html.indexOf("<!-- /dock -->"));
   for (const id of ["pane-ask", "pane-change", "numbers", "results", "glossary", "run", "cmp-rows", "ask-result", "long-grid"])
     assert.match(dockAll, new RegExp(`id="${id}"`), `${id} inside the dock`);
-  assert.match(html, /id="rail"/, "a rail of the tabs when the dock is closed");
+  assert.ok(!/id="rail"/.test(html), "no rail: the tabs are in the top strip and the help row");
 });
 
 test("2. the bottom bar holds only time controls, labelled", () => {

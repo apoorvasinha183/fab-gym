@@ -88,7 +88,7 @@ test("FH1 the health panel: output, lots in the fab, tools, availability and the
     }
     assert.ok(panel.includes(`${Math.round(h.available * 100)}%`), "availability as a share");
     assert.ok(panel.includes(h.longest.name) && panel.includes(String(h.longest.lots)), "the longest queue by name");
-    assert.match(panel, /wait for a tool, per step/i); assert.ok(h.waitPerStep > 0, "the mean wait per step so far");
+    assert.match(panel, /wait for a tool, last hour/i); assert.ok(h.waitHour > 0, "the mean wait for a tool over the last hour");
     assert.match(panel, /broke down|is back up/, "the latest events moved to the panel");
   } finally { p.close(); }
 });
