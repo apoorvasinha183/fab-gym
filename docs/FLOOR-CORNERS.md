@@ -22,3 +22,6 @@ ask bar collide now , fix that". On a teaching fab of our own and the SMT2020 te
 - **FC3** an open panel's top stays below the top bar, and every tab, Runs included, is clear of the ask bar.
 
 ## Changes
+- 1 Nov, while writing the code: at 1,440 wide the play bar, sized to its contents, squeezed the play button into a
+  sliver and the chart to 70 px, so the bar takes a set width between the corners (at most 880 px), only the chart gives
+  way, and its label hides below 1,500 px wide. Results: FC1 to FC3 pass at all three sizes, with the Floor's other tests.

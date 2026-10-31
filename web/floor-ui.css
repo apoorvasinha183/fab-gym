@@ -689,3 +689,19 @@ body.health-folded .maptools { right: 18px; }
 .ask-run { margin: 6px 0 2px; font-size: 13.5px; font-weight: 600; }
 .ask-run a { color: var(--accent); }
 
+/* ---------- panels in the bottom corners (docs/FLOOR-CORNERS.md) */
+@media (min-width: 901px) {
+  /* Legend bottom-left, Fab status bottom-right: the title sits in the corner and an open panel grows upward */
+  .key { top: auto; bottom: 18px; max-height: calc(100vh - 140px); }
+  #health { top: auto; bottom: 18px; max-height: calc(100vh - 100px); }
+  /* the play bar and the hint sit between the corners, centred */
+  .bar.pill { left: 50%; right: auto; transform: translateX(-50%); width: min(880px, calc(100vw - 680px)); max-width: none; }
+  .pill .scrub { flex: 1 1 200px; width: auto; min-width: 70px; }
+  .bar.pill > :not(.scrub) { flex-shrink: 0; } /* only the chart gives way */
+  .hint { left: 50%; right: auto; transform: translateX(-50%); bottom: 84px; max-width: calc(100vw - 680px); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* the ask bar starts after the page's name and tabs */
+  .topbar { left: 462px; }
+}
+@media (min-width: 901px) and (max-width: 1499px) {
+  .pill .scrub-l { display: none; }
+}
