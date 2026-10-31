@@ -126,3 +126,20 @@ Ten held-out seeds, a two-day warm-up and a ten-day window; 95% paired t interva
 - **The thesis has nothing to find in this toy.** The supervisor's gain under wear, less its gain under clock: −0.5
   wafers a day (−5.3 to +4.3) at 24 h, +0.8 (−1.3 to +2.8) at 48 h. Once the cap holds the load steady, wear comes as
   regularly as the clock does; a toy for the thesis needs load that swings (rushes of releases, a second product).
+
+## Results (toy, the model's arm; 31 Oct, `results/supervisor-toy/`, its prompts and replies in `model-log.jsonl`)
+
+Muse Spark (contributor, low effort) proposed up to three settings at each look from what had happened since the last;
+the simulator tried those and the current one on copies. 300 looks, 302 calls, $0.077.
+
+| Breakdowns | Looks | Wafers a day | Days a wafer takes | Against today | Against the best fixed |
+| --- | --- | ---: | ---: | --- | --- |
+| clock | every 24 h | 852.0 | 0.57 | +117.0 (+111.5 to +122.5) | +1.0 (−1.1 to +3.1) |
+| clock | every 48 h | 852.0 | 0.60 | +117.0 (+111.4 to +122.6) | +1.0 (−1.1 to +3.1) |
+| wear | every 24 h | 833.0 | 0.57 | +123.2 (+119.9 to +126.6) | −2.5 (−5.3 to +0.3) |
+| wear | every 48 h | 833.5 | 0.59 | +123.8 (+120.4 to +127.1) | −2.0 (−4.5 to +0.5) |
+
+- **The model finds the cap.** It gets about the same as trying all 24 settings, while proposing three; its picks
+  ranged more widely (caps of 15 to 30, every rule), and the copies kept it near a cap of 15 to 20.
+- **No gain over setting the cap once**, and the thesis again shows nothing (wear minus clock: −3.5, −7.5 to +0.5, at
+  24 h; −3.0, −6.8 to +0.8, at 48 h). The toy settles once capped; a fair test of the thesis needs load that swings.
