@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class Sign(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.h = helper.Helper(web=ROOT / "web", key_file=self.tmp / "none.key", jobs=self.tmp / "jobs", quick=True)
+        self.h = helper.Helper(web=ROOT / "web", key_file=self.tmp / "none.key", jobs=self.tmp / "jobs", runs=self.tmp / "runs", quick=True)
         # a finished job, as the helper keeps it
         self.h.jobs["7"] = {"id": "7", "stage": "done", "question": "Own wing, or first in line?", "scenario": "fabgym-scenario 1\nquestion\tq\n",
                             "report": {"best": None, "real_fab": "Real-fab effect: cannot say"}, "started": 0.0}

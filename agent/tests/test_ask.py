@@ -110,7 +110,7 @@ class Helper(unittest.TestCase):
         cls.tmp = Path(tempfile.mkdtemp())
         cls.key = cls.tmp / "baseten.key"
         cls.h = helper.Helper(web=ROOT / "web", fabsim=FABSIM, smt2020=SMT, key_file=cls.tmp / "missing.key",
-                              jobs=cls.tmp / "jobs", quick=True)
+                              jobs=cls.tmp / "jobs", runs=cls.tmp / "runs", quick=True)
         cls.server = helper.serve(cls.h, port=0)
         cls.port = cls.server.server_address[1]
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
@@ -158,7 +158,7 @@ class Helper(unittest.TestCase):
 
     def test_the_key_never_reaches_the_page(self):
         self.key.write_text(SECRET)
-        h = helper.Helper(web=ROOT / "web", fabsim=FABSIM, smt2020=SMT, key_file=self.key, jobs=self.tmp / "jobs2", quick=True)
+        h = helper.Helper(web=ROOT / "web", fabsim=FABSIM, smt2020=SMT, key_file=self.key, jobs=self.tmp / "jobs2", runs=self.tmp / "runs2", quick=True)
         st = h.status()
         self.assertTrue(st["model_connected"])
         self.assertNotIn(SECRET, json.dumps(st))

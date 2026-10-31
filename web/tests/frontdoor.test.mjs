@@ -40,9 +40,9 @@ function navOf(html) {
   return [...m[1].matchAll(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((x) => [x[2].trim(), x[1]]);
 }
 
-test("one top bar on both pages: Home, Floor, Build, Evidence (Ask became the bar, docs/SITE-CUTS.md)", () => {
-  assert.deepEqual(navOf(index).map((x) => x[0]), ["Home", "Floor", "Build", "Evidence"]);
-  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"]]);
+test("one top bar on both pages: Home, Floor, Build, Evidence, Runs (Ask became the bar, docs/SITE-CUTS.md; Runs, docs/RUNS.md)", () => {
+  assert.deepEqual(navOf(index).map((x) => x[0]), ["Home", "Floor", "Build", "Evidence", "Runs"]);
+  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"], ["Runs", "runs.html"]]);
   assert.equal(Object.fromEntries(navOf(index)).Build, "editor.html");
   assert.match(editor, /<a [^>]*href="editor\.html"[^>]*aria-current="page"/, "the editor marks Build as the page you are on");
 });

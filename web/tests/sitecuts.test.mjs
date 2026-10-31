@@ -34,9 +34,9 @@ function navOf(html) {
 
 // ---------------------------------------------------------------- in Node, on the pages' files
 
-test("K1 the nav on both pages: Home, Floor, Build, Evidence", () => {
-  assert.deepEqual(navOf(index), [["Home", "#home"], ["Floor", "#floor"], ["Build", "editor.html"], ["Evidence", "#evidence"]]);
-  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"]]);
+test("K1 the nav on both pages: Home, Floor, Build, Evidence, Runs", () => {
+  assert.deepEqual(navOf(index), [["Home", "#home"], ["Floor", "#floor"], ["Build", "editor.html"], ["Evidence", "#evidence"], ["Runs", "runs.html"]]);
+  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"], ["Runs", "runs.html"]]);
 });
 
 test("K2 both pages declare a tab icon", () => {
@@ -85,7 +85,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function open(path) {
   const hp = 8800 + Math.floor(Math.random() * 600);
-  const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--quick"], { cwd: ROOT, stdio: "ignore" });
+  const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--runs", mkdtempSync(join(tmpdir(), "fg-runs-")), "--quick"], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/index.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,900", "--hide-scrollbars", `--user-data-dir=${profileDir("cuts-")}`, "about:blank"], { stdio: "ignore" });
@@ -116,7 +116,7 @@ test("K6 the floor's first screen has at most 12 controls, and nothing fails to 
     // 13 after the cuts; docs/FLOOR-REVIEW.md adds the map's four buttons and the legend's fold (the strip and help row swap two for two)
     // and docs/RANDOM-RUNS.md adds New run
     // and docs/CURVES.md adds Curves
-    assert.ok(n <= 20, `${n} controls on the first screen (was 21)`);
+    assert.ok(n <= 21, `${n} controls on the first screen (was 21)`);
     assert.deepEqual(p.failed, [], "no failed request");
   } finally { p.close(); }
 });
