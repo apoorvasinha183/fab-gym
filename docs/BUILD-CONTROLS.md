@@ -56,3 +56,16 @@ The work comes in five parts, each with its own tests written first:
   listed beside them.
 
 ## Changes
+- 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
+  stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
+- 1 Nov, while writing the code:
+  - With 11 machines, the palette was taller than the map and the page scrolled. The palette and the right-hand column
+    now scroll inside their own columns, so the map sets the row's height, and each machine is one compact row.
+  - The levers row makes the banner taller. At 1,280 x 720 that left the map 320 px, under its 330 px minimum, so it
+    fell back to a fixed size and the page scrolled 109 px. The minimum is now 300 px. The map also measures its room
+    again once the levers are drawn and once the web fonts are in, since each changes the banner's height by a few
+    pixels and the map ignores changes under 8 px.
+  - Build's `.insp` style overrode the `hidden` attribute, so the Selected panel stayed visible under the other tabs.
+    BC3 read each panel's text without checking it showed; it now checks that only the open tab's panel shows.
+- 1 Nov, results: BC1 to BC7 pass, with Build's other tests (review, game, basics, moves, top, room, speed, third
+  star, sketch, race, poster, random runs, curves, demo path).

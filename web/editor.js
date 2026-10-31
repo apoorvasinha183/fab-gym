@@ -123,7 +123,7 @@
     const below = colBelow + edPad + after;
     // fit the window when that leaves the map 330 px or more; in a shorter window keep the old 430 px and let the page
     // scroll (D8: the floor stays usable)
-    const avail = window.innerHeight - (cr.top + window.scrollY) - below, r = avail >= 330 ? avail : 430;
+    const avail = window.innerHeight - (cr.top + window.scrollY) - below, r = avail >= 300 ? avail : 430; // at least 300 px of map before the page may scroll (docs/BUILD-CONTROLS.md)
     if (room == null || Math.abs(r - room) >= 8) room = r;
     const sc = Math.min((cw - 2 * pad) / wx, (room - 2 * pad) / wy);
     const lift = 0, depth = 0;
@@ -595,6 +595,8 @@
     if (checks && checks.ok === false) return; // the checks refuse the layout: it runs when they pass
     runNow(false);
   };
+  document.querySelectorAll("#ctl-tabs [data-tab]").forEach((bt) => (bt.onclick = () => ctlTab(bt.dataset.tab)));
+  renderProcess();
   $("curves-open").onclick = () => { const box = $("curves"); box.hidden = !box.hidden; $("curves-open").setAttribute("aria-expanded", String(!box.hidden)); curvesShown = -1; renderCurves(); };
   $("sketch-go").onclick = () => $("sketch-file").click();
   $("sketch-file").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) fromSketch(f); };
@@ -747,7 +749,8 @@
     $("showfix").hidden = !c;
     $("tmpl").hidden = !!c;
     hist.clear(); lastSnap = snap(); V = null; syncUndo();
-    renderTabs(); buildPalette(); inspector(); renderChecks(); renderScore(); draw();
+    renderTabs(); renderLevers(); buildPalette(); ctlTab("sel"); inspector(); renderChecks(); renderScore();
+    room = null; draw(); // the levers change the banner's height, so the map measures its room again
     await runNow();
   }
 
@@ -805,10 +808,24 @@
     const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}${k ? ` (key ${k})` : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
     const sec = (name, keys) => (keys ? `<h4>${name}</h4><div class="keys">${keys}</div>` : "");
     let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E"));
-    h += sec("Machines", E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join(""));
+    // every machine (docs/BUILD-CONTROLS.md): its picture, how many are on the floor, its price; a click opens its controls
+    const lever = new Set(leversOf(ch()).map((l) => l.kind).filter(Boolean));
+    h += `<h4>Machines</h4><div class="keys mks">` + E.AREAS.map((a, i) => {
+      const n = s.blocks.filter((b) => b.kind === "group" && b.area === a).reduce((x, b) => x + b.count, 0);
+      return `<button class="mk${lever.has(a) ? " lever" : ""}" data-kind="${a}" title="${esc(AREA[a][0])}: ${esc(AREA[a][2])}${lever.has(a) ? " One of this challenge's levers." : ""}">` +
+        `<img src="cast/base/${String(i + 1).padStart(2, "0")}-${a}.webp" alt="" width="34" height="34"><span class="nm">${esc(AREA[a][0])}</span><span class="n">${n} on the floor</span><span class="pr">${money(E.PRICE[a])}</span></button>`;
+    }).join("") + `</div>`;
+    const fresh = E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join("");
+    if (fresh) h += sec("New groups", fresh);
     h += sec("Moving wafers", pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]));
     $("pal").innerHTML = h;
-    $("pal").querySelectorAll("button").forEach((b) => (b.onclick = () => take(b.dataset.t)));
+    $("pal").querySelectorAll("button[data-t]").forEach((b) => (b.onclick = () => take(b.dataset.t)));
+    $("pal").querySelectorAll("button[data-kind]").forEach((bt) => (bt.onclick = () => {
+      const b = s.blocks.find((z) => z.kind === "group" && z.area === bt.dataset.kind);
+      if (!b) { $("status").textContent = `No ${AREA[bt.dataset.kind][0].toLowerCase()} on the floor yet.`; return; }
+      if (tool !== "select") take("select");
+      sel = { id: b.id }; ctlTab("sel"); inspector(); draw();
+    }));
     // the hotbar's numbers (docs/EDITOR-MOVES.md): 4 to 9 on the six recent pieces
     E.hotbar(recent).forEach((t, i) => {
       const btn = $("pal").querySelector(`[data-t="${t}"]`);
@@ -819,7 +836,7 @@
       btn.title = `${btn.title.replace(/ \(key \w+\)$/, "")} (key ${i + 1})`;
     });
   }
-  function syncPal() { $("pal").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
+  function syncPal() { $("pal").querySelectorAll("button[data-t]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
   const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || (t in AREA && c.tools.includes("machines")); };
   function renderHint() {
     const h = $("hint"); if (!h) return;
@@ -1076,10 +1093,60 @@
     hov.style.left = Math.max(4, lx) + "px"; hov.style.top = ly + "px";
   }
 
-  // ---------- the selection widget
+  // ---------- the controls panel (docs/BUILD-CONTROLS.md): Selected, Whole fab, All controls; every control says what it does
   const FAILS = [["", "As in the data"], ["none", "Never"], ["random", "At random"], ["by_wafers", "After so many wafers"]];
   const RECS = [["", "Fix it where it stands"], ["swap_to_spare", "Swap in a spare"], ["repair_and_hold_lots", "Fix it and hold its last lots for checks"]];
+  const WHY = {
+    count: "More machines share the line; each costs its price.",
+    fail: "How often a machine breaks down, and how long a fix takes.",
+    rec: "Fix it in place, swap in a spare (costs a machine), or fix it and hold its last lots for checks.",
+    dirs: "Cars leave this piece only these ways; two ways make a junction.",
+    rfail: "Whether this piece of track stops now and then.",
+    rrec: "Cars wait for the repair, or go around it where there is another way.",
+    cars: "More cars carry more lots at once, and can jam the track.",
+    cap: "New lots wait at the door while this many are inside; 0 means no cap. Too low starves the fab.",
+  };
   const num = (id, v, lab, unit) => `<label class="sub">${lab} <input type="number" min="1" step="1" id="${id}" value="${v}"> ${unit}</label>`;
+  const why = (k) => `<span class="why">${WHY[k]}</span>`;
+  const row = (k, inner) => `<div class="row ctlrow" data-ctl="${k}">${inner}${why(k)}</div>`;
+  let ctlTabNow = "sel";
+  function ctlTab(name) {
+    ctlTabNow = name;
+    document.querySelectorAll("#ctl-tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+    $("insp").hidden = name !== "sel"; $("ctl-fab").hidden = name !== "fab"; $("ctl-all").hidden = name !== "all";
+    if (name === "fab") wholeFab($("ctl-fab"));
+    if (name === "all") allControls();
+  }
+  // the changes a control makes, shared by Selected and All controls
+  const setFail = (b, k) => { b.fail = k === "" ? undefined : k === "none" ? { kind: "none" } : k === "random" ? { kind: "random", mttf_minutes: 480, mttr_minutes: 120 } : { kind: "by_wafers", every: 500, minutes: [60, 120] }; };
+  const setRec = (b, k) => { b.rec = k === "" ? undefined : k === "swap_to_spare" ? { kind: "swap_to_spare", spares: 1, swap_minutes: 20 } : { kind: "repair_and_hold_lots", lookback_minutes: 60, hold_minutes: 120 }; };
+  const failSel = (id, f) => `<select id="${id}">${FAILS.map(([k, n]) => `<option value="${k}" ${(f.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>`;
+  const recSel = (id, r) => `<select id="${id}">${RECS.map(([k, n]) => `<option value="${k}" ${(r.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select>`;
+  function wholeFab(el) {
+    el.innerHTML = `<div class="ttl">${svg("fab")}<span>The whole fab</span></div>` +
+      row("cars", `<span>Cars on the track</span><span class="count"><button class="btn" data-cars="-1" aria-label="One fewer car">−</button><b>${s.vehicles}</b><button class="btn" data-cars="1" aria-label="One more car">+</button></span>`) +
+      row("cap", `<label for="${el.id}-cap">Cap on lots inside</label><span class="sub"><input type="number" min="0" step="1" id="${el.id}-cap" value="${s.cap || 0}"> lots</span>`);
+    el.querySelectorAll("[data-cars]").forEach((bt) => (bt.onclick = () => { s.vehicles = Math.max(1, s.vehicles + Number(bt.dataset.cars)); refreshCtl(); edited(); }));
+    $(`${el.id}-cap`).onchange = (e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); if (n) s.cap = n; else delete s.cap; refreshCtl(); edited(); };
+  }
+  function allControls() {
+    const el = $("ctl-all"), groups = s.blocks.filter((b) => b.kind === "group"), broken = Object.keys(s.rail).filter((k) => s.rail[k].fail);
+    let h = `<table class="allctl"><tbody>` + groups.map((b) => `<tr class="ctlrow" data-group="${esc(b.group)}" data-ctl="count:${esc(b.group)}"><td><b>${esc(AREA[b.area][0])}</b> <small>${esc(b.group)}</small>` +
+      `<span class="why">${WHY.count} ${money(E.PRICE[b.area] || 0)} a machine.</span></td><td><span class="count"><button class="btn" data-dn aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" data-up aria-label="One more">+</button></span>` +
+      `${failSel(`af-${b.id}`, b.fail || {})}${recSel(`ar-${b.id}`, b.rec || {})}</td></tr>`).join("");
+    h += broken.map((k) => `<tr class="ctlrow" data-rail="${k}" data-ctl="rrec:${k}"><td><b>Track piece</b> <small>${k.replace(",", ", ")}</small>${why("rrec")}</td><td><select data-rr><option value="wait" ${(s.rail[k].rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(s.rail[k].rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select></td></tr>`).join("");
+    el.innerHTML = h + `</tbody></table>`;
+    el.querySelectorAll("tr[data-group]").forEach((tr) => {
+      const b = s.blocks.find((z) => z.kind === "group" && z.group === tr.dataset.group);
+      tr.querySelector("[data-up]").onclick = () => { b.count++; refreshCtl(); buildPalette(); edited(); };
+      tr.querySelector("[data-dn]").onclick = () => { b.count = Math.max(1, b.count - 1); refreshCtl(); buildPalette(); edited(); };
+      tr.querySelector(`#af-${b.id}`).onchange = (e) => { setFail(b, e.target.value); refreshCtl(); edited(); };
+      tr.querySelector(`#ar-${b.id}`).onchange = (e) => { setRec(b, e.target.value); refreshCtl(); edited(); };
+    });
+    el.querySelectorAll("tr[data-rail] [data-rr]").forEach((sl) => (sl.onchange = (e) => { s.rail[sl.closest("tr").dataset.rail].rec = { kind: e.target.value }; edited(); }));
+  }
+  /** Redraw what the controls show after a change, keeping the open tab. */
+  function refreshCtl() { inspector(); if (ctlTabNow !== "sel") ctlTab(ctlTabNow); }
   function inspector() {
     const ins = $("insp");
     if (sel && sel.id) {
@@ -1087,28 +1154,20 @@
       if (!b) { sel = null; return inspector(); }
       if (b.kind === "group") {
         const f = b.fail || {}, r = b.rec || {};
-        let h = `<div class="ttl">${svg(b.area, FAM[b.area])}<span>${esc(AREA[b.area][0])}</span></div><p class="note">${esc(b.group)} · ${esc(AREA[b.area][2])} ${money(E.PRICE[b.area])} a tool (assumed).</p>`;
-        h += `<div class="row"><span>Machines in this group</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span></div>`;
-        h += `<div class="row"><label for="fsel">Breakdowns</label><select id="fsel">${FAILS.map(([k, n]) => `<option value="${k}" ${(f.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
+        let h = `<div class="ttl">${svg(b.area, FAM[b.area])}<span>${esc(AREA[b.area][0])}</span></div><p class="note">${esc(b.group)} · ${esc(AREA[b.area][2])} ${money(E.PRICE[b.area])} a machine (assumed).</p>`;
+        h += row("count", `<span>Machines in this group</span><span class="count"><button class="btn" id="dn" aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" id="up" aria-label="One more">+</button></span>`);
+        h += row("fail", `<label for="fsel">Breakdowns</label>${failSel("fsel", f)}`);
         if (f.kind === "random") h += `<div class="row">${num("fa", f.mttf_minutes / 60, "about every", "h")}${num("fb", f.mttr_minutes / 60, "fix takes", "h")}</div>`;
         if (f.kind === "by_wafers") h += `<div class="row">${num("fa", f.every, "after", "wafers")}${num("fb", (f.minutes || [60])[0], "fix takes", "min")}</div>`;
-        h += `<div class="row"><label for="rsel">When it breaks</label><select id="rsel">${RECS.map(([k, n]) => `<option value="${k}" ${(r.kind || "") === k ? "selected" : ""}>${n}</option>`).join("")}</select></div>`;
+        h += row("rec", `<label for="rsel">When it breaks</label>${recSel("rsel", r)}`);
         if (r.kind === "swap_to_spare") h += `<div class="row">${num("ra", r.spares, "spares", `(${money(r.spares * E.PRICE[b.area])})`)}${num("rb", r.swap_minutes, "swap takes", "min")}</div>`;
         h += `<div class="row"><button class="btn" id="del">Remove</button></div>`;
         ins.innerHTML = h;
-        $("up").onclick = () => { b.count++; inspector(); edited(); };
-        $("dn").onclick = () => { b.count = Math.max(1, b.count - 1); inspector(); edited(); };
-        $("fsel").onchange = (e) => {
-          const k = e.target.value;
-          b.fail = k === "" ? undefined : k === "none" ? { kind: "none" } : k === "random" ? { kind: "random", mttf_minutes: 480, mttr_minutes: 120 } : { kind: "by_wafers", every: 500, minutes: [60, 120] };
-          inspector(); edited();
-        };
-        $("rsel").onchange = (e) => {
-          const k = e.target.value;
-          b.rec = k === "" ? undefined : k === "swap_to_spare" ? { kind: "swap_to_spare", spares: 1, swap_minutes: 20 } : { kind: "repair_and_hold_lots", lookback_minutes: 60, hold_minutes: 120 };
-          inspector(); edited();
-        };
-        const bind = (id, fn) => { const el = $(id); if (el) el.onchange = () => { const v = Number(el.value); if (v > 0) { fn(v); edited(); } inspector(); }; };
+        $("up").onclick = () => { b.count++; refreshCtl(); buildPalette(); edited(); };
+        $("dn").onclick = () => { b.count = Math.max(1, b.count - 1); refreshCtl(); buildPalette(); edited(); };
+        $("fsel").onchange = (e) => { setFail(b, e.target.value); refreshCtl(); edited(); };
+        $("rsel").onchange = (e) => { setRec(b, e.target.value); refreshCtl(); edited(); };
+        const bind = (id, fn) => { const el = $(id); if (el) el.onchange = () => { const v = Number(el.value); if (v > 0) { fn(v); edited(); } refreshCtl(); }; };
         bind("fa", (v) => (f.kind === "random" ? (b.fail.mttf_minutes = v * 60) : (b.fail.every = v)));
         bind("fb", (v) => (f.kind === "random" ? (b.fail.mttr_minutes = v * 60) : (b.fail.minutes = [v, v])));
         bind("ra", (v) => (b.rec.spares = Math.round(v)));
@@ -1116,32 +1175,66 @@
       } else {
         ins.innerHTML = `<div class="ttl">${svg(b.kind)}<span>${INFRA[b.kind][0]}</span></div><p class="note">${INFRA[b.kind][1]}</p><div class="row"><button class="btn" id="del">Remove</button></div>`;
       }
-      $("del").onclick = () => { s.blocks = s.blocks.filter((z) => z !== b); sel = null; buildPalette(); inspector(); edited(); };
+      $("del").onclick = () => { s.blocks = s.blocks.filter((z) => z !== b); sel = null; buildPalette(); refreshCtl(); edited(); };
     } else if (sel && sel.rail && s.rail[sel.rail]) {
       const v = s.rail[sel.rail], split = v.o.reduce((a, c) => a + c) > 1, f = v.fail || {};
       let h = `<div class="ttl">${svg(split ? "split" : "rail")}<span>Track piece (${sel.rail.replace(",", ", ")})</span></div><p class="note">Track runs one way. Turn on a second direction to make a junction.</p>`;
-      h += `<div class="row"><span>Directions out</span><span class="dirs4">${DN.map((d, i) => `<button class="btn" data-d="${i}" aria-pressed="${!!v.o[i]}" aria-label="${DLONG[i]}">${d}</button>`).join("")}</span></div>`;
-      h += `<div class="row"><label for="rf">Breakdowns</label><select id="rf"><option value="">Never</option><option value="random" ${f.kind === "random" ? "selected" : ""}>Now and then</option></select></div>`;
+      h += row("dirs", `<span>Directions out</span><span class="dirs4">${DN.map((d, i) => `<button class="btn" data-d="${i}" aria-pressed="${!!v.o[i]}" aria-label="${DLONG[i]}">${d}</button>`).join("")}</span>`);
+      h += row("rfail", `<label for="rf">Breakdowns</label><select id="rf"><option value="">Never</option><option value="random" ${f.kind === "random" ? "selected" : ""}>Now and then</option></select>`);
       if (f.kind === "random") {
         h += `<div class="row">${num("ra", f.mttf_minutes, "about every", "min")}${num("rb", f.mttr_minutes, "for", "min")}</div>`;
-        h += `<div class="row"><label for="rr">When it stops</label><select id="rr"><option value="wait" ${(v.rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(v.rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select></div>`;
+        h += row("rrec", `<label for="rr">When it stops</label><select id="rr"><option value="wait" ${(v.rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(v.rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select>`);
       }
       ins.innerHTML = h;
-      ins.querySelectorAll("[data-d]").forEach((bt) => (bt.onclick = () => { const d = +bt.dataset.d; v.o[d] = v.o[d] ? 0 : 1; inspector(); edited(); }));
-      $("rf").onchange = (e) => { if (e.target.value) { v.fail = { kind: "random", mttf_minutes: 240, mttr_minutes: 60 }; v.rec = { kind: "wait" }; } else { delete v.fail; delete v.rec; } inspector(); edited(); };
+      ins.querySelectorAll("[data-d]").forEach((bt) => (bt.onclick = () => { const d = +bt.dataset.d; v.o[d] = v.o[d] ? 0 : 1; refreshCtl(); edited(); }));
+      $("rf").onchange = (e) => { if (e.target.value) { v.fail = { kind: "random", mttf_minutes: 240, mttr_minutes: 60 }; v.rec = { kind: "wait" }; } else { delete v.fail; delete v.rec; } refreshCtl(); edited(); };
       if ($("rr")) $("rr").onchange = (e) => { v.rec = { kind: e.target.value }; edited(); };
-      const bind = (id, fn) => { const el = $(id); if (el) el.onchange = () => { const n = Number(el.value); if (n > 0) { fn(n); edited(); } inspector(); }; };
+      const bind = (id, fn) => { const el = $(id); if (el) el.onchange = () => { const n = Number(el.value); if (n > 0) { fn(n); edited(); } refreshCtl(); }; };
       bind("ra", (n) => (v.fail.mttf_minutes = n));
       bind("rb", (n) => (v.fail.mttr_minutes = n));
     } else {
-      let h = `<div class="ttl">${svg("fab")}<span>The whole fab</span></div><p class="note">Click a machine or a piece of track to change it. The settings below are for the whole fab.</p>`;
-      h += `<div class="row"><span>Cars on the track</span><span class="count"><button class="btn" id="vdn" aria-label="One fewer car">−</button><b>${s.vehicles}</b><button class="btn" id="vup" aria-label="One more car">+</button></span></div>`;
-      h += `<div class="row"><label for="cap">Cap on lots inside</label><span class="sub"><input type="number" min="0" step="1" id="cap" value="${s.cap || 0}"> lots (0 means no cap)</span></div>`;
-      ins.innerHTML = h;
-      $("vup").onclick = () => { s.vehicles++; inspector(); edited(); };
-      $("vdn").onclick = () => { s.vehicles = Math.max(1, s.vehicles - 1); inspector(); edited(); };
-      $("cap").onchange = (e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); if (n) s.cap = n; else delete s.cap; inspector(); edited(); };
+      // nothing selected: the whole fab's controls, as before, and a pointer to the other tabs
+      wholeFab(ins);
+      ins.insertAdjacentHTML("afterbegin", `<p class="note">Click a machine or a piece of track to change it, or pick a machine in the palette. All controls lists everything at once.</p>`);
     }
+  }
+
+  // ---------- your levers (docs/BUILD-CONTROLS.md): what the challenge lets you change, each opening its control
+  function leversOf(c) {
+    if (!c) return [];
+    const out = [];
+    if (c.spot && c.spot.rail) out.push({ label: "The broken track: when it stops", go: () => {
+      const k = Object.keys(s.rail).find((x) => s.rail[x].fail); if (!k) return null; sel = { rail: k }; ctlTab("sel"); inspector(); return "rrec"; } });
+    if (c.spot && c.spot.group) {
+      const g = c.spot.group, a = areaOfGroup[g] || (s.blocks.find((b) => b.group === g) || {}).area, nm = AREA[a][0];
+      const pick = () => { const b = s.blocks.find((z) => z.kind === "group" && z.group === g); if (!b) return false; sel = { id: b.id }; ctlTab("sel"); inspector(); return true; };
+      out.push({ label: `${nm} machines (${money(E.PRICE[a])} each)`, kind: a, go: () => (pick() ? "count" : null) });
+      out.push({ label: `${nm}: when it breaks`, kind: a, go: () => (pick() ? "rec" : null) });
+    }
+    if (c.tip) out.push({ label: "Cap on lots inside", go: () => { ctlTab("fab"); return "cap"; } });
+    return out;
+  }
+  let litTimer = null;
+  function light(key) {
+    document.querySelectorAll(".ctlrow.lit").forEach((e) => e.classList.remove("lit"));
+    const panel = ctlTabNow === "sel" ? $("insp") : ctlTabNow === "fab" ? $("ctl-fab") : $("ctl-all");
+    const el = panel.querySelector(`.ctlrow[data-ctl="${key}"]`);
+    if (!el) return;
+    el.classList.add("lit");
+    el.scrollIntoView({ block: "nearest" });
+    clearTimeout(litTimer); litTimer = setTimeout(() => el.classList.remove("lit"), 4000);
+  }
+  function renderLevers() {
+    const lv = leversOf(ch()), box = $("levers");
+    box.hidden = !lv.length;
+    box.innerHTML = lv.length ? `<span class="lv-h">Your levers:</span>` + lv.map((l, i) => `<button class="btn lever" data-lv="${i}">${esc(l.label)}</button>`).join("") : "";
+    box.querySelectorAll("[data-lv]").forEach((bt) => (bt.onclick = () => { const k = lv[+bt.dataset.lv].go(); if (k) { draw(); light(k); } }));
+  }
+
+  // ---------- the process (docs/BUILD-CONTROLS.md): the teaching fab's one product, step by step
+  function renderProcess() {
+    const steps = E.TEACHING_SHOP.split("\n").filter((l) => l.startsWith("step\t")).map((l) => { const f = l.split("\t"); return [E.AREA_OF[f[1].replace(/_T$/, "")] || areaOfGroup[f[1]], Number(f[3])]; });
+    $("process").innerHTML = steps.map(([a, m], i) => `<li><img src="cast/base/${String(E.AREAS.indexOf(a) + 1).padStart(2, "0")}-${a}.webp" alt="" width="28" height="28"><span class="nm">${esc(AREA[a][0])}</span><span class="mn">${m} min</span></li>`).join("");
   }
 
   // ---------- checks
@@ -1238,11 +1331,13 @@
   requestAnimationFrame(loop);
   let rt;
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { V = null; room = null; draw(); }, 80); });
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => s && draw());
+  // the fonts change the banner's height, so the map measures its room again once they are in
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { room = null; if (s) draw(); });
   // for page tests: where a floor cell's centre is on screen, and the map's state (read only)
   window.FabEditorPage = {
     screenOf(x, y, z) { const r = cv.getBoundingClientRect(), p = P(x + 0.5, y + 0.5, z || 0); return [r.left + p[0], r.top + p[1]]; },
     blocks: () => s.blocks.map((b) => ({ ...b })),
+    fab: () => fab(),
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
     // the editor's basics (docs/EDITOR-BASICS.md)
     view: () => viewNow(),

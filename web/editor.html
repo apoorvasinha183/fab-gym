@@ -197,7 +197,47 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .about{position:relative;margin-left:auto;font-size:12.5px}
 .about>summary{cursor:pointer;color:var(--muted);list-style:none}
 .about>summary::-webkit-details-marker{display:none}
-.about[open]>p{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:min(420px,80vw);margin:0;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.35);color:var(--ink);line-height:1.45}
+.about>.about-pop{display:none}
+.about[open]>.about-pop{display:block;position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:min(460px,80vw);max-height:72vh;overflow:auto;margin:0;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.35);color:var(--ink);line-height:1.45}
+.about-pop>p{margin:0 0 8px}
+/* the process (docs/BUILD-CONTROLS.md) */
+.process h5{margin:6px 0 4px;font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.process ol{margin:6px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;counter-reset:st}
+.process li{display:grid;grid-template-columns:28px minmax(0,1fr);grid-template-rows:auto auto;column-gap:6px;align-items:center;font-size:12px;padding:3px 4px;border:1px solid var(--line);border-radius:6px;counter-increment:st}
+.process li img{grid-row:1/3;border-radius:5px;background:#fff}
+.process li .nm{line-height:1.15}
+.process li .nm::before{content:counter(st) ". ";color:var(--muted)}
+.process li .mn{font:11px var(--mono);color:var(--muted)}
+/* the machines in the palette */
+.pal .mks{grid-template-columns:1fr}
+.pal{height:0;min-height:100%;overflow-y:auto} /* the palette scrolls in its column; the map sets the row's height */
+.side{height:0;min-height:100%;overflow-y:auto} /* so do the checks and the controls */
+.pal .keys button.mk{min-height:0;padding:4px 6px;justify-content:start;text-align:left;font-size:12px}
+.pal .mk{display:grid;grid-template-columns:34px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:6px;align-items:center;text-align:left;padding:4px 5px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:inherit;font-size:11.5px;line-height:1.15;cursor:pointer}
+.pal .mk img{grid-row:1/3;border-radius:6px;background:#fff}
+.pal .mk .nm{grid-column:2/4}
+.pal .mk .n,.pal .mk .pr{font:10px var(--mono);color:var(--muted);white-space:nowrap}
+.pal .mk .pr{justify-self:end}
+.pal .mk.lever{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}
+.pal .mk:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+/* the controls panel */
+.insp[hidden]{display:none}
+.ctl-tabs{display:flex;gap:4px;margin-bottom:8px}
+.ctl-tabs button{font:inherit;font-size:12.5px;padding:3px 8px;border-radius:7px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.ctl-tabs button[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.ctlrow{flex-wrap:wrap}
+.ctlrow .why{flex-basis:100%;font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:2px}
+.ctlrow.lit{background:var(--amber-soft);border-radius:6px;box-shadow:0 0 0 2px var(--amber)}
+.allctl{width:100%;border-collapse:collapse;font-size:12px}
+.allctl td{vertical-align:top;padding:5px 2px;border-bottom:1px solid var(--line)}
+.allctl td small{color:var(--muted)}
+.allctl td .why{display:block}
+.allctl select{font:inherit;font-size:11.5px;max-width:150px;display:block;margin-top:3px}
+#ctl-all{max-height:46vh;overflow:auto}
+/* your levers */
+.levers{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px}
+.levers .lv-h{font-size:12.5px;font-weight:600;color:var(--amber)}
+.levers .lever{font-size:12px;padding:2px 9px;border-color:var(--amber);background:var(--amber-soft)}
 .playbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .playbar #slider{flex:1;min-width:160px}
 .banner{padding:6px 14px;gap:4px 14px}
@@ -229,12 +269,12 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <div class="brandrow"><h1>Fab Gym <span>· Build your own fab</span></h1>
       <nav class="topnav" aria-label="Pages"><a href="index.html">Home</a><a href="index.html#floor">Floor</a><a href="editor.html" aria-current="page">Build</a><a href="index.html#evidence">Evidence</a><a href="runs.html">Runs</a></nav></div>
     <div class="tabrow"><div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
-      <details class="about" id="about"><summary>ⓘ About the sim</summary><p>What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p></details></div>
+      <details class="about" id="about"><summary>ⓘ About the sim</summary><div class="about-pop"><p>What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p><div class="process" id="process-box"><h5>The process</h5><p>This fab makes one product. A lot of 25 wafers enters every 30 minutes and visits these 18 steps in order, each on any free machine of its kind. A real fab's product takes hundreds of steps: 583 for one of the SMT2020 testbed's two products. This one is kept small so you can see every step.</p><ol id="process"></ol></div></div></details></div>
   </header>
 
   <section class="banner" aria-live="polite">
     <div class="ch-ico" aria-hidden="true">🏁</div>
-    <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
+    <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span><div class="levers" id="levers" hidden></div></div>
     <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span><b class="starmark">★</b><b class="starmark">★</b><b class="starmark">★</b></div><div class="goaltext" id="goaltext">Running the simulator…</div>
       <button class="btn" id="showfix">Stuck? Show me a fix</button> <button class="btn" id="ai-go" title="Muse Wonder plays this challenge with your moves">Let the AI try</button></div>
     <div class="score" id="score" aria-label="Score of the last run"></div>
@@ -272,7 +312,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="card ai" id="ai-panel" hidden aria-live="polite"><h4><span>The AI's turn</span><span class="ai-btns"><button class="btn" id="ai-stop">Stop</button><button class="btn" id="ai-close" aria-label="Close">✕</button></span></h4>
         <p class="ai-cost" id="ai-cost">Muse Wonder</p><p class="ai-status" id="ai-status"></p><p class="ai-stars" id="ai-stars"></p><ol class="ai-moves" id="ai-moves"></ol></div>
       <div class="card"><h4><span>Layout</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
-      <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
+      <div class="card ctl-card"><div class="ctl-tabs" id="ctl-tabs" role="tablist" aria-label="Controls"><button role="tab" data-tab="sel" aria-selected="true">Selected</button><button role="tab" data-tab="fab" aria-selected="false">Whole fab</button><button role="tab" data-tab="all" aria-selected="false">All controls</button></div>
+        <div class="insp" id="insp" role="tabpanel"></div><div class="insp" id="ctl-fab" role="tabpanel" hidden></div><div class="insp" id="ctl-all" role="tabpanel" hidden></div></div>
     </aside>
   </section>
 </div>
