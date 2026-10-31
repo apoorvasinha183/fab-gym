@@ -30,3 +30,9 @@ fab.
 - `web/tests/sitecuts.test.mjs` **K6** allows 19 controls on the Floor's first screen: Curves is one more.
 
 ## Changes
+- 1 Nov, while writing the code: the Floor's charts first spanned the whole 30-day run, so on day 1 every line was a
+  sliver at the left edge; each chart now spans the run so far (at least half a day) and is scaled to the values seen up
+  to now. A long name ("Wait for a tool, last hour") wrapped and pushed its chart down, so the value sits under the name.
+  In Build the map's status line showed through the charts' panel; it is hidden while the curves are open.
+- 1 Nov, results: CU1 to CU5 pass, and the page suite (the paused floor coach's tests left out) passes run one file at a
+  time.

@@ -595,6 +595,7 @@
     if (checks && checks.ok === false) return; // the checks refuse the layout: it runs when they pass
     runNow(false);
   };
+  $("curves-open").onclick = () => { const box = $("curves"); box.hidden = !box.hidden; $("curves-open").setAttribute("aria-expanded", String(!box.hidden)); curvesShown = -1; renderCurves(); };
   $("sketch-go").onclick = () => $("sketch-file").click();
   $("sketch-file").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) fromSketch(f); };
   $("sketch-keep").onclick = () => { $("sketch-panel").hidden = true; sketchBefore = null; };
@@ -762,8 +763,27 @@
   function playBtn() { $("play").textContent = playing ? "❚❚" : "▶"; $("play").setAttribute("aria-label", playing ? "Pause" : "Play"); }
   const hhmmss = (t) => { const d = Math.floor(t / 1440) + 1, m = t % 1440; return `Day ${d} · ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(Math.floor(m % 60)).padStart(2, "0")}:${String(Math.floor((m * 60) % 60)).padStart(2, "0")}`; };
   let lastHour = -1;
+  // live curves (docs/CURVES.md): from the run's hourly frames
+  let curvesShown = -1;
+  function renderCurves() {
+    const box = $("curves");
+    if (box.hidden || !run || !run.frames) return;
+    if (Math.abs(clock - curvesShown) < 2 && box.childElementCount) return;
+    curvesShown = clock;
+    const busy = ["work", "tired", "full"].map((m) => run.tool_moods.indexOf(m)); // moods that count as a tool busy
+    const xs = run.frames.map((f) => f.t);
+    const waiting = run.frames.map((f) => f.queues.reduce((a, b) => a + b, 0));
+    const finished = run.frames.map((f) => (f.lots && f.lots.grad) || 0);
+    const working = run.frames.map((f) => (f.tools.length ? f.tools.filter((m) => busy.includes(m)).length / f.tools.length : 0));
+    const charts = [["Lots waiting", waiting, (v) => Math.round(v)], ["Lots finished", finished, (v) => Math.round(v)], ["Tools busy", working, (v) => `${Math.round(v * 100)}%`]];
+    if (box.childElementCount !== charts.length) box.innerHTML = charts.map(() => '<div class="curve"></div>').join("");
+    const els = box.querySelectorAll(".curve"), until = days() * 1440;
+    charts.forEach(([name, ys, fmt], i) => FabCharts.render(els[i], { name, xs, series: [{ label: "this run", ys }], until, now: clock, fmt }));
+  }
+
   function tickUi() {
     $("clock").textContent = hhmmss(clock);
+    renderCurves();
     if (!run) return;
     const fi = frameIdx();
     if (fi === lastHour) return;

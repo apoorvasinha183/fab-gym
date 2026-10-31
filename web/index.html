@@ -304,6 +304,7 @@
   </div>
   <span id="run-no" class="run-no" title="Each run is one random history of breakdowns and arrivals; the address replays it">Run #</span>
   <button type="button" id="new-run" class="ghost" title="Play another random run">⟳ New run</button>
+  <button type="button" id="curves-open" class="ghost" aria-expanded="false" aria-controls="curves">Curves</button>
   <span class="scrub-l">Lots waiting</span>
   <div class="scrub">
     <canvas id="spark" aria-hidden="true"></canvas>
@@ -341,12 +342,14 @@
   <p class="fine">Every fab here starts from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times (Kopp, Hassoun, Kalir, Mönch 2020). No real company's data is used.</p>
 </section>
 
+<section id="curves" class="card curves" aria-label="Curves: the run so far" hidden></section>
 <section id="split-cards" class="card split-cards" aria-live="polite" hidden></section>
 <div id="tip" class="tip" hidden></div>
 <div class="hint" id="hint">Scroll to zoom · drag to move · hover a group · space to pause · F to fit · T to tilt · ⌘K to ask</div>
 
 <script src="look.js"></script>
 <script src="ui.js"></script>
+<script src="charts.js"></script>
 <script src="stages.js"></script>
 <script src="glossary.js"></script>
 <script src="ask.js"></script>

@@ -210,6 +210,17 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .toolrow .maptools{flex:0 0 auto}
 .toolrow .advice{flex:1;min-width:0}
 .mapbox .status{position:absolute;top:8px;left:10px;z-index:2;max-width:calc(100% - 20px);padding:3px 8px;border-radius:6px;background:rgba(11,20,24,.78);color:#C9D6DA;line-height:1.4;min-height:0;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* live curves (docs/CURVES.md): over the bottom of the map */
+.mapbox .curves{position:absolute;left:10px;right:10px;bottom:10px;z-index:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:8px 10px;background:rgba(11,20,24,.92);border:1px solid var(--line);border-radius:8px;line-height:1.3}
+.mapbox .curves[hidden]{display:none}
+.curve .hd{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#C9D6DA}
+.curve .hd b{color:#E8F2F0;font-variant-numeric:tabular-nums}
+.curve svg{width:100%;height:56px;display:block}
+.curve .base{stroke:#2C5560;stroke-width:1}
+.curve .now{stroke:#E8F2F0;stroke-width:1;stroke-dasharray:2 2;opacity:.6}
+.curve polyline.series{fill:none;stroke:#7EE8D8;stroke-width:1.6;vector-effect:non-scaling-stroke}
+#curves-open[aria-expanded="true"]{border-color:#7EE8D8;color:#7EE8D8}
+.mapbox:has(.curves:not([hidden])) #status{visibility:hidden}
 </style>
 </head>
 <body>
@@ -244,13 +255,14 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       </div>
       <div class="advice" id="advice" aria-live="polite"></div>
       </div>
-      <div class="mapbox" id="mapbox"><div class="status" id="status">Point at a machine or a car to see how it is doing.</div><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+      <div class="mapbox" id="mapbox"><section class="curves" id="curves" aria-label="Curves: the run so far" hidden></section><div class="status" id="status">Point at a machine or a car to see how it is doing.</div><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
         <div class="win" id="win" hidden role="dialog" aria-labelledby="win-h"><div class="wcard"><h3 id="win-h">Challenge met!</h3><div class="wstars" id="win-stars"></div><p id="win-line"></p><p class="note" id="win-next"></p><div class="poster-box" id="poster-box"><button class="btn" id="poster-go" hidden>Make a poster</button><img id="poster-img" hidden alt="Your fab as a poster, made by Muse Image"><p class="note" id="poster-note"></p><a class="btn" id="poster-dl" hidden download="fab-gym-poster.png">Download</a></div><div class="wbtns"><button class="btn go" id="win-go">Next challenge →</button><button class="btn" id="win-stay">Keep improving</button></div></div></div></div>
       <div class="playbar" id="playbar">
         <button class="btn" id="play" aria-label="Pause">❚❚</button>
         <button class="btn" id="speed" aria-label="Playback speed" title="1× is 20 fab minutes a second; 3× and 12× are faster">1×</button>
         <span class="clock" id="clock">Day 1 · 00:00:00</span>
         <input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour">
+        <button class="btn" id="curves-open" aria-expanded="false" aria-controls="curves">Curves</button>
         <span class="run-no" id="run-no" title="Each run is one random history of breakdowns and arrivals">Run #1</span><button class="btn" id="new-run" title="Play another random run of the same layout (your edits rerun on their own); stars still count run #1, the challenge's own">⟳ New run</button>
       </div>
     </div>
@@ -266,6 +278,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 </div>
 <script src="look.js"></script>
 <script src="editor-core.js"></script>
+<script src="charts.js"></script>
 <script src="editor.js"></script>
 <script src="race.js"></script>
 </body>

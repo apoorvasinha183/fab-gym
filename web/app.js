@@ -927,6 +927,7 @@ function hud() {
   $("day").textContent = `Day ${day}`;
   $("time").textContent = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   renderHealth(health());
+  renderCurves();
   { const sp = $("spark"); if (sp.clientWidth && sp.width !== Math.round(sp.clientWidth * (window.devicePixelRatio || 1))) drawSpark(); }
   $("scrub").value = t;
   ticker();
@@ -1088,6 +1089,63 @@ function renderHealth(h) {
   bar("h-toolbar", [[T.working, "s0"], [T.idle, "s1"], [T.setup, "s4"], [T.maintenance, "s2"], [T.down, "s3"]], h.nT);
 }
 
+// ------------------------------------------------------------------ live curves (docs/CURVES.md)
+
+let LOAD_OPTS = null, curvesShown = -1;
+const BASE_CURVES = new Map(); // run number -> today's curves on that run
+const CURVE_STEP = 20; // fab minutes between samples
+
+/** The run's curves every 20 fab minutes: lots waiting for a tool, lots finished, the last hour's mean wait for a tool,
+ * and the share of machines working; the same readings as the health panel's. */
+function curvesOf(P) {
+  const xs = [], waiting = [], finished = [], waitHour = [], working = [];
+  const machines = P.toolGroup.filter(g => g !== P.holdingGroup).length;
+  const q = new Int32Array(P.nG), st = new Uint8Array(P.nT).fill(1);
+  let qi = 0, si = 0, busy = 0;
+  const S = P.states, Q = P.qe;
+  for (let t = 0; t <= P.j.until; t += CURVE_STEP) {
+    const tq = seekTime(t);
+    while (qi < Q.length && Q[qi][0] <= tq) { q[Q[qi][1]] += Q[qi][2]; qi++; }
+    while (si < S.length / 3 && S[si * 3 + 1] <= tq) {
+      const k = S[si * 3], v = S[si * 3 + 2];
+      if (P.toolGroup[k] !== P.holdingGroup) busy += (v === 0 ? 1 : 0) - (st[k] === 0 ? 1 : 0);
+      st[k] = v; si++;
+    }
+    let w = 0;
+    for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup) w += q[g];
+    const n0 = countBelow(P.waitStart, tq - 60), n1 = countBelow(P.waitStart, tq);
+    xs.push(t); waiting.push(w); finished.push(countBelow(P.done, t));
+    waitHour.push(n1 > n0 ? (P.waitSum[n1] - P.waitSum[n0]) / (n1 - n0) : 0); working.push(busy / machines);
+  }
+  return { xs, waiting, finished, waitHour, working };
+}
+
+function renderCurves() {
+  const box = $("curves");
+  if (box.hidden || !P || !P.curves) return;
+  if (Math.abs(t - curvesShown) < 2 && box.childElementCount) return;
+  curvesShown = t;
+  const C = P.curves, base = P.isChange ? BASE_CURVES.get(P.seedOf) : null;
+  const mins = m => (m >= 60 ? `${(m / 60).toFixed(1)} h` : `${Math.round(m)} min`);
+  const charts = [
+    ["Lots waiting", "waiting", v => Math.round(v).toLocaleString("en-US")],
+    ["Lots finished", "finished", v => Math.round(v).toLocaleString("en-US")],
+    ["Wait for a tool, last hour", "waitHour", mins],
+    ["Tools working", "working", v => `${Math.round(v * 100)}%`],
+  ];
+  if (box.childElementCount !== charts.length + 1) box.innerHTML = `<p class="curves-note"></p>` + charts.map(() => `<div class="curve"></div>`).join("");
+  box.querySelector(".curves-note").textContent = base ? `Run #${P.seedOf}: your settings against today` : `Run #${P.seedOf}, drawn as the clock runs`;
+  const els = box.querySelectorAll(".curve");
+  charts.forEach(([name, k, fmt], i) => {
+    const series = [{ label: base ? "your settings" : "this run", ys: C[k], cls: base ? "mine" : "" }];
+    if (base) series.push({ label: "today", ys: base[k], cls: "today" });
+    // the chart spans the run so far (at least half a day), scaled to the values seen up to now
+    const span = Math.min(P.j.until, Math.max(t, 720)), n = Math.max(1, Math.floor(t / CURVE_STEP) + 2);
+    const top = Math.max(1e-9, ...C[k].slice(0, n), ...(base ? base[k].slice(0, n) : []));
+    FabCharts.render(els[i], { name, xs: C.xs, series, until: span, now: t, fmt, top });
+  });
+}
+
 // ------------------------------------------------------------------ floor log
 
 function clock(t) {
@@ -1233,6 +1291,7 @@ function setupInput() {
   }));
   $("scrub").oninput = e => { t = +e.target.value; };
   $("fit").onclick = fit;
+  $("curves-open").onclick = () => { const box = $("curves"); box.hidden = !box.hidden; $("curves-open").setAttribute("aria-expanded", String(!box.hidden)); $("curves-open").classList.toggle("on", !box.hidden); curvesShown = -1; renderCurves(); };
   $("new-run").onclick = () => startRun(randomRun(RUN), true); // docs/RANDOM-RUNS.md
   // the map's buttons (docs/FLOOR-REVIEW.md): the same as scroll, F and T
   $("zoom-in").onclick = () => zoomBy(1.25);
@@ -1481,7 +1540,9 @@ function rerun() {
   setTimeout(() => {
     let run;
     try { run = simulate(opts); } catch (err) { $("runnote").textContent = "Could not run: " + err.message; return; }
+    LOAD_OPTS = opts;
     load(run);
+    LOAD_OPTS = null;
     const moves = run.j.moves.toLocaleString();
     $("runnote").textContent = `Ran ${opts.days} day${opts.days > 1 ? "s" : ""} (run #${opts.seed}): ${moves} deliveries and ${run.j.decisions.toLocaleString()} choices of what to run next, in ${run.secs.toFixed(2)} s here in your browser.`;
     compare(opts);
@@ -1498,6 +1559,12 @@ function load(run) {
   P.holdingGroup = P.j.groups.findIndex(g => sim.area[g[0]] === "Delay_32");
   P.breakdowns = breakdownEvents(P);
   P.breakdownTimes = P.breakdowns.map(e => e[0]);
+  // the curves (docs/CURVES.md): today's are kept by run number, so a changed run can be drawn over them
+  P.isChange = !!(LOAD_OPTS && !isToday(LOAD_OPTS));
+  P.seedOf = LOAD_OPTS ? LOAD_OPTS.seed : RUN;
+  P.curves = curvesOf(P);
+  if (!P.isChange && !P.quick) BASE_CURVES.set(P.seedOf, P.curves);
+  curvesShown = -1;
   cur = makeCursor(P);
   t = 0;
   playing = true;
