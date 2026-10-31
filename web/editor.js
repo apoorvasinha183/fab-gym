@@ -69,6 +69,9 @@
   }
   const met = new Set();
   try { for (const id of JSON.parse(localStorage.getItem("fabgym.met") || "[]")) met.add(id); } catch (e) { /* no storage */ }
+  // best stars per challenge, kept in this browser (docs/EDITOR-ROOM.md)
+  let best = {};
+  try { best = JSON.parse(localStorage.getItem("fabgym.stars") || "{}") || {}; } catch (e) { best = {}; }
   const ch = () => (chIdx < E.CHALLENGES.length ? E.CHALLENGES[chIdx] : null);
   const days = () => (ch() ? ch().days : 2);
   const fab = () => E.fabText(base, s, { vehicles: s.vehicles });
@@ -100,12 +103,13 @@
   let F = null, room = null;
   function fit(cw) {
     const co = Math.cos(ISO.r), sn = Math.sin(ISO.r);
-    const pts = [[0, 0], [s.W, 0], [0, s.H], [s.W, s.H]].map(([x, y]) => [x * co - y * sn, (x * sn + y * co) * ISO.q]);
+    const M = 1.5; // a tile and a half of paper all round (docs/EDITOR-ROOM.md)
+    const pts = [[-M, -M], [s.W + M, -M], [-M, s.H + M], [s.W + M, s.H + M]].map(([x, y]) => [x * co - y * sn, (x * sn + y * co) * ISO.q]);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const wx = Math.max(...xs) - Math.min(...xs), wy = Math.max(...ys) - Math.min(...ys), pad = cw * ISO.pad;
     // the smaller of the column's width and the window's height below the map, never under 360 px (docs/EDITOR-TOPDOWN.md)
     // kept until the room changes by 8 px or more, so small reflows above the map do not make it breathe
-    const r = Math.max(360, window.innerHeight - (cv.getBoundingClientRect().top + window.scrollY) - 24);
+    const r = Math.max(430, window.innerHeight - (cv.getBoundingClientRect().top + window.scrollY) - 24);
     if (room == null || Math.abs(r - room) >= 8) room = r;
     const sc = Math.min((cw - 2 * pad) / wx, (room - 2 * pad) / wy);
     const lift = 0, depth = 0;
@@ -134,15 +138,16 @@
     g.addColorStop(0, "#16323A"); g.addColorStop(0.6, "#0B1418"); g.addColorStop(1, "#070C0F");
     ctx.fillStyle = g; ctx.fillRect(0, 0, cw, F.ch);
     const slab = [P(0, 0), P(s.W, 0), P(s.W, s.H), P(0, s.H)];
-    ctx.save(); ctx.translate(0, F.depth); poly(slab); ctx.fillStyle = "#071013"; ctx.fill(); ctx.restore();
-    poly(slab); ctx.fillStyle = "#0F1D22"; ctx.fill(); ctx.strokeStyle = "rgba(126,232,216,.5)"; ctx.lineWidth = 1.2; ctx.stroke();
-    // paper to draw on (docs/EDITOR-GAME.md): a fine line per tile, a stronger one every five
+    poly(slab); ctx.fillStyle = "#11242A"; ctx.fill();
+    // paper to draw on, all over the map (docs/EDITOR-GAME.md, docs/EDITOR-ROOM.md): a fine line per tile, a stronger one every five
+    const [ux0, uy0] = unP(0, 0), [ux1, uy1] = unP(cw, F.ch), gx0 = Math.floor(Math.min(ux0, ux1)), gx1 = Math.ceil(Math.max(ux0, ux1)), gy0 = Math.floor(Math.min(uy0, uy1)), gy1 = Math.ceil(Math.max(uy0, uy1));
     for (const [step, a] of [[1, 0.07], [5, 0.16]]) {
       ctx.strokeStyle = `rgba(126,232,216,${a})`; ctx.lineWidth = 1; ctx.beginPath();
-      for (let x = 0; x <= s.W; x += step) { const p0 = P(x, 0), p1 = P(x, s.H); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
-      for (let y = 0; y <= s.H; y += step) { const p0 = P(0, y), p1 = P(s.W, y); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
+      for (let x = Math.ceil(gx0 / step) * step; x <= gx1; x += step) { const p0 = P(x, gy0), p1 = P(x, gy1); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
+      for (let y = Math.ceil(gy0 / step) * step; y <= gy1; y += step) { const p0 = P(gx0, y), p1 = P(gx1, y); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
       ctx.stroke();
     }
+    poly(slab); ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = "rgba(126,232,216,.35)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
     const fi = frameIdx(), fr = showRun() ? run.frames[fi] : null;
     const jam = {}, jamWas = {};
     if (fr) run.stretches.forEach((n, i) => (jam[n] = fr.rails[i]));
@@ -365,12 +370,51 @@
     stale = false;
     const c = ch();
     if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
+    if (c) {
+      const st = E.stars(run.score, c.target, run.spendTop);
+      if (st > (best[c.id] || 0)) {
+        const first = !best[c.id];
+        best[c.id] = st;
+        try { localStorage.setItem("fabgym.stars", JSON.stringify(best)); } catch (e) { /* no storage */ }
+        celebrate(st, c, first);
+      }
+    }
     $("slider").max = run.frames.length - 1;
     runsDone++;
     // a rerun after an edit keeps the tool in hand; only a fresh run goes back to watching (docs/EDITOR-SPEED.md)
     renderTabs(); renderScore(); lastHour = -1;
     if (keepClock) { $("again").hidden = true; draw(); } else setMode("run");
     await jumpTo(keepClock && clock > 0 ? Math.min(clock, days() * 1440 - WINDOW) : startTime());
+  }
+
+  // ---------- the moment a challenge is met (docs/EDITOR-ROOM.md)
+  function celebrate(st, c, first) {
+    const w = Math.round(run.score.wafers_per_day), t = c.target.wafers;
+    $("win-h").textContent = first ? "Challenge met!" : "New best!";
+    $("win-stars").innerHTML = [1, 2, 3].map((i) => `<span class="star${i <= st ? " on" : ""}" aria-hidden="true">★</span>`).join("") + `<span class="sr">${st} of 3 stars</span>`;
+    $("win-line").textContent = `${w.toLocaleString()} wafers a day against a target of ${t.toLocaleString()}${c.target.budget ? `, ${money(run.spendTop)} spent of ${money(c.target.budget)}` : ""}.`;
+    $("win-next").textContent = st >= 3 ? "Three stars: the best there is." : st === 2 ? `Three stars at ${Math.ceil(t * 1.05).toLocaleString()} wafers a day.` : `Two stars at ${Math.ceil(t * 1.02).toLocaleString()}, three at ${Math.ceil(t * 1.05).toLocaleString()}.`;
+    const next = chIdx + 1;
+    $("win-go").textContent = next < E.CHALLENGES.length ? "Next challenge →" : "Try Free build →";
+    $("win-go").onclick = () => { $("win").hidden = true; load(next); };
+    $("win-stay").onclick = () => { $("win").hidden = true; };
+    $("win").hidden = false;
+    confetti();
+  }
+  function confetti() {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const c = $("confetti"), box = $("mapbox"), dpr = window.devicePixelRatio || 1, W = box.clientWidth, H = box.clientHeight;
+    c.width = W * dpr; c.height = H * dpr; c.style.width = W + "px"; c.style.height = H + "px";
+    const g = c.getContext("2d"), cols = ["#F2B33D", "#7EE8D8", "#4FE3A3", "#FF8A5B", "#C9A3FF"], t0 = performance.now();
+    const bits = Array.from({ length: 140 }, () => ({ x: W / 2 + (Math.random() - 0.5) * 80, y: H * 0.35, vx: (Math.random() - 0.5) * 9, vy: -Math.random() * 9 - 3, r: Math.random() * 6.28, col: cols[(Math.random() * cols.length) | 0] }));
+    const step = (now) => {
+      const k = (now - t0) / 1800;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      if (k >= 1) return;
+      for (const b of bits) { b.x += b.vx; b.y += b.vy; b.vy += 0.28; b.r += 0.2; g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.globalAlpha = 1 - k; g.fillStyle = b.col; g.fillRect(-4, -2, 8, 4); g.restore(); }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   // ---------- see your change work (docs/EDITOR-GAME.md)
@@ -431,6 +475,7 @@
       const w = sc.wafers_per_day, full = c.target.wafers * 1.2, ok = E.meets(sc, c.target, top);
       $("goalfill").style.width = Math.min(100, (w / full) * 100) + "%";
       $("goaltick").style.left = (c.target.wafers / full) * 100 + "%";
+      [1, 1.02, 1.05].forEach((m, i) => { const el = $("goalbar").querySelectorAll(".starmark")[i]; if (el) { el.style.left = `calc(${(c.target.wafers * m / full) * 100}% - 6px)`; el.title = `${i + 1} star${i ? "s" : ""} at ${Math.ceil(c.target.wafers * m)} wafers a day`; } });
       $("goalbar").classList.toggle("met", ok);
       $("goaltext").innerHTML = ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
     } else {
@@ -443,7 +488,8 @@
   // ---------- challenges
   function renderTabs() {
     const names = [...E.CHALLENGES.map((c, i) => `${i + 1} · ${c.title}`), "Free build"];
-    $("chtabs").innerHTML = names.map((n, i) => `<button class="tab" data-ch="${i}" aria-pressed="${i === chIdx}">${esc(n)}${i < E.CHALLENGES.length && met.has(E.CHALLENGES[i].id) ? '<span class="met" aria-label="met">✓</span>' : ""}</button>`).join("");
+    const starsOf = (i) => { const n = i < E.CHALLENGES.length ? best[E.CHALLENGES[i].id] || 0 : 0; return n ? `<span class="met tabstars" aria-label="${n} of 3 stars">${"★".repeat(n)}${"☆".repeat(3 - n)}</span>` : ""; };
+    $("chtabs").innerHTML = names.map((n, i) => `<button class="tab" data-ch="${i}" aria-pressed="${i === chIdx}">${esc(n)}${starsOf(i)}</button>`).join("");
     $("chtabs").querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => load(+b.dataset.ch)));
   }
   async function load(i, fixed) {
@@ -570,6 +616,21 @@
   function syncUndo() { $("undo").disabled = !hist.canUndo(); $("redo").disabled = !hist.canRedo(); }
   /** The view as drawn: the user's, or the fitted one. */
   const viewNow = () => (V ? { ...V } : FIT ? { s: FIT.s, ox: FIT.ox, oy: FIT.oy } : null);
+  /** Grows the floor to take a piece at (x, y), holding the view still; returns how far everything moved, or null. */
+  function growFor(x, y, w, h) {
+    if (x >= 0 && y >= 0 && x + w <= s.W && y + h <= s.H) return [0, 0];
+    const v = viewNow(), d = E.grow(s, x, y, w, h);
+    if (!d) { $("status").textContent = "That is as far as the floor goes."; return null; }
+    V = { s: v.s, ox: v.ox - d[0] * v.s, oy: v.oy - d[1] * v.s };
+    if (d[0] || d[1]) {
+      const mv = (k) => { const [a, b] = k.split(",").map(Number); return E.key(a + d[0], b + d[1]); };
+      if (drag && drag.last) drag.last = mv(drag.last);
+      if (sel && sel.rail) sel = { rail: mv(sel.rail) };
+      for (const c of [hover, cursorCell, lastEditAt]) if (c) { c[0] += d[0]; c[1] += d[1]; }
+      boxSel = null;
+    }
+    return d;
+  }
   function zoom(factor, px, py) {
     if (!FIT) return;
     V = E.zoomAt(viewNow(), factor, px, py, FIT.s * 0.25, FIT.s * 4);
@@ -614,7 +675,7 @@
       boxDrag = { a: c, b: c }; boxSel = E.inBox(s, c[0], c[1], c[0], c[1]);
       cv.setPointerCapture(e.pointerId); e.preventDefault(); draw(); return;
     }
-    const [x, y] = cellOf(e);
+    let [x, y] = cellOf(e);
     const empty = !(x >= 0 && y >= 0 && x < s.W && y < s.H) || (!blockAt(x, y) && !s.rail[E.key(x, y)]);
     if (e.button === 1 || spaceHeld || (tool === "select" && e.button === 0 && empty)) {
       if (tool === "select" && !spaceHeld && e.button === 0) { sel = null; inspector(); }
@@ -622,6 +683,14 @@
       if (spaceHeld) spacePanned = true;
       cv.setPointerCapture(e.pointerId); cv.classList.add("panning");
       e.preventDefault(); draw(); return;
+    }
+    if ((x < 0 || y < 0 || x >= s.W || y >= s.H) && (tool === "rail" || PIECES.has(tool) || tool in AREA)) {
+      // the floor grows to take what you draw (docs/EDITOR-ROOM.md)
+      const [gw, gh] = tool === "rail" ? [1, 1] : handDims(placeKind());
+      if (tool !== "rail" && !E.isFree(s, x, y, gw, gh, undefined, true).ok) return;
+      const d = growFor(x, y, gw, gh);
+      if (!d) return;
+      x += d[0]; y += d[1];
     }
     if (x < 0 || y < 0 || x >= s.W || y >= s.H) return;
     const k = E.key(x, y), b = blockAt(x, y);
@@ -647,17 +716,18 @@
   cv.addEventListener("pointermove", (e) => {
     if (panDrag) { V = E.panBy(panDrag.v, e.clientX - panDrag.x, e.clientY - panDrag.y); draw(); return; }
     if (boxDrag) { boxDrag.b = floorCell(e); boxSel = E.inBox(s, boxDrag.a[0], boxDrag.a[1], boxDrag.b[0], boxDrag.b[1]); draw(); return; }
-    const [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
+    let [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
+    if (!inb && drag && drag.last) { const d = growFor(x, y, 1, 1); if (d) { x += d[0]; y += d[1]; inb = true; } }
     hover = inb ? [x, y] : null;
-    { const fc = floorCell(e); cursorCell = fc[0] >= 0 && fc[1] >= 0 && fc[0] < s.W && fc[1] < s.H ? fc : null; }
+    cursorCell = floorCell(e);
     const pk = placeKind();
     if (pasting && clip) {
       const [ax, ay] = floorCell(e);
       pastePlan = E.pasteAt(s, clip, ax, ay, unplaced());
       ghostAt = { kind: "paste", x: ax, y: ay, w: clip.w, h: clip.h, ok: pastePlan.ok, why: pastePlan.why };
       $("status").textContent = pastePlan.ok ? `Click to paste${pastePlan.skipped.length ? ". " + pastePlan.skipped.join(" ") : ""}` : pastePlan.why;
-    } else if (inb && ["group", "stocker", "entry", "exit"].includes(pk)) {
-      const [gw, gh] = handDims(pk), f = E.isFree(s, x, y, gw, gh);
+    } else if (["group", "stocker", "entry", "exit"].includes(pk)) {
+      const [gw, gh] = handDims(pk), f = E.isFree(s, x, y, gw, gh, undefined, true);
       ghostAt = { kind: pk, x, y, w: gw, h: gh, ok: f.ok, why: f.why };
       if (ghostAt.ok && pk === "group" && !nextGroup(tool)) ghostAt = { ...ghostAt, ok: false, why: "Every group of this kind is placed. Add machines with + under Selected." };
     } else ghostAt = null;
@@ -891,7 +961,7 @@
       for (const r of boxSel.rails) delete s.rail[r];
       boxSel = null; sel = null; buildPalette(); inspector(); edited(); return;
     }
-    if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; }
+    if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; $("win").hidden = true; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
     if (k === "j") { setJamMap(!jamMap); return; }
     if (k === "h") { if (!e.repeat) { showLast = true; $("lastrun").textContent = prevRun ? "Dashed purple: the jams of your last run" : "No earlier run yet"; $("lastrun").hidden = false; draw(); } return; }

@@ -288,6 +288,34 @@
     },
   ];
 
+  // ---------- room to draw, and stars (docs/EDITOR-ROOM.md)
+  const ROOM_MAX = 120; // tiles a side, 360 m
+  /** The floor's size once grown to take a w x h piece at (x, y), and how far everything moves; null past the limit. */
+  function roomFor(st, x, y, w, h) {
+    const dx = Math.max(0, -x), dy = Math.max(0, -y);
+    const W = Math.max(st.W + dx, x + dx + w), H = Math.max(st.H + dy, y + dy + h);
+    return W > ROOM_MAX || H > ROOM_MAX ? null : { dx, dy, W, H };
+  }
+  /** Grows the floor (in place) to take the piece: past the left or top edge everything moves over. Returns [dx, dy]. */
+  function grow(st, x, y, w = 1, h = 1) {
+    const r = roomFor(st, x, y, w, h);
+    if (!r) return null;
+    if (r.dx || r.dy) {
+      for (const b of st.blocks) { b.x += r.dx; b.y += r.dy; }
+      const rail = {};
+      for (const k of Object.keys(st.rail)) { const [a, c] = k.split(",").map(Number); rail[key(a + r.dx, c + r.dy)] = st.rail[k]; }
+      st.rail = rail;
+    }
+    st.W = r.W; st.H = r.H;
+    return [r.dx, r.dy];
+  }
+  /** Stars for a run: met 1, 2% over the target 2, 5% over 3; none unless every limit holds. */
+  function stars(score, target, extra) {
+    if (!meets(score, target, extra)) return 0;
+    const r = score.wafers_per_day / target.wafers;
+    return r >= 1.05 ? 3 : r >= 1.02 ? 2 : 1;
+  }
+
   // ---------- the editor as a game (docs/EDITOR-GAME.md)
   const TROUBLE = { broken: "#FF4D4F", gassed: "#FFB020", blocked: "#FFB020", held: "#FFB020", line: "#FFB020", planned: "#5FA8FF" };
   const LINE_AT = 4; // lots waiting that make a line worth a badge
@@ -365,8 +393,9 @@
   }
 
   /** Whether a w × h footprint at (x, y) is clear of the floor's edge, track and other blocks (`skipId` may stay). */
-  function isFree(st, x, y, w, h, skipId) {
-    if (x < 0 || y < 0 || x + w > st.W || y + h > st.H) return { ok: false, why: "Off the edge of the floor." };
+  function isFree(st, x, y, w, h, skipId, canGrow) {
+    if (canGrow) { if (!roomFor(st, x, y, w, h)) return { ok: false, why: "That is as far as the floor goes." }; }
+    else if (x < 0 || y < 0 || x + w > st.W || y + h > st.H) return { ok: false, why: "Off the edge of the floor." };
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         if (st.rail[key(x + i, y + j)]) return { ok: false, why: "Track is in the way." };
@@ -468,7 +497,7 @@
 
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
     History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave,
-    trouble, pile, jamStyle, advise, floatText };
+    trouble, pile, jamStyle, advise, floatText, grow, roomFor, stars, ROOM_MAX };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);

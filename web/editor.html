@@ -104,13 +104,26 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 /* the editor as a game (docs/EDITOR-GAME.md) */
 .hint{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 20px);pointer-events:none;font:12.5px/1.3 var(--body);color:#CFE0E3;background:rgba(10,20,24,.82);border:1px solid #2C5560;border-radius:6px;padding:5px 9px}
 .hint:empty{display:none}
-.advice{font:600 14px/1.35 var(--body);color:#F2E3B3;background:linear-gradient(90deg,#2A2312,#16211F);border-left:3px solid var(--amber);border-radius:6px;padding:8px 12px;min-height:1.35em}
+.advice{font:600 14px/1.35 var(--body);color:#F2E3B3;background:linear-gradient(90deg,#2A2312,#16211F);border-left:3px solid var(--amber);border-radius:6px;padding:8px 12px;height:calc(1.35em + 16px);box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .floats{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .float{position:absolute;transform:translate(-50%,-50%);font:700 15px/1 var(--display);padding:6px 10px;border-radius:999px;white-space:nowrap;animation:rise 2.2s ease-out forwards;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .float.up{background:#1F6B4A;color:#E9FFF3}.float.down{background:#7A2620;color:#FFE9E6}.float.same{background:#22363D;color:#E3ECEE}
 @keyframes rise{0%{opacity:0;transform:translate(-50%,-30%)}12%{opacity:1}100%{opacity:0;transform:translate(-50%,-260%)}}
 @media (prefers-reduced-motion:reduce){.float{animation:none}}
 .lastrun{position:absolute;right:10px;top:10px;font:600 12px/1.3 var(--body);color:#E8D8FF;background:#2A1E3A;border:1px solid #6E52A0;border-radius:6px;padding:4px 8px;line-height:1.3}
+.goalbar{overflow:visible}.goalbar i{overflow:hidden}
+.starmark{position:absolute;top:50%;transform:translateY(-50%);font:12px/1 var(--body);color:#F2B33D;text-shadow:0 0 3px #000;pointer-events:auto}
+.tabstars{color:#F2B33D;letter-spacing:1px;margin-left:6px}
+.confetti{position:absolute;inset:0;pointer-events:none}
+.win{position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,12,14,.55);z-index:6;line-height:1.4}
+.win[hidden]{display:none}
+.wcard{background:linear-gradient(#17323A,#10232A);border:1px solid #3A6B66;border-radius:14px;padding:20px 24px;max-width:380px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.wcard h3{margin:0 0 6px;font:700 24px/1.2 var(--display);color:#F4E7C6}
+.wstars{font-size:40px;line-height:1.1;letter-spacing:6px;color:#2C4A50;margin:4px 0 8px}
+.wstars .star.on{color:#F2B33D;text-shadow:0 0 12px rgba(242,179,61,.6)}
+.wstars .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.wcard p{margin:4px 0;color:#CFE0E3;font-size:14px}
+.wbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
 #jammap kbd{font:10px var(--mono);color:var(--muted);margin-left:4px}
 #jammap[aria-pressed="true"]{color:#FF8A7A}
 .pal .keys{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -168,7 +181,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
   <section class="banner" aria-live="polite">
     <div class="ch-ico" aria-hidden="true">🏁</div>
     <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
-    <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span></div><div class="goaltext" id="goaltext">Running the simulator…</div>
+    <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span><b class="starmark">★</b><b class="starmark">★</b><b class="starmark">★</b></div><div class="goaltext" id="goaltext">Running the simulator…</div>
       <button class="btn" id="showfix">Stuck? Show me a fix</button></div>
     <div class="score" id="score" aria-label="Score of the last run"></div>
   </section>
@@ -187,7 +200,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
         <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">The small fab</option><option value="smt2020">The full fab (SMT2020)</option></select></span>
       </div>
       <div class="advice" id="advice" aria-live="polite"></div>
-      <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div></div>
+      <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+        <div class="win" id="win" hidden role="dialog" aria-labelledby="win-h"><div class="wcard"><h3 id="win-h">Challenge met!</h3><div class="wstars" id="win-stars"></div><p id="win-line"></p><p class="note" id="win-next"></p><div class="wbtns"><button class="btn go" id="win-go">Next challenge →</button><button class="btn" id="win-stay">Keep improving</button></div></div></div></div>
       <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
       <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
     </div>

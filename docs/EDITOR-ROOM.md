@@ -48,3 +48,9 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
   one.
 
 ## Changes
+
+- 31 Oct, while writing the code: two tiles of paper and a 460 px floor for the map pushed it 11 px past a 1440 x 900
+  window (D7) now that the advice line sits above the map; the paper is a tile and a half and the floor 430 px, which
+  keeps D8's 300 px for the floor itself. R5 failed once under load with a machine 1.1 px off: the advice line wrapped to
+  two lines and moved the map; it is now one line high, cut with an ellipsis when long.
+- 31 Oct, results: R1 to R8 pass and all 182 page tests.
