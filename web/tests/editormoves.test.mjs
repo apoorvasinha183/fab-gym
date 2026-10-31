@@ -11,6 +11,11 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
@@ -109,7 +114,7 @@ async function helper() {
 async function chrome() {
   const port = 9300 + Math.floor(Math.random() * 400);
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${port}`, "--window-size=1440,1000", "--hide-scrollbars",
-    `--user-data-dir=${mkdtempSync(join(tmpdir(), "edm-"))}`, "about:blank"], { stdio: "ignore" });
+    `--user-data-dir=${profileDir("edm-")}`, "about:blank"], { stdio: "ignore" });
   let ws = null;
   for (let i = 0; i < 60 && !ws; i++) {
     try { const l = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); const p = l.find((t) => t.type === "page"); if (p) ws = new WebSocket(p.webSocketDebuggerUrl); } catch { /* not up yet */ }

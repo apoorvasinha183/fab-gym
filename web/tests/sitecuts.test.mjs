@@ -11,6 +11,11 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, "..");
@@ -83,7 +88,7 @@ async function open(path) {
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--quick"], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/index.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
-  const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,900", "--hide-scrollbars", `--user-data-dir=${mkdtempSync(join(tmpdir(), "cuts-"))}`, "about:blank"], { stdio: "ignore" });
+  const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,900", "--hide-scrollbars", `--user-data-dir=${profileDir("cuts-")}`, "about:blank"], { stdio: "ignore" });
   let ws = null;
   for (let i = 0; i < 60 && !ws; i++) { try { const l = await (await fetch(`http://127.0.0.1:${cp}/json`)).json(); const p = l.find((t) => t.type === "page"); if (p) ws = new WebSocket(p.webSocketDebuggerUrl); } catch { /* not up */ } if (!ws) await sleep(200); }
   await new Promise((r) => (ws.onopen = r));
@@ -139,13 +144,13 @@ test("K8 a question in the bar opens the answer; #ask still does too", { skip: !
   } finally { p.close(); }
 });
 
-test("K9 the one speed button cycles 1×, 3×, 12×", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+test("K9 the one speed button cycles 1×, 3×, 12×, Max", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const p = await open("index.html#floor");
   try {
     await p.until("document.body.dataset.floor", 20000);
     const seen = [];
-    for (let i = 0; i < 4; i++) { seen.push(await p.ev(`document.querySelector(".speeds button").textContent.trim()`)); await p.ev(`document.querySelector(".speeds button").click()`); await sleep(50); }
-    assert.deepEqual(new Set(seen), new Set(["1×", "3×", "12×"]), `labels seen: ${seen}`);
-    assert.equal(seen[0], seen[3], "back where it started after three presses");
+    for (let i = 0; i < 5; i++) { seen.push(await p.ev(`document.querySelector(".speeds button").textContent.trim()`)); await p.ev(`document.querySelector(".speeds button").click()`); await sleep(50); }
+    assert.deepEqual(new Set(seen), new Set(["1×", "3×", "12×", "Max"]), `labels seen: ${seen}`);
+    assert.equal(seen[0], seen[4], "back where it started after four presses");
   } finally { p.close(); }
 });

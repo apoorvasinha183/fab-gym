@@ -11,6 +11,11 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
@@ -21,7 +26,7 @@ const SHOP = join(ROOT, "web", "data", "shop.txt");
 const AREAS = join(ROOT, "web", "data", "areas.tsv");
 
 function check(text) {
-  const d = mkdtempSync(join(tmpdir(), "fabed-"));
+  const d = profileDir("fabed-");
   const f = join(d, "x.fab.txt");
   writeFileSync(f, text);
   const r = spawnSync(FABSIM, ["fab-check", f, "--json"]);

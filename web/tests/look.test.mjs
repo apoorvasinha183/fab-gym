@@ -12,6 +12,11 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, "..");
@@ -83,7 +88,7 @@ test("the floor's moods come from the browser build's moods export", () => {
 });
 
 test("the command line's moods are unchanged by moving them into the library", { skip: !existsSync(join(ROOT, "target", "release", "fabsim")) }, () => {
-  const d = mkdtempSync(join(tmpdir(), "look-"));
+  const d = profileDir("look-");
   const shop = join(d, "s.txt");
   writeFileSync(shop, E.TEACHING_SHOP);
   const r = spawnSync(join(ROOT, "target", "release", "fabsim"), ["moods", shop, "1", "--until", "720", "--every", "60"], { maxBuffer: 1 << 26 });

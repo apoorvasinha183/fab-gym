@@ -11,6 +11,11 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join, extname } from "node:path";
 import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, "..");
@@ -76,7 +81,7 @@ function serve() {
 
 async function chrome() {
   const port = 9400 + Math.floor(Math.random() * 400);
-  const prof = mkdtempSync(join(tmpdir(), "speed-"));
+  const prof = profileDir("speed-");
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${port}`, "--window-size=1440,900", "--hide-scrollbars", `--user-data-dir=${prof}`, "about:blank"], { stdio: "ignore" });
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let ws = null;
