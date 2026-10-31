@@ -24,7 +24,7 @@ The simulator never reads the floor's size; only the editor did, as a hard edge.
    "Challenge met!" (or "New best!"), the stars, the wafers a day against the target, what the next star needs, a "Next
    challenge" button and "Keep improving". Confetti falls for a moment, unless the viewer prefers reduced motion.
 6. **Stars stay.** Each challenge's tab shows its best stars (★★☆), kept in the browser, and the goal bar marks where
-   each star starts.
+   the next star starts (one mark; none after three stars).
 
 ## Tests (written before the code), `web/tests/editorroom.test.mjs`
 
@@ -43,7 +43,7 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
   the machine where it was on screen.
 - **R7** "Stuck? Show me a fix" meets challenge 1: the card shows with at least one star lit and a "Next challenge"
   button, and the tab shows its stars.
-- **R8** the goal bar marks the three stars.
+- **R8** the goal bar marks only the next star: the first before the challenge is met, the second after one star.
 - **D7, D8** (docs/EDITOR-TOPDOWN.md) still hold: the map fits a 1440 x 900 window, and keeps a usable size in a short
   one.
 
@@ -54,3 +54,5 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
   keeps D8's 300 px for the floor itself. R5 failed once under load with a machine 1.1 px off: the advice line wrapped to
   two lines and moved the map; it is now one line high, cut with an ellipsis when long.
 - 31 Oct, results: R1 to R8 pass and all 182 page tests.
+- 31 Oct, the founder by quiz: the three star marks sat too close together (2% and 5% over the target are near each
+  other), so the bar marks only the next star. R8 changed with it, written before the code.

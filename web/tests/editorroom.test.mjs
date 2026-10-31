@@ -160,9 +160,17 @@ test("R7 meeting a challenge brings up the card, the stars and Next challenge", 
   } finally { p.close(); }
 });
 
-test("R8 the goal bar marks the three stars", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+test("R8 the goal bar marks only the next star: the first before it is met, the second after one star", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const p = await openEditor();
   try {
-    assert.equal(await p.ev(`document.querySelectorAll("#goalbar .starmark").length`), 3);
+    const shown = () => J(p, `[...document.querySelectorAll("#goalbar .starmark")].filter((m) => !m.hidden).map((m) => m.title)`);
+    let s = await shown();
+    assert.equal(s.length, 1, `one mark: ${s}`);
+    assert.match(s[0], /^1 star at 670/);
+    await p.ev(`document.getElementById("showfix").click()`);
+    assert.ok(await until(p, `!document.getElementById("win").hidden`, 8000));
+    s = await shown();
+    assert.equal(s.length, 1, `one mark: ${s}`);
+    assert.match(s[0], /^2 stars at 684/);
   } finally { p.close(); }
 });
