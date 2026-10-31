@@ -32,7 +32,8 @@ test("1. one place to ask, and one dock with five tabs holding the panels", () =
   // results (docs/SITE-CUTS.md)
   assert.match(dock, /id="dock-title"/);
   // the rail went (docs/FLOOR-REVIEW.md): Try a change sits in the top strip, the glossary by How a chip is made
-  const strip = between(html, '<div id="topbar"', "</div>"), help = between(html, '<div class="help-row"', "</div>");
+  // the strip holds the suggestions' own div (docs/HOME-GATE.md), so it is read up to the map's buttons
+  const strip = between(html, '<div id="topbar"', '<div id="maptools"'), help = between(html, '<div class="help-row"', "</div>");
   assert.match(strip, /data-tab="change"/, "change"); assert.match(help, /data-tab="glossary"/, "glossary");
   const dockAll = html.slice(html.indexOf('<aside id="dock"'), html.indexOf("<!-- /dock -->"));
   for (const id of ["pane-ask", "pane-change", "numbers", "results", "glossary", "run", "cmp-rows", "ask-result", "long-grid"])

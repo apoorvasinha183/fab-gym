@@ -44,7 +44,7 @@ test("the demo path, clicked end to end", { skip: !ready && "needs Google Chrome
 
     // 1. Home: the hook and two doors
     await go("index.html#home");
-    assert.ok(await until(`/Play a challenge/.test(document.body.innerText) && /Ask the fab/.test(document.body.innerText)`), "home: two doors");
+    assert.ok(await until(`/Play a challenge/.test(document.body.innerText) && /Watch the whole fab at work/.test(document.body.innerText)`), "home: two doors");
 
     // 2. The floor: the full fab draws, plays at 12×, and follows one lot
     await go("index.html#floor");
@@ -67,8 +67,9 @@ test("the demo path, clicked end to end", { skip: !ready && "needs Google Chrome
 
     // 4. Ask the fab: a worked example's question, answered from its written answer (no model, no credit)
     await go("index.html#floor");
-    assert.ok(await until(`!!document.querySelector("#open-examples button")`, 20000), "worked examples");
-    await ev(`(() => { const q = document.getElementById("cmd-q"); q.value = document.querySelector("#open-examples button").textContent; document.getElementById("cmd").requestSubmit(); })()`);
+    // the worked examples are the Floor's ask bar's suggestions (docs/HOME-GATE.md)
+    assert.ok(await until(`!!document.querySelector("#cmd-examples button")`, 20000), "worked examples");
+    await ev(`(() => { const q = document.getElementById("cmd-q"); q.value = document.querySelector("#cmd-examples button").textContent; document.getElementById("cmd").requestSubmit(); })()`);
     assert.ok(await until(`!document.getElementById("pane-ask").closest("[hidden]")`, 8000), "the answer opens");
 
     // 5. Evidence: four findings, the last one 120 of 120

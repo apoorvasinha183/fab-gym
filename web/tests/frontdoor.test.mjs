@@ -23,13 +23,14 @@ test("the landing leads with the gym, by the chosen words", () => {
   assert.ok(index.includes("Fab Gym · from the SMT2020 testbed"));
 });
 
-test("two doors: play a challenge opens the editor, ask the fab keeps the question box", () => {
+test("two doors: play a challenge opens the editor, watch the whole fab opens the Floor", () => {
   const doors = index.slice(index.indexOf('id="open-doors"'), index.indexOf("</section>", index.indexOf('id="open-doors"')));
   assert.ok(doors.length > 0, "a doors block on the landing");
   // Play a challenge became a door of four challenge links and a Start button (docs/HOME-REVIEW.md)
   assert.match(doors, /Play a challenge[\s\S]*<a [^>]*href="editor\.html\?ch=1"[^>]*>Start challenge 1/);
-  assert.match(doors, /Ask the fab/);
-  assert.match(doors, /id="open-q"/, "the question box sits in the Ask door");
+  // Ask the fab left the gate for the Floor's ask bar (docs/HOME-GATE.md)
+  assert.match(doors, /Watch the whole fab at work[\s\S]*href="#floor"/);
+  assert.ok(!/Ask the fab/.test(doors) && !/id="open-q"/.test(doors), "no question box at the gate");
   assert.ok(!/id="open-explore"/.test(index), "or explore the floor went: the nav's Floor does it (docs/SITE-CUTS.md)");
 });
 

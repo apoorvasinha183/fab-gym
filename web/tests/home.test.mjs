@@ -43,24 +43,27 @@ async function open(path = "index.html#home", w = 1440, h = 1000) {
   await go(path);
   await until(`!!document.getElementById("open-doors") && document.readyState === "complete"`);
   await sleep(600);
-  return { ev, until, go, hp, close: () => { try { ws.close(); } catch { /* closed */ } ch.kill(); helper.kill(); } };
+  return { ev, send, until, go, hp, close: () => { try { ws.close(); } catch { /* closed */ } ch.kill(); helper.kill(); } };
 }
 const skip = !ready && "needs Google Chrome and the .venv";
 const NAMES = ["Rush hour on the spine", "The gassed polisher", "Breakdown, no spare", "Lean or redundant?"];
 
-test("HO1 a readable ask box; a suggestion fills it and asks nothing", { skip }, async () => {
+test("HO1 no question box at the gate; on the Floor the ask bar offers the suggestions, and picking one asks nothing", { skip }, async () => {
   const p = await open();
   try {
-    const ph = await p.ev(`document.getElementById("open-q").placeholder`);
-    assert.equal(ph, "Ask a what-if about the full fab…");
-    const sugg = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#open-examples button")].map(b => b.textContent.trim()))`));
-    assert.ok(sugg.length >= 3);
-    for (const s of sugg) assert.ok(!s.toLowerCase().includes(ph.toLowerCase().replace("…", "")), "no suggestion repeats the placeholder");
-    await p.ev(`document.querySelector("#open-examples button").click(), 1`);
+    assert.equal(await p.ev(`[...document.querySelectorAll("#opening input, #opening textarea")].filter(e => e.getClientRects().length).length`), 0, "no question box on Home");
+    await p.go("index.html#floor");
+    await p.until(`!!document.getElementById("cmd-q") && !document.body.classList.contains("opening-on")`);
     await sleep(800);
-    assert.equal(await p.ev(`document.getElementById("open-q").value`), sugg[0].replace(/^→\s*/, ""), "the box holds the suggestion");
+    // click into the bar, as a person does
+    const at = JSON.parse(await p.ev(`JSON.stringify((() => { const r = document.getElementById("cmd-q").getBoundingClientRect(); return [r.left + 20, r.top + r.height / 2]; })())`));
+    for (const type of ["mouseMoved", "mousePressed", "mouseReleased"]) await p.send("Input.dispatchMouseEvent", { type, x: at[0], y: at[1], button: "left", clickCount: 1 });
+    assert.ok(await p.until(`(() => { const l = document.getElementById("cmd-examples"); return l && !l.hidden && l.querySelectorAll("button").length >= 3; })()`, 6000), "the suggestions show");
+    const first = await p.ev(`document.querySelector("#cmd-examples button").textContent.trim()`);
+    await p.ev(`document.querySelector("#cmd-examples button").dispatchEvent(new MouseEvent("mousedown", { bubbles: true })), document.querySelector("#cmd-examples button").click(), 1`);
+    await sleep(500);
+    assert.equal(await p.ev(`document.getElementById("cmd-q").value`), first.replace(/^→\s*/, ""), "the bar holds the suggestion");
     assert.deepEqual(JSON.parse(await p.ev("JSON.stringify(window.__asked)")), [], "nothing asked");
-    assert.equal(await p.ev(`document.body.classList.contains("opening-on")`), true, "Home stays open");
   } finally { p.close(); }
 });
 
@@ -84,18 +87,33 @@ test("HO3 Start is the play door's one solid button, and says what is inside", {
   } finally { p.close(); }
 });
 
-test("HO4 the third door: the CEO, its name, a button to the Floor; three doors in view without scrolling", { skip }, async () => {
+test("HO4 two doors, Play and Watch, side by side and in view; Watch it live opens the Floor", { skip }, async () => {
   const p = await open();
   try {
-    const d = JSON.parse(await p.ev(`JSON.stringify((() => { const e = document.querySelector(".door-floor"); if (!e) return null; const b = e.querySelector("a.btn-solid, button.btn-solid"); return { text: e.textContent.replace(/\\s+/g, " "), img: !!e.querySelector("img[src*='ceo']"), href: b && b.getAttribute("href") }; })())`));
-    assert.ok(d, "a third door");
-    assert.match(d.text, /Watch the whole fab at work/); assert.ok(d.img, "the CEO's picture"); assert.equal(d.href, "#floor");
-    const r = JSON.parse(await p.ev(`JSON.stringify((() => { const o = document.getElementById("opening"); const box = s => { const r = document.querySelector(s).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; }; return { scroll: o.scrollHeight - o.clientHeight, play: box(".door-play"), ask: box(".door-ask"), floor: box(".door-floor"), H: innerHeight }; })())`));
+    const doors = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#open-doors > .door")].map(d => d.querySelector(".door-k").textContent.trim()))`));
+    assert.deepEqual(doors, ["Play a challenge", "Watch the whole fab at work"]);
+    const d = JSON.parse(await p.ev(`JSON.stringify((() => { const e = document.querySelector(".door-floor"); const b = e.querySelector(".btn-solid"); return { img: !!e.querySelector("img[src*='ceo']"), href: b && b.getAttribute("href") }; })())`));
+    assert.ok(d.img, "the CEO's picture"); assert.equal(d.href, "#floor");
+    const r = JSON.parse(await p.ev(`JSON.stringify((() => { const o = document.getElementById("opening"); const box = s => { const r = document.querySelector(s).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; }; return { scroll: o.scrollHeight - o.clientHeight, play: box(".door-play"), floor: box(".door-floor"), H: innerHeight }; })())`));
     const over = (x, y) => x.l < y.r && y.l < x.r && x.t < y.b && y.t < x.b;
-    assert.ok(!over(r.play, r.ask) && !over(r.play, r.floor) && !over(r.ask, r.floor), "no overlap");
-    assert.ok(r.scroll <= 2 && r.floor.b <= r.H, `all in view (scroll ${r.scroll}, floor door ends at ${r.floor.b} of ${r.H})`);
+    assert.ok(!over(r.play, r.floor), "no overlap");
+    assert.ok(Math.abs(r.play.t - r.floor.t) < 4 && r.floor.l > r.play.l, "side by side");
+    assert.ok(r.scroll <= 2 && r.floor.b <= r.H && r.play.b <= r.H, `in view (scroll ${r.scroll})`);
     await p.ev(`document.querySelector(".door-floor .btn-solid").click(), 1`);
     assert.ok(await p.until(`location.hash === "#floor" && !document.body.classList.contains("opening-on")`, 8000), "the Floor opens");
+  } finally { p.close(); }
+});
+
+test("HO6 ⌘K on Home opens the Floor with the ask bar ready; Escape closes the suggestions", { skip }, async () => {
+  const p = await open();
+  try {
+    await p.send("Input.dispatchKeyEvent", { type: "keyDown", key: "k", code: "KeyK", modifiers: 4 });
+    await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "k", code: "KeyK", modifiers: 4 });
+    assert.ok(await p.until(`location.hash === "#floor" && document.activeElement === document.getElementById("cmd-q")`, 8000), "the Floor, the ask bar focused");
+    assert.ok(await p.until(`!document.getElementById("cmd-examples").hidden`, 4000), "suggestions shown");
+    await p.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+    await p.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape" });
+    assert.ok(await p.until(`document.getElementById("cmd-examples").hidden`, 3000), "Escape closes them");
   } finally { p.close(); }
 });
 

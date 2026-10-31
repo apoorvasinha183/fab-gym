@@ -46,8 +46,8 @@ test("K2 both pages declare a tab icon", () => {
 test("K3 Home keeps its two doors and drops 'or explore the floor'", () => {
   const doors = between(index, 'id="open-doors"', "</section>");
   assert.match(doors, /Play a challenge/);
-  assert.match(doors, /Ask the fab/);
-  assert.match(doors, /Watch the whole fab at work/, "a third door to the Floor (docs/HOME-REVIEW.md)");
+  assert.match(doors, /Watch the whole fab at work/, "the door to the Floor (docs/HOME-REVIEW.md)");
+  assert.ok(!/Ask the fab/.test(doors), "asking moved to the Floor (docs/HOME-GATE.md)");
   assert.ok(!/id="open-explore"/.test(index), "no 'or explore the floor'");
 });
 
@@ -138,8 +138,9 @@ test("K8 a question in the bar opens the answer; #ask still does too", { skip: !
     await p.until("document.body.dataset.floor", 20000);
     await p.until("typeof ASK !== 'undefined' && ASK.helper", 10000);
     // a worked example's question, answered from its written answer: no model is called and no credit spent
-    await p.until("!!document.querySelector('#open-examples button')", 10000);
-    await p.ev(`(() => { const q = document.getElementById("cmd-q"); q.value = document.querySelector("#open-examples button").textContent; document.getElementById("cmd").requestSubmit(); })()`);
+    // the worked examples are the ask bar's suggestions (docs/HOME-GATE.md)
+    await p.until("!!document.querySelector('#cmd-examples button')", 10000);
+    await p.ev(`(() => { const q = document.getElementById("cmd-q"); q.value = document.querySelector("#cmd-examples button").textContent; document.getElementById("cmd").requestSubmit(); })()`);
     assert.ok(await p.until("!document.getElementById('pane-ask').closest('[hidden]')", 5000), "the answer panel opens");
     await p.ev(`location.hash = "#floor"`); await sleep(200); await p.ev(`location.hash = "#ask"`);
     assert.ok(await p.until("!document.getElementById('pane-ask').closest('[hidden]')", 5000), "#ask opens it");
