@@ -120,7 +120,7 @@ test("10. money to three significant figures", () => {
   assert.equal(U.usd3(1067504), "$1.07M");
   assert.equal(U.usd3(24.3e6), "$24.3M");
   assert.equal(U.usd3(-3.05e6, true), "−$3.05M");
-  assert.equal(U.usd3(8000), "$8,000");
+  assert.equal(U.usd3(8000), "$8k"); // k from $1,000 since docs/EVIDENCE-REVIEW.md
   assert.equal(U.usd3(35210, true), "+$35.2k");
 });
 
