@@ -135,6 +135,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .ai-cost{font:12px/1.3 var(--body);color:var(--muted);margin:2px 0}
 .ai-status{font:600 13px/1.35 var(--body);color:#F4E7C6;margin:4px 0}
 .ai-stars{font:20px/1 var(--body);color:#F2B33D;letter-spacing:3px;margin:2px 0}
+.sk-list{margin:4px 0;padding-left:18px;font:13px/1.4 var(--body)}
+.sk-note{font:12px/1.35 var(--body);color:#FFB07A;margin:4px 0}
 .ai-moves{margin:6px 0 0;padding-left:20px;max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px;font:13px/1.35 var(--body)}
 .ai-move code{font:12px var(--mono);color:#FF8AD8}
 .ai-move .why{display:block;color:var(--ink)}
@@ -148,6 +150,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .pal .keys button kbd{position:absolute;top:4px;right:6px;margin:0}
 .side{display:grid;gap:12px;align-content:start;min-width:0}
 .card{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:8px;background:var(--bg)}
+.card[hidden]{display:none}
 .card h4{margin:0;display:flex;justify-content:space-between;gap:8px}
 .issues{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:210px;overflow:auto}
 .issues li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;font-size:13px;line-height:1.4;cursor:pointer}
@@ -209,6 +212,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
         
         <button class="btn" id="play" aria-label="Pause">❚❚</button>
         <button class="btn" id="undo" aria-label="Undo" title="Undo (⌘Z)" disabled>↶</button><button class="btn" id="redo" aria-label="Redo" title="Redo (⇧⌘Z)" disabled>↷</button>
+        <button class="btn" id="sketch-go" title="Build a fab from a photo of a drawing on paper (Muse Spark reads it)">From a sketch</button><input type="file" id="sketch-file" accept="image/png,image/jpeg" hidden>
         <button class="btn" id="jammap" aria-pressed="false" title="The jam map (J): only the waits show">Jams <kbd>J</kbd></button>
         <button class="btn" id="speed" aria-label="Playback speed" title="1× is 20 fab minutes a second; 3× and 12× are faster">1×</button>
         <span class="clock" id="clock">Day 1 · 00:00:00</span>
@@ -222,6 +226,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
     </div>
     <aside class="side">
+      <div class="card ai" id="sketch-panel" hidden aria-live="polite"><h4><span>From your sketch</span></h4><div id="sketch-body"></div>
+        <div class="ai-btns" style="margin-top:8px"><button class="btn go" id="sketch-keep">Keep</button><button class="btn" id="sketch-discard">Discard</button></div></div>
       <div class="card ai" id="ai-panel" hidden aria-live="polite"><h4><span>The AI's turn</span><span class="ai-btns"><button class="btn" id="ai-stop">Stop</button><button class="btn" id="ai-close" aria-label="Close">✕</button></span></h4>
         <p class="ai-cost" id="ai-cost">Muse Wonder</p><p class="ai-status" id="ai-status"></p><p class="ai-stars" id="ai-stars"></p><ol class="ai-moves" id="ai-moves"></ol></div>
       <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>

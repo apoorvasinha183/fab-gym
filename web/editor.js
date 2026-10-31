@@ -497,6 +497,63 @@
     challenge: () => { const c = ch(); return c ? { title: c.title, problem: c.problem, goal: c.goal, target: c.target } : null; },
   };
 
+  // ---------- sketch to fab (docs/SKETCH.md): Muse Spark reads a drawing; the editor's own moves build it
+  let sketchBefore = null, sketchSeq = 0;
+  function pictureOf(file) {
+    return new Promise((ok, bad) => {
+      const fr = new FileReader();
+      fr.onerror = () => bad(new Error("the picture could not be read"));
+      fr.onload = () => {
+        const im = new Image();
+        im.onerror = () => bad(new Error("that file is not a picture"));
+        im.onload = () => {
+          const k = Math.min(1, 1024 / Math.max(im.width, im.height)), w = Math.round(im.width * k), h = Math.round(im.height * k);
+          const c = document.createElement("canvas"); c.width = w; c.height = h;
+          const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+          ok({ url: c.toDataURL("image/jpeg", 0.9), w, h });
+        };
+        im.src = fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  async function fromSketch(file) {
+    const box = $("sketch-body");
+    $("sketch-panel").hidden = false; $("sketch-keep").hidden = true; $("sketch-discard").hidden = true;
+    box.innerHTML = '<p class="sk-note" style="color:var(--muted)">Reading your sketch…</p>';
+    let pic;
+    try { pic = await pictureOf(file); } catch (e) { box.innerHTML = `<p class="sk-note">${esc(e.message)}</p>`; return; }
+    const seq = ++sketchSeq;
+    const r = await post("/api/sketch", { image: pic.url, width: pic.w, height: pic.h });
+    if (seq !== sketchSeq) return; // discarded while it was being read
+    if (r.error) { box.innerHTML = `<p class="sk-note">${esc(r.error)}</p>`; return; }
+    const free = E.CHALLENGES.length;
+    if (chIdx !== free) await load(free);
+    sketchBefore = snap();
+    s.blocks = []; s.rail = {}; s.W = r.floor[0]; s.H = r.floor[1]; V = null; room = null;
+    const placed = [], left = [];
+    for (const p of r.pieces) {
+      const res = await TOOLS.place({ piece: p.piece, x: p.x, y: p.y });
+      if (res.ok) placed.push(r.names[p.piece] || p.piece); else left.push(`${r.names[p.piece] || p.piece}: ${res.error}`);
+    }
+    let pieces = 0;
+    for (const path of r.paths) { const res = await TOOLS.lay_track({ path }); if (res.ok) pieces += path.length; else left.push(`a line: ${res.error}`); }
+    buildPalette(); inspector(); draw();
+    const notes = [...r.notes, ...left];
+    const still = E.AREAS.filter((a) => nextGroup(a)).map((a) => AREA[a][0]);
+    if (still.length) notes.push(`A wafer's route also visits ${still.length === 1 ? still[0] : still.slice(0, -1).join(", ") + " and " + still[still.length - 1]}. Place ${still.length === 1 ? "it" : "them"} from Machines to finish the fab.`);
+    box.innerHTML = `<p class="ai-cost">${r.model === "stand-in" ? "stand-in (a recorded reading)" : esc(r.model)} · $${(r.cost_usd || 0).toFixed(3)} · read ${r.read.boxes} boxes and ${r.read.lines} lines</p>` +
+      `<p class="ai-status">Built ${placed.length} piece${placed.length === 1 ? "" : "s"} and ${pieces} track piece${pieces === 1 ? "" : "s"} on a ${s.W} × ${s.H} floor.</p>` +
+      `<ul class="sk-list">${placed.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` +
+      notes.map((n) => `<p class="sk-note">${esc(n)}</p>`).join("") +
+      '<p class="note">The checks below say what is still missing. Keep it to go on drawing, or Discard to go back.</p>';
+    $("sketch-keep").hidden = false; $("sketch-discard").hidden = false;
+  }
+  $("sketch-go").onclick = () => $("sketch-file").click();
+  $("sketch-file").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) fromSketch(f); };
+  $("sketch-keep").onclick = () => { $("sketch-panel").hidden = true; sketchBefore = null; };
+  $("sketch-discard").onclick = () => { sketchSeq++; if (sketchBefore) { restore(sketchBefore); V = null; room = null; draw(); } sketchBefore = null; $("sketch-panel").hidden = true; };
+
   // ---------- the moment a challenge is met (docs/EDITOR-ROOM.md)
   function celebrate(st, c, first) {
     const w = Math.round(run.score.wafers_per_day), t = c.target.wafers;
@@ -577,9 +634,12 @@
 
   function renderScore() {
     const c = ch(), sc = run ? run.score : null, p = prev;
+    // the checks refuse the layout on the floor, so these numbers are the last layout's (docs/SKETCH.md)
+    const blocked = stale && !running && checks && !checks.ok;
     const card = (k, n, unit, cur, was, better, bad) => {
       let dl = '<span class="dl">first run</span>';
-      if (p && was != null && cur != null) {
+      if (blocked) dl = '<span class="dl">before your changes</span>';
+      else if (p && was != null && cur != null) {
         const d = cur - was;
         dl = Math.abs(d) < 1e-9 ? '<span class="dl">same as last run</span>' : `<span class="dl ${better(d) ? "good" : "bad"}">${d > 0 ? "+" : ""}${Number.isInteger(d) ? d.toLocaleString() : d.toFixed(2)} vs last run</span>`;
       }
@@ -599,11 +659,11 @@
       // only the next star is marked (docs/EDITOR-ROOM.md); none after three
       const got = E.stars(sc, c.target, top);
       [1, 1.02, 1.05].forEach((m, i) => { const el = $("goalbar").querySelectorAll(".starmark")[i]; if (el) { el.hidden = i !== got; el.style.left = `calc(${(c.target.wafers * m / full) * 100}% - 6px)`; el.title = `${i + 1} star${i ? "s" : ""} at ${Math.ceil(c.target.wafers * m)} wafers a day`; } });
-      $("goalbar").classList.toggle("met", ok);
-      $("goaltext").innerHTML = ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
+      $("goalbar").classList.toggle("met", ok && !blocked);
+      $("goaltext").innerHTML = blocked ? `<b>${Math.round(w).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
     } else {
       $("goalfill").style.width = "0"; $("goalbar").classList.remove("met");
-      $("goaltext").innerHTML = `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day on your layout`;
+      $("goaltext").innerHTML = blocked ? `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day on your layout`;
     }
   }
   const groupLabel = (g) => { const b = s.blocks.find((z) => z.group === g); return b && AREA[b.area] ? AREA[b.area][0] : g || "none"; };
@@ -646,7 +706,7 @@
     mode = m;
 
     $("editor").classList.toggle("running", m === "run");
-    $("again").hidden = !stale; // only when the run on screen is out of date (docs/EDITOR-GAME.md)
+    $("again").hidden = !stale || !(checks && checks.ok); // only when the run on screen is out of date and can run again (docs/EDITOR-GAME.md)
     if (m === "run") { playing = !matchMedia("(prefers-reduced-motion: reduce)").matches || playing; tool = "select"; syncPal(); }
     playBtn(); draw();
   }
@@ -723,7 +783,8 @@
       if (drag) return changed(); // never mid-drag: wait for the release
       checks = await postWait("/api/fab/check", { fab: fab() });
       renderChecks(); draw();
-      if (checks && checks.ok) runNow(true); else pendingEdits = false;
+      // a layout the checks refuse cannot run, so the last run no longer matches the floor: stop drawing it
+      if (checks && checks.ok) runNow(true); else { pendingEdits = false; stale = true; $("again").hidden = true; renderScore(); draw(); }
     }, 250);
     draw();
   }
@@ -1118,6 +1179,7 @@
     ghost: () => (ghostAt ? { ...ghostAt } : null),
     rails: () => Object.keys(s.rail).length,
     runs: () => runsDone,
+    showsRun: () => !!showRun(),
     clock: () => clock,
     cars: () => lastCars,
     railAt: (x, y) => { const v = s.rail[E.key(x, y)]; return v ? JSON.parse(JSON.stringify(v)) : null; },

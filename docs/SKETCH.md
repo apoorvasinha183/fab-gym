@@ -51,3 +51,19 @@ drawing; SAM 3.1 had found no "rectangle" in the same picture, so Spark does the
   and its numbers read "before your changes" (added after the first live sketch; see Changes).
 
 ## Changes
+
+- 31 Oct, while writing the code: a reading still running when Discard is pressed is dropped when it arrives (SK6 had
+  raced it); a hidden card had been drawn anyway because `.card` set its own display, which also showed an empty AI
+  panel beside the sketch's.
+- 31 Oct, the first live sketches (a pencil-style drawing of wafers in, lithography, dry etch, polishing, storage and
+  wafers out on one spine; five readings, 13 to 17 s each, $0.0018 in all on the sketch's meter):
+  - Spark read 6 boxes and 4 lines every time, but drew the lines differently between readings (once a single line
+    from dry etch across the spine to storage). A line ending at a machine was laid one way only, a dead end the checks
+    flagged. Any stretch between a machine and the nearest crossing of other track is now laid there and back (SK7's
+    three cases, each failing before the fix). The last reading built 6 pieces and 21 track pieces with no dead end.
+  - When the checks refused the new layout, the last run's cars and lots went on being drawn over it and its numbers
+    read as this layout's. The run is now marked out of date the moment the checks fail (SK8).
+  - The checks name the missing machines in their own codes, so the panel adds one plain line naming the machine
+    types a wafer's route still visits.
+- 31 Oct, results: SK1 to SK8 pass; the page suite (191) and the helper's tests (92) pass, the 500 ms editor timing
+  test and the demo path passing alone after a miss each under the full suite's load.

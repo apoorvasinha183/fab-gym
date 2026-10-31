@@ -12,6 +12,7 @@ it answers the recorded example questions and runs scenarios a person writes. Fr
 import argparse
 import hashlib
 import itertools
+import re
 import json
 import mimetypes
 import subprocess
@@ -22,7 +23,7 @@ from pathlib import Path
 
 from agent import ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
-from agent import poster, race
+from agent import poster, race, sketch
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = Path.home() / ".config" / "fab-gym"
@@ -44,7 +45,7 @@ class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
                  preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=2.0, meta_key_file=None, meta_base_url=None,
-                 poster_cap=1.0):
+                 poster_cap=1.0, sketch_cap=1.0):
         p = PRESETS[preset]
         self.preset = preset
         self.provider = p["provider"]
@@ -68,6 +69,7 @@ class Helper:
         self.meta_base_url = meta_base_url or PRESETS["meta"]["base_url"]
         self.race_meter = spend.Meter(spend.price("meta", race.MODEL), cap_usd=race_cap, path=self.jobs_dir.parent / "spend-race.json")
         self.poster_meter = spend.Meter({}, cap_usd=poster_cap, path=self.jobs_dir.parent / "spend-poster.json")
+        self.sketch_meter = spend.Meter(spend.price("meta", sketch.MODEL), cap_usd=sketch_cap, path=self.jobs_dir.parent / "spend-sketch.json")
         self.threads = threads
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
@@ -305,7 +307,7 @@ class Helper:
 
     # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
     def spent_total(self):
-        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd
+        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd
 
     def race_step(self, body):
         """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
@@ -371,6 +373,37 @@ class Helper:
                 "spent_usd": round(self.poster_meter.usd, 4), **base}
 
 
+    def sketch_read(self, body):
+        """Sketch to fab (docs/SKETCH.md): a photo in, Muse Spark's reading out, snapped to the editor's grid."""
+        img = body.get("image")
+        if not isinstance(img, str) or not re.match(r"data:image/(png|jpeg);base64,", img):
+            return {"error": "the sketch must be a PNG or JPEG picture"}
+        if len(img) * 3 // 4 > 8 * 1024 * 1024:
+            return {"error": "the picture is over 8 MB"}
+        base = {"cap_usd": self.sketch_meter.cap_usd}
+        if self.stand_in:
+            reading, model, cost = json.loads((self.stand_in / "sketch.json").read_text()), "stand-in", 0
+        else:
+            if self.sketch_meter.usd >= self.sketch_meter.cap_usd:
+                return {"error": f"The sketch's ${self.sketch_meter.cap_usd:g} is spent.", **base}
+            if self.spent_total() >= self.total_cap:
+                return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+            if not self.meta_key_file.is_file():
+                return {"error": "No Meta key on this Mac, so no sketch can be read.", **base}
+            w, h = int(body.get("width") or 0), int(body.get("height") or 0)
+            m = HttpModel(self.meta_base_url, sketch.MODEL, key_file=self.meta_key_file, max_tokens=4000, reasoning_effort="low",
+                          meter=self.sketch_meter, timeout=120)
+            before = self.sketch_meter.usd
+            try:
+                text = m.complete([{"role": "user", "content": [{"type": "text", "text": sketch.PROMPT.format(w=w or "?", h=h or "?")},
+                                                                 {"type": "image_url", "image_url": {"url": img}}]}])
+            except Exception as e:  # noqa: BLE001 - the page shows the reason
+                return {"error": f"Muse Spark did not answer: {str(e)[:200]}", **base}
+            reading, model, cost = sketch.read(text), sketch.MODEL, round(self.sketch_meter.usd - before, 6)
+        return {**sketch.to_fab(reading), "read": {"boxes": len(reading.get("boxes", [])), "lines": len(reading.get("lines", []))},
+                "model": model, "cost_usd": cost, "spent_usd": round(self.sketch_meter.usd, 6), **base}
+
+
 def serve(h, port=8766):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -423,6 +456,8 @@ def serve(h, port=8766):
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
                               every=float(body.get("every", 60)), overrides=body.get("overrides"))
+            elif self.path == "/api/sketch":
+                r = h.sketch_read(body)
             elif self.path == "/api/poster":
                 r = h.poster_make(body)
             elif self.path == "/api/race/step":
