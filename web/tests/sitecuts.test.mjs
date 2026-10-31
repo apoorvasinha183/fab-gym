@@ -65,7 +65,7 @@ test("K4 the floor: no view bar; Follow one lot; a health panel; a sectioned key
   assert.equal((bar.match(/<button/g) || []).length, 1, "one speed button");
   // the rail of two went: Try a change sits by the ask bar, Glossary by How a chip is made (docs/FLOOR-REVIEW.md)
   assert.ok(!/<nav id="rail"/.test(index), "no rail");
-  assert.match(index, /<button[^>]*id="change-open"[^>]*data-tab="change"[^>]*>[^<]*Try a change/);
+  assert.match(index, /<button[^>]*id="change-open"[^>]*data-tab="change"[^>]*>[^<]*Simulation settings/); // docs/SIM-SETTINGS.md
   assert.match(index, /<button[^>]*id="glossary-open"[^>]*data-tab="glossary"[^>]*>[^<]*Glossary/);
   for (const gone of ["data-tab=\"ask\"", "data-tab=\"numbers\"", "data-tab=\"results\""]) assert.ok(!index.includes(gone), `${gone} is gone`);
 });
