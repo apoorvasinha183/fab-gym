@@ -20,3 +20,10 @@ f-unknown-tool no format
 f-unknown-lot no format
 f-header-after-event no format
 f-wrong-counts no format
+v-finish yes
+b-finish-early no finish
+b-finish-unfinished no finish
+b-finish-no-job no finish
+b-finish-twice no finish
+b-finish-count-high no finish
+b-finish-window-low no finish

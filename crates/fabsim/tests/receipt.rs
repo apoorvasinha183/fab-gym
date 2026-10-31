@@ -1,11 +1,11 @@
-//! The run referee's receipts (docs/LEAN-CHECK.md, tests R1 to R6). Written before the code. From the SMT2020
+//! The run referee's receipts (docs/LEAN-CHECK.md, tests R1 to R6; docs/LEAN-FINISH.md, R7 and R8). Written before the code. From the SMT2020
 //! testbed's rules, with the toy shops for speed; R6 runs on the SMT2020 files when they are present.
 
 mod common;
 
 use fabsim::engine::{run, RunOptions, RunResult};
 use fabsim::gym::{episode, episode_recorded};
-use fabsim::receipt::{exact, from_exact, tamper, write, Meta, TAMPER_KINDS};
+use fabsim::receipt::{exact, from_exact, tamper, write, Meta, FINISH_TAMPER_KINDS, TAMPER_KINDS};
 use fabsim::shop::Shop;
 use fabsim::window::Window;
 
@@ -40,7 +40,7 @@ fn r1_every_started_step_and_state_change_in_order() {
         let r = recorded(&shop, seed);
         let text = write(&shop, &r, &meta(seed)).unwrap();
         let lines: Vec<&str> = text.lines().collect();
-        assert_eq!(lines[0], "fabgym-receipt 1");
+        assert_eq!(lines[0], "fabgym-receipt 2", "version 2 lists the finished lots (docs/LEAN-FINISH.md)");
         // the jobs' lots, in order, are the run's trace
         let mut jobs: Vec<(u32, u64, u64, u32, u32)> = vec![];
         let mut states: Vec<(u32, u64)> = vec![];
@@ -48,10 +48,12 @@ fn r1_every_started_step_and_state_change_in_order() {
         // each event's kind, a job counted once per lot, to compare with the log's order
         let mut kinds: Vec<bool> = vec![];
         let mut seen_event = false;
+        let mut seen_finish = false;
         for l in &lines[1..] {
             let f = fields(l);
             match f[0] {
                 "S" | "J" => {
+                    assert!(!seen_finish, "seed {seed}: an event after the finished lots: {l}");
                     seen_event = true;
                     let t = time(f[2]);
                     let kind = f[0].chars().next().unwrap();
@@ -70,6 +72,7 @@ fn r1_every_started_step_and_state_change_in_order() {
                     }
                 }
                 "end" => {}
+                "F" => seen_finish = true,
                 _ => assert!(!seen_event, "seed {seed}: header line after an event: {l}"),
             }
         }
@@ -179,4 +182,86 @@ fn r6_a_replayed_run_gives_the_same_receipt() {
     assert_eq!(second.picks, first.picks);
     let m = Meta { shop_sha256: "0".repeat(64), seed: 0, policy: "fifo".into(), until: w.to, from: w.from, to: w.to };
     assert_eq!(write(&shop, &res, &m).unwrap(), write(&shop, &res2, &m).unwrap());
+}
+
+// ------------------------------------------------------------------ rule 6: finished lots (docs/LEAN-FINISH.md)
+
+#[test]
+fn r7_every_finished_lot_is_listed_with_its_exact_time() {
+    // probes at the window's ends, so the run's window score can be read too
+    let shop = fabsim::window::with_probes(&toy(), &W);
+    let mut any = 0;
+    for seed in 0..6u64 {
+        let r = recorded(&shop, seed);
+        let text = write(&shop, &r, &meta(seed)).unwrap();
+        let mut got: Vec<(usize, u64)> = text.lines().filter(|l| l.starts_with("F ")).map(|l| {
+            let f = fields(l);
+            (f[1].parse().unwrap(), time(f[2]).to_bits())
+        }).collect();
+        got.sort();
+        let want: Vec<(usize, u64)> = r.lots.iter().enumerate().filter_map(|(i, l)| l.done.map(|d| (i, d.to_bits()))).collect();
+        assert_eq!(got, want, "seed {seed}: the F lines are the finished lots, once each, at their exact times");
+        let end = fields(text.lines().last().unwrap());
+        assert_eq!(end.len(), 7, "seed {seed}: end JOBS STATES BREACHES WINDOW FINISHED FINISHED_WINDOW");
+        assert_eq!(end[5].parse::<usize>().unwrap(), want.len(), "seed {seed}");
+        let in_window = r.lots.iter().filter(|l| l.done.is_some_and(|d| d > W.from && d <= W.to)).count();
+        assert_eq!(end[6].parse::<usize>().unwrap(), in_window, "seed {seed}");
+        let score = fabsim::window::score(&r, &W).unwrap();
+        assert_eq!(in_window as f64, score.lots_finished, "seed {seed}: the window's count is the score's lots finished");
+        any += want.len();
+    }
+    assert!(any > 0, "the toy runs finish lots, or this test checks nothing");
+}
+
+#[test]
+fn r8_one_broken_copy_per_way_to_fake_a_finish() {
+    let shop = toy();
+    let r = recorded(&shop, 1);
+    let good = write(&shop, &r, &meta(1)).unwrap();
+    assert_eq!(FINISH_TAMPER_KINDS, ["early", "unfinished", "count"]);
+    // each lot's last job: its step and end, from the receipt
+    let mut last: std::collections::HashMap<usize, (usize, f64)> = Default::default();
+    let mut steps: std::collections::HashMap<usize, usize> = Default::default(); // route -> steps
+    let mut route_of: std::collections::HashMap<usize, usize> = Default::default();
+    for l in good.lines() {
+        let f = fields(l);
+        match f[0] {
+            "route" => { steps.insert(f[1].parse().unwrap(), f[2].parse().unwrap()); }
+            "lot" => { route_of.insert(f[1].parse().unwrap(), f[2].parse().unwrap()); }
+            "J" => {
+                let n: usize = f[4].parse().unwrap();
+                for k in 0..n {
+                    last.insert(f[5 + 3 * k].parse().unwrap(), (f[6 + 3 * k].parse().unwrap(), time(f[3])));
+                }
+            }
+            _ => {}
+        }
+    }
+    for kind in FINISH_TAMPER_KINDS {
+        let bad = tamper(&good, kind).unwrap_or_else(|e| panic!("{kind}: {e}"));
+        let (g, b): (Vec<&str>, Vec<&str>) = (good.lines().collect(), bad.lines().collect());
+        assert_eq!(g.len(), b.len(), "{kind}: one record changed in place");
+        let changed: Vec<(&&str, &&str)> = g.iter().zip(&b).filter(|(x, y)| x != y).collect();
+        assert_eq!(changed.len(), 1, "{kind}: {} records differ", changed.len());
+        let after = fields(changed[0].1);
+        match kind {
+            "early" => {
+                assert_eq!(after[0], "F");
+                let lot: usize = after[1].parse().unwrap();
+                assert!(time(after[2]) < last[&lot].1, "early: the finish comes before the lot's last job ends");
+            }
+            "unfinished" => {
+                assert_eq!(after[0], "F");
+                let lot: usize = after[1].parse().unwrap();
+                let (k, _) = last[&lot];
+                assert!(k + 1 < steps[&route_of[&lot]], "unfinished: the lot's last job is not at its last step");
+            }
+            "count" => {
+                assert_eq!(after[0], "end");
+                let before = fields(changed[0].0);
+                assert_eq!(after[5].parse::<usize>().unwrap(), before[5].parse::<usize>().unwrap() + 1);
+            }
+            _ => unreachable!(),
+        }
+    }
 }

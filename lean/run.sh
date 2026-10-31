@@ -7,6 +7,7 @@
 #   lean/run.sh test                  L1 to L4: the hand-made receipts, then the toy runs and their tampered copies
 #   lean/run.sh prove                 L5: check the proofs; no sorry, only the standard axioms
 #   lean/run.sh check -- CMD ARGS     stream the receipt CMD writes on stdout into the referee; prints its verdict
+#   lean/run.sh challenges            L9: Build's four challenges, at their start and with their fix, and tampered copies
 #
 # Run from the repository root.
 set -eu
@@ -51,7 +52,7 @@ test_all() {
       "$FABSIM" receipt "golden/toy/$shop.shop.txt" --seed "$seed" --until 5760 --window-from 1440 > "$tmp"
       got=$(referee < "$tmp" | tail -1)
       expect "toy-$shop-$seed" yes "$got" || fails=$((fails + 1))
-      for kind in overlap:one-job skip:route overfill:batch into-down:down breach:breach; do
+      for kind in overlap:one-job skip:route overfill:batch into-down:down breach:breach early:finish unfinished:finish count:finish; do
         k=${kind%%:*} rule=${kind#*:}
         if "$FABSIM" receipt-tamper "$k" < "$tmp" > "$tmp.bad" 2>/dev/null; then
           got=$(referee < "$tmp.bad" | tail -1)
@@ -81,8 +82,43 @@ prove() {
   echo "proofs check: no sorry, standard axioms only"
 }
 
+# L9 (docs/LEAN-FINISH.md): each challenge's run, as Build scores it (seed 1, two days), at its starting layout and
+# with its fix; then the finished-lot tampered copies of each, rejected with rule 6 named
+challenges() {
+  build
+  fails=0
+  dir=$(mktemp -d)
+  node -e '
+    const E = require("./web/editor-core.js"), fs = require("fs"), dir = process.argv[1];
+    for (const c of E.CHALLENGES) for (const v of ["start", "fix"]) {
+      let x = c.setup(); if (v === "fix") x = c.fix(x);
+      fs.writeFileSync(`${dir}/${c.id}-${v}.fab.txt`, E.fabText(x.base, x.state, { vehicles: x.state.vehicles }));
+      const o = E.overridesFor(x.state); if (o) fs.writeFileSync(`${dir}/${c.id}-${v}.overrides.json`, JSON.stringify(o));
+    }' "$dir"
+  for fab in "$dir"/*.fab.txt; do
+    cname=$(basename "$fab" .fab.txt) ov="${fab%.fab.txt}.overrides.json"
+    set -- receipt "$fab" --seed 1 --until 2880
+    [ -f "$ov" ] && set -- "$@" --overrides "$ov"
+    "$FABSIM" "$@" > "$dir/$cname.receipt"
+    got=$(referee < "$dir/$cname.receipt" | tail -1)
+    expect "challenge-$cname" yes "$got" || fails=$((fails + 1))
+    for k in early unfinished count; do
+      if "$FABSIM" receipt-tamper "$k" < "$dir/$cname.receipt" > "$dir/$cname.bad" 2>/dev/null; then
+        got=$(referee < "$dir/$cname.bad" | tail -1)
+        expect "challenge-$cname-$k" "no finish" "$got" || fails=$((fails + 1))
+      else
+        echo "skip challenge-$cname-$k: nothing of that kind to break in this run"
+      fi
+    done
+  done
+  rm -rf "$dir"
+  echo "failures: $fails"
+  [ "$fails" -eq 0 ]
+}
+
 case "${1:-}" in
   build) build ;;
+  challenges) challenges ;;
   test) test_all ;;
   prove) prove ;;
   check) shift; [ "${1:-}" = "--" ] && shift; "$@" | referee ;;
