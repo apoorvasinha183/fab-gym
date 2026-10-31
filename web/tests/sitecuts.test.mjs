@@ -50,18 +50,16 @@ test("K3 Home keeps its two doors and drops 'or explore the floor'", () => {
   assert.ok(!/id="open-explore"/.test(index), "no 'or explore the floor'");
 });
 
-test("K4 the floor: no view bar; Follow one lot; two numbers; a key of three; one speed button; a rail of two", () => {
+test("K4 the floor: no view bar; Follow one lot; a health panel; a sectioned key; one speed button; a rail of two", () => {
   assert.ok(!/<nav class="lenses"/.test(index), "no view bar");
   assert.match(index, /<button[^>]*id="follow-open"[^>]*>Follow one lot<\/button>/);
   assert.match(index, /<button[^>]*id="proto-open"[^>]*hidden[^>]*>Show prototypes<\/button>/);
-  const kpis = between(index, 'class="card kpis"', "</section>");
-  assert.deepEqual([...kpis.matchAll(/class="l">([^<]+)</g)].map((m) => m[1]), ["lots finished", "lots waiting"]);
+  // the two numbers and the key of three gave way to the health panel and a sectioned legend (docs/FLOOR-HEALTH.md)
+  const health = between(index, 'id="health"', "</section>");
+  for (const h of ["Output", "Lots in the fab", "Tools", "Longest queue", "Latest events"]) assert.match(textOf(health), new RegExp(h), `health: ${h}`);
   const key = between(index, 'id="key"', "</section>");
-  const first = key.slice(0, key.indexOf("<details"));
-  assert.equal((first.match(/<li\b/g) || []).length, 3, "three marks before the disclosure");
-  assert.match(textOf(first), /working/); assert.match(textOf(first), /broken down/); assert.match(textOf(first), /25 wafers/);
-  assert.match(key, /<details[^>]*>\s*<summary>More about the marks<\/summary>/, "the rest behind a closed disclosure");
-  assert.ok(!/<details[^>]*open/.test(key), "closed at first");
+  for (const h of ["Tool light", "Group badge", "Lots"]) assert.match(textOf(key), new RegExp(h), `key: ${h}`);
+  assert.match(textOf(key), /working/); assert.match(textOf(key), /broken down/); assert.match(textOf(key), /25 wafers/);
   const bar = between(index, 'class="speeds"', "</div>");
   assert.equal((bar.match(/<button/g) || []).length, 1, "one speed button");
   const rail = between(index, '<nav id="rail"', "</nav>");
