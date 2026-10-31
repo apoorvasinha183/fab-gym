@@ -18,7 +18,7 @@ FABSIM=${FABSIM:-target/release/fabsim}
 build() {
   ssh -o BatchMode=yes "$HOST" "mkdir -p ~/$REMOTE/FabCheck ~/$REMOTE/tests"
   scp -q lean/lakefile.toml lean/lean-toolchain lean/Main.lean "$HOST:$REMOTE/"
-  scp -q lean/FabCheck/Core.lean lean/FabCheck/Proofs.lean "$HOST:$REMOTE/FabCheck/"
+  scp -q lean/FabCheck/*.lean "$HOST:$REMOTE/FabCheck/"
   scp -q lean/tests/*.receipt lean/tests/expected.txt "$HOST:$REMOTE/tests/"
   ssh -o BatchMode=yes "$HOST" "cd ~/$REMOTE && export PATH=\$HOME/.elan/bin:\$PATH && nice -n 10 lake build referee FabCheck.Core 2>&1 | tail -3"
 }

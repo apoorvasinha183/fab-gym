@@ -44,7 +44,9 @@ fn r1_every_started_step_and_state_change_in_order() {
         // the jobs' lots, in order, are the run's trace
         let mut jobs: Vec<(u32, u64, u64, u32, u32)> = vec![];
         let mut states: Vec<(u32, u64)> = vec![];
-        let (mut last_t, mut last_kind) = (f64::NEG_INFINITY, 'S');
+        let mut last_t = f64::NEG_INFINITY;
+        // each event's kind, a job counted once per lot, to compare with the log's order
+        let mut kinds: Vec<bool> = vec![];
         let mut seen_event = false;
         for l in &lines[1..] {
             let f = fields(l);
@@ -53,15 +55,16 @@ fn r1_every_started_step_and_state_change_in_order() {
                     seen_event = true;
                     let t = time(f[2]);
                     let kind = f[0].chars().next().unwrap();
-                    assert!(t > last_t || (t == last_t && !(last_kind == 'J' && kind == 'S')), "seed {seed}: out of order at {l}");
+                    assert!(t >= last_t, "seed {seed}: out of time order at {l}");
                     last_t = t;
-                    last_kind = kind;
                     if kind == 'S' {
+                        kinds.push(false);
                         states.push((f[1].parse().unwrap(), t.to_bits()));
                     } else {
                         let n: usize = f[4].parse().unwrap();
                         assert_eq!(f.len(), 5 + 3 * n, "seed {seed}: {l}");
                         for k in 0..n {
+                            kinds.push(true);
                             jobs.push((f[1].parse().unwrap(), t.to_bits(), time(f[3]).to_bits(), f[5 + 3 * k].parse().unwrap(), f[6 + 3 * k].parse().unwrap()));
                         }
                     }
@@ -79,6 +82,7 @@ fn r1_every_started_step_and_state_change_in_order() {
         assert_eq!(got, want, "seed {seed}: jobs differ from the trace");
         let want_s: Vec<(u32, u64)> = r.states.iter().map(|s| (s.tool_index, s.time.to_bits())).collect();
         assert_eq!(states, want_s, "seed {seed}: state changes differ from the log, or are out of the log's order");
+        assert_eq!(kinds, r.order, "seed {seed}: events not in the log's order");
         let end = fields(lines.last().unwrap());
         assert_eq!(end[0], "end");
         assert_eq!(end[2].parse::<usize>().unwrap(), r.states.len());
@@ -103,7 +107,15 @@ fn r2_times_are_the_engines_f64_exactly() {
 
 #[test]
 fn r3_claimed_breaches_are_the_engines() {
-    let shop = toy();
+    // the toy's limits are loose enough that no lot is ever late, so every limit is tightened to 5 minutes here
+    let mut shop = toy();
+    for r in &mut shop.routes {
+        for st in &mut r.steps {
+            if let Some((to, _)) = st.cqt {
+                st.cqt = Some((to, 5.0));
+            }
+        }
+    }
     let mut any = 0;
     for seed in 0..12u64 {
         let r = recorded(&shop, seed);

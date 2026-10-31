@@ -232,6 +232,9 @@ pub struct RunResult {
     pub decisions: u64,
     /// every started step, in start order (only with `record`)
     pub trace: Vec<Trace>,
+    /// the log's order of `states` (false) and `trace` (true) entries, as they happened (only with `record`;
+    /// docs/LEAN-CHECK.md)
+    pub order: Vec<bool>,
     /// defect findings and the lots they held (docs/RL-DEFECTS.md); empty without a `defects` record
     pub holds: Vec<Hold>,
     /// the fleet's results (docs/FLEET.md); None without a `fleet` record
@@ -525,6 +528,8 @@ struct Sim<'a, 'c> {
     waiting: Vec<Vec<Waiting>>,
     lots: Vec<Lot>,
     states: Vec<StateRow>,
+    /// with `record`, the log's order of state changes (false) and started steps (true), for receipts
+    order: Vec<bool>,
     breaches: Vec<Breach>,
     busy: Vec<f64>,
     wait: Vec<f64>,
@@ -664,6 +669,7 @@ impl<'a, 'c> Sim<'a, 'c> {
                 state: STATES[state as usize],
                 why,
             });
+            self.order.push(false);
         }
     }
 
@@ -2057,6 +2063,7 @@ fn build<'a, 'c>(
         waiting: (0..ng).map(|_| vec![]).collect(),
         lots: vec![],
         states: vec![],
+        order: vec![],
         breaches: vec![],
         busy: vec![0.0; ng],
         wait: vec![0.0; ng],
@@ -2350,6 +2357,7 @@ impl<'a, 'c> Sim<'a, 'c> {
                                 tr.push(StepOut { step, tool: name, arrive, start: t, end: t + dur });
                             }
                             sim.trace.push(Trace { lot: l, step: step as u32, tool: ti, arrive, start: t, end: t + dur });
+                            sim.order.push(true);
                         }
                     }
                     let g = sim.tools[ti as usize].group as usize;
@@ -2477,6 +2485,7 @@ impl<'a, 'c> Sim<'a, 'c> {
             until: end,
             decisions: sim.decisions,
             trace: std::mem::take(&mut sim.trace),
+            order: std::mem::take(&mut sim.order),
             fleet: sim.fl.take().map(|mut f| {
                 for tool in &sim.tools {
                     if sim.ports > 0 && tool.out >= sim.ports {

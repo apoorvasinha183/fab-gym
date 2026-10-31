@@ -1,7 +1,7 @@
 //! One episode, one dispatch decision at a time (docs/RL-DEFECTS.md). `fabsim env` asks a process over JSON lines;
 //! `fabrule env` asks a written rule. Both go through `episode`, so every contestant is scored by this code.
 
-use crate::engine::{run, Decision, RunOptions};
+use crate::engine::{run, Decision, RunOptions, RunResult};
 use crate::shop::Shop;
 use crate::window::{score, with_probes, Window, WindowScore};
 
@@ -55,6 +55,16 @@ pub fn families(shop: &Shop) -> Vec<String> {
 /// `ask(decision, shown order, reward since the last question)` returns a candidate's index in the decision, or
 /// None for the engine's pick (counted as a fallback, as is an index out of range).
 pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision, &[usize], f64) -> Option<usize>) -> Episode {
+    episode_with(shop, seed, w, ask, false).0
+}
+
+/// The same episode with the run's full record kept (docs/LEAN-CHECK.md): recording only logs, so the picks and the
+/// score are those of `episode`; the run's results come back for a receipt.
+pub fn episode_recorded(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision, &[usize], f64) -> Option<usize>) -> (Episode, RunResult) {
+    episode_with(shop, seed, w, ask, true)
+}
+
+fn episode_with(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision, &[usize], f64) -> Option<usize>, record: bool) -> (Episode, RunResult) {
     let shop = with_probes(shop, &w);
     let (mut asked, mut fallbacks) = (0u64, 0u64);
     let mut picks: Vec<u32> = vec![];
@@ -81,7 +91,7 @@ pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision,
             picks.push(i as u32);
             i
         };
-        run(&shop, &RunOptions { seed, until: Some(w.to), record: false }, Some(&mut chooser))
+        run(&shop, &RunOptions { seed, until: Some(w.to), record }, Some(&mut chooser))
     };
     let sc = score(&r, &w).expect("the window scores");
     let days = ((w.to - w.from) / 1440.0).ceil().max(1.0) as usize;
@@ -92,7 +102,7 @@ pub fn episode(shop: &Shop, seed: u64, w: Window, ask: &mut dyn FnMut(&Decision,
             daily_wafers[i] += l.size as f64;
         }
     }
-    Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks, picks, daily_wafers }
+    (Episode { last_reward: sc.reward - paid, score: sc, asked, fallbacks, picks, daily_wafers }, r)
 }
 
 fn num(x: f64) -> String {

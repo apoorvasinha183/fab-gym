@@ -20,6 +20,7 @@ pub mod overrides;
 pub mod pl;
 pub mod policy;
 pub mod pyrandom;
+pub mod receipt;
 pub mod regret;
 pub mod scenario;
 pub mod score;

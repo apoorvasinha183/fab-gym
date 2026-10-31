@@ -1432,6 +1432,8 @@ fn main() {
         Some("pl") => pl_cmd(&args[1..]),
         Some("evolve") => evolve_cmd(&args[1..]),
         Some("env") => env_cmd(&args[1..]),
+        Some("receipt") => receipt_cmd(&args[1..]),
+        Some("receipt-tamper") => receipt_tamper_cmd(&args[1..]),
         Some("layout") => layout(&args[1..]),
         Some("layout-score") => layout_score(&args[1..]),
         Some("layout-trace") => layout_trace(&args[1..]),
@@ -1488,6 +1490,99 @@ fn main() {
 
 // ------------------------------------------------------------------ fabsim env (docs/RL-DEFECTS.md)
 // One episode, one dispatch decision at a time, as JSON lines on standard input and output.
+
+/// A run's receipt for the referee (docs/LEAN-CHECK.md), written to stdout.
+///   fabsim receipt SHOP --seed N --until MIN [--window-from MIN]                  today's rule, the whole run
+///   fabsim receipt SHOP --seed N --warmup D --window D (--auto NAME | --picks F) [--defects H,L,R]   a scored episode
+fn receipt_cmd(args: &[String]) {
+    use fabsim::gym::{episode_recorded, load_shop};
+    use fabsim::receipt::{write_to, Meta};
+    use fabsim::window::Window;
+    let usage = "fabsim receipt SHOP --seed N (--until MIN [--window-from MIN] | --warmup D --window D (--auto NAME | --picks FILE)) [--defects H,L,R]";
+    let src = args.first().filter(|a| !a.starts_with("--")).unwrap_or_else(|| {
+        eprintln!("{usage}");
+        std::process::exit(2)
+    });
+    let path = std::path::Path::new(src);
+    let defects = args.iter().position(|a| a == "--defects").and_then(|i| args.get(i + 1)).map(|s| s.as_str());
+    let shop = load_shop(path, defects).unwrap_or_else(|e| {
+        eprintln!("refused: {e}");
+        std::process::exit(2)
+    });
+    // the shop's digest: the file, or the folder's files in name order (name, then bytes)
+    let sha = if path.is_dir() {
+        let mut names: Vec<PathBuf> = std::fs::read_dir(path).expect("read the folder").map(|e| e.unwrap().path()).filter(|p| p.is_file()).collect();
+        names.sort();
+        let mut all = vec![];
+        for n in names {
+            all.extend(n.file_name().unwrap().to_string_lossy().as_bytes());
+            all.extend(std::fs::read(&n).expect("read a file"));
+        }
+        fabsim::hash::sha256_hex(&all)
+    } else {
+        fabsim::hash::sha256_hex(&std::fs::read(path).expect("read the shop"))
+    };
+    let seed = arg(args, "--seed", 0);
+    let flag = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
+    let (res, policy, w) = if flag("--warmup").is_some() {
+        let warmup = argf(args, "--warmup", 0.0);
+        let window = argf(args, "--window", 1.0);
+        let w = Window { from: warmup * 1440.0, to: (warmup + window) * 1440.0 };
+        let (policy, mut pick): (String, Box<dyn FnMut(&fabsim::engine::Decision) -> usize>) = match (flag("--auto"), flag("--picks")) {
+            (Some(name), None) => {
+                let p = fabsim::policy::Policy::parse(&name).unwrap_or_else(|| {
+                    eprintln!("refused: --auto names today, fifo, spt, cr or random");
+                    std::process::exit(2)
+                });
+                (name, fabsim::policy::picker(&shop, p, seed))
+            }
+            (None, Some(f)) => {
+                let picks: Vec<usize> = std::fs::read_to_string(&f).expect("read the picks").lines().map(|l| l.trim().parse().expect("a pick")).collect();
+                let mut k = 0usize;
+                let label = format!("picks:{}", std::path::Path::new(&f).file_name().unwrap().to_string_lossy());
+                (label, Box::new(move |d: &fabsim::engine::Decision| {
+                    let p = picks.get(k).copied().unwrap_or(d.default);
+                    k += 1;
+                    p
+                }))
+            }
+            _ => {
+                eprintln!("{usage}");
+                std::process::exit(2)
+            }
+        };
+        let mut ask = |d: &fabsim::engine::Decision, _o: &[usize], _r: f64| Some(pick(d));
+        let (_e, res) = episode_recorded(&shop, seed, w, &mut ask);
+        (res, policy, w)
+    } else {
+        let until = argf(args, "--until", 1440.0);
+        let from = argf(args, "--window-from", 0.0);
+        let res = run(&shop, &RunOptions { seed, until: Some(until), record: true }, None);
+        (res, "today".to_string(), Window { from, to: until })
+    };
+    let m = Meta { shop_sha256: sha, seed, policy, until: w.to, from: w.from, to: w.to };
+    let stdout = std::io::stdout();
+    let mut out = std::io::BufWriter::with_capacity(1 << 20, stdout.lock());
+    if let Err(e) = write_to(&mut out, &shop, &res, &m) {
+        eprintln!("refused: {e}");
+        std::process::exit(1)
+    }
+}
+
+/// One broken copy of a receipt on stdin, for the referee's tests (docs/LEAN-CHECK.md): fabsim receipt-tamper KIND
+fn receipt_tamper_cmd(args: &[String]) {
+    use std::io::Read;
+    let kind = args.first().map(|s| s.as_str()).unwrap_or("");
+    let mut text = String::new();
+    std::io::stdin().read_to_string(&mut text).expect("read the receipt");
+    match fabsim::receipt::tamper(&text, kind) {
+        Ok(t) => print!("{t}"),
+        Err(e) => {
+            eprintln!("refused: {e}");
+            std::process::exit(1)
+        }
+    }
+}
 
 fn env_cmd(args: &[String]) {
     use fabsim::gym::{done_json, episode, families, load_shop, observation_json};

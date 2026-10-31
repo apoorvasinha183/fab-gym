@@ -56,9 +56,9 @@ J T START END N  LOT STEP ARRIVE  [LOT STEP ARRIVE ...]  (one line per job; N lo
 end JOBS STATES BREACHES_TOTAL BREACHES_WINDOW
 ```
 
-- **Order.** Header lines (`run`, then `group`, `tool`, `route`, `step`, `lot`) before any event. Events in
-  nondecreasing time; at equal times every `S` before any `J`; `S` lines in the engine's log order; `J` lines in
-  the engine's start order. The referee rejects a receipt out of this order.
+- **Order.** Header lines (`run`, then `group`, `tool`, `route`, `step`, `lot`) before any event. Events in the
+  engine's own log order, which is nondecreasing in time (the engine records it with `record`). The referee rejects
+  a receipt whose times go backwards.
 - **Exact times.** Every time and limit is the engine's `f64`, written exactly: `M` (an integer) or `M/E`, meaning
   M ÷ 2^E. Nothing is rounded. The referee compares and adds exact numbers. Where the engine's own `f64`
   subtraction rounds a breach the other way (a gap within one unit in the last place of the limit), the counts
@@ -106,7 +106,7 @@ Every final scored run, the long-v1 table (`docs/LONG-RESCORE.md`): days 130 to 
 
 Rust, `crates/fabsim/tests/receipt.rs` (toy shops; the SMT2020 test skips when the files are absent):
 - R1 a receipt lists every started step of the run and every state change: its `J` lots equal the run's trace, its
-  `S` lines its state log; events in nondecreasing time with `S` before `J` at equal times.
+  `S` lines its state log; events in nondecreasing time and in the log's own order.
 - R2 every time read back from the receipt is the engine's `f64` exactly.
 - R3 the claimed breach counts equal the engine's (total, and in the window).
 - R4 writing a receipt changes nothing: the run with `record` gives the same picks and window score as the scored
@@ -128,9 +128,32 @@ Lean, `lean/tests/` (receipts written by hand, each a few lines, with `expected.
 ## Costs, measured before the scored runs
 
 Measured 31 Oct on the M1, one core: the full fab, 190 days, 4.8 s with totals only and 5.3 s with the full record;
-about 4.1 million jobs started. The referee's time and the receipt's size are measured on one run (seed 0, today,
-defects off) and written here before the other runs start.
+about 4.1 million jobs started.
+
+Measured 31 Oct on one run (seed 0, today's rule replayed from its picks, defects off, days 130 to 190 of 190): the
+receipt has 4,009,592 jobs and 8,352,250 state changes, 550 MB as text and 195 MB compressed (streamed, never stored).
+The referee says yes in 151 s on the mini (137 s of CPU, 31 MB of memory), and its recount, 59,677 breaches in the
+run and 15,147 in the window, equals the scored run's 15,147.
+
+So the 110 runs that can be replayed today (60 with defects off, 50 with defects on) cost about 4.2 CPU-hours on
+the mini and 21 GB sent over the local network, one run at a time; nothing is bought and no model is called.
 
 ## Changes
 
-(none yet)
+- 31 Oct, while writing the code: events keep the engine's own log order instead of "every `S` before any `J` at
+  equal times". At one instant a tool turns to working just before its job begins (as the spec assumed), but
+  another tool can finish and turn idle at that same instant after it; sorting would have moved that line. The engine
+  now records the order of its state changes and started steps (`RunResult::order`, with `record` only; golden logs
+  unchanged). Test R1 changed with it: it compares the receipt's order with the log's.
+- 31 Oct, R3: the toy shops' queue-time limits are loose enough that no lot is ever late (0 breaches on every seed
+  over two weeks), so R3 checked nothing. R3 now tightens every limit of its copy of the toy shop to 5 minutes.
+- 31 Oct, the referee: its memory is read and written through two named helpers (`rd`, `wr`) and a step's latest
+  end is kept newest first, so the proof can follow it; what it checks is unchanged and every test still passes.
+  Duplicate lots in a job are refused with Lean's own `Nodup`. The late-wafer count walks, for each step, the list of
+  earlier steps whose limit runs to it (worked out once at the start).
+- 31 Oct, results of the tests: R1 to R6 pass (286 Rust tests in all); L1 to L4 pass on the mini (22 hand-made
+  receipts, 9 toy runs, 33 broken copies rejected with the right rule; 9 broken copies skipped where the tiny shop
+  has nothing of that kind to break); L5 passes: `check_sound` is proved with no `sorry`, and
+  `#print axioms check_sound` shows only `propext`, `Classical.choice` and `Quot.sound`. The theorem also states
+  that the receipt's times are in order.
+

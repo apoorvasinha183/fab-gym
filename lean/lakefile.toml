@@ -1,0 +1,11 @@
+name = "fabcheck"
+version = "0.1.0"
+defaultTargets = ["referee"]
+
+[[lean_lib]]
+name = "FabCheck"
+roots = ["FabCheck.Core"]
+
+[[lean_exe]]
+name = "referee"
+root = "Main"
