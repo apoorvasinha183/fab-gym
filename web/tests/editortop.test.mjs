@@ -83,7 +83,9 @@ test("D3 no text is drawn on the map while it plays", { skip: !ready && "needs G
     await sleep(1500);
     const texts = JSON.parse(await p.ev("JSON.stringify([...new Set(window.__texts)])"));
     const notices = ["Updating the run with your changes…", "Your changes run as soon as the checks pass."];
-    assert.deepEqual(texts.filter((t) => !notices.includes(t)), [], `text on the map: ${texts.join(" | ")}`);
+    // the tiles' own names are the one text on the map since docs/BUILD-REVIEW.md (item 4)
+    const names = new Set(JSON.parse(await p.ev("JSON.stringify(FabEditorPage.tileLabels())")));
+    assert.deepEqual(texts.filter((t) => !notices.includes(t) && !names.has(t)), [], `text on the map: ${texts.join(" | ")}`);
   } finally { p.close(); }
 });
 
