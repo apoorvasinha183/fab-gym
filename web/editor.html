@@ -124,6 +124,10 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .wstars .star.on{color:#F2B33D;text-shadow:0 0 12px rgba(242,179,61,.6)}
 .wstars .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .wcard p{margin:4px 0;color:#CFE0E3;font-size:14px}
+.poster-box{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:8px}
+.poster-box img{max-width:100%;max-height:300px;border-radius:8px;border:1px solid #3A6B66}
+.poster-box .note{font-size:12px;margin:0;color:var(--muted)}
+.wcard{max-height:92%;overflow:auto}
 .wbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
 .ai{border-color:#6E3D63}
 .ai h4{display:flex;justify-content:space-between;align-items:center}
@@ -213,7 +217,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       </div>
       <div class="advice" id="advice" aria-live="polite"></div>
       <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
-        <div class="win" id="win" hidden role="dialog" aria-labelledby="win-h"><div class="wcard"><h3 id="win-h">Challenge met!</h3><div class="wstars" id="win-stars"></div><p id="win-line"></p><p class="note" id="win-next"></p><div class="wbtns"><button class="btn go" id="win-go">Next challenge →</button><button class="btn" id="win-stay">Keep improving</button></div></div></div></div>
+        <div class="win" id="win" hidden role="dialog" aria-labelledby="win-h"><div class="wcard"><h3 id="win-h">Challenge met!</h3><div class="wstars" id="win-stars"></div><p id="win-line"></p><p class="note" id="win-next"></p><div class="poster-box" id="poster-box"><button class="btn" id="poster-go" hidden>Make a poster</button><img id="poster-img" hidden alt="Your fab as a poster, made by Muse Image"><p class="note" id="poster-note"></p><a class="btn" id="poster-dl" hidden download="fab-gym-poster.png">Download</a></div><div class="wbtns"><button class="btn go" id="win-go">Next challenge →</button><button class="btn" id="win-stay">Keep improving</button></div></div></div></div>
       <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
       <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
     </div>

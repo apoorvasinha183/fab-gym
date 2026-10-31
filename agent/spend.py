@@ -70,5 +70,15 @@ class Meter:
                 self.path.write_text(json.dumps({"calls": self.calls, "usd": self.usd}))
         return c
 
+    def add_usd(self, usd):
+        """A flat charge, such as an image (docs/POSTER.md)."""
+        with self._lock:
+            self.calls += 1
+            self.usd += float(usd)
+            if self.path:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                self.path.write_text(json.dumps({"calls": self.calls, "usd": self.usd}))
+        return float(usd)
+
     def summary(self):
         return {"calls": self.calls, "usd": round(self.usd, 6), "cap_usd": self.cap_usd}

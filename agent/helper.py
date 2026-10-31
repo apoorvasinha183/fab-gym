@@ -22,7 +22,7 @@ from pathlib import Path
 
 from agent import ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
-from agent import race
+from agent import poster, race
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = Path.home() / ".config" / "fab-gym"
@@ -43,7 +43,8 @@ QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", 
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
-                 preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=2.0, meta_key_file=None, meta_base_url=None):
+                 preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=2.0, meta_key_file=None, meta_base_url=None,
+                 poster_cap=1.0):
         p = PRESETS[preset]
         self.preset = preset
         self.provider = p["provider"]
@@ -66,6 +67,7 @@ class Helper:
         self.meta_key_file = Path(meta_key_file).expanduser() if meta_key_file else PRESETS["meta"]["key_file"]
         self.meta_base_url = meta_base_url or PRESETS["meta"]["base_url"]
         self.race_meter = spend.Meter(spend.price("meta", race.MODEL), cap_usd=race_cap, path=self.jobs_dir.parent / "spend-race.json")
+        self.poster_meter = spend.Meter({}, cap_usd=poster_cap, path=self.jobs_dir.parent / "spend-poster.json")
         self.threads = threads
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
@@ -303,7 +305,7 @@ class Helper:
 
     # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
     def spent_total(self):
-        return self.meter.usd + self.race_meter.usd
+        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd
 
     def race_step(self, body):
         """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
@@ -333,6 +335,40 @@ class Helper:
         msg = {k: msg[k] for k in ("role", "content", "tool_calls") if k in msg}
         return {"message": msg, "model": race.MODEL, "cost_usd": round(self.race_meter.usd - before, 6),
                 "spent_usd": round(self.race_meter.usd, 6), **base}
+
+
+    def poster_make(self, body):
+        """The three-star poster (docs/POSTER.md): the map's picture in, Muse Image's poster out, saved on this Mac."""
+        import base64
+        import time
+        bad = poster.check(body)
+        if bad:
+            return bad
+        base = {"cap_usd": self.poster_meter.cap_usd}
+        title, wafers, stars = poster.clean_title(body.get("title")), body["wafers"], body["stars"]
+        folder = self.jobs_dir.parent / "posters"
+        folder.mkdir(parents=True, exist_ok=True)
+        stem = f"{poster.slug(title)}-{wafers}-{int(time.time())}"
+        if self.stand_in:
+            png, model, cost = (self.stand_in / "poster.png").read_bytes(), "stand-in", 0
+        else:
+            if self.poster_meter.usd + poster.PRICE_USD > self.poster_meter.cap_usd + 1e-9:
+                return {"error": f"The poster's ${self.poster_meter.cap_usd:g} is spent.", **base}
+            if self.spent_total() + poster.PRICE_USD > self.total_cap + 1e-9:
+                return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+            if not self.meta_key_file.is_file():
+                return {"error": "No Meta key on this Mac, so no poster can be made.", **base}
+            from agent.fabgym_agent import _read_secret
+            try:
+                png = poster.edit(self.meta_base_url, _read_secret(self.meta_key_file, "key"), body["image"], poster.prompt(title, wafers, stars))
+            except Exception as e:  # noqa: BLE001 - the page shows the reason
+                return {"error": f"Muse Image did not answer: {str(e)[:200]}", **base}
+            model, cost = poster.MODEL, self.poster_meter.add_usd(poster.PRICE_USD)
+        mime, ext = poster.kind(png)
+        dest = folder / f"{stem}.{ext}"
+        dest.write_bytes(png)
+        return {"image": f"data:{mime};base64," + base64.b64encode(png).decode(), "format": ext, "model": model, "cost_usd": cost, "saved": str(dest),
+                "spent_usd": round(self.poster_meter.usd, 4), **base}
 
 
 def serve(h, port=8766):
@@ -387,6 +423,8 @@ def serve(h, port=8766):
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
                               every=float(body.get("every", 60)), overrides=body.get("overrides"))
+            elif self.path == "/api/poster":
+                r = h.poster_make(body)
             elif self.path == "/api/race/step":
                 r = h.race_step(body)
             elif self.path == "/api/fab/replay":

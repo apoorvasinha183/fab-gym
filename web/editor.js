@@ -508,6 +508,17 @@
     $("win-go").textContent = next < E.CHALLENGES.length ? "Next challenge →" : "Try Free build →";
     $("win-go").onclick = () => { $("win").hidden = true; load(next); };
     $("win-stay").onclick = () => { $("win").hidden = true; };
+    // three stars: Muse Image can make a poster of the map (docs/POSTER.md)
+    $("poster-go").hidden = st < 3; $("poster-go").disabled = false; $("poster-go").textContent = "Make a poster";
+    $("poster-img").hidden = true; $("poster-dl").hidden = true; $("poster-note").textContent = "";
+    $("poster-go").onclick = async () => {
+      $("poster-go").disabled = true; $("poster-go").textContent = "Making your poster…";
+      const r = await post("/api/poster", { image: cv.toDataURL("image/png"), title: c.title, wafers: w, stars: st });
+      if (r.error) { $("poster-note").textContent = r.error; $("poster-go").disabled = false; $("poster-go").textContent = "Try again"; return; }
+      $("poster-img").src = r.image; $("poster-img").hidden = false;
+      $("poster-dl").href = r.image; $("poster-dl").download = `fab-gym-poster.${r.format || "png"}`; $("poster-dl").hidden = false; $("poster-go").hidden = true;
+      $("poster-note").textContent = `${r.model === "stand-in" ? "stand-in (a recorded picture)" : r.model} · $${(r.cost_usd || 0).toFixed(2)} · saved on this Mac: ${r.saved}`;
+    };
     $("win").hidden = false;
     confetti();
   }

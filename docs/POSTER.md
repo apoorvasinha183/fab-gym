@@ -35,3 +35,11 @@ On a teaching fab of our own; not a real fab.
   button.
 
 ## Changes
+
+- 31 Oct, while writing the code: Muse Image charges per picture, so the spend meter gained a flat charge (`add_usd`).
+- 31 Oct, the first live poster (challenge 1 at 713 wafers a day, three stars; 15 s, $0.01): the challenge's name on a
+  banner, the layout redrawn faithfully, "713 wafers a day" and three stars. Muse Image answered in WebP, which had been
+  saved under a `.png` name; the format is now read from the picture's first bytes and kept in the file's name, the page
+  and the download (PO8 added, failing before the fix).
+- 31 Oct, results: PO1 to PO8 pass. The browser tests' stand-in posters land in `data/ask/posters/` beside real ones
+  (ignored by git).
