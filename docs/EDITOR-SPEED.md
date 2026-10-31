@@ -58,3 +58,20 @@ the page draws, on the editor and the floor.
   where it started after four presses.
 
 ## Changes
+
+- 31 Oct, while writing the code: the helper does one job at a time and answers "busy" to the rest. A check or a run that
+  met a car-replay request was treated as an error and dropped (V6 failed 2 runs in 3), and the first window after a
+  jump could freeze playback the same way. Checks, runs and that first window now wait their turn (`postWait`), and the
+  prefetch steps aside while a run is pending and backs off 120 ms after a "busy".
+- 31 Oct, while running the older tests: a finished rerun put the editor back in its old "run" mode, which emptied the
+  hand (a leftover of the Run and Build modes cut in docs/SITE-CUTS.md). With reruns 250 ms after an edit, the foreman
+  keys' P2 caught it under load: Q picked up Track and a rerun put Select back. A rerun now keeps the tool in hand. V7
+  added for it, failing before the fix and passing after.
+- 31 Oct, results: V1 to V7 pass (V6 failed once in four right after the busy fix, then passed ten in ten), and 147 of
+  148 page tests. The one failure is the floor's S2 (the full run within 6 s: 7.3 s), with the laptop's load near 13
+  (desktop browser windows, the Lean batch and this suite); this change touches only a comment in the floor's code, and
+  S2 passed in every earlier full run.
+- 31 Oct, the disk: the page tests made a headless Chrome profile per browser in the temp folder and never removed it
+  (about 2.4 GB by this afternoon), which helped fill the laptop's disk. Every browser test now removes its profiles
+  when its file's tests end (`profileDir`); a full run of the 152 page tests leaves none behind.
+- 31 Oct, Max: V2 to V11 pass and all 152 page tests, the floor's K9 with its fourth step.

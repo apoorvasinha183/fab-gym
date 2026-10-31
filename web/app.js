@@ -324,6 +324,8 @@ let BUILDING = null; // the real building (docs/LIVE-REAL.md), when its data is 
 let HALLS_L = null;
 let P = null, cur = null;
 let t = 0, playing = true, speed = 60; // fab minutes per second
+const MAX = -1; // the Max step: one fab hour each drawn frame (docs/EDITOR-SPEED.md)
+const stepOf = dt => (speed === MAX ? 60 : dt * speed);
 let hover = null;
 
 function resize() {
@@ -931,7 +933,7 @@ function frame(now) {
   if (UI.lens === "flows" && !FLOW.paused) FLOW.secs += dt;
   if (JOURNEY.on && !JOURNEY.paused && JOURNEY.P) { JOURNEY.p = Math.min(JOURNEY.P.total, JOURNEY.p + dt * JOURNEY.rate); journeyCamera(dt); }
   if (playing && P) {
-    t = Math.min(P.j.until, t + dt * speed);
+    t = Math.min(P.j.until, t + stepOf(dt));
     if (t >= P.j.until && !P.quick) playing = false, ($("play").textContent = "▶");
   }
   if (P) {
@@ -1024,9 +1026,9 @@ function setupInput() {
     keepScene();
   }, { passive: false });
   $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "❚❚" : "▶"; if (playing && P && t >= P.j.until) t = 0; };
-  // one speed button cycles 1×, 3×, 12× (docs/SITE-CUTS.md)
+  // one speed button cycles 1×, 3×, 12×, Max (docs/SITE-CUTS.md, docs/EDITOR-SPEED.md)
   [$("speed")].forEach(b => (b.onclick = () => {
-    const SP = [[20, "1×"], [60, "3×"], [240, "12×"]], i = SP.findIndex(x => x[0] === speed), n = SP[(i + 1) % SP.length];
+    const SP = [[20, "1×"], [60, "3×"], [240, "12×"], [MAX, "Max"]], i = SP.findIndex(x => x[0] === speed), n = SP[(i + 1) % SP.length];
     speed = n[0];
     b.textContent = n[1];
   }));
@@ -1547,6 +1549,8 @@ function swapIn(run) {
 
 // for page tests (docs/FLOOR-SPEED.md): read only
 window.FabFloorPage = {
+  time: () => t,
+  end: () => (P ? P.j.until : 0),
   moves: () => (P && !P.quick ? P.j.moves : null),
   groups: () => (P ? P.nG : 0),
   mood: g => moodNow(g),
@@ -2989,7 +2993,7 @@ function leaveSplit(reload) {
 function splitFrame(dt) {
   const c = SPLIT.clock;
   if (playing) {
-    t = Math.min(c.end, t + dt * speed);
+    t = Math.min(c.end, t + stepOf(dt));
     if (t >= c.end) playing = false, ($("play").textContent = "▶");
   }
   const times = c.at(t);

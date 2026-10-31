@@ -24,7 +24,9 @@
   let chIdx = 0; // 0..3 a challenge, 4 free build
   let setupNow = null, base = E.TEACHING_SHOP, s = null, spend0 = 0, areaOfGroup = {};
   let run = null, prev = null, stale = false, running = false;
-  let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 60;
+  let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 20; // fab minutes a real second, the floor's steps (docs/EDITOR-SPEED.md)
+  const MAX = -1; // the Max step: one fab hour each drawn frame, no cars
+  let lastCars = 0;
   let clock = 0, win = null, nextWin = null, fetching = false;
   let tool = "select", sel = null, hover = null, drag = null, flash = null, checks = null, checkTimer = null;
   // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
@@ -76,6 +78,17 @@
       return { error: "The helper did not answer. Start it with: python3 -m agent.helper" };
     }
   }
+
+  // the helper does one job at a time and answers "busy" meanwhile: checks, runs and the first window of a jump wait
+  // their turn (docs/EDITOR-SPEED.md)
+  async function postWait(path, body) {
+    for (let i = 0; ; i++) {
+      const r = await post(path, body);
+      if (!r.busy || i >= 50) return r;
+      await new Promise((ok) => setTimeout(ok, 60));
+    }
+  }
+  let busyUntil = 0; // a prefetch told "busy" steps back for a moment
 
   // ---------- the 2.5D floor
   // straight down (docs/EDITOR-TOPDOWN.md): x across, y down, square tiles
@@ -151,7 +164,8 @@
     }
     // raised things back to front: blocks and vehicles
     const items = s.blocks.map((b) => ({ b, d: P(b.x + b.w / 2, b.y + b.h / 2)[1] }));
-    const vs = showRun() && win ? vehicles(clock) : [];
+    const vs = showRun() && win && speed !== MAX ? vehicles(clock) : [];
+    lastCars = vs.length;
     for (const v of vs) items.push({ v, d: P(v.x + 0.5, v.y + 0.5)[1] });
     items.sort((a, b) => a.d - b.d);
 
@@ -253,22 +267,28 @@
     }
     return out;
   }
-  async function fetchWindow(from) {
-    const r = await post("/api/fab/replay", { fab: fab(), seed: 1, start: from, minutes: WINDOW, overrides: E.overridesFor(s) });
+  // a window holds about 4 real seconds of play, at least WINDOW fab minutes (docs/EDITOR-SPEED.md)
+  const span = () => Math.max(WINDOW, speed * 4);
+  async function fetchWindow(from, wait) {
+    const body = { fab: fab(), seed: 1, start: from, minutes: span(), overrides: E.overridesFor(s) };
+    const r = wait ? await postWait("/api/fab/replay", body) : await post("/api/fab/replay", body);
+    if (r.busy) busyUntil = performance.now() + 120;
     if (r.error) return null;
     return { from: r.from, to: r.to, by: index(r.stays) };
   }
   async function jumpTo(t) {
     clock = t; win = null; nextWin = null; fetching = true; tickUi(); draw();
-    const w = await fetchWindow(t);
+    const w = await fetchWindow(t, true);
     fetching = false;
     if (w && Math.abs(w.from - clock) < 1e-6) { win = w; draw(); }
   }
   function advance(dt) {
-    if (!win || fetching) return;
     const end = days() * 1440;
-    clock += (dt * speed) / 60;
-    if (!nextWin && !fetching && clock > win.from + 0.6 * WINDOW && win.to < end) {
+    if (speed === MAX) { clock += 60; if (clock > end - WINDOW) clock = startTime(); return; }
+    if (!win || fetching) return;
+    clock += dt * speed;
+    // fetch the next window when 2 real seconds are left, or past 60% of this one
+    if (!nextWin && !fetching && !running && performance.now() > busyUntil && win.to < end && ((win.to - clock) / speed < 2 || clock > win.from + 0.6 * (win.to - win.from))) {
       fetching = true;
       fetchWindow(win.to).then((w) => { fetching = false; nextWin = w; });
     }
@@ -293,7 +313,7 @@
   async function runNow(keepClock) {
     const seq = ++runSeq;
     running = true; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
-    const r = await post("/api/fab/run", { fab: fab(), seed: 1, days: days(), every: 60, overrides: E.overridesFor(s) });
+    const r = await postWait("/api/fab/run", { fab: fab(), seed: 1, days: days(), every: 60, overrides: E.overridesFor(s) });
     if (seq !== runSeq) return;
     running = false; $("again").disabled = false; $("again").textContent = "Run again with my changes";
     if (r.checks) { checks = r.checks; renderChecks(); }
@@ -305,7 +325,9 @@
     if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
     $("slider").max = run.frames.length - 1;
     runsDone++;
-    renderTabs(); renderScore(); setMode("run");
+    // a rerun after an edit keeps the tool in hand; only a fresh run goes back to watching (docs/EDITOR-SPEED.md)
+    renderTabs(); renderScore();
+    if (keepClock) { $("again").hidden = true; draw(); } else setMode("run");
     await jumpTo(keepClock && clock > 0 ? Math.min(clock, days() * 1440 - WINDOW) : startTime());
   }
 
@@ -437,10 +459,11 @@
     $("again").hidden = false;
     clearTimeout(checkTimer);
     checkTimer = setTimeout(async () => {
-      checks = await post("/api/fab/check", { fab: fab() });
+      if (drag) return changed(); // never mid-drag: wait for the release
+      checks = await postWait("/api/fab/check", { fab: fab() });
       renderChecks(); draw();
       if (checks && checks.ok) runNow(true);
-    }, 600);
+    }, 250);
     draw();
   }
   const snap = () => JSON.parse(JSON.stringify(s));
@@ -615,7 +638,7 @@
         <div class="st" style="background:${MOOD[mood][1]}">${n ? MOOD[mood][0] : "Before a run"}</div>
         <div class="kv"><span>Lots waiting</span><span>${n ? n.queue : "–"}</span><span>Group</span><span>${esc(b.group)}</span><span>Price of one</span><span>${money(E.PRICE[b.area] || 0)}</span></div>
         <div class="ex">${esc(AREA[b.area][1])}. ${esc(AREA[b.area][2])}</div></div>`;
-    } else if (!b && showRun() && win) {
+    } else if (!b && showRun() && win && speed !== MAX) {
       const v = vehicles(clock).find((w) => Math.abs(w.x - x) < 0.8 && Math.abs(w.y - y) < 0.8);
       if (v) {
         const m = v.hot ? "hot" : v.loaded ? "ride" : null;
@@ -723,7 +746,13 @@
 
   // ---------- controls
   $("play").onclick = () => { if (stale) return runNow(); playing = !playing; if (playing && mode === "build") setMode("run"); playBtn(); };
-  $("speed").onchange = (e) => { speed = +e.target.value; };
+  // one speed button, the floor's steps: 1×, 3×, 12× are 20, 60, 240 fab minutes a real second; Max one fab hour a frame
+  $("speed").onclick = () => {
+    const SP = [[20, "1×"], [60, "3×"], [240, "12×"], [MAX, "Max"]], i = SP.findIndex((x) => x[0] === speed), n = SP[(i + 1) % SP.length];
+    const wasMax = speed === MAX;
+    speed = n[0]; $("speed").textContent = n[1];
+    if (wasMax && run) jumpTo(Math.min(clock, days() * 1440 - WINDOW)); // the cars' window is stale after Max
+  };
   $("again").onclick = () => runNow();
   $("showfix").onclick = () => load(chIdx, true);
   $("template").onchange = () => load(E.CHALLENGES.length);
@@ -781,7 +810,7 @@
   function loop(ts) {
     const dt = Math.min(0.1, (ts - (last || ts)) / 1000);
     last = ts;
-    if (playing && !document.hidden && win && run) { advance(dt); tickUi(); draw(); }
+    if (playing && !document.hidden && run && (win || speed === MAX)) { advance(dt); tickUi(); draw(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -799,6 +828,7 @@
     rails: () => Object.keys(s.rail).length,
     runs: () => runsDone,
     clock: () => clock,
+    cars: () => lastCars,
     canUndo: () => hist.canUndo(),
     canRedo: () => hist.canRedo(),
     // the foreman keys (docs/EDITOR-MOVES.md)
