@@ -588,3 +588,17 @@ body.opening-on .topbar, body.opening-on .maptools, body.evidence-on .topbar, bo
 .door-floor-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .door-floor .btn-solid { align-self: center; }
 @media (max-width: 760px) { .ch-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .door-floor { flex-wrap: wrap; } }
+
+/* ---------- Home's gate: play or watch; the suggestions under the Floor's ask bar (docs/HOME-GATE.md) */
+.open-doors { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.door-floor { grid-column: auto; flex-direction: column; align-items: stretch; gap: 10px; padding: 16px 18px; }
+.door-floor img { width: min(240px, 72%); height: auto; aspect-ratio: 1; align-self: center; border-radius: 16px; }
+.door-floor .btn-solid { align-self: flex-start; margin-top: auto; }
+.topbar .cmd { position: relative; }
+.cmd-examples { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 7; display: grid; gap: 6px; padding: 8px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); }
+.cmd-examples[hidden] { display: none; }
+.cmd-examples button { text-align: left; padding: 10px 12px; border-radius: 10px; font-weight: 500; font-size: 13.5px; line-height: 1.35; background: rgba(14, 27, 31, 0.9); }
+.cmd-examples button::before { content: "→ "; color: var(--accent); font-weight: 700; }
+.cmd-examples button:hover, .cmd-examples button:focus-visible { border-color: var(--accent); background: #12262D; }
+@media (max-width: 760px) { .open-doors { grid-template-columns: 1fr; } }

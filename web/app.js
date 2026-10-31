@@ -2154,20 +2154,29 @@ async function chromeSetup() {
   try { st = await api("/api/status"); if (st.error) st = null; } catch { st = null; }
   try { bundled = await fetch("data/examples.json").then(r => r.json()); } catch { bundled = []; }
   const o = FabUI.openingState(st, bundled);
-  $("open-examples").innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
-  // a suggestion fills the box to read or edit; only Go asks (docs/HOME-REVIEW.md)
-  $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("open-q").value = o.examples[+b.dataset.i]; $("open-q").focus(); }));
-  $("open-form").onsubmit = e => { e.preventDefault(); askFrom($("open-q").value); };
-  setTimeout(() => $("open-q").focus(), 60);
+  // the suggestions sit under the Floor's ask bar, shown when you click into it; one fills the bar, Enter asks
+  // (docs/HOME-GATE.md: asking left Home's gate)
+  const list = $("cmd-examples");
+  list.innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
+  list.querySelectorAll("button").forEach(b => {
+    b.onmousedown = e => e.preventDefault(); // keep the bar focused
+    b.onclick = () => { $("cmd-q").value = o.examples[+b.dataset.i]; list.hidden = true; $("cmd-q").focus(); };
+  });
+  const offer = () => { if (!$("cmd-q").value) list.hidden = false; };
+  $("cmd-q").addEventListener("focus", offer);
+  $("cmd-q").addEventListener("mousedown", offer); // a click into a bar that already has focus
+  $("cmd-q").addEventListener("input", () => { list.hidden = !!$("cmd-q").value; });
+  $("cmd-q").addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== $("cmd-q")) list.hidden = true; }, 120));
 
   $("cmd").onsubmit = e => { e.preventDefault(); askFrom($("cmd-q").value); $("cmd-q").value = ""; $("cmd-q").blur(); };
   addEventListener("keydown", e => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
-      if (document.body.classList.contains("opening-on")) $("open-q").focus();
+      // on Home, ⌘K opens the Floor with its ask bar ready
+      if (document.body.classList.contains("opening-on")) { location.hash = "#floor"; setTimeout(() => $("cmd-q").focus(), 150); }
       else $("cmd-q").focus();
     } else if (e.key === "Escape") {
-      if (document.activeElement === $("cmd-q")) $("cmd-q").blur();
+      if (document.activeElement === $("cmd-q")) { $("cmd-examples").hidden = true; $("cmd-q").blur(); }
       else if (!$("dock").hidden) (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
     }
   });

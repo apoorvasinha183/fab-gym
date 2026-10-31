@@ -29,3 +29,8 @@ testbed; not a real fab.
   the ask bar's suggestions, and the top strip holds the suggestions' own list.
 
 ## Changes
+
+- 31 Oct, while writing the code: the Floor already focuses its ask bar when it opens, so the suggestions open on a
+  click into the bar as well as on focus; HO1 clicks, as a person does.
+- 31 Oct, results: HO1 to HO6 pass, and the page suite (217 tests, the paused floor coach's three left out) passes run
+  one file at a time, the editor's R6 passing alone after a miss under the suite's load.

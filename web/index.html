@@ -22,8 +22,9 @@
 <form id="cmd" class="cmd" role="search" autocomplete="off">
   <span class="cmd-ic" aria-hidden="true">✦</span>
   <label for="cmd-q" class="sr">Ask anything about the fab</label>
-  <input id="cmd-q" type="text" placeholder="Ask anything about the fab…">
+  <input id="cmd-q" type="text" placeholder="Ask anything about the fab…" aria-controls="cmd-examples">
   <kbd>⌘K</kbd>
+  <div id="cmd-examples" class="cmd-examples" aria-label="Example questions: pick one to put it in the bar" hidden></div>
 </form>
 <button type="button" id="change-open" class="primary try" data-tab="change">⚙︎ Try a change</button>
 </div>
@@ -326,16 +327,6 @@
       <span class="door-s">A small fab is already running, and something is holding it back. Find the problem, fix it and hit the target.</span>
       <span class="inside">4 challenges · a free build · up to 3 stars each</span>
       <a class="btn-solid" href="editor.html?ch=1">Start challenge 1 →</a>
-    </div>
-    <div class="door door-ask">
-      <span class="door-k">Ask the fab</span>
-      <span class="door-s">Ask a what-if about the full fab. Muse Spark sets up the experiment, and the simulator shows you what changes.</span>
-      <form id="open-form" class="open-form" autocomplete="off">
-        <label for="open-q" class="sr">Your question</label>
-        <input id="open-q" type="text" placeholder="Ask a what-if about the full fab…">
-        <button type="submit" class="primary">Go</button>
-      </form>
-      <div id="open-examples" class="open-examples" aria-label="Example questions: pick one to put it in the box"></div>
     </div>
     <div class="door door-floor">
       <img src="cast/ceo.webp" alt="The fab's CEO: a cream robot in a navy coat and red tie, flexing a watch whose face is a silicon wafer" width="384" height="384">
