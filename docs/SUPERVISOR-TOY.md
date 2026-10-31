@@ -87,3 +87,42 @@ Nothing runs before the founder has seen this table.
 - **SP3** the paired 95% interval on a known sample is right.
 
 ## Changes
+
+- 31 Oct, while writing the code: an overrides file starts with `"fabgym-overrides": 1` (SV4's own file lacked it).
+  Removing a cap mid-run with lots held at the door panicked the engine (it read the cap that was gone); with no cap
+  every held release now goes in, which leaves every earlier run unchanged, since their cap never changes.
+- 31 Oct, the wear calibration: under clock breakdowns (about every 8 hours a polishing machine, 1.5 hours mean repair)
+  the toy makes 737 wafers a day (training seeds 100 to 102: 818, 665, 728), so a polishing machine processes about 246
+  wafers in 8 hours; wear is set to every 246 wafers with repairs of 60 to 120 minutes (the first guess was 225).
+- 31 Oct, the runner: `python3 -m agent.supervise toy --out results/supervisor-toy [--ask]` runs B's training, the arms on
+  the held-out seeds, and the model's arm with `--ask` (Muse Spark contributor, low effort, its own $1 meter and a log of
+  what it was shown and said); every run is kept in `runs/` so a rerun skips what is done. The look horizon is the
+  stretch plus a day (48 h for 24 h looks, 72 h for 48 h looks). A simulator-arm run takes about 2.6 s.
+- 31 Oct, the first model run: a look reported 0 lots waiting at every group with 43 inside: the count read only the
+  engine's batch-forming lists, and most waiting lots sit in its per-group queues. Both are counted now (a look then
+  showed 34 waiting at polishing, one of its two machines down); SV7 added (the lines a look reports are seen, and never
+  more than the lots inside). The simulator's arms never read this view, so their results stand. The two model calls
+  made with the wrong view are kept aside in `model-log-wrong-view.jsonl` ($0.0005).
+
+## Results (toy, without the model; 31 Oct, `results/supervisor-toy/`)
+
+Ten held-out seeds, a two-day warm-up and a ten-day window; 95% paired t intervals.
+
+| Breakdowns | Arm | Wafers a day | Days a wafer takes | Against today | Against the best fixed |
+| --- | --- | ---: | ---: | --- | --- |
+| clock | today, no cap | 735.0 | 2.92 | | |
+| clock | best fixed (today's rule, cap 15) | 851.0 | 0.55 | +116.0 (+109.8 to +122.2) | |
+| clock | simulator, every 24 h | 851.5 | 0.54 | +116.5 | +0.5 (−1.9 to +2.9) |
+| clock | simulator, every 48 h | 851.2 | 0.54 | +116.2 | +0.2 (−0.8 to +1.3) |
+| wear | today, no cap | 709.8 | 3.03 | | |
+| wear | best fixed (today's rule, cap 15) | 835.5 | 0.56 | +125.8 (+120.8 to +130.7) | |
+| wear | simulator, every 24 h | 835.5 | 0.55 | +125.8 | +0.0 (−4.1 to +4.1) |
+| wear | simulator, every 48 h | 836.5 | 0.56 | +126.8 | +1.0 (−1.3 to +3.3) |
+
+- **The cap is the whole win.** The toy is loaded past what polishing can do, so without a cap work piles up inside
+  (about 3 days a wafer); a cap of 15 lots gets about 116 to 126 more wafers a day out and each in about half a day.
+- **Looking every day adds nothing here.** Trying all 24 settings at each look ties the best fixed setting; at every
+  look it chose a cap of 15, with today's rule or critical ratio.
+- **The thesis has nothing to find in this toy.** The supervisor's gain under wear, less its gain under clock: −0.5
+  wafers a day (−5.3 to +4.3) at 24 h, +0.8 (−1.3 to +2.8) at 48 h. Once the cap holds the load steady, wear comes as
+  regularly as the clock does; a toy for the thesis needs load that swings (rushes of releases, a second product).

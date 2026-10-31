@@ -2322,7 +2322,8 @@ impl<'a, 'c> Sim<'a, 'c> {
                     sim.at(t + rel.every, Ev::Release(k, n + 1));
                 }
                 Ev::Unhold => {
-                    while !sim.held.is_empty() && sim.wip < sim.cap.unwrap() {
+                    // a cap removed mid-run (docs/SUPERVISOR-TOY.md) lets every held release in
+                    while !sim.held.is_empty() && sim.cap.map_or(true, |c| sim.wip < c) {
                         let (k, n, row) = sim.held.pop_front().unwrap();
                         sim.release_log[row].released = Some(t);
                         sim.release_log[row].wip_before = Some(sim.wip);
@@ -2719,6 +2720,93 @@ impl<'a> Stepper<'a> {
 
     pub fn set_player(&mut self, p: Option<Player>) {
         self.sim.player = p;
+    }
+
+    // ---------------------------------------------------------------- the supervisor (docs/SUPERVISOR-TOY.md)
+
+    /// A stepper built with an overrides file (docs/OVERRIDES.md); `new` is the same with none.
+    pub fn with_overrides(shop: &'a Shop, opts: &RunOptions, player: Option<Player>, ov: &crate::overrides::Overrides) -> Stepper<'a> {
+        Stepper { sim: build(shop, opts, None, None, None, player, ov), horizon: opts.until.unwrap_or(f64::INFINITY) }
+    }
+
+    /// Set the cap on lots inside from now on (None: no cap). Lots already inside stay; held releases go in while
+    /// there is room.
+    pub fn set_cap(&mut self, cap: Option<i64>) {
+        self.sim.cap = cap;
+        if !self.sim.held.is_empty() {
+            let t = self.sim.now;
+            self.sim.at(t, Ev::Unhold);
+        }
+    }
+
+    /// Fresh luck for a copy: draws not yet made come from `seed`, and the pending random breakdowns of tools and
+    /// rail stretches are redrawn from now (the times between them are exponential, so a fresh draw from now is a fair
+    /// draw). Wear counters are kept: a real fab can read them.
+    pub fn fresh_luck(&mut self, seed: u64) {
+        let sim = &mut self.sim;
+        sim.seed = seed;
+        let now = sim.now;
+        let items = std::mem::take(&mut sim.heap).into_vec();
+        for mut it in items {
+            match it.ev {
+                Ev::Break(ti) => {
+                    if let Some((mttf, _)) = sim.beh[ti as usize].bd {
+                        let mut r = PyRandom::from_str_seed(&format!("{}/fresh/{}", seed, sim.tools[ti as usize].name));
+                        it.t = now + r.expovariate(1.0 / mttf);
+                    }
+                }
+                Ev::RailBreak(e) => {
+                    if let Some((mttf, _)) = sim.rail_bd[e as usize] {
+                        let mut r = PyRandom::from_str_seed(&format!("{}/freshrail/{}", seed, e));
+                        it.t = now + r.expovariate(1.0 / mttf);
+                    }
+                }
+                _ => {}
+            }
+            sim.heap.push(it);
+        }
+        for l in sim.lots.iter_mut() {
+            l.rng = PyRandom::from_str_seed(&format!("{}/freshlot/{}", seed, l.id));
+        }
+    }
+
+    /// Lots inside the fab now (the count a cap limits).
+    pub fn lots_inside(&self) -> i64 {
+        self.sim.wip
+    }
+
+    /// The pending random breakdowns: (tool, when), by tool.
+    pub fn next_breakdowns(&self) -> Vec<(u32, f64)> {
+        let mut v: Vec<(u32, f64)> = self.sim.heap.iter().filter_map(|it| match it.ev { Ev::Break(ti) => Some((ti, it.t)), _ => None }).collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)));
+        v
+    }
+
+    /// Each group now: (name, tools, tools down, lots waiting, the most worn tool's share of its wear limit).
+    pub fn groups_now(&self) -> Vec<(String, i64, i64, i64, f64)> {
+        let sim = &self.sim;
+        sim.shop.groups.iter().enumerate().map(|(g, gr)| {
+            let tools = &sim.group_tools[g];
+            let down = tools.iter().filter(|&&ti| sim.tools[ti as usize].down != 0).count() as i64;
+            let queue: i64 = sim.queues[g].iter().map(|q| q.q.len() as i64).sum::<i64>() + sim.waiting[g].iter().map(|w| w.lots.len() as i64).sum::<i64>();
+            let worn = tools.iter().filter_map(|&ti| sim.beh[ti as usize].wear.map(|(every, _, _)| sim.beh[ti as usize].worn / every)).fold(0.0, f64::max);
+            (gr.name.clone(), tools.len() as i64, down, queue, worn)
+        }).collect()
+    }
+
+    /// Lots finished in (from, to]: how many, their wafers, and the minutes from release to finish summed.
+    pub fn finished_between(&self, from: f64, to: f64) -> (i64, i64, f64) {
+        let mut out = (0, 0, 0.0);
+        for l in &self.sim.lots {
+            if let Some(d) = l.done {
+                if d > from && d <= to {
+                    out.0 += 1;
+                    out.1 += l.size;
+                    out.2 += d - l.release;
+                }
+            }
+        }
+        out
     }
 
     /// Advance to the horizon and give the run's results.

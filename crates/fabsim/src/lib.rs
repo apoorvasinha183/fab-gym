@@ -26,6 +26,7 @@ pub mod scenario;
 pub mod score;
 pub mod shop;
 pub mod smt2020;
+pub mod supervise;
 pub mod sweep;
 pub mod track;
 pub mod twofam;

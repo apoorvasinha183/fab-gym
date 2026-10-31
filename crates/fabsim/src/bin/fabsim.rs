@@ -81,6 +81,101 @@ fn argf(args: &[String], flag: &str, default: f64) -> f64 {
     args.iter().position(|a| a == flag).and_then(|i| args.get(i + 1)).map(|v| v.parse().unwrap()).unwrap_or(default)
 }
 
+/// The supervisor, a toy experiment (docs/SUPERVISOR-TOY.md).
+/// `fabsim supervise SHOP --seed N --warmup D --window D --every H --horizon H --copies K --caps none,10,20
+///  [--overrides FILE] --arm today|fixed:RULE:CAP|sim|ask --out FILE`
+/// `ask`: at each look one JSON line {"look": ..., "grid": ...} on stdout, then one line {"settings": [[rule, cap], ...]}
+/// read from stdin.
+fn supervise_cmd(args: &[String]) {
+    use fabsim::overrides::Overrides;
+    use fabsim::policy::Policy;
+    use fabsim::shop::Shop;
+    use fabsim::supervise::{self, Plan, Setting};
+    use std::io::{BufRead, Write};
+    let path = std::path::PathBuf::from(args.first().expect("fabsim supervise SHOP ..."));
+    // a fab file, or the SMT2020 testbed's folder
+    let shop = if path.is_dir() {
+        fabsim::smt2020::load(&path).expect("SMT2020 loads")
+    } else {
+        Shop::parse(&std::fs::read_to_string(&path).expect("read the shop")).unwrap_or_else(|e| {
+            eprintln!("refused: {e}");
+            std::process::exit(1)
+        })
+    };
+    let ov = match args.iter().position(|a| a == "--overrides").and_then(|i| args.get(i + 1)) {
+        Some(p) => Overrides::parse(&std::fs::read_to_string(p).expect("read the overrides"), &shop).unwrap_or_else(|e| {
+            eprintln!("refused: {e}");
+            std::process::exit(1)
+        }),
+        None => Overrides::default(),
+    };
+    let seed = argf(args, "--seed", 0.0) as u64;
+    let plan = Plan {
+        warmup: argf(args, "--warmup", 2.0) * 1440.0,
+        window: argf(args, "--window", 10.0) * 1440.0,
+        every: argf(args, "--every", 24.0) * 60.0,
+        horizon: argf(args, "--horizon", 48.0) * 60.0,
+        copies: argf(args, "--copies", 3.0) as u32,
+    };
+    let caps: Vec<Option<i64>> = flag(args, "--caps", "none").split(',').map(|c| if c == "none" { None } else { Some(c.parse().expect("a cap")) }).collect();
+    let grid = supervise::grid(&caps);
+    let cap_json = |c: Option<i64>| c.map(|x| x.to_string()).unwrap_or("null".into());
+    let set_json = |s: &Setting| format!("[\"{}\",{}]", s.rule.name(), cap_json(s.cap));
+    let grid_json = format!("[{}]", grid.iter().map(set_json).collect::<Vec<_>>().join(","));
+    let arm = flag(args, "--arm", "sim").to_string();
+    let out = match arm.as_str() {
+        "today" => supervise::run_fixed(&shop, &ov, seed, &plan, Setting::TODAY),
+        a if a.starts_with("fixed:") => {
+            let p: Vec<&str> = a.split(':').collect();
+            let set = Setting { rule: Policy::parse(p[1]).expect("a rule"), cap: if p[2] == "none" { None } else { Some(p[2].parse().expect("a cap")) } };
+            supervise::run_fixed(&shop, &ov, seed, &plan, set)
+        }
+        "sim" => supervise::run(&shop, &ov, seed, &plan, &grid, &mut |_, g| g.to_vec()),
+        "ask" => {
+            let stdin = std::io::stdin();
+            let mut lines = stdin.lock().lines();
+            supervise::run(&shop, &ov, seed, &plan, &grid, &mut |st, g| {
+                let groups = st.groups.iter().map(|(n, t, d, q, w)| format!("[\"{n}\",{t},{d},{q},{w}]")).collect::<Vec<_>>().join(",");
+                println!("{{\"look\":{{\"t\":{},\"current\":{},\"lots_inside\":{},\"lots_finished\":{},\"lot_hours_waiting\":{},\"groups\":[{groups}]}},\"grid\":{grid_json}}}",
+                    st.t, set_json(&st.current), st.lots_inside, st.lots_finished, st.lot_hours_waiting);
+                std::io::stdout().flush().ok();
+                let line = lines.next().and_then(|l| l.ok()).unwrap_or_default();
+                let mut picks = vec![];
+                if let Some(i) = line.find("\"settings\"") {
+                    for part in line[i..].split('[').skip(2) {
+                        let body = part.split(']').next().unwrap_or("");
+                        let f: Vec<&str> = body.split(',').map(|x| x.trim().trim_matches('"')).collect();
+                        if f.len() == 2 {
+                            if let Some(rule) = Policy::parse(f[0]) {
+                                let cap = if f[1] == "null" { None } else { f[1].parse().ok() };
+                                let s = Setting { rule, cap };
+                                if g.contains(&s) {
+                                    picks.push(s);
+                                }
+                            }
+                        }
+                    }
+                }
+                picks
+            })
+        }
+        other => {
+            eprintln!("refused: --arm is today, fixed:RULE:CAP, sim or ask, not {other}");
+            std::process::exit(1)
+        }
+    };
+    let looks = out.looks.iter().map(|l| {
+        let tried = l.tried.iter().map(|(s, v)| format!("[{},{v}]", set_json(s))).collect::<Vec<_>>().join(",");
+        format!("{{\"t\":{},\"current\":{},\"chosen\":{},\"tried\":[{tried}]}}", l.t, set_json(&l.current), set_json(&l.chosen))
+    }).collect::<Vec<_>>().join(",");
+    let json = format!("{{\"seed\":{seed},\"arm\":\"{arm}\",\"lots_finished\":{},\"wafers_per_day\":{},\"cycle_days\":{},\"value\":{},\"looks\":[{looks}]}}\n",
+        out.lots_finished, out.wafers_per_day, out.cycle_days, out.value);
+    std::fs::write(flag(args, "--out", "supervise.json"), json).expect("write the result");
+    if arm == "ask" {
+        println!("{{\"done\":true}}");
+    }
+}
+
 fn evolve_cmd(args: &[String]) {
     use fabsim::engine::{run, Decision, RunOptions};
     use fabsim::evolve::{picks, search, Floor, Settings, Space};
@@ -1444,6 +1539,7 @@ fn main() {
         Some("bound") => bound_cmd(&args[1..]),
         Some("uq-inputs") => uq_inputs(&args[1..]),
         Some("regret") => regret_cmd(&args[1..]),
+        Some("supervise") => supervise_cmd(&args[1..]),
         Some("score") => {
             let text = std::fs::read_to_string(&args[1]).expect("read the scenario");
             let dir = args.get(2).filter(|a| !a.starts_with("--")).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("data/smt2020/hvlm"));
