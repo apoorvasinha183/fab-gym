@@ -71,3 +71,14 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
 - **D3** (docs/EDITOR-TOPDOWN.md) still holds: no text is drawn into the map.
 
 ## Changes
+
+- 31 Oct, while writing the code: older tests place storage and wafers in during challenge 1, so challenge 1's palette
+  keeps the three moving-wafer pieces beside Select, Track and Erase (6 keys where there were 17, none greyed); G8 and
+  point 11 say so.
+- 31 Oct: the lit cell first followed the editor's picking, which snaps to a machine's corner; it now follows the floor
+  cell under the pointer and lights the whole machine when the pointer is over one (G7 caught it).
+- 31 Oct, looked at on screen: the advice line fell below the window's edge, so it moved above the map; the tool's hint
+  became a small label inside the map's lower left (the map's own "Updating the run" notice keeps the upper left) and
+  the last-run label went to the upper right. "Run again with my changes" showed whenever a tool was picked up (a
+  leftover of the cut Run and Build modes); it now shows only while the run on screen is out of date.
+- 31 Oct, results: G1 to G13 pass and all 165 page tests, D3 (no text drawn into the map) included.

@@ -27,6 +27,8 @@
   let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 20; // fab minutes a real second, the floor's steps (docs/EDITOR-SPEED.md)
   const MAX = -1; // the Max step: one fab hour each drawn frame, no cars
   let lastCars = 0;
+  // the editor as a game (docs/EDITOR-GAME.md)
+  let cursorCell = null, jamMap = false, showLast = false, prevRun = null, flashes = [], lastEditAt = null, lastBadges = [], lastDrawFi = 0;
   let clock = 0, win = null, nextWin = null, fetching = false;
   let tool = "select", sel = null, hover = null, drag = null, flash = null, checks = null, checkTimer = null;
   // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
@@ -37,6 +39,7 @@
   const PIECES = new Set(["stocker", "entry", "exit", ...E.AREAS]);
   /** Take a tool in hand, as the palette, a hotbar key or Q does; a piece goes to the front of the recent list. */
   function take(t) {
+    if (!allowed(t)) { $("status").textContent = "This challenge needs only the tools in the palette."; return false; }
     if (E.AREAS.includes(t) && !nextGroup(t)) { $("status").textContent = `Every ${AREA[t][0].toLowerCase()} group is placed. Add machines with + under Selected.`; return false; }
     tool = t; handTurned = false; pasting = false;
     if (PIECES.has(t)) { recent = [t, ...recent.filter((x) => x !== t)].slice(0, 6); buildPalette(); }
@@ -133,13 +136,22 @@
     const slab = [P(0, 0), P(s.W, 0), P(s.W, s.H), P(0, s.H)];
     ctx.save(); ctx.translate(0, F.depth); poly(slab); ctx.fillStyle = "#071013"; ctx.fill(); ctx.restore();
     poly(slab); ctx.fillStyle = "#0F1D22"; ctx.fill(); ctx.strokeStyle = "rgba(126,232,216,.5)"; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.strokeStyle = "rgba(126,232,216,0.05)"; ctx.beginPath();
-    for (let x = 0; x <= s.W; x += 5) { const a = P(x, 0), b = P(x, s.H); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
-    for (let y = 0; y <= s.H; y += 5) { const a = P(0, y), b = P(s.W, y); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
-    ctx.stroke();
+    // paper to draw on (docs/EDITOR-GAME.md): a fine line per tile, a stronger one every five
+    for (const [step, a] of [[1, 0.07], [5, 0.16]]) {
+      ctx.strokeStyle = `rgba(126,232,216,${a})`; ctx.lineWidth = 1; ctx.beginPath();
+      for (let x = 0; x <= s.W; x += step) { const p0 = P(x, 0), p1 = P(x, s.H); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
+      for (let y = 0; y <= s.H; y += step) { const p0 = P(0, y), p1 = P(s.W, y); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); }
+      ctx.stroke();
+    }
     const fi = frameIdx(), fr = showRun() ? run.frames[fi] : null;
-    const jam = {};
+    const jam = {}, jamWas = {};
     if (fr) run.stretches.forEach((n, i) => (jam[n] = fr.rails[i]));
+    const pf = prevRun && prevRun.frames[Math.min(fi, prevRun.frames.length - 1)];
+    if (pf) prevRun.stretches.forEach((n, i) => (jamWas[n] = pf.rails[i]));
+    lastDrawFi = fi;
+    const nowMs = performance.now();
+    flashes = flashes.filter((f) => f.until > nowMs);
+    const flashing = new Set(flashes.flatMap((f) => f.stretches));
     const bad = new Set((checks && checks.issues ? checks.issues : []).filter((i) => i.severity === "error").flatMap((i) => i.at));
     // rail
     const breaks = [];
@@ -149,10 +161,17 @@
         if (!on) return;
         const live = !!s.rail[E.key(x + D[d][0], y + D[d][1])];
         const a = P(x + 0.5, y + 0.5, 0.06), b = P(x + 0.5 + D[d][0] * (live ? 1 : 0.45), y + 0.5 + D[d][1] * (live ? 1 : 0.45), 0.06);
-        const j = jam[`c${x}_${y}>c${x + D[d][0]}_${y + D[d][1]}`] || 0;
-        ctx.strokeStyle = bad.has(`c${x}_${y}`) ? "#FF6B57" : j > 1 ? "#FF6B57" : j > 0.2 ? "#F2B33D" : v.spine ? "#2F6470" : "#285059";
-        ctx.lineWidth = Math.max(2, F.s * 0.3); ctx.lineCap = "round";
+        const sn = `c${x}_${y}>c${x + D[d][0]}_${y + D[d][1]}`, j = jam[sn] || 0, js = E.jamStyle(j);
+        const calm = v.spine ? "#2F6470" : "#285059";
+        ctx.save();
+        ctx.strokeStyle = bad.has(`c${x}_${y}`) ? "#FF6B57" : js.kind === "red" ? "#FF6B57" : js.kind === "amber" ? "#F2B33D" : calm;
+        if (js.kind !== "calm") { ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = js.kind === "red" ? 10 : 5; }
+        if (jamMap && js.kind === "calm") ctx.globalAlpha = 0.35;
+        ctx.lineWidth = Math.max(2, F.s * 0.3) * js.width; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        ctx.restore();
+        if (flashing.has(sn)) { ctx.save(); ctx.strokeStyle = "rgba(126,232,216,.85)"; ctx.shadowColor = "#7EE8D8"; ctx.shadowBlur = 14; ctx.lineWidth = Math.max(3, F.s * 0.5); ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); }
+        if (showLast && (jamWas[sn] || 0) > 0.2) { ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = (jamWas[sn] || 0) > 1 ? "rgba(199,146,255,.95)" : "rgba(199,146,255,.6)"; ctx.lineWidth = Math.max(2, F.s * 0.22); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); }
         if ((x + y) % 2 === 0 || v.o.reduce((p, q) => p + q) > 1) {
           const m = P(x + 0.5 + D[d][0] * 0.5, y + 0.5 + D[d][1] * 0.5, 0.06), ang = Math.atan2(b[1] - a[1], b[0] - a[0]), r = Math.max(2, F.s * 0.13);
           ctx.save(); ctx.translate(m[0], m[1]); ctx.rotate(ang); ctx.strokeStyle = "rgba(126,232,216,.75)"; ctx.lineWidth = 1.2;
@@ -168,6 +187,7 @@
     lastCars = vs.length;
     for (const v of vs) items.push({ v, d: P(v.x + 0.5, v.y + 0.5)[1] });
     items.sort((a, b) => a.d - b.d);
+    lastBadges = [];
 
     for (const it of items) {
       if (it.v) { drawVehicle(it.v); continue; }
@@ -175,21 +195,25 @@
       const b = it.b, col = b.kind === "group" ? FAM[b.area] || "#8FB3AE" : b.kind === "stocker" ? "#8A6A2C" : "#2F6F68";
       const i = 0.08, [ax, ay] = P(b.x + i, b.y + i), [bx, by] = P(b.x + b.w - i, b.y + b.h - i), w = bx - ax, h = by - ay;
       const en = E.engrave(col);
+      let q = 0, tr = null;
+      if (b.kind === "group" && fr) { const gi = run.group_names.indexOf(b.group); q = gi >= 0 ? fr.queues[gi] : 0; tr = E.trouble(E.blockMood(run, fi, b.group), q); }
+      ctx.save();
+      if (jamMap && !(tr && tr.kind === "broken")) ctx.globalAlpha = 0.28;
       ctx.beginPath(); ctx.roundRect(ax, ay, w, h, Math.min(w, h) * 0.12); ctx.fillStyle = col; ctx.fill();
       ctx.lineWidth = Math.max(1.5, F.s * 0.07); ctx.strokeStyle = en.cut; ctx.globalAlpha = 0.6; ctx.stroke(); ctx.globalAlpha = 1;
       ctx.fillStyle = "rgba(255,255,255,.2)"; ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, w - 6, Math.max(2, h * 0.05), 2); ctx.fill();
-      let q = 0;
-      if (b.kind === "group" && fr) { const gi = run.group_names.indexOf(b.group); q = gi >= 0 ? fr.queues[gi] : 0; }
-      const ic = b.kind === "group" ? b.area : b.kind, cx = ax + w / 2, cy = ay + h / 2 - (q ? h * 0.07 : 0), sz = Math.min(w, h) * 0.5;
+      const pl = E.pile(q), rows = Math.ceil((pl.shown + (pl.more ? 1 : 0)) / 6);
+      const ic = b.kind === "group" ? b.area : b.kind, cx = ax + w / 2, cy = ay + h / 2 - (rows ? h * 0.06 * rows : 0), sz = Math.min(w, h) * (rows > 1 ? 0.4 : 0.5);
       if (IC[ic]) { icon(ic, cx, cy + Math.max(1, F.s * 0.04), sz, en.light, 2.2); icon(ic, cx, cy, sz, en.cut, 2.2); }
+      ctx.restore();
       if (q) podsIn(ax, ay, w, h, q);
-      if (b.kind === "group" && fr) {
-        const mood = E.blockMood(run, fi, b.group);
-        if (mood) {
-          const r = Math.max(5, F.s * 0.3), mx = ax + w - r - 2, my = ay + r + 2;
-          ctx.fillStyle = MOOD[mood][1]; ctx.beginPath(); ctx.arc(mx, my, r, 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke();
-          icon(MOOD[mood][2], mx, my, r * 1.35, "#15191C", 2.2);
-        }
+      // badges only for trouble (docs/EDITOR-GAME.md); the mood's own icon inside
+      if (tr) {
+        const mood = E.blockMood(run, fi, b.group), r = Math.max(5, F.s * 0.3), mx = ax + w - r - 2, my = ay + r + 2;
+        ctx.fillStyle = tr.color; ctx.beginPath(); ctx.arc(mx, my, r, 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke();
+        if (tr.kind === "line") icon("queue" in IC ? "queue" : "stocker", mx, my, r * 1.25, "#15191C", 2);
+        else if (mood && MOOD[mood]) icon(MOOD[mood][2], mx, my, r * 1.35, "#15191C", 2.2);
+        lastBadges.push({ group: b.group, kind: tr.kind });
       }
       if (b.kind === "group" && (b.fail || b.rec)) { const r = Math.max(4, F.s * 0.26), fx = ax + r + 2, fy = ay + h - r - 2; ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(fx, fy, r, 0, 7); ctx.fill(); icon("bolt", fx, fy, r * 1.4, "#1B1E22", 2); }
       if (b.kind === "group" && (bad.has(b.group) || [...bad].some((a) => typeof a === "string" && a.startsWith(b.group + "#")))) { ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(ax - 2, ay - 2, w + 4, h + 4, 6); ctx.stroke(); ctx.restore(); }
@@ -198,6 +222,21 @@
     // a stretch set to break: a red bolt over it
     for (const c of breaks) { ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(c[0], c[1], Math.max(6, F.s * 0.38), 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke(); icon("bolt", c[0], c[1], Math.max(9, F.s * 0.52), "#1B1E22", 2); }
     if (flash) { const p = P(flash[0] + 0.5, flash[1] + 0.5); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p[0], p[1], F.s * 1.4, 0, 7); ctx.stroke(); }
+    // the challenge's spot: a pulsing ring (docs/EDITOR-GAME.md)
+    const sp = spotNow();
+    if (sp) {
+      const ph = (nowMs % 1600) / 1600, c = P(sp.x + sp.w / 2, sp.y + sp.h / 2), r0 = F.s * (Math.max(sp.w, sp.h) / 2 + 0.35);
+      ctx.save(); ctx.strokeStyle = "#F2B33D"; ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(c[0], c[1], r0, 0, 7); ctx.stroke();
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) { ctx.globalAlpha = 0.8 * (1 - ph); ctx.beginPath(); ctx.arc(c[0], c[1], r0 * (1 + 0.6 * ph), 0, 7); ctx.stroke(); }
+      ctx.restore();
+    }
+    // the cell under the pointer, lit in the tool's colour
+    if (cursorCell && !ghostAt && !panDrag && !boxDrag) {
+      const ob = blockAt(cursorCell[0], cursorCell[1]), [hx, hy] = ob ? [ob.x, ob.y] : cursorCell, hw = ob ? ob.w : 1, hh = ob ? ob.h : 1, tc = tool === "rail" ? "126,232,216" : tool === "erase" ? "255,107,87" : tool in AREA ? "242,179,61" : "227,236,238";
+      poly([P(hx, hy), P(hx + hw, hy), P(hx + hw, hy + hh), P(hx, hy + hh)]);
+      ctx.fillStyle = `rgba(${tc},.16)`; ctx.fill(); ctx.strokeStyle = `rgba(${tc},.85)`; ctx.lineWidth = 1.5; ctx.stroke();
+    }
     const outline = (x0, y0, w, h, col, dash) => {
       poly([P(x0, y0), P(x0 + w, y0), P(x0 + w, y0 + h), P(x0, y0 + h)]);
       ctx.setLineDash(dash || []); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
@@ -238,12 +277,13 @@
 
   /** Lots waiting at a group, inside its tile's lower edge: up to eight pods, a ninth in amber when there are more. */
   function podsIn(ax, ay, w, h, q) {
-    const k = Math.min(q, 8), n = k + (q > 8 ? 1 : 0), pw = Math.max(3, w * 0.075), ph = Math.max(3, h * 0.07), gap = Math.max(1.5, w * 0.02);
-    let px = ax + (w - (n * (pw + gap) - gap)) / 2;
-    const py = ay + h - ph - Math.max(3, h * 0.07);
-    for (let j = 0; j < n; j++, px += pw + gap) {
-      ctx.fillStyle = j === 8 ? "#FFB020" : "#F4E7C6"; ctx.fillRect(px, py, pw, ph);
-      ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1; ctx.strokeRect(px, py, pw, ph);
+    // the line piles up from the tile's lower edge: rows of six, up to three, a red pod for more (docs/EDITOR-GAME.md)
+    const pl = E.pile(q), n = pl.shown + (pl.more ? 1 : 0), pw = Math.max(3, w * 0.11), gap = Math.max(1.5, w * 0.03);
+    const rowW = 6 * (pw + gap) - gap, x0 = ax + (w - rowW) / 2, y0 = ay + h - pw - Math.max(3, h * 0.07);
+    for (let j = 0; j < n; j++) {
+      const px = x0 + (j % 6) * (pw + gap), py = y0 - Math.floor(j / 6) * (pw + gap);
+      ctx.fillStyle = pl.more && j === n - 1 ? "#FF4D4F" : q >= 4 ? "#F2B33D" : "#F4E7C6"; ctx.fillRect(px, py, pw, pw);
+      ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1; ctx.strokeRect(px, py, pw, pw);
     }
   }
 
@@ -319,16 +359,55 @@
     if (r.checks) { checks = r.checks; renderChecks(); }
     if (r.error) { if (!r.checks || r.checks.ok) { checks = { error: r.error }; renderChecks(); } $("goaltext").textContent = r.error; draw(); return; }
     if (run) prev = { ...run.score, spend: run.spendTop };
+    prevRun = keepClock ? run : null;
     run = r.moods; run.every = 60; run.spendTop = E.spend(s) - spend0;
+    if (prevRun) afterChange(prevRun, run);
     stale = false;
     const c = ch();
     if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
     $("slider").max = run.frames.length - 1;
     runsDone++;
     // a rerun after an edit keeps the tool in hand; only a fresh run goes back to watching (docs/EDITOR-SPEED.md)
-    renderTabs(); renderScore();
+    renderTabs(); renderScore(); lastHour = -1;
     if (keepClock) { $("again").hidden = true; draw(); } else setMode("run");
     await jumpTo(keepClock && clock > 0 ? Math.min(clock, days() * 1440 - WINDOW) : startTime());
+  }
+
+  // ---------- see your change work (docs/EDITOR-GAME.md)
+  function afterChange(was, now) {
+    const fi = frameIdx(), a = was.frames[Math.min(fi, was.frames.length - 1)], b = now.frames[Math.min(fi, now.frames.length - 1)];
+    const before = {}; was.stretches.forEach((n, i) => (before[n] = a.rails[i]));
+    const cleared = now.stretches.filter((n, i) => (before[n] || 0) > 1 && b.rails[i] <= 0.2);
+    if (cleared.length) flashes.push({ stretches: cleared, until: performance.now() + 1500 });
+    const text = E.floatText(was.score.wafers_per_day, now.score.wafers_per_day);
+    if (!text) return;
+    const box = $("mapbox").getBoundingClientRect(), c = cv.getBoundingClientRect();
+    const at = lastEditAt ? P(lastEditAt[0] + 0.5, lastEditAt[1] + 0.5) : [c.width / 2, c.height / 2];
+    const el = document.createElement("div");
+    el.className = "float " + (text.startsWith("+") ? "up" : text.startsWith("same") ? "same" : "down");
+    el.textContent = text;
+    el.style.left = `${at[0] + c.left - box.left}px`; el.style.top = `${at[1] + c.top - box.top}px`;
+    $("floats").appendChild(el);
+    setTimeout(() => el.remove(), 2200);
+  }
+  /** The challenge's spot on the floor: its broken track piece or its machine. */
+  function spotNow() {
+    const c = ch();
+    if (!c || !c.spot) return null;
+    if (c.spot.rail) { const k = Object.keys(s.rail).find((z) => s.rail[z].fail); if (!k) return null; const [x, y] = k.split(",").map(Number); return { rail: k, x, y, w: 1, h: 1 }; }
+    const b = s.blocks.find((z) => z.group === c.spot.group);
+    return b ? { group: b.group, x: b.x, y: b.y, w: b.w, h: b.h } : null;
+  }
+  function renderAdvice() {
+    if (!run) { $("advice").textContent = ""; return; }
+    const fi = frameIdx(), f = run.frames[fi], c = ch();
+    const jamOf = {}; run.stretches.forEach((n, i) => (jamOf[n] = f.rails[i]));
+    const failing = Object.keys(s.rail).filter((k) => s.rail[k].fail).map((k) => "c" + k.replace(",", "_"));
+    const brokenJam = failing.some((cell) => Object.keys(jamOf).some((n) => (n.startsWith(cell + ">") || n.endsWith(">" + cell)) && jamOf[n] > 0.2));
+    let worst = null;
+    run.group_names.forEach((g, i) => { const b = s.blocks.find((z) => z.group === g); if (b && b.area && (!worst || f.queues[i] > worst.queue)) worst = { name: AREA[b.area][0], queue: f.queues[i] }; });
+    const met = !!(c && E.meets(run.score, c.target, run.spendTop));
+    $("advice").textContent = E.advise({ brokenJam, worst, met });
   }
 
   function renderScore() {
@@ -368,7 +447,7 @@
     $("chtabs").querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => load(+b.dataset.ch)));
   }
   async function load(i, fixed) {
-    chIdx = i; sel = null; run = null; prev = null; win = null; checks = null;
+    chIdx = i; sel = null; run = null; prev = null; win = null; checks = null; prevRun = null; flashes = []; lastEditAt = null;
     const c = ch();
     if (c) { setupNow = c.setup(); if (fixed) setupNow = c.fix(setupNow); }
     else {
@@ -398,7 +477,7 @@
     mode = m;
 
     $("editor").classList.toggle("running", m === "run");
-    $("again").hidden = !(m === "build" || stale);
+    $("again").hidden = !stale; // only when the run on screen is out of date (docs/EDITOR-GAME.md)
     if (m === "run") { playing = !matchMedia("(prefers-reduced-motion: reduce)").matches || playing; tool = "select"; syncPal(); }
     playBtn(); draw();
   }
@@ -412,6 +491,7 @@
     if (fi === lastHour) return;
     lastHour = fi;
     $("slider").value = fi; $("slabel").textContent = hhmmss(run.frames[fi].t).replace(/:00$/, "");
+    renderAdvice();
     const lots = run.frames[fi].lots;
     void lots;
   }
@@ -423,11 +503,12 @@
     return Object.keys(areaOfGroup).find((g) => areaOfGroup[g] === area && !placed.has(g) && !(s.stores || []).includes(g) && base.includes(`group\t${g}\t`));
   }
   function buildPalette() {
-    const pb = (t, n, k, col, dis) => `<button data-t="${t}" aria-pressed="${tool === t}"${dis ? " disabled" : ""} title="${esc(n)}${dis ? ": all of these are placed. Add machines with + under Selected" : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>`;
-    let h = "<h4>Tools</h4>" + pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E");
-    h += "<h4>Machines</h4>";
-    for (const a of E.AREAS) h += pb(a, AREA[a][0], "", FAM[a], !nextGroup(a));
-    h += "<h4>Moving wafers</h4>" + pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]);
+    // a grid of keys, only this challenge's tools, nothing greyed (docs/EDITOR-GAME.md)
+    const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
+    const sec = (name, keys) => (keys ? `<h4>${name}</h4><div class="keys">${keys}</div>` : "");
+    let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E"));
+    h += sec("Machines", E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join(""));
+    h += sec("Moving wafers", pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]));
     $("pal").innerHTML = h;
     $("pal").querySelectorAll("button").forEach((b) => (b.onclick = () => take(b.dataset.t)));
     // the hotbar's numbers (docs/EDITOR-MOVES.md): 4 to 9 on the six recent pieces
@@ -439,7 +520,17 @@
       kb.textContent = String(i + 1);
     });
   }
-  function syncPal() { $("pal").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); }
+  function syncPal() { $("pal").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
+  const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || (t in AREA && c.tools.includes("machines")); };
+  function renderHint() {
+    const h = $("hint"); if (!h) return;
+    h.textContent = pasting ? "Click where the copy should go. Esc puts it down."
+      : tool === "rail" ? "Drag across the floor to lay track. Cars run the way you drag."
+      : tool === "erase" ? "Click or drag over track and machines to remove them."
+      : tool in AREA ? `Click an empty spot to place ${AREA[tool][0].toLowerCase()}. R turns it.`
+      : ["entry", "exit", "stocker"].includes(tool) ? "Click an empty spot to place it. R turns it."
+      : "Click a machine or a piece of track to change it. Drag empty floor to move the view. J shows the jams.";
+  }
 
   const blockAt = (x, y, skip) => s.blocks.find((b) => b !== skip && x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h);
   function free(x, y, w, h, skip) {
@@ -448,6 +539,7 @@
     return true;
   }
   function edited() {
+    { const b = sel && sel.id && s.blocks.find((z) => z.id === sel.id); lastEditAt = b ? [b.x + (b.w - 1) / 2, b.y + (b.h - 1) / 2] : hover ? [...hover] : null; }
     // one undo step per gesture: the state before the gesture is kept once, at its first change
     if (!(drag && drag.recorded)) { hist.push(lastSnap); if (drag) drag.recorded = true; }
     lastSnap = snap();
@@ -557,6 +649,7 @@
     if (boxDrag) { boxDrag.b = floorCell(e); boxSel = E.inBox(s, boxDrag.a[0], boxDrag.a[1], boxDrag.b[0], boxDrag.b[1]); draw(); return; }
     const [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
     hover = inb ? [x, y] : null;
+    { const fc = floorCell(e); cursorCell = fc[0] >= 0 && fc[1] >= 0 && fc[0] < s.W && fc[1] < s.H ? fc : null; }
     const pk = placeKind();
     if (pasting && clip) {
       const [ax, ay] = floorCell(e);
@@ -600,7 +693,7 @@
     }
     drag = null; inspector();
   });
-  cv.addEventListener("pointerleave", () => { hover = null; ghostAt = null; $("hover").hidden = true; if (!playing) draw(); });
+  cv.addEventListener("pointerleave", () => { hover = null; cursorCell = null; ghostAt = null; $("hover").hidden = true; if (!playing) draw(); });
   // scroll or pinch zooms about the pointer
   cv.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -746,6 +839,8 @@
 
   // ---------- controls
   $("play").onclick = () => { if (stale) return runNow(); playing = !playing; if (playing && mode === "build") setMode("run"); playBtn(); };
+  function setJamMap(on) { jamMap = on; $("jammap").setAttribute("aria-pressed", String(on)); draw(); }
+  $("jammap").onclick = () => setJamMap(!jamMap);
   // one speed button, the floor's steps: 1×, 3×, 12× are 20, 60, 240 fab minutes a real second; Max one fab hour a frame
   $("speed").onclick = () => {
     const SP = [[20, "1×"], [60, "3×"], [240, "12×"], [MAX, "Max"]], i = SP.findIndex((x) => x[0] === speed), n = SP[(i + 1) % SP.length];
@@ -758,6 +853,7 @@
   $("template").onchange = () => load(E.CHALLENGES.length);
   $("slider").oninput = () => { if (!run) return; const t = run.frames[+$("slider").value].t; lastHour = -1; jumpTo(Math.min(t, days() * 1440 - WINDOW)); };
   document.addEventListener("keyup", (e) => {
+    if (e.key.toLowerCase() === "h" && showLast) { showLast = false; $("lastrun").hidden = true; draw(); }
     if (e.key === " " && spaceHeld) { spaceHeld = false; if (!spacePanned) $("play").click(); spacePanned = false; }
   });
   document.addEventListener("keydown", (e) => {
@@ -797,6 +893,8 @@
     }
     if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
+    if (k === "j") { setJamMap(!jamMap); return; }
+    if (k === "h") { if (!e.repeat) { showLast = true; $("lastrun").textContent = prevRun ? "Dashed purple: the jams of your last run" : "No earlier run yet"; $("lastrun").hidden = false; draw(); } return; }
     if (k === "f") { V = null; draw(); return; }
     const step = 40, dirs = { w: [0, step], arrowup: [0, step], s: [0, -step], arrowdown: [0, -step], a: [step, 0], arrowleft: [step, 0], d: [-step, 0], arrowright: [-step, 0] };
     if (dirs[k]) { e.preventDefault(); pan(dirs[k][0], dirs[k][1]); return; }
@@ -829,6 +927,12 @@
     runs: () => runsDone,
     clock: () => clock,
     cars: () => lastCars,
+    cursor: () => (cursorCell ? [...cursorCell] : null),
+    badges: () => lastBadges.map((b) => ({ ...b })),
+    groupsNow: () => (run ? s.blocks.filter((b) => b.kind === "group").map((b) => { const gi = run.group_names.indexOf(b.group), q = gi >= 0 ? run.frames[lastDrawFi].queues[gi] : 0, mood = E.blockMood(run, lastDrawFi, b.group); return { group: b.group, mood, queue: q, trouble: E.trouble(mood, q) }; }) : []),
+    jamMap: () => jamMap,
+    spot: () => { const p = spotNow(); return p ? (p.rail ? { rail: p.rail } : { group: p.group }) : null; },
+    showingLast: () => showLast,
     canUndo: () => hist.canUndo(),
     canRedo: () => hist.canRedo(),
     // the foreman keys (docs/EDITOR-MOVES.md)

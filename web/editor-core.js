@@ -254,6 +254,7 @@
       id: "rush", title: "Rush hour on the spine", days: 2,
       problem: "A piece of the main track by the lithography bay keeps breaking down, and every car behind it sits and waits.",
       goal: "Get output up to 670 wafers a day. Hint: the bay's own loop can carry the cars around the break.",
+      spot: { rail: "fail" }, tools: ["select", "rail", "erase", "entry", "exit", "stocker"],
       target: { wafers: 670, budget: 0 },
       setup() { const x = teach(); const v = x.state.rail[laneCell(x.state, 3)]; v.fail = { kind: "random", mttf_minutes: 120, mttr_minutes: 90 }; v.rec = { kind: "wait" }; return withOverrides(x); },
       fix(x) { x.state.rail[laneCell(x.state, 3)].rec = { kind: "route_around" }; return withOverrides(x); },
@@ -262,6 +263,7 @@
       id: "polisher", title: "The gassed polisher", days: 2,
       problem: "The whole fab shares one polishing machine. It cannot keep up, and work piles up in front of it.",
       goal: "Get output up to 780 wafers a day. You can afford one more polishing machine.",
+      spot: { group: "Planar_T" }, tools: ["select"],
       target: { wafers: 780, budget: PRICE.cmp },
       setup() { const x = teach(); groupBlock(x.state, "Planar_T").count = 1; return x; },
       fix(x) { groupBlock(x.state, "Planar_T").count = 2; return x; },
@@ -270,6 +272,7 @@
       id: "breakdown", title: "Breakdown, no spare", days: 2,
       problem: "The lithography machines break every few hours, and each repair takes three hours on the spot.",
       goal: "Get output up to 550 wafers a day. You can afford one more lithography machine, or one spare to swap in.",
+      spot: { group: "Litho_T" }, tools: ["select"],
       target: { wafers: 550, budget: PRICE.litho },
       setup() { const x = teach(); const b = groupBlock(x.state, "Litho_T"); b.fail = { kind: "random", mttf_minutes: 240, mttr_minutes: 180 }; return withOverrides(x); },
       fix(x) { groupBlock(x.state, "Litho_T").rec = { kind: "swap_to_spare", spares: 1, swap_minutes: 20 }; return withOverrides(x); },
@@ -278,11 +281,44 @@
       id: "lean", title: "Lean or redundant?", days: 2,
       problem: "On day two the polishing machines are down for ten hours. Do you keep the fab lean, or pay for a backup?",
       goal: "Keep output at 650 wafers a day through the outage. You can afford one more polishing machine.",
+      spot: { group: "Planar_T" }, tools: ["select"],
       target: { wafers: 650, budget: PRICE.cmp },
       setup() { const x = teach(); x.base = TEACHING_SHOP.replace(/(group\tPlanar_T\t\d+\t[^\n]*)/, "$1\ndown\t1800.0\t2400.0"); return x; },
       fix(x) { groupBlock(x.state, "Planar_T").count = 3; return x; },
     },
   ];
+
+  // ---------- the editor as a game (docs/EDITOR-GAME.md)
+  const TROUBLE = { broken: "#FF4D4F", gassed: "#FFB020", blocked: "#FFB020", held: "#FFB020", line: "#FFB020", planned: "#5FA8FF" };
+  const LINE_AT = 4; // lots waiting that make a line worth a badge
+  /** A machine's trouble, or null: badges only for trouble. A line beats a planned stop. */
+  function trouble(mood, q) {
+    let kind = null;
+    if (mood === "hurt" || mood === "physio") kind = "broken";
+    else if (mood === "tired") kind = "gassed";
+    else if (mood === "full") kind = "blocked";
+    else if (mood === "hold") kind = "held";
+    else if ((q || 0) >= LINE_AT) kind = "line";
+    else if (mood === "pm" || mood === "setup") kind = "planned";
+    return kind ? { kind, color: TROUBLE[kind] } : null;
+  }
+  /** Lots waiting as pods: rows of six, up to three rows; past eighteen, seventeen and a mark for more. */
+  const pile = (q) => (q > 18 ? { shown: 17, more: true } : { shown: Math.max(0, q | 0), more: false });
+  /** How a piece of track is drawn from its jam (extra minutes a car waits on it). */
+  const jamStyle = (j) => (j > 1 ? { kind: "red", width: 2 } : j > 0.2 ? { kind: "amber", width: 1.5 } : { kind: "calm", width: 1 });
+  /** One line of advice from the hour on screen. */
+  function advise({ brokenJam, worst, met }) {
+    if (met) return "Challenge met. Try another one, or push the number higher.";
+    if (brokenJam) return "Cars are queuing behind the broken track. Give them a way around the break.";
+    if (worst && worst.queue >= LINE_AT) return `The longest line is at ${worst.name}: ${worst.queue} lots waiting.`;
+    return "Lots are flowing. Watch for a line to build.";
+  }
+  /** The text that floats up where you changed something. */
+  function floatText(prev, now) {
+    if (prev == null || now == null) return null;
+    const d = Math.round(now - prev);
+    return d > 0 ? `+${d} wafers a day` : d < 0 ? `\u2212${-d} wafers a day` : "same output";
+  }
 
   /** A block's mood at a frame: the most common mood among its group's tools; a tie to the more serious. */
   function blockMood(m, frame, group) {
@@ -431,7 +467,8 @@
   }
 
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
-    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave };
+    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave,
+    trouble, pile, jamStyle, advise, floatText };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);
