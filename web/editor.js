@@ -30,6 +30,38 @@
   // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
   let V = null, FIT = null, ghostAt = null, panDrag = null, spaceHeld = false, spacePanned = false, lastSnap = null, rerunTimer = null, runSeq = 0, runsDone = 0;
   const hist = E.History(200);
+  // the Factorio moves (docs/EDITOR-MOVES.md): recent pieces for the hotbar, a turned piece in hand, the box, the clipboard
+  let recent = [], handTurned = false, boxSel = null, boxDrag = null, clip = null, pasting = false, pastePlan = null;
+  const PIECES = new Set(["stocker", "entry", "exit", ...E.AREAS]);
+  /** Take a tool in hand, as the palette, a hotbar key or Q does; a piece goes to the front of the recent list. */
+  function take(t) {
+    if (E.AREAS.includes(t) && !nextGroup(t)) { $("status").textContent = `Every ${AREA[t][0].toLowerCase()} group is placed. Add machines with + under Selected.`; return false; }
+    tool = t; handTurned = false; pasting = false;
+    if (PIECES.has(t)) { recent = [t, ...recent.filter((x) => x !== t)].slice(0, 6); buildPalette(); }
+    if (tool !== "select" && mode === "run") setMode("build");
+    syncPal(); draw();
+    return true;
+  }
+  /** The footprint of the piece in hand: wafers in and out may be turned with R. */
+  function handDims(kind) {
+    const [w, h] = E.footprint(kind);
+    return handTurned && (kind === "entry" || kind === "exit") ? [h, w] : [w, h];
+  }
+  /** Unplaced groups of each kind, for a paste. */
+  function unplaced() {
+    const placed = new Set(s.blocks.filter((b) => b.kind === "group").map((b) => b.group)), out = {};
+    for (const g of Object.keys(areaOfGroup)) {
+      const a = areaOfGroup[g];
+      if (placed.has(g) || (s.stores || []).includes(g) || !base.includes(`group\t${g}\t`)) continue;
+      (out[a] = out[a] || []).push(g);
+    }
+    return out;
+  }
+  /** The floor cell under a pointer, ignoring pieces drawn in front (for the box and a paste). */
+  function floorCell(e) {
+    const r = cv.getBoundingClientRect(), [fx, fy] = unP(e.clientX - r.left, e.clientY - r.top);
+    return [Math.floor(fx), Math.floor(fy)];
+  }
   const met = new Set();
   try { for (const id of JSON.parse(localStorage.getItem("fabgym.met") || "[]")) met.add(id); } catch (e) { /* no storage */ }
   const ch = () => (chIdx < E.CHALLENGES.length ? E.CHALLENGES[chIdx] : null);
@@ -157,7 +189,23 @@
     // a stretch set to break: a red bolt over it
     for (const c of breaks) { ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(c[0], c[1] - F.s * 0.35, Math.max(6, F.s * 0.38), 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke(); icon("bolt", c[0], c[1] - F.s * 0.35, Math.max(9, F.s * 0.52), "#1B1E22", 2); }
     if (flash) { const p = P(flash[0] + 0.5, flash[1] + 0.5); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p[0], p[1], F.s * 1.8, F.s * 0.9, 0, 0, 7); ctx.stroke(); }
-    if (ghostAt) {
+    const outline = (x0, y0, w, h, col, dash) => {
+      poly([P(x0, y0), P(x0 + w, y0), P(x0 + w, y0 + h), P(x0, y0 + h)]);
+      ctx.setLineDash(dash || []); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+    };
+    if (boxSel) {
+      for (const id of boxSel.blocks) { const b = s.blocks.find((z) => z.id === id); if (b) outline(b.x, b.y, b.w, b.h, "#F2B33D"); }
+      for (const r of boxSel.rails) { const [x, y] = r.split(",").map(Number); outline(x, y, 1, 1, "#F2B33D"); }
+    }
+    if (boxDrag) {
+      const [ax, ay] = boxDrag.a, [bx, by] = boxDrag.b;
+      outline(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax) + 1, Math.abs(by - ay) + 1, "rgba(242,179,61,.9)", [6, 4]);
+    }
+    if (ghostAt && ghostAt.kind === "paste" && pastePlan) {
+      const col = pastePlan.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)";
+      for (const b of pastePlan.blocks) { poly([P(b.x, b.y), P(b.x + b.w, b.y), P(b.x + b.w, b.y + b.h), P(b.x, b.y + b.h)]); ctx.fillStyle = col; ctx.fill(); }
+      for (const r of Object.keys(pastePlan.rails)) { const [x, y] = r.split(",").map(Number); poly([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)]); ctx.fillStyle = col; ctx.fill(); }
+    } else if (ghostAt) {
       const g = ghostAt, q = [P(g.x, g.y), P(g.x + g.w, g.y), P(g.x + g.w, g.y + g.h), P(g.x, g.y + g.h)];
       poly(q); ctx.fillStyle = g.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)"; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = g.ok ? "rgba(126,232,216,.9)" : "rgba(255,107,87,.95)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
@@ -369,7 +417,15 @@
     for (const a of E.AREAS) h += pb(a, AREA[a][0], "", FAM[a], !nextGroup(a));
     h += "<h4>Moving wafers</h4>" + pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]);
     $("pal").innerHTML = h;
-    $("pal").querySelectorAll("button").forEach((b) => (b.onclick = () => { tool = b.dataset.t; if (tool !== "select" && mode === "run") setMode("build"); syncPal(); }));
+    $("pal").querySelectorAll("button").forEach((b) => (b.onclick = () => take(b.dataset.t)));
+    // the hotbar's numbers (docs/EDITOR-MOVES.md): 4 to 9 on the six recent pieces
+    E.hotbar(recent).forEach((t, i) => {
+      const btn = $("pal").querySelector(`[data-t="${t}"]`);
+      if (!btn || i < 3) return;
+      let kb = btn.querySelector("kbd");
+      if (!kb) { kb = document.createElement("kbd"); btn.appendChild(kb); }
+      kb.textContent = String(i + 1);
+    });
   }
   function syncPal() { $("pal").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); }
 
@@ -400,7 +456,7 @@
   const snap = () => JSON.parse(JSON.stringify(s));
   function restore(st) {
     if (!st) return;
-    s = st; if (setupNow) setupNow.state = s; sel = null; drag = null;
+    s = st; if (setupNow) setupNow.state = s; sel = null; drag = null; boxSel = null;
     lastSnap = snap();
     buildPalette(); inspector(); syncUndo(); changed();
   }
@@ -438,6 +494,21 @@
     return [Math.floor(x), Math.floor(y)];
   }
   cv.addEventListener("pointerdown", (e) => {
+    if (pasting && clip && e.button === 0) {
+      const [ax, ay] = floorCell(e), plan = E.pasteAt(s, clip, ax, ay, unplaced());
+      if (!plan.ok) { $("status").textContent = plan.why; return; }
+      let id = Math.max(0, ...s.blocks.map((z) => z.id));
+      for (const b of plan.blocks) s.blocks.push({ ...b, id: ++id });
+      Object.assign(s.rail, plan.rails);
+      buildPalette(); edited();
+      if (plan.skipped.length) $("status").textContent = plan.skipped.join(" ");
+      return;
+    }
+    if (tool === "select" && e.shiftKey && e.button === 0) {
+      const c = floorCell(e);
+      boxDrag = { a: c, b: c }; boxSel = E.inBox(s, c[0], c[1], c[0], c[1]);
+      cv.setPointerCapture(e.pointerId); e.preventDefault(); draw(); return;
+    }
     const [x, y] = cellOf(e);
     const empty = !(x >= 0 && y >= 0 && x < s.W && y < s.H) || (!blockAt(x, y) && !s.rail[E.key(x, y)]);
     if (e.button === 1 || spaceHeld || (tool === "select" && e.button === 0 && empty)) {
@@ -456,7 +527,7 @@
     }
     if (tool === "erase") { if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) delete s.rail[k]; else return; sel = null; buildPalette(); inspector(); edited(); drag = { erase: true, recorded: true }; cv.setPointerCapture(e.pointerId); return; }
     if (tool === "rail") { if (b) return; if (!s.rail[k]) s.rail[k] = { o: [0, 0, 0, 0] }; drag = { last: k }; sel = { rail: k }; cv.setPointerCapture(e.pointerId); inspector(); edited(); return; }
-    const kind = placeKind(), [w, h] = kind === "entry" || kind === "exit" ? [1, 2] : [2, 2];
+    const kind = placeKind(), [w, h] = handDims(kind);
     if (!free(x, y, w, h)) return;
     const id = Math.max(0, ...s.blocks.map((z) => z.id)) + 1;
     if (kind === "group") {
@@ -470,11 +541,18 @@
   });
   cv.addEventListener("pointermove", (e) => {
     if (panDrag) { V = E.panBy(panDrag.v, e.clientX - panDrag.x, e.clientY - panDrag.y); draw(); return; }
+    if (boxDrag) { boxDrag.b = floorCell(e); boxSel = E.inBox(s, boxDrag.a[0], boxDrag.a[1], boxDrag.b[0], boxDrag.b[1]); draw(); return; }
     const [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
     hover = inb ? [x, y] : null;
     const pk = placeKind();
-    if (inb && ["group", "stocker", "entry", "exit"].includes(pk)) {
-      ghostAt = E.ghost(s, pk, x, y);
+    if (pasting && clip) {
+      const [ax, ay] = floorCell(e);
+      pastePlan = E.pasteAt(s, clip, ax, ay, unplaced());
+      ghostAt = { kind: "paste", x: ax, y: ay, w: clip.w, h: clip.h, ok: pastePlan.ok, why: pastePlan.why };
+      $("status").textContent = pastePlan.ok ? `Click to paste${pastePlan.skipped.length ? ". " + pastePlan.skipped.join(" ") : ""}` : pastePlan.why;
+    } else if (inb && ["group", "stocker", "entry", "exit"].includes(pk)) {
+      const [gw, gh] = handDims(pk), f = E.isFree(s, x, y, gw, gh);
+      ghostAt = { kind: pk, x, y, w: gw, h: gh, ok: f.ok, why: f.why };
       if (ghostAt.ok && pk === "group" && !nextGroup(tool)) ghostAt = { ...ghostAt, ok: false, why: "Every group of this kind is placed. Add machines with + under Selected." };
     } else ghostAt = null;
     if (drag && inb) {
@@ -499,7 +577,16 @@
     status(x, y, inb);
     if (!drag && !playing) draw();
   });
-  cv.addEventListener("pointerup", () => { if (panDrag) { panDrag = null; cv.classList.remove("panning"); return; } drag = null; inspector(); });
+  cv.addEventListener("pointerup", () => {
+    if (panDrag) { panDrag = null; cv.classList.remove("panning"); return; }
+    if (boxDrag) {
+      boxDrag = null;
+      if (boxSel && !boxSel.blocks.length && !boxSel.rails.length) boxSel = null;
+      $("status").textContent = boxSel ? `${boxSel.blocks.length} piece${boxSel.blocks.length === 1 ? "" : "s"} and ${boxSel.rails.length} track piece${boxSel.rails.length === 1 ? "" : "s"} selected. ⌘C copies, Delete removes.` : "";
+      draw(); return;
+    }
+    drag = null; inspector();
+  });
   cv.addEventListener("pointerleave", () => { hover = null; ghostAt = null; $("hover").hidden = true; if (!playing) draw(); });
   // scroll or pinch zooms about the pointer
   cv.addEventListener("wheel", (e) => {
@@ -662,13 +749,41 @@
     if (e.metaKey || e.ctrlKey) {
       if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (k === "y") { e.preventDefault(); redo(); }
+      else if (k === "c" && boxSel) { e.preventDefault(); clip = E.copySel(s, boxSel); $("status").textContent = clip ? "Copied. ⌘V takes it in hand." : ""; }
+      else if (k === "v" && clip) { e.preventDefault(); tool = "select"; syncPal(); pasting = true; ghostAt = null; $("status").textContent = "Point where the copy should go and click. Esc drops it."; draw(); }
       return;
     }
+    if (/^[1-9]$/.test(k)) { take(E.hotbar(recent)[+k - 1]); return; }
+    if (k === "q") {
+      if (hover) { const t = E.pickAt(s, hover[0], hover[1]); if (!take(t) && t !== "select") take("select"); }
+      return;
+    }
+    if (k === "r" && ["entry", "exit"].includes(placeKind())) {
+      handTurned = !handTurned;
+      if (ghostAt && ghostAt.kind === placeKind()) { const [gw, gh] = handDims(ghostAt.kind), f = E.isFree(s, ghostAt.x, ghostAt.y, gw, gh); ghostAt = { ...ghostAt, w: gw, h: gh, ok: f.ok, why: f.why }; }
+      draw(); return;
+    }
+    if (k === "r" && sel && sel.id) {
+      const b = s.blocks.find((z) => z.id === sel.id);
+      if (b) {
+        const t = E.turn(b.kind, b.w, b.h);
+        if (!t.changed) $("status").textContent = "A square piece looks and works the same turned: it serves the track on every side.";
+        else { const f = E.isFree(s, b.x, b.y, t.w, t.h, b.id); if (f.ok) { b.w = t.w; b.h = t.h; inspector(); edited(); } else $("status").textContent = `It cannot turn here: ${f.why.toLowerCase()}`; }
+      }
+      return;
+    }
+    if ((k === "delete" || k === "backspace") && boxSel) {
+      const ids = new Set(boxSel.blocks);
+      s.blocks = s.blocks.filter((b) => !ids.has(b.id));
+      for (const r of boxSel.rails) delete s.rail[r];
+      boxSel = null; sel = null; buildPalette(); inspector(); edited(); return;
+    }
+    if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
     if (k === "f") { V = null; draw(); return; }
     const step = 40, dirs = { w: [0, step], arrowup: [0, step], s: [0, -step], arrowdown: [0, -step], a: [step, 0], arrowleft: [step, 0], d: [-step, 0], arrowright: [-step, 0] };
     if (dirs[k]) { e.preventDefault(); pan(dirs[k][0], dirs[k][1]); return; }
-    if (m[k]) { tool = m[k]; if (tool !== "select" && mode === "run") setMode("build"); syncPal(); }
+    if (m[k]) take(m[k]);
     if (k === "r" && sel && sel.rail && s.rail[sel.rail]) { const v = s.rail[sel.rail]; v.o = [v.o[3], v.o[0], v.o[1], v.o[2]]; inspector(); edited(); }
     if ((k === "delete" || k === "backspace") && sel && sel.id) { s.blocks = s.blocks.filter((b) => b.id !== sel.id); sel = null; buildPalette(); inspector(); edited(); }
     if (k === "escape") { sel = null; inspector(); draw(); }
@@ -698,6 +813,13 @@
     clock: () => clock,
     canUndo: () => hist.canUndo(),
     canRedo: () => hist.canRedo(),
+    // the Factorio moves (docs/EDITOR-MOVES.md)
+    tool: () => tool,
+    size: () => [s.W, s.H],
+    railKeys: () => Object.keys(s.rail),
+    selection: () => (boxSel ? { blocks: boxSel.blocks.slice(), rails: boxSel.rails.slice() } : { blocks: [], rails: [] }),
+    hotbar: () => E.hotbar(recent),
+    clipboard: () => (clip ? JSON.parse(JSON.stringify(clip)) : null),
     // the first spot that is free and can be pointed at: every cell's middle picks that cell, not a block drawn in front
     firstFree(w, h) {
       const r = cv.getBoundingClientRect();

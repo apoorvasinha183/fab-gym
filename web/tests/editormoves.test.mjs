@@ -219,38 +219,39 @@ test("P3 the hotbar: 1, 2, 3 and the fourth slot, numbers on the palette", { ski
 test("P4 box select, copy, paste and delete, each one undo step", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const { b, close } = await openEditor();
   try {
-    // two storage blocks side by side and a run of track under them, in a free 4 × 3 patch (farther block first)
-    const [x, y] = await page(b, "F.firstFree(4, 3)");
+    // two storage blocks stacked and two pieces of track under them, in a free 2 × 5 patch (the challenge's floor has
+    // no wider patch that can be pointed at); the farther block first
+    const [x, y] = await page(b, "F.firstFree(2, 5)");
     await hand(b, "stocker");
-    await click(b, x + 2, y);
     await click(b, x, y);
+    await click(b, x, y + 2);
     await b.key("b", "KeyB");
-    await dragCells(b, [x, y + 2], [x + 3, y + 2]);
+    await dragCells(b, [x, y + 4], [x + 1, y + 4]);
     const n0 = await page(b, "F.blocks().length"), r0 = await page(b, "F.rails()");
     await b.key("v", "KeyV");
-    await dragCells(b, [x, y], [x + 3, y + 2], 8);
+    await dragCells(b, [x, y], [x + 1, y + 4], 8);
     const sel = await page(b, "F.selection()");
     assert.equal(sel.blocks.length, 2, "two storage blocks selected");
-    assert.equal(sel.rails.length, 4, "four track pieces selected");
+    assert.equal(sel.rails.length, 2, "two track pieces selected");
     await b.key("c", "KeyC", 2);
     assert.ok(await page(b, "F.clipboard() && F.clipboard().blocks.length === 2"), "copied");
     await b.key("v", "KeyV", 2);
-    const [px, py] = await page(b, "F.firstFree(4, 3)");
+    const [px, py] = await page(b, "F.firstFree(2, 5)");
     await hover(b, px, py);
     assert.equal((await page(b, "F.ghost()")).ok, true, "the pasted layout fits there");
     await click(b, px, py);
     assert.equal(await page(b, "F.blocks().length"), n0 + 2, "two blocks pasted");
-    assert.equal(await page(b, "F.rails()"), r0 + 4, "four track pieces pasted");
+    assert.equal(await page(b, "F.rails()"), r0 + 2, "two track pieces pasted");
     await b.key("z", "KeyZ", 2);
     await sleep(80);
     assert.equal(await page(b, "F.blocks().length"), n0, "one undo takes the paste back");
     assert.equal(await page(b, "F.rails()"), r0);
     await b.key("Escape", "Escape", 0, 27);
-    await dragCells(b, [x, y], [x + 3, y + 2], 8);
+    await dragCells(b, [x, y], [x + 1, y + 4], 8);
     await b.key("Delete", "Delete", 0, 46);
     await sleep(80);
     assert.equal(await page(b, "F.blocks().length"), n0 - 2, "Delete removes the selection");
-    assert.equal(await page(b, "F.rails()"), r0 - 4);
+    assert.equal(await page(b, "F.rails()"), r0 - 2);
     await b.key("z", "KeyZ", 2);
     await sleep(80);
     assert.equal(await page(b, "F.blocks().length"), n0, "one undo puts it back");

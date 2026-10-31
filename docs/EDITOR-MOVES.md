@@ -48,4 +48,12 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
 
 ## Changes
 
-(none yet)
+- 31 Oct, while writing the code: P4 lays its two storage blocks stacked with two pieces of track under them, in a
+  2 × 5 patch, because challenge 1's 17 × 13 floor has no free 4 × 3 patch that can be pointed at (its free strip on the
+  right lies behind taller machines in the tilted view; the one on the left is two tiles wide); what P4 checks is
+  unchanged. `FabEditorPage` also gives the floor's `size()` and its `railKeys()`, read only, to see a floor's free
+  space in tests.
+- 31 Oct, results: M1 to M5 and P1 to P4 pass (twice in a row), and all 124 page tests. Found on the way: in the tilted
+  view, taller machines hide the floor cells behind them, so free floor there cannot be clicked; a flat view (as the
+  floor page's T key gives) would fix it.
+

@@ -350,8 +350,81 @@
     return { kind, x, y, w, h, ok: f.ok, why: f.why };
   }
 
+  // ---------- the editor's Factorio moves (docs/EDITOR-MOVES.md)
+
+  /** R: wafers in and out turn between 1 × 2 and 2 × 1; a square piece looks and works the same turned. */
+  function turn(kind, w, h) {
+    return kind === "entry" || kind === "exit" ? { w: h, h: w, changed: w !== h } : { w, h, changed: false };
+  }
+
+  /** Q: the tool for what is at (x, y): a machine's kind, storage or wafers in or out, the Track tool, or Select. */
+  function pickAt(st, x, y) {
+    const b = st.blocks.find((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h);
+    if (b) return b.kind === "group" ? b.area : b.kind;
+    return st.rail[key(x, y)] ? "rail" : "select";
+  }
+
+  /** The pieces (ids) and track (keys) wholly inside the box with corners (x0, y0) and (x1, y1), in any order. */
+  function inBox(st, x0, y0, x1, y1) {
+    const ax = Math.min(x0, x1), bx = Math.max(x0, x1), ay = Math.min(y0, y1), by = Math.max(y0, y1);
+    const blocks = st.blocks.filter((b) => b.x >= ax && b.y >= ay && b.x + b.w - 1 <= bx && b.y + b.h - 1 <= by).map((b) => b.id);
+    const rails = Object.keys(st.rail).filter((k) => { const [x, y] = k.split(",").map(Number); return x >= ax && x <= bx && y >= ay && y <= by; });
+    return { blocks, rails };
+  }
+
+  /** A copy of a selection, each piece placed relative to the selection's top corner; null when nothing is selected. */
+  function copySel(st, sel) {
+    const bs = st.blocks.filter((b) => sel.blocks.includes(b.id));
+    const rs = sel.rails.filter((k) => st.rail[k]).map((k) => [...k.split(",").map(Number), st.rail[k]]);
+    if (!bs.length && !rs.length) return null;
+    const ox = Math.min(...bs.map((b) => b.x), ...rs.map((r) => r[0])), oy = Math.min(...bs.map((b) => b.y), ...rs.map((r) => r[1]));
+    const blocks = bs.map((b) => ({ kind: b.kind, area: b.area, count: b.count, w: b.w, h: b.h, dx: b.x - ox, dy: b.y - oy }));
+    const rails = rs.map(([x, y, v]) => ({ dx: x - ox, dy: y - oy, o: v.o.slice() }));
+    const w = Math.max(...blocks.map((b) => b.dx + b.w), ...rails.map((r) => r.dx + 1));
+    const h = Math.max(...blocks.map((b) => b.dy + b.h), ...rails.map((r) => r.dy + 1));
+    return { blocks, rails, w, h };
+  }
+
+  /** A copy placed with its corner at (x, y), without changing the floor: the new pieces and track, whether all of it
+   * fits (and why not), and the machines left out. A copied machine takes the next of `available[area]` (unplaced
+   * groups of its kind). */
+  function pasteAt(st, clip, x, y, available) {
+    const avail = {};
+    for (const a of Object.keys(available || {})) avail[a] = available[a].slice();
+    const blocks = [], rails = {}, skipped = [];
+    let ok = true, why = "";
+    for (const c of clip.blocks) {
+      const b = { kind: c.kind, x: x + c.dx, y: y + c.dy, w: c.w, h: c.h };
+      if (c.kind === "group") {
+        const g = (avail[c.area] || []).shift();
+        if (!g) { skipped.push(`No unplaced ${c.area} group is left, so one machine was left out.`); continue; }
+        Object.assign(b, { area: c.area, group: g, count: c.count });
+      }
+      const f = isFree(st, b.x, b.y, b.w, b.h);
+      if (!f.ok && ok) { ok = false; why = f.why; }
+      blocks.push(b);
+    }
+    for (const r of clip.rails) {
+      const rx = x + r.dx, ry = y + r.dy;
+      const f = isFree(st, rx, ry, 1, 1);
+      if (!f.ok && ok) { ok = false; why = f.why; }
+      rails[key(rx, ry)] = { o: r.o.slice() };
+    }
+    return { ok, why, blocks, rails, skipped };
+  }
+
+  /** The 1–9 hotbar: Select, Track, Erase, then the six most recent pieces (most recent first), filled in a fixed order. */
+  function hotbar(recent) {
+    const out = ["select", "rail", "erase"];
+    for (const t of [...(recent || []), "stocker", "entry", "exit", ...AREAS]) {
+      if (out.length >= 9) break;
+      if (!out.includes(t)) out.push(t);
+    }
+    return out;
+  }
+
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
-    History, zoomAt, panBy, isFree, footprint, ghost };
+    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);
