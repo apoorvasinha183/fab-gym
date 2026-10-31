@@ -11,3 +11,6 @@ __pycache__/
 /web/fabweb.wasm
 /.tools/
 /viz/godot-real/addons/godot_mcp_toolkit/
+
+# the draft paper (the founder, 31 Oct: never committed)
+/paper/
