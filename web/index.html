@@ -43,9 +43,42 @@
   <span id="jr-label" class="jr-label" aria-live="polite"></span>
 </div>
 
-<section class="card kpis" aria-label="How the fab is doing">
-  <div class="kpi"><div class="v" id="k-done">0</div><div class="l">lots finished</div></div>
-  <div class="kpi"><div class="v" id="k-wait">0</div><div class="l">lots waiting</div></div>
+<section id="health" class="card kpis health" aria-label="The fab now: its health at this moment">
+  <h2 class="hp-title">The fab now</h2>
+  <div class="hp-sec">
+    <h3>Output</h3>
+    <div class="hp-big"><span class="v" id="h-done">0</span><span class="u">lots finished</span></div>
+    <div class="row"><span class="nm" id="h-wafers-l">wafers out</span><span class="n" id="h-wafers">0</span></div>
+    <div class="row"><span class="nm" id="h-24-l">in the last 24 h</span><span class="n" id="h-24">0</span></div>
+    <div class="row"><span class="nm">mean wait for a tool, per step</span><span class="n" id="h-ws">–</span></div>
+  </div>
+  <div class="hp-sec">
+    <h3>Lots in the fab</h3>
+    <div class="hp-big"><span class="v" id="h-wip">0</span><span class="u">released, not finished</span></div>
+    <div class="hp-bar" id="h-lotbar" aria-hidden="true"></div>
+    <div class="row"><span class="nm"><i class="sq lw"></i>waiting for a tool</span><span class="n" id="h-wait">0</span></div>
+    <div class="row"><span class="nm"><i class="sq lp"></i>being processed</span><span class="n" id="h-proc">0</span></div>
+    <div class="row"><span class="nm"><i class="sq lm"></i>moving between tools</span><span class="n" id="h-move">0</span></div>
+    <div class="row"><span class="nm"><i class="sq lr"></i>resting in storage</span><span class="n" id="h-rest">0</span></div>
+  </div>
+  <div class="hp-sec">
+    <h3>Tools <span class="hp-of" id="h-nt"></span></h3>
+    <div class="hp-bar" id="h-toolbar" aria-hidden="true"></div>
+    <div class="row"><span class="nm"><i class="sq s0"></i>working</span><span class="n" id="h-t0">0</span></div>
+    <div class="row"><span class="nm"><i class="sq s1"></i>idle</span><span class="n" id="h-t1">0</span></div>
+    <div class="row"><span class="nm"><i class="sq s4"></i>changing setup</span><span class="n" id="h-t4">0</span></div>
+    <div class="row"><span class="nm"><i class="sq s2"></i>in maintenance</span><span class="n" id="h-t2">0</span></div>
+    <div class="row"><span class="nm"><i class="sq s3"></i>broken down</span><span class="n" id="h-t3">0</span></div>
+    <div class="hp-pair"><div><span class="v" id="h-avail">–</span><span class="u">available</span></div><div><span class="v" id="h-busy">–</span><span class="u">of available working</span></div></div>
+  </div>
+  <div class="hp-sec">
+    <h3>Longest queue</h3>
+    <div class="row"><span class="nm" id="h-lq-name">–</span><span class="n" id="h-lq">0</span></div>
+  </div>
+  <div class="hp-sec">
+    <h3>Latest events</h3>
+    <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
+  </div>
 </section>
 
 <nav id="rail" class="rail" aria-label="Panels">
@@ -225,22 +258,31 @@
 </section>
 
 <section id="key" class="card key" aria-label="What the marks on the floor mean">
-  <ul class="legend">
-    <li><i class="sw s0"></i>working</li><li><i class="sw s3"></i>broken down</li><li><i class="dot"></i>a lot: a box of 25 wafers</li>
-  </ul>
-  <details class="key-more">
-    <summary>More about the marks</summary>
-    <ul class="legend">
-      <li><i class="sw s1"></i>idle</li><li><i class="sw s4"></i>changing setup</li><li><i class="sw s2"></i>maintenance</li>
+  <h2 class="hp-title">What the marks mean</h2>
+  <div class="hp-sec">
+    <h3>Tool light</h3>
+    <ul class="legend lg2">
+      <li><i class="sw s0"></i><span class="nm">working</span></li><li><i class="sw s1"></i><span class="nm">idle</span></li>
+      <li><i class="sw s4"></i><span class="nm">changing setup</span></li><li><i class="sw s2"></i><span class="nm">maintenance</span></li>
+      <li><i class="sw s3"></i><span class="nm">broken down</span></li>
     </ul>
-    <p class="key-note">A machine's colour shows its area, and its light shows what it is doing. Each group's badge shows how it is coping:</p>
-    <ul class="legend" id="moodkey"></ul>
-    <ul class="legend">
-      <li><i class="dot hot"></i>an urgent lot</li><li><i class="dot proto"></i>a prototype lot</li>
+    <p class="key-note">A block's colour is its area: lithography, etch, polishing and so on.</p>
+  </div>
+  <div class="hp-sec">
+    <h3>Group badge</h3>
+    <p class="key-note">The most common state among a group's tools; a tie goes to the more serious.</p>
+    <ul class="legend lgbadge" id="moodkey"></ul>
+  </div>
+  <div class="hp-sec">
+    <h3>Lots</h3>
+    <ul class="legend lg1">
+      <li><i class="dot"></i><span class="nm">a lot: a box of 25 wafers</span></li>
+      <li><i class="dot hot"></i><span class="nm">an urgent lot</span></li>
+      <li><i class="dot proto"></i><span class="nm">a prototype lot</span></li>
+      <li><b class="mk">+N</b><span class="nm">more lots waiting than drawn</span></li>
+      <li><b class="mk">Holding</b><span class="nm">lots resting in storage between steps</span></li>
     </ul>
-    <p class="key-note"><b>+N</b> means more lots are waiting than fit in the picture. <b>Holding</b> lots are resting between steps.</p>
-  </details>
-  <ol id="ticker" class="ticker" aria-label="Floor log"></ol>
+  </div>
 </section>
 
 <footer class="card bar pill">

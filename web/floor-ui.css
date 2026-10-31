@@ -470,3 +470,51 @@ body.evidence-on .dock-title { font-size: 20px; }
 .notebook-h { margin-top: 18px !important; padding-top: 14px; border-top: 1px solid rgba(126,232,216,.2); }
 @media (max-width: 900px) { .find-list { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .find dl { grid-template-columns: 1fr; } .fpic.bars .bar-row { grid-template-columns: 90px 1fr 64px; } }
+
+/* ---------- the fab now, and what the marks mean (docs/FLOOR-HEALTH.md) */
+#health { position: fixed; z-index: 4; top: 18px; right: 18px; left: auto; transform: none; display: block; width: 288px; padding: 12px 14px 8px;
+  max-height: calc(100vh - 130px); overflow-y: auto; gap: 0; }
+.key { width: 300px; padding: 12px 14px 8px; max-height: calc(100vh - 222px); overflow-y: auto; }
+.hp-title { margin: 0 0 4px; font: 600 12px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.hp-sec { padding: 9px 0 8px; border-top: 1px solid var(--line); }
+.hp-title + .hp-sec { border-top: 0; padding-top: 4px; }
+.hp-sec h3 { margin: 0 0 6px; font: 600 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.hp-sec h3 .hp-of { color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 500; }
+.hp-big { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+.hp-big .v { font: 600 24px/1.15 var(--sans); color: var(--text); font-variant-numeric: tabular-nums; }
+.hp-big .u, .hp-pair .u { font-size: 12px; color: var(--muted); }
+#health .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; line-height: 1.75; color: var(--muted2); }
+#health .row .nm { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#health .row .n { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sq { flex: 0 0 9px; width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.sq.s0, .hp-bar .s0 { background: var(--s0); } .sq.s1, .hp-bar .s1 { background: var(--s1); } .sq.s2, .hp-bar .s2 { background: var(--s2); }
+.sq.s3, .hp-bar .s3 { background: var(--s3); } .sq.s4, .hp-bar .s4 { background: var(--s4); }
+.sq.lw, .hp-bar .lw { background: #F4E7C6; } .sq.lp, .hp-bar .lp { background: var(--accent); }
+.sq.lm, .hp-bar .lm { background: #5FA8FF; } .sq.lr, .hp-bar .lr { background: #6F8783; }
+.hp-bar { display: flex; gap: 2px; height: 8px; margin: 4px 0 6px; border-radius: 4px; overflow: hidden; background: #0A1418; }
+.hp-bar i { display: block; min-width: 2px; }
+.hp-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.hp-pair .v { display: block; font: 600 18px/1.2 var(--sans); color: var(--text); font-variant-numeric: tabular-nums; }
+.hp-pair .u { display: block; }
+#health .ticker { position: static; width: auto; margin: 0; padding: 0; border: 0; list-style: none; }
+#health .ticker li { display: block; font-size: 12px; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted2); }
+#health .ticker li .tm { display: inline; min-width: 0; margin-right: 6px; }
+.key .legend.lg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; margin: 0; }
+.key .legend.lg1 { display: grid; grid-template-columns: 1fr; gap: 3px; margin: 0; }
+.key .legend li { display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+.key .legend .nm { white-space: nowrap; color: var(--muted2); }
+.key .legend .mk { flex: 0 0 auto; min-width: 9px; font: 700 12px var(--sans); color: var(--text); }
+.key .legend.lgbadge { display: grid; grid-template-columns: 1fr; gap: 5px; margin: 6px 0 0; }
+.key .legend.lgbadge li { display: grid; grid-template-columns: 20px 1fr; column-gap: 8px; align-items: center; }
+.key .legend.lgbadge .badge { grid-row: span 2; }
+.key .legend.lgbadge .nm { color: var(--text); font-weight: 600; }
+.key .legend.lgbadge .rule { grid-column: 2; font-size: 12px; line-height: 1.3; color: var(--muted); }
+.key .key-note { font-size: 12px; line-height: 1.4; color: var(--muted); margin: 6px 0 0; }
+.key .hp-sec > .key-note:first-of-type { margin-top: 0; }
+@media (min-width: 901px) {
+  .rail { top: auto; bottom: 18px; right: 18px; transform: none; flex-direction: row; }
+}
+body.opening-on #health { display: none; }
+.key .legend.lgbadge li { grid-template-rows: auto auto; row-gap: 0; line-height: 1.3; }
+.key .legend.lgbadge { gap: 7px; }
+@media (min-width: 901px) { .hint { right: 200px; } }

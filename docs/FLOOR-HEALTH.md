@@ -60,3 +60,22 @@ what would you require? As I said the frontend does not spark Joy". On the SMT20
   numbers give way to the sections above and the health panel.
 
 ## Changes
+
+- 31 Oct, while writing the code:
+  - **1,443 tools.** The page counted the 400 slots of the storage group (`Delay_32`) as tools, and lots resting in
+    storage as being processed. The panel counts the 1,043 machines only, and steps in storage as resting.
+  - **The queues faded before the end, not only at it.** The run records a step only once it starts, so a lot still
+    waiting when the run closes had no row for that wait. From about day 3 the count of lots waiting drifted low (137 lots
+    missing at day 3 10:55, 1,182 at day 3 23:40) and reached 0 at the close; the map's waiting pods, the longest queue
+    and the bottom bar's timeline read the same queues. Each unfinished lot now joins its next step's queue when its last
+    step ends (or at release, before its first step), by its route. With that, lots waiting, being processed, moving and
+    resting add up to the lots in the fab at every time checked (FH1 checks it; moving is counted from the run's trips,
+    not as a remainder).
+  - **No cycle time.** A lot's route takes about 25 days and the run is 3, so no lot released during the run finishes in
+    it, and the lots that do finish were already inside at the start, with no release time. The panel shows the mean wait
+    for a tool per step so far instead (arrival to start, machine steps only).
+  - FH3 asked that lots waiting at the close equal the reading a minute before; 5 lots joined queues in that minute (1,206
+    to 1,211), so it asks for within 2%.
+  - Two test mistakes fixed: the panels are fixed in place, so they have no `offsetParent`; the tests check their boxes.
+  - Seen by eye: the log's lines were cut off, so each shows the time without the day (the clock shows the day; the full
+    time is on hover); the keyboard hint moved left of Try a change and Words.

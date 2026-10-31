@@ -48,12 +48,19 @@
   // SMT2020's area names to the cast's areas; Delay_32 (lots resting in stockers) has none
   const AREA_OF = { Litho: "litho", Litho_Met: "lithomet", Dry_Etch: "dry", Wet_Etch: "wet", Diffusion: "diff", Dielectric: "diel", TF: "tf", TF_Met: "tfmet", Implant: "imp", Planar: "cmp", Def_Met: "defmet" };
   const TOOL_MOODS = ["work", "sleep", "tired", "full", "batch", "setup", "pm", "hurt", "physio", "hold"];
+  // `name` is the gym's word (Build); `fact` and `rule` are what the badge means, from crates/fabsim/src/moods.rs's
+  // defaults (docs/FLOOR-HEALTH.md), for the Floor
   const MOOD = {
-    work: { name: "In the zone", color: "#3DDC84", badge: "b_work" }, sleep: { name: "Dozing off", color: "#AAB4BA", badge: "b_sleep" },
-    tired: { name: "Gassed", color: "#FFB020", badge: "b_tired" }, full: { name: "Hands full", color: "#FFB020", badge: "b_full" },
-    batch: { name: "Waiting for the class", color: "#AAB4BA", badge: "b_batch" }, setup: { name: "Changing kit", color: "#5FA8FF", badge: "b_setup" },
-    pm: { name: "Rest day", color: "#5FA8FF", badge: "b_pm" }, hurt: { name: "Pulled a muscle", color: "#FF4D4F", badge: "b_hurt" },
-    physio: { name: "At the physio", color: "#FF4D4F", badge: "b_physio" }, hold: { name: "Benched", color: "#FFB020", badge: "b_hold" },
+    work: { name: "In the zone", fact: "Running", rule: "busy, line not growing", color: "#3DDC84", badge: "b_work" },
+    sleep: { name: "Dozing off", fact: "Under 30% busy", rule: "over the last 8 hours, nothing waiting", color: "#AAB4BA", badge: "b_sleep" },
+    tired: { name: "Gassed", fact: "Over 90% busy", rule: "over the last 8 hours, line growing", color: "#FFB020", badge: "b_tired" },
+    full: { name: "Hands full", fact: "Output full", rule: "finished lots fill its ports", color: "#FFB020", badge: "b_full" },
+    batch: { name: "Waiting for the class", fact: "Filling a batch", rule: "standing by while lots gather", color: "#AAB4BA", badge: "b_batch" },
+    setup: { name: "Changing kit", fact: "Changing setup", rule: "for a different recipe", color: "#5FA8FF", badge: "b_setup" },
+    pm: { name: "Rest day", fact: "Planned maintenance", rule: "scheduled downtime", color: "#5FA8FF", badge: "b_pm" },
+    hurt: { name: "Pulled a muscle", fact: "Just broke down", rule: "down under 15 minutes", color: "#FF4D4F", badge: "b_hurt" },
+    physio: { name: "At the physio", fact: "Under repair", rule: "down 15 minutes or more", color: "#FF4D4F", badge: "b_physio" },
+    hold: { name: "Benched", fact: "On hold", rule: "taken out of service", color: "#FFB020", badge: "b_hold" },
   };
   const LOTS = { fresh: "Fresh", line: "In line", impatient: "Impatient", hot: "Hot", clock: "On the clock", missed: "Missed", bench: "On the bench", ride: "Riding", batch: "Class", redo: "Do-over", hold: "Quarantined", grad: "Graduated" };
   // a tie between moods goes to the more serious

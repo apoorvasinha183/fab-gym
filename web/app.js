@@ -247,8 +247,11 @@ function prepare(run, halls, hallOfGroup) {
   const nRows = trace.length / 6;
   const qe = [];
   const byLot = new Map();
+  const lastStep = new Map(); // lot -> [step, end] of its latest recorded step
   for (let r = 0; r < nRows; r++) {
     const lot = trace[r * 6], tool = trace[r * 6 + 2], arrive = trace[r * 6 + 3], start = trace[r * 6 + 4], end = trace[r * 6 + 5];
+    const ls = lastStep.get(lot);
+    if (!ls || trace[r * 6 + 1] > ls[0]) lastStep.set(lot, [trace[r * 6 + 1], end]);
     const g = toolGroup[tool];
     if (start > arrive) {
       // family B's lots are counted apart from hot ones, so a hot prototype counts once
@@ -259,6 +262,16 @@ function prepare(run, halls, hallOfGroup) {
     if (!a) byLot.set(lot, (a = []));
     a.push([start, g, arrive, end]);
   }
+  // The run records a step only once it starts, so a lot still waiting when the run closes has no row for that wait.
+  // It joins its next step's queue when its last step ends (or when it is released, before its first step) and is
+  // still there at the close (docs/FLOOR-HEALTH.md).
+  j.lots.forEach((l, lot) => {
+    if (l[5] !== null) return;
+    const steps = j.routes[l[1]][1], ls = lastStep.get(lot);
+    const [at, next] = ls ? [ls[1], ls[0] + 1] : l[6] ? [null, 0] : [l[4], 0];
+    if (at === null || at >= j.until || next >= steps.length) return;
+    qe.push([at, steps[next], 1, lotHot[lot] && !lotB[lot] ? 1 : 0, lotB[lot]]);
+  });
   qe.sort((x, y) => x[0] - y[0] || y[2] - x[2]);
   // trips between halls: from the end of one step to the arrival at the next
   const trips = [];
@@ -276,6 +289,31 @@ function prepare(run, halls, hallOfGroup) {
   for (let r = 0; r < nRows; r++) starts.push(trace[r * 6 + 4]);
   starts.sort((a, b) => a - b);
   const done = j.lots.map(l => l[5]).filter(x => x !== null).sort((a, b) => a - b);
+  // for the health panel (docs/FLOOR-HEALTH.md): step ends, releases (lots in the fab at the start count from -inf),
+  // and finished lots in time order with running sums of wafers and of cycle times (lots released during the run)
+  // steps on machines and steps in storage (the Delay_32 group's slots are storage, not machines)
+  const holdG = j.groups.findIndex(g => sim.area[g[0]] === "Delay_32");
+  const mStart = [], mEnd = [], hStart = [], hEnd = [];
+  for (let r = 0; r < nRows; r++) {
+    const h = toolGroup[trace[r * 6 + 2]] === holdG;
+    (h ? hStart : mStart).push(trace[r * 6 + 4]);
+    (h ? hEnd : mEnd).push(trace[r * 6 + 5]);
+  }
+  for (const a of [mStart, mEnd, hStart, hEnd]) a.sort((x, y) => x - y);
+  // each machine step's wait (arrival to start), in start order, with running sums: the mean wait per step so far
+  const waitRows = [];
+  for (let r = 0; r < nRows; r++) if (toolGroup[trace[r * 6 + 2]] !== holdG) waitRows.push([trace[r * 6 + 4], Math.max(0, trace[r * 6 + 4] - trace[r * 6 + 3])]);
+  waitRows.sort((x, y) => x[0] - y[0]);
+  const waitStart = waitRows.map(w => w[0]), waitSum = [0];
+  for (const w of waitRows) waitSum.push(waitSum[waitSum.length - 1] + w[1]);
+  const released = j.lots.map(l => (l[6] ? -Infinity : l[4])).sort((a, b) => a - b);
+  const fin = j.lots.filter(l => l[5] !== null).sort((a, b) => a[5] - b[5]);
+  const finWafers = [0], finCt = [0], finCtN = [0];
+  for (const l of fin) {
+    finWafers.push(finWafers[finWafers.length - 1] + l[3]);
+    finCt.push(finCt[finCt.length - 1] + (l[6] ? 0 : l[5] - l[4]));
+    finCtN.push(finCtN[finCtN.length - 1] + (l[6] ? 0 : 1));
+  }
   // lots waiting over time, every 20 minutes, for the timeline
   const waitSeries = [];
   let k = 0, w = 0;
@@ -284,7 +322,7 @@ function prepare(run, halls, hallOfGroup) {
     waitSeries.push(w);
   }
   const real = G && G.real ? realPrepare(run, j, trace) : null;
-  return { j, trace, states, nT, nG, qe, trips, starts, done, waitSeries, toolGroup, secs: run.secs, real, lotHot, lotB };
+  return { j, trace, states, nT, nG, qe, trips, starts, mStart, mEnd, hStart, hEnd, holdG, waitStart, waitSum, released, done, finWafers, finCt, finCtN, waitSeries, toolGroup, secs: run.secs, real, lotHot, lotB };
 }
 
 // playback cursor: state of every tool and queue at time t, moved forward cheaply
@@ -307,6 +345,10 @@ function makeCursor(P) {
   };
   return c;
 }
+
+/** The time the cursor reads: never the run's closing instant, when the run's last events start every lot still
+ * waiting, so the queues would read empty (docs/FLOOR-HEALTH.md). */
+const seekTime = t => (P && t >= P.j.until ? P.j.until - 0.01 : t);
 
 function countBelow(sorted, t) {
   let lo = 0, hi = sorted.length;
@@ -881,12 +923,65 @@ function hud() {
   const m = Math.floor(t % 1440);
   $("day").textContent = `Day ${day}`;
   $("time").textContent = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  $("k-done").textContent = countBelow(P.done, t).toLocaleString();
-  let waiting = 0;
-  for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup) waiting += cur.queue[g];
-  $("k-wait").textContent = waiting.toLocaleString();
+  renderHealth(health());
   $("scrub").value = t;
   ticker();
+}
+
+// ------------------------------------------------------------------ the fab's health (docs/FLOOR-HEALTH.md)
+
+/** The fab at the cursor's time: output, lots in the fab and where they are, tools by state, availability, the longest
+ * queue. Read from the run on screen; nothing is estimated. */
+function health() {
+  const tq = seekTime(t), nT = P.nT; // nT counts storage slots too
+  const finished = countBelow(P.done, t);
+  const day = t >= 1440 ? countBelow(P.done, t - 1440) : 0;
+  const inFab = countBelow(P.released, tq) - countBelow(P.done, tq);
+  let waiting = 0, longest = { g: -1, lots: 0 };
+  for (let g = 0; g < P.nG; g++) {
+    if (g === P.holdingGroup) continue;
+    waiting += cur.queue[g];
+    if (cur.queue[g] > longest.lots) longest = { g, lots: cur.queue[g] };
+  }
+  const resting = (P.holdingGroup >= 0 ? cur.queue[P.holdingGroup] : 0) + countBelow(P.hStart, tq) - countBelow(P.hEnd, tq);
+  const processing = countBelow(P.mStart, tq) - countBelow(P.mEnd, tq);
+  const moving = cur.active.length;
+  // machines only: the storage group's slots are not tools
+  const n = [0, 0, 0, 0, 0];
+  let machines = 0;
+  for (let k = 0; k < nT; k++) if (P.toolGroup[k] !== P.holdingGroup) { n[cur.toolState[k]]++; machines++; }
+  const up = machines - n[2] - n[3];
+  const ctN = P.finCtN[finished], nW = countBelow(P.waitStart, tq);
+  return {
+    t, finished, wafersOut: P.finWafers[finished], last24: finished - day, sinceStart: t < 1440,
+    cycleDays: ctN ? P.finCt[finished] / ctN / 1440 : null,
+    waitPerStep: nW ? P.waitSum[nW] / nW : null, stepsStarted: nW,
+    inFab, waiting, processing, moving, resting,
+    tools: { working: n[0], idle: n[1], maintenance: n[2], down: n[3], setup: n[4] }, nT: machines,
+    available: up / machines, busy: up ? n[0] / up : 0,
+    longest: { name: longest.g >= 0 ? P.plain[longest.g] : "", lots: longest.lots },
+  };
+}
+
+let healthShown = "";
+function renderHealth(h) {
+  const f = x => x.toLocaleString("en-US"), pc = x => `${Math.round(x * 100)}%`;
+  const key = JSON.stringify(h);
+  if (key === healthShown) return;
+  healthShown = key;
+  const set = (id, v) => { const e = $(id); if (e.textContent !== v) e.textContent = v; };
+  set("h-done", f(h.finished)); set("h-wafers", f(h.wafersOut));
+  set("h-24-l", h.sinceStart ? "since the start" : "in the last 24 h"); set("h-24", f(h.last24));
+  set("h-ws", h.waitPerStep === null ? "–" : h.waitPerStep >= 60 ? `${(h.waitPerStep / 60).toFixed(1)} h` : `${Math.round(h.waitPerStep)} min`);
+  set("h-wip", f(h.inFab)); set("h-wait", f(h.waiting)); set("h-proc", f(h.processing)); set("h-move", f(h.moving)); set("h-rest", f(h.resting));
+  set("h-nt", `· ${f(h.nT)}`);
+  const T = h.tools;
+  set("h-t0", f(T.working)); set("h-t1", f(T.idle)); set("h-t2", f(T.maintenance)); set("h-t3", f(T.down)); set("h-t4", f(T.setup));
+  set("h-avail", pc(h.available)); set("h-busy", pc(h.busy));
+  set("h-lq-name", h.longest.lots ? h.longest.name : "no lots waiting"); set("h-lq", f(h.longest.lots));
+  const bar = (id, parts, total) => { $(id).innerHTML = parts.map(([v, c]) => (v ? `<i class="${c}" style="flex:${v / total}"></i>` : "")).join(""); };
+  bar("h-lotbar", [[h.waiting, "lw"], [h.processing, "lp"], [h.moving, "lm"], [h.resting, "lr"]], Math.max(1, h.inFab));
+  bar("h-toolbar", [[T.working, "s0"], [T.idle, "s1"], [T.setup, "s4"], [T.maintenance, "s2"], [T.down, "s3"]], h.nT);
 }
 
 // ------------------------------------------------------------------ floor log
@@ -918,7 +1013,7 @@ function ticker() {
     const [tm, k, broke] = ev[i];
     const g = P.toolGroup[k];
     const idx = P.groupTools[g].indexOf(k) + 1;
-    rows.push(`<li class="${broke ? "broke" : "fixed"}"><span class="tm">${clock(tm)}</span><b>${P.plain[g]}</b>, tool ${idx} ${broke ? "broke down" : "is back up"}</li>`);
+    rows.push(`<li class="${broke ? "broke" : "fixed"}"><span class="tm" title="${clock(tm)}">${clock(tm).slice(-5)}</span><b>${P.plain[g]}</b>, tool ${idx} ${broke ? "broke down" : "is back up"}</li>`);
   }
   const html = rows.join("");
   if (html !== tickShown) { $("ticker").innerHTML = html; tickShown = html; }
@@ -937,7 +1032,7 @@ function frame(now) {
     if (t >= P.j.until && !P.quick) playing = false, ($("play").textContent = "▶");
   }
   if (P) {
-    cur.seek(t);
+    cur.seek(seekTime(t));
     let hb = 0;
     for (const k of P.groupTools[P.holdingGroup] || []) if (cur.toolState[k] === 0) hb++;
     cur.holdingBusy = hb;
@@ -986,10 +1081,10 @@ function tipHtml(g) {
   const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">●</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
   const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
   const area = FabLook.areaOf(sim.area[G0[0]]), mood = moodNow(g) || "work", M = FabLook.MOOD[mood];
-  const art = area ? `<div class="tip-art" style="background:${FabLook.FAM[area]}33"><img src="cast/${area}/${mood}.webp" alt="${FabLook.AREA[area].name}, ${M.name.toLowerCase()}" width="224" height="224"></div><div class="tip-mood" style="background:${M.color}">${P.moods ? M.name : P.moodsPending ? "Working out how it's doing…" : "Before a run"}</div>` : "";
+  const art = area ? `<div class="tip-art" style="background:${FabLook.FAM[area]}33"><img src="cast/${area}/${mood}.webp" alt="${FabLook.AREA[area].name}, ${M.fact.toLowerCase()}" width="224" height="224"></div><div class="tip-mood" style="background:${M.color}">${P.moods ? `${M.fact}: ${M.rule}` : P.moodsPending ? "Working out how it's doing…" : "Before a run"}</div>` : "";
   return `<b>${area ? FabLook.label(G0[0], area) : P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}${art}${parts.join("<br>")}` +
     `<div class="tip-q"><span>${cur.queue[g]}</span> lots waiting now · <span>${avgWait.toFixed(0)} min</span> mean wait</div>` +
-    (area ? `<div class="tip-ex">${FabLook.AREA[area].exercise}. ${FabLook.AREA[area].about}</div>` : "");
+    (area ? `<div class="tip-ex">${FabLook.AREA[area].about}</div>` : "");
 }
 
 function setupInput() {
@@ -1482,7 +1577,7 @@ async function main() {
   markPage(pageOfHash());
   chromeSetup();
   stagesSetup();
-  $("moodkey").innerHTML = FabLook.TOOL_MOODS.map(m => `<li><span class="badge" style="background:${FabLook.MOOD[m].color}">${FabLook.svg(FabLook.MOOD[m].badge, "#15191C")}</span>${FabLook.MOOD[m].name.toLowerCase()}</li>`).join("");
+  $("moodkey").innerHTML = FabLook.TOOL_MOODS.map(m => { const M = FabLook.MOOD[m]; return `<li><span class="badge" style="background:${M.color}">${FabLook.svg(M.badge, "#15191C")}</span><span class="nm">${M.fact}</span><span class="rule">${M.rule}</span></li>`; }).join("");
   requestAnimationFrame(frame);
   try {
     await loadSim();
@@ -1540,7 +1635,7 @@ function swapIn(run) {
   P.moodsPending = !run.moods;
   t = Math.min(keep, P.j.until);
   cur.reset();
-  cur.seek(t);
+  cur.seek(seekTime(t));
   playing = was;
   $("play").textContent = playing ? "❚❚" : "▶";
   document.body.dataset.floor = "full";
@@ -1554,6 +1649,7 @@ window.FabFloorPage = {
   moves: () => (P && !P.quick ? P.j.moves : null),
   groups: () => (P ? P.nG : 0),
   mood: g => moodNow(g),
+  health: () => (P ? health() : null),
   cardText: g => {
     const box = document.createElement("div");
     box.innerHTML = tipHtml(g);
@@ -1773,7 +1869,7 @@ function floorPad() {
   if (VP) return { l: VP.x + 6, r: innerWidth - VP.x - VP.w + 6, t: 170, b: 175 };
   const wide = innerWidth > 900;
   const dock = $("dock");
-  const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : $("rail").offsetWidth + 32;
+  const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : $("health").offsetWidth + 32; // the health panel (docs/FLOOR-HEALTH.md)
   return { l: wide && !document.body.classList.contains("dock-wide") ? 330 : 24, r, t: 116, b: 96 };
 }
 
