@@ -412,7 +412,7 @@ function rr(x, y, w, h, r) {
   ctx.closePath();
 }
 
-// The look, in the spirit of Factorio and drawn here: concrete floors, yellow-railed belts with
+// The look, in the spirit of factory-builder games and drawn here: concrete floors, yellow-railed belts with
 // moving chevrons, machines as sprites with a state panel and a status light, lots as carrier boxes.
 const LOOK = {
   sky0: "#16323A", sky1: "#0B1418", sky2: "#070C0F", boardSide: "#071013",

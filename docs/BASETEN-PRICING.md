@@ -136,8 +136,8 @@ highest limits.
 
 `HttpModel` in `agent/fabgym_agent.py` asks with `max_tokens=8000` by default. A reply cut off at the limit
 (`finish_reason: length`) is asked again once with twice the room; one still empty after that raises an error
-(tests `agent.tests.test_loop.Budget`, fd99fad; fix 654c84b). It sends `reasoning_effort` when one is set and
-login headers read from files, never shown (tests `Options`, 1cdbcc8; code 5307d96). On the command line:
+(tests `agent.tests.test_loop.Budget`, a51a259; fix 5c2ff13). It sends `reasoning_effort` when one is set and
+login headers read from files, never shown (tests `Options`, b7cd21f; code 5dad2ea). On the command line:
 
 ```
 # Meta, contributor, low effort

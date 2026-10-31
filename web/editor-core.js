@@ -350,7 +350,7 @@
     return { kind, x, y, w, h, ok: f.ok, why: f.why };
   }
 
-  // ---------- the editor's Factorio moves (docs/EDITOR-MOVES.md)
+  // ---------- the editor's foreman keys (docs/EDITOR-MOVES.md)
 
   /** R: wafers in and out turn between 1 × 2 and 2 × 1; a square piece looks and works the same turned. */
   function turn(kind, w, h) {

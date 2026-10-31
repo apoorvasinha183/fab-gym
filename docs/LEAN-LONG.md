@@ -118,7 +118,7 @@ From the SMT2020 testbed. 10 seeds (1000..1009), 300 days, window days 120 to 30
 
 ### Rerun with the units read correctly
 
-Run 27 October 2026 with `fabsim lean-long --threads 4` after the loader fix (7a3ceb2), the same
+Run 27 October 2026 with `fabsim lean-long --threads 4` after the loader fix (aec134e), the same
 design and seeds (503 s). The findings hold:
 
 - **The flip.** Cap 1,800 is free on today's fab (−2.4 wafers a day, 95% −18.3 to +13.6) and

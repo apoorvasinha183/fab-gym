@@ -1,4 +1,4 @@
-// The editor, top down (docs/EDITOR-TOPDOWN.md): straight down, Factorio tiles, engraved icons, no text on the map,
+// The editor, top down (docs/EDITOR-TOPDOWN.md): straight down, workshop tiles, engraved icons, no text on the map,
 // raised keys; the map fits the window (D7, D8). Written before the code. On a teaching fab of our own; not a real fab.
 //
 //     node --test web/tests/editortop.test.mjs   (from the repo root; D2 to D6 need Google Chrome and the .venv)

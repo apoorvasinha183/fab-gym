@@ -1,7 +1,7 @@
-# The editor's Factorio moves: turn, pick, hotbar, copy and paste
+# The editor's foreman keys: turn, pick, hotbar, copy and paste
 
 Written 31 October 2026, before the tests and the code. Decided by quiz the same day (`~/HACKATHON-README.md`): after
-the basics (`docs/EDITOR-BASICS.md`), "More Factorio moves": R to turn, Q to pick up what is under the pointer, a 1–9
+the basics (`docs/EDITOR-BASICS.md`), "More [factory-builder] moves": R to turn, Q to pick up what is under the pointer, a 1–9
 hotbar, box select with copy and paste. From the SMT2020 testbed and a teaching fab of our own; not a real fab.
 
 ## What the moves mean here

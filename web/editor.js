@@ -30,7 +30,7 @@
   // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
   let V = null, FIT = null, ghostAt = null, panDrag = null, spaceHeld = false, spacePanned = false, lastSnap = null, rerunTimer = null, runSeq = 0, runsDone = 0;
   const hist = E.History(200);
-  // the Factorio moves (docs/EDITOR-MOVES.md): recent pieces for the hotbar, a turned piece in hand, the box, the clipboard
+  // the foreman keys (docs/EDITOR-MOVES.md): recent pieces for the hotbar, a turned piece in hand, the box, the clipboard
   let recent = [], handTurned = false, boxSel = null, boxDrag = null, clip = null, pasting = false, pastePlan = null;
   const PIECES = new Set(["stocker", "entry", "exit", ...E.AREAS]);
   /** Take a tool in hand, as the palette, a hotbar key or Q does; a piece goes to the front of the recent list. */
@@ -801,7 +801,7 @@
     clock: () => clock,
     canUndo: () => hist.canUndo(),
     canRedo: () => hist.canRedo(),
-    // the Factorio moves (docs/EDITOR-MOVES.md)
+    // the foreman keys (docs/EDITOR-MOVES.md)
     tool: () => tool,
     size: () => [s.W, s.H],
     railKeys: () => Object.keys(s.rail),

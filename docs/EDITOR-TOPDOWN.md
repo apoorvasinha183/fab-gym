@@ -1,7 +1,7 @@
 # The editor, top down
 
 Written 31 October 2026, before the tests and the code. The founder the same day: "go completely top down instead of
-2.5D", "the buttons are not properly engraved", "Factorio tiles but let us not write the text on top of it, it is
+2.5D", "the buttons are not properly engraved", "[factory-builder] tiles but let us not write the text on top of it, it is
 distracting"; from the options page (private), tiles B (icons
 engraved into the tiles) and buttons B (raised keys). From the SMT2020 testbed and a teaching fab of our own; not a
 real fab.
@@ -11,7 +11,7 @@ real fab.
 1. **Straight down.** The map is drawn from above: tiles are squares on a visible grid, x across and y down. Nothing
    stands up, so nothing hides the floor behind it (in the tilted view, free floor behind tall machines could not be
    clicked).
-2. **Factorio tiles.** A machine group is a flat tile in its area's colour with a darker rim and a lit top edge;
+2. **Workshop tiles.** A machine group is a flat tile in its area's colour with a darker rim and a lit top edge;
    storage, wafers in and wafers out are tiles of their own colours. Vehicles are flat tokens on the track.
 3. **Engraved icons.** Each tile's icon is cut into it: drawn in a dark shade of the tile's colour, with a light line
    along its lower edge (`FabEditor.engrave(colour)` gives the two).

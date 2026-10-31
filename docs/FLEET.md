@@ -94,7 +94,7 @@ replay the fleet.
 - 29 Oct, after the first probe (one seed, 10 days on today's US building): with one stop per tool group, from 80
   vehicles up the spine loops locked solid within hours. Every vehicle waited at the end of a full stretch, because
   vehicles queuing to turn into a busy bay backed up onto the spine. Three changes, tests first for the second
-  (830e82d):
+  (1962c05):
   - **detours:** a vehicle whose way is full takes another open stretch out of the junction and routes again from
     the next one, as a control system sends a vehicle round a jam; counted in `detours`;
   - **a port per tool:** one stop per group made a whole group hoist at one point, one lot at a time. Each tool now

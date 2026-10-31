@@ -1,4 +1,4 @@
-// The editor's Factorio moves (docs/EDITOR-MOVES.md): R to turn, Q to pick, a 1–9 hotbar, box select with copy and
+// The editor's foreman keys (docs/EDITOR-MOVES.md): R to turn, Q to pick, a 1–9 hotbar, box select with copy and
 // paste. Written before the code. On a teaching fab of our own and the SMT2020 testbed; not a real fab.
 //
 //     node --test web/tests/editormoves.test.mjs   (from the repo root; P1 to P4 need Google Chrome and the .venv)

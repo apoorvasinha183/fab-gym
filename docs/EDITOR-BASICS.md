@@ -6,7 +6,7 @@ first (done, `docs/FLOOR-SPEED.md`), then these. From the SMT2020 testbed and a 
 
 ## The problem
 
-Builders arrive with Factorio, Shapez and Mini Metro in their hands. Today's editor (`web/editor.js`) has no undo, a
+Builders arrive with the habits of factory-builder and transit-puzzle games in their hands. Today's editor (`web/editor.js`) has no undo, a
 fixed view, no preview before placing, and stops the run whenever anything is edited (Build mode pauses; an edit marks
 the run stale until "Run again" is pressed), although a rerun takes about 0.3 s.
 
