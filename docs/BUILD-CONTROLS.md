@@ -88,6 +88,44 @@ on the track, and a group may have several station rectangles, so a group's mach
 - **BP6** a layout with one group in two places passes the layout checks and runs; the run counts the group's
   machines.
 
+## Part 3: storage made real (written 1 November 2026, before its tests and code)
+
+By quiz: "Free build on; challenges off": Free build uses 2 load ports a machine and real storage by default, with a
+setting in Whole fab; the four challenges keep their tuned setup, targets and stars, and if ports are switched on in a
+challenge, that run earns no stars. Found before: a Storage block only holds lots for a waiting step (a group with no
+machines), the teaching fab has none, so its storage did nothing; machine lines were unlimited; the full fab already
+limits output ports (a machine stops while its finished lots fill its ports), Build's small fab does not.
+
+1. **The simulator** reads `inports N` in a fab file: each machine takes at most N lots at its ports, counting lots on
+   their way there. A lot whose group's ports are full is carried to the nearest storage instead (by track distance from
+   the group's stop); when the group starts work on lots and frees ports, the oldest stored lots are carried up. Time in
+   storage counts as waiting for that group; queue-time limits run as before. Without the line, or with no storage on
+   the floor, nothing changes, so every earlier result stays as it was. A run reports the moves to and from storage, the
+   most lots each group held at its ports, and the most each held in storage.
+2. **The layout checks** warn when machines have a port limit but the floor has no storage: the extra lots then wait in
+   an unlimited line, as before.
+3. **Build** writes `inports 2` for Free build, and Whole fab gains "Load ports per machine" (unlimited, 1, 2, 3 or 4).
+   In a challenge the setting starts at unlimited; a run with a limit is marked as an experiment and earns no stars.
+4. **Storage says what it does**: "Holds lots whose next machine has its ports full; a car brings them back when a port
+   frees", and, with unlimited ports, that nothing waits there.
+
+## Part 3: tests (written before the code)
+
+`crates/fabsim/tests/storage.rs` (the teaching fab's Free build file, `crates/fabsim/tests/data/teach-free.fab.txt`,
+written by Build's own `fabText`):
+- **ST1** without `inports`, and with a limit far above any line, a run is the same as before, event for event.
+- **ST2** with `inports 1` and storage on the floor, no group ever holds more than one lot per machine at or headed to
+  its ports, storage is used, and every lot sent to storage was brought back or is still there at the end.
+- **ST3** with `inports 1` and no storage on the floor, the run is the same as without the line, and the checks warn.
+- **ST4** with storage in use, every lot still follows its route (each step after the last, on the right group), and the
+  receipt's finished lots match the run's.
+
+`web/tests/buildstorage.test.mjs` (headless Chrome and a helper; nothing is spent):
+- **BS1** Free build's fab file says `inports 2`; no challenge's does.
+- **BS2** Whole fab's "Load ports per machine" sets the line; in a challenge a limit marks the run as an experiment and
+  no stars are given.
+- **BS3** Storage's description says what it does, and says nothing waits there when ports are unlimited.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.

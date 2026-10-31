@@ -1,0 +1,243 @@
+fabgym-shop 1
+transport	0.0	0.0
+fleet	12	3.0	1.0	2	60.0	nearest
+group	Litho_T	3	0.0	0.0	-	-	-
+group	Litho_Met_T	1	0.0	0.0	-	-	-
+group	Dry_Etch_T	3	0.0	0.0	-	-	-
+group	Wet_Etch_T	3	0.0	0.0	-	-	-
+group	Diffusion_T	2	0.0	0.0	-	-	-
+group	Dielectric_T	1	0.0	0.0	-	-	-
+group	TF_T	2	0.0	0.0	-	-	-
+group	TF_Met_T	1	0.0	0.0	-	-	-
+group	Implant_T	1	0.0	0.0	-	-	-
+group	Planar_T	2	0.0	0.0	-	-	-
+group	Def_Met_T	1	0.0	0.0	-	-	-
+route	teach
+step	Diffusion_T	lot	50.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Litho_T	lot	40.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Litho_Met_T	lot	12.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Dry_Etch_T	lot	35.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Wet_Etch_T	lot	25.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	TF_T	lot	30.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	TF_Met_T	lot	10.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Planar_T	lot	35.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Def_Met_T	lot	14.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Implant_T	lot	18.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Litho_T	lot	40.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Litho_Met_T	lot	12.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Dry_Etch_T	lot	35.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Wet_Etch_T	lot	25.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Dielectric_T	lot	20.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Planar_T	lot	35.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Def_Met_T	lot	14.0	0.0	-	-	-	-	-	-	-	-	-	-
+step	Wet_Etch_T	lot	25.0	0.0	-	-	-	-	-	-	-	-	-	-
+release	teach	25	1.0	30.0	0.0	-	Lot
+node	c2_1	6.0	3.0
+node	c3_1	9.0	3.0
+node	c4_1	12.0	3.0
+node	c5_1	15.0	3.0
+node	c8_1	24.0	3.0
+node	c9_1	27.0	3.0
+node	c10_1	30.0	3.0
+node	c11_1	33.0	3.0
+node	c2_2	6.0	6.0
+node	c5_2	15.0	6.0
+node	c8_2	24.0	6.0
+node	c11_2	33.0	6.0
+node	c2_3	6.0	9.0
+node	c5_3	15.0	9.0
+node	c8_3	24.0	9.0
+node	c11_3	33.0	9.0
+node	c2_4	6.0	12.0
+node	c5_4	15.0	12.0
+node	c8_4	24.0	12.0
+node	c11_4	33.0	12.0
+node	c2_5	6.0	15.0
+node	c5_5	15.0	15.0
+node	c8_5	24.0	15.0
+node	c11_5	33.0	15.0
+node	c1_6	3.0	18.0
+node	c2_6	6.0	18.0
+node	c3_6	9.0	18.0
+node	c4_6	12.0	18.0
+node	c5_6	15.0	18.0
+node	c6_6	18.0	18.0
+node	c7_6	21.0	18.0
+node	c8_6	24.0	18.0
+node	c9_6	27.0	18.0
+node	c10_6	30.0	18.0
+node	c11_6	33.0	18.0
+node	c12_6	36.0	18.0
+node	c13_6	39.0	18.0
+node	c14_6	42.0	18.0
+node	c15_6	45.0	18.0
+node	c1_7	3.0	21.0
+node	c2_7	6.0	21.0
+node	c3_7	9.0	21.0
+node	c4_7	12.0	21.0
+node	c5_7	15.0	21.0
+node	c6_7	18.0	21.0
+node	c7_7	21.0	21.0
+node	c8_7	24.0	21.0
+node	c9_7	27.0	21.0
+node	c10_7	30.0	21.0
+node	c11_7	33.0	21.0
+node	c12_7	36.0	21.0
+node	c13_7	39.0	21.0
+node	c14_7	42.0	21.0
+node	c15_7	45.0	21.0
+node	c2_8	6.0	24.0
+node	c5_8	15.0	24.0
+node	c8_8	24.0	24.0
+node	c11_8	33.0	24.0
+node	c2_9	6.0	27.0
+node	c5_9	15.0	27.0
+node	c8_9	24.0	27.0
+node	c11_9	33.0	27.0
+node	c2_10	6.0	30.0
+node	c5_10	15.0	30.0
+node	c8_10	24.0	30.0
+node	c11_10	33.0	30.0
+node	c2_11	6.0	33.0
+node	c5_11	15.0	33.0
+node	c8_11	24.0	33.0
+node	c11_11	33.0	33.0
+node	c2_12	6.0	36.0
+node	c3_12	9.0	36.0
+node	c4_12	12.0	36.0
+node	c5_12	15.0	36.0
+node	c8_12	24.0	36.0
+node	c9_12	27.0	36.0
+node	c10_12	30.0	36.0
+node	c11_12	33.0	36.0
+link	c2_1	c3_1	3.0
+link	c3_1	c4_1	3.0
+link	c4_1	c5_1	3.0
+link	c5_1	c5_2	3.0
+link	c8_1	c9_1	3.0
+link	c9_1	c10_1	3.0
+link	c10_1	c11_1	3.0
+link	c11_1	c11_2	3.0
+link	c2_2	c2_1	3.0
+link	c5_2	c5_3	3.0
+link	c8_2	c8_1	3.0
+link	c11_2	c11_3	3.0
+link	c2_3	c2_2	3.0
+link	c5_3	c5_4	3.0
+link	c8_3	c8_2	3.0
+link	c11_3	c11_4	3.0
+link	c2_4	c2_3	3.0
+link	c5_4	c5_5	3.0
+link	c8_4	c8_3	3.0
+link	c11_4	c11_5	3.0
+link	c2_5	c2_4	3.0
+link	c5_5	c5_6	3.0
+link	c8_5	c8_4	3.0
+link	c11_5	c11_6	3.0
+link	c1_6	c2_6	3.0
+link	c2_6	c3_6	3.0
+link	c2_6	c2_5	3.0
+link	c3_6	c4_6	3.0
+link	c4_6	c5_6	3.0
+link	c5_6	c6_6	3.0
+link	c6_6	c7_6	3.0
+link	c7_6	c8_6	3.0
+link	c8_6	c9_6	3.0
+link	c8_6	c8_5	3.0
+link	c9_6	c10_6	3.0
+link	c10_6	c11_6	3.0
+link	c11_6	c12_6	3.0
+link	c12_6	c13_6	3.0
+link	c13_6	c14_6	3.0
+link	c14_6	c15_6	3.0
+link	c15_6	c15_7	3.0
+link	c1_7	c1_6	3.0
+link	c2_7	c1_7	3.0
+link	c3_7	c2_7	3.0
+link	c4_7	c3_7	3.0
+link	c5_7	c5_8	3.0
+link	c5_7	c4_7	3.0
+link	c6_7	c5_7	3.0
+link	c7_7	c6_7	3.0
+link	c8_7	c7_7	3.0
+link	c9_7	c8_7	3.0
+link	c10_7	c9_7	3.0
+link	c11_7	c11_8	3.0
+link	c11_7	c10_7	3.0
+link	c12_7	c11_7	3.0
+link	c13_7	c12_7	3.0
+link	c14_7	c13_7	3.0
+link	c15_7	c14_7	3.0
+link	c2_8	c2_7	3.0
+link	c5_8	c5_9	3.0
+link	c8_8	c8_7	3.0
+link	c11_8	c11_9	3.0
+link	c2_9	c2_8	3.0
+link	c5_9	c5_10	3.0
+link	c8_9	c8_8	3.0
+link	c11_9	c11_10	3.0
+link	c2_10	c2_9	3.0
+link	c5_10	c5_11	3.0
+link	c8_10	c8_9	3.0
+link	c11_10	c11_11	3.0
+link	c2_11	c2_10	3.0
+link	c5_11	c5_12	3.0
+link	c8_11	c8_10	3.0
+link	c11_11	c11_12	3.0
+link	c2_12	c2_11	3.0
+link	c3_12	c2_12	3.0
+link	c4_12	c3_12	3.0
+link	c5_12	c4_12	3.0
+link	c8_12	c8_11	3.0
+link	c9_12	c8_12	3.0
+link	c10_12	c9_12	3.0
+link	c11_12	c10_12	3.0
+station	Litho_T	9.0	6.0	6.0	6.0
+station	Litho_Met_T	9.0	12.0	6.0	6.0
+station	Dry_Etch_T	18.0	6.0	6.0	6.0
+station	Wet_Etch_T	27.0	6.0	6.0	6.0
+station	Diffusion_T	27.0	12.0	6.0	6.0
+station	Dielectric_T	36.0	6.0	6.0	6.0
+station	TF_T	9.0	24.0	6.0	6.0
+station	TF_Met_T	9.0	30.0	6.0	6.0
+station	Implant_T	18.0	24.0	6.0	6.0
+station	Planar_T	27.0	24.0	6.0	6.0
+station	Def_Met_T	27.0	30.0	6.0	6.0
+stop	Litho_T	0	c3_1
+stop	Litho_T	1	c4_1
+stop	Litho_T	2	c2_2
+stop	Litho_Met_T	0	c3_6
+stop	Dry_Etch_T	0	c5_2
+stop	Dry_Etch_T	1	c8_2
+stop	Dry_Etch_T	2	c5_3
+stop	Wet_Etch_T	0	c9_1
+stop	Wet_Etch_T	1	c10_1
+stop	Wet_Etch_T	2	c8_2
+stop	Diffusion_T	0	c9_6
+stop	Diffusion_T	1	c10_6
+stop	Dielectric_T	0	c11_2
+stop	TF_T	0	c3_7
+stop	TF_T	1	c4_7
+stop	TF_Met_T	0	c3_12
+stop	Implant_T	0	c6_7
+stop	Planar_T	0	c9_7
+stop	Planar_T	1	c10_7
+stop	Def_Met_T	0	c9_12
+stocker	c6_6
+stocker	c12_6
+stocker	c5_10
+stocker	c11_10
+entry	c1_6
+exit	c15_6
+price	Litho_T	60000000.0	30000.0
+price	Litho_Met_T	8000000.0	4000.0
+price	Dry_Etch_T	6000000.0	3000.0
+price	Wet_Etch_T	4000000.0	2000.0
+price	Diffusion_T	5000000.0	2500.0
+price	Dielectric_T	6000000.0	3000.0
+price	TF_T	7000000.0	3500.0
+price	TF_Met_T	3000000.0	1500.0
+price	Implant_T	9000000.0	4500.0
+price	Planar_T	5000000.0	2500.0
+price	Def_Met_T	10000000.0	5000.0
+
