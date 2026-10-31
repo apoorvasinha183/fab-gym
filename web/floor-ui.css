@@ -676,3 +676,11 @@ body.opening-on .curves, body.evidence-on .curves { display: none; }
 .gl-fig .edge.pair { stroke-dasharray: 3 3; }
 /* a picture not made yet: an empty tile with the cast's background, never a broken image */
 .gl-pic.missing { opacity: 0.35; }
+
+/* ---------- Fab status folds like the legend (docs/FLOOR-NAMES.md) */
+#health .hp-title .fold { all: unset; cursor: pointer; display: flex; justify-content: flex-start; gap: 6px; align-items: center; width: 100%; }
+#health .hp-title .fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+#health.folded > :not(.hp-title) { display: none; }
+#health.folded { padding-bottom: 10px; }
+#health.folded .chev { display: inline-block; transform: rotate(-90deg); }
+body.health-folded .maptools { right: 18px; }

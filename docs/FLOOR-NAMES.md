@@ -19,3 +19,4 @@ symmetry". On a teaching fab of our own and the SMT2020 testbed; not a real fab.
   survives a reload, and a second press opens it again.
 
 ## Changes
+- 1 Nov, results: FN1 and FN2 pass, with the Floor's other tests (health, review, curves, random runs, site cuts).

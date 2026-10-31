@@ -1312,6 +1312,16 @@ function setupInput() {
   };
   $("key-fold").onclick = () => keyFold(!$("key").classList.contains("folded"));
   try { if (localStorage.getItem("fabgym.keyFolded") === "1") { $("key").classList.add("folded"); $("key-fold").setAttribute("aria-expanded", "false"); } } catch { /* storage blocked */ }
+  // Fab status folds the same way, for symmetry (docs/FLOOR-NAMES.md)
+  const healthFold = folded => {
+    $("health").classList.toggle("folded", folded);
+    document.body.classList.toggle("health-folded", folded);
+    $("health-fold").setAttribute("aria-expanded", String(!folded));
+    try { localStorage.setItem("fabgym.healthFolded", folded ? "1" : "0"); } catch { /* storage blocked: folding still works */ }
+    fit();
+  };
+  $("health-fold").onclick = () => healthFold(!$("health").classList.contains("folded"));
+  try { if (localStorage.getItem("fabgym.healthFolded") === "1") { $("health").classList.add("folded"); document.body.classList.add("health-folded"); $("health-fold").setAttribute("aria-expanded", "false"); } } catch { /* storage blocked */ }
   addEventListener("keydown", e => {
     if (e.key === "Escape" && !$("stages").hidden) { stagesClose(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -2117,7 +2127,8 @@ function floorPad() {
   if (VP) return { l: VP.x + 6, r: innerWidth - VP.x - VP.w + 6, t: 170, b: 175 };
   const wide = innerWidth > 900;
   const dock = $("dock");
-  const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : $("health").offsetWidth + 32; // the health panel (docs/FLOOR-HEALTH.md)
+  const healthOpen = !$("health").classList.contains("folded"); // Fab status folds like the legend (docs/FLOOR-NAMES.md)
+  const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : healthOpen ? $("health").offsetWidth + 32 : 24; // the health panel (docs/FLOOR-HEALTH.md)
   const keyOpen = !document.body.classList.contains("dock-wide") && !$("key").classList.contains("folded");
   return { l: wide && keyOpen ? 330 : 24, r: r + (wide && dock.hidden ? 52 : 0), t: 116, b: 96 }; // room for the map's buttons
 }
