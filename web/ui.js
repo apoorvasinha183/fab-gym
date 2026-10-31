@@ -287,7 +287,7 @@
     if (x === null || x === undefined || !isFinite(x)) return "—";
     const s = x < 0 ? "−" : sign && x > 0 ? "+" : "", a = Math.abs(x);
     const sig = (n) => +n.toPrecision(3);
-    const t = a >= 1e6 ? `${sig(a / 1e6)}M` : a >= 1e4 ? `${sig(a / 1e3)}k` : Math.round(a).toLocaleString("en-US");
+    const t = a >= 1e6 ? `${sig(a / 1e6)}M` : a >= 1e3 ? `${sig(a / 1e3)}k` : Math.round(a).toLocaleString("en-US"); // k from $1,000 (docs/EVIDENCE-REVIEW.md)
     return `${s}$${t}`;
   }
   // the Results tab's filter: words in the title, headline or question, and a kind ("all" for every kind)

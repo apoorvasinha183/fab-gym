@@ -2098,16 +2098,34 @@ async function drawFindings() {
   }
   const pic = f => {
     if (f.id === "prototypes") {
-      const m = Math.max(...f.levels.map(l => Math.abs(l.value)));
-      return `<div class="fpic bars">${f.levels.map(l => `<div class="bar-row"><span class="bl">${({ 1: "Today's orders", 2: "Twice as many", 4: "Four times", 8: "Eight times" })[l.share]}</span><span class="bt"><i class="${l.verdict === "better" ? "good" : l.verdict === "worse" ? "bad" : "flat"}" style="width:${Math.max(3, (Math.abs(l.value) / m) * 100)}%"></i></span><b>${FabEvidence.usd(l.value)}</b></div>`).join("")}<p class="cap">Profit a day from holding prototypes at the door, against today's fab</p></div>`;
+      // bars grow from a $0 line, gains right and losses left, in proportion (docs/EVIDENCE-REVIEW.md)
+      const pos = Math.max(0, ...f.levels.map(l => l.value)), neg = Math.max(0, ...f.levels.map(l => -l.value)), span = pos + neg || 1;
+      const zero = (neg / span) * 100;
+      return `<div class="fpic bars">${f.levels.map(l => { const w = (Math.abs(l.value) / span) * 100, left = l.value >= 0 ? zero : zero - w;
+        return `<div class="bar-row"><span class="bl">${({ 1: "Today's orders", 2: "Twice as many", 4: "Four times", 8: "Eight times" })[l.share]}</span><span class="bt" data-zero="${zero.toFixed(3)}"><em class="zero" style="left:${zero}%"></em><i class="${l.verdict === "better" ? "good" : l.verdict === "worse" ? "bad" : "flat"}" style="left:${left}%;width:${Math.max(0.5, w)}%"></i></span><b>${FabEvidence.usd(l.value)}</b></div>`; }).join("")}<p class="cap">Profit a day from holding prototypes at the door, against today's fab</p></div>`;
     }
     if (f.id === "cap") return `<div class="fpic duo"><div><b>${Math.round(f.normal.daysSooner)} days</b><span>sooner for each wafer, normal fab</span></div><div class="bad"><b>−${Math.round(f.breaks.wafersLost)} wafers</b><span>a day when machines break twice as often</span></div></div>`;
     if (f.id === "ai") return `<div class="fpic duo"><div><b>The fab's rule</b><span>wins on ten new days</span></div><div class="bad"><b>−${Math.round(f.lower)} points</b><span>the trained AI's score against it</span></div></div>`;
     return `<div class="fpic big"><b>${f.passed} / ${f.runs}</b><span>scored runs passed the proof-checked referee</span></div>`;
   };
   $("find-list").innerHTML = FINDINGS.map((f, i) => `<article class="find" id="find-${f.id}"><div class="fnum">${i + 1}</div><div class="fbody"><h3>${esc(f.title)}</h3>${pic(f)}` +
-    `<dl><dt>What we did</dt><dd>${esc(f.what)}</dd><dt>What it means</dt><dd>${esc(f.means)}</dd><dt>How sure</dt><dd class="sure">${esc(f.sure)}</dd></dl></div></article>`).join("");
+    `<dl><dt>What we did</dt><dd>${esc(f.what)}</dd><dt>What it means</dt><dd>${esc(f.means)}</dd><dt>How sure</dt><dd class="sure">${esc(f.sure)}</dd></dl>` +
+    `<button type="button" class="link find-proof" data-jump="${PROOF[f.id] ? PROOF[f.id][0] : "results"}" data-kind="${PROOF[f.id] ? PROOF[f.id][1] : ""}">${PROOF[f.id] ? PROOF[f.id][2] : "See the runs behind it"} →</button></div></article>`).join("");
+  $("find-list").querySelectorAll(".find-proof").forEach(b => (b.onclick = () => evJump(b.dataset.jump, b.dataset.kind)));
 }
+// where each finding's proof lives (docs/EVIDENCE-REVIEW.md): [section, a kind of run to show, the link's words]
+const PROOF = {
+  prototypes: ["numbers", "", "See the table behind it"],
+  cap: ["long-sec", "", "See the cap's table"],
+  ai: ["results", "contest", "See the contests"],
+};
+/** Bring a part of Evidence to the top, under the contents bar; with a kind, show only those runs. */
+function evJump(id, kind) {
+  if (kind) { const b = document.querySelector(`#res-kind button[data-k="${kind}"]`); if (b) b.click(); }
+  const t = $(id);
+  if (t) t.scrollIntoView({ block: "start" });
+}
+
 function goTab(tab) {
   if (tab === "numbers" || tab === "results" || tab === "evidence") { location.hash = "#evidence"; return; }
   else if (tab === "glossary") openGlossary();
@@ -2186,6 +2204,7 @@ async function chromeSetup() {
     else goTab(b.dataset.tab);
   }));
   $("dock-close").onclick = () => (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
+  document.querySelectorAll(".ev-toc button").forEach(b => (b.onclick = () => evJump(b.dataset.jump)));
   // Flows: pause, restart, product
   $("flow-play").onclick = () => { FLOW.paused = !FLOW.paused; $("flow-play").textContent = FLOW.paused ? "Play" : "Pause"; };
   $("flow-restart").onclick = () => { FLOW.secs = 0; FLOW.paused = false; $("flow-play").textContent = "Pause"; };
@@ -2973,7 +2992,7 @@ function drawCapital(d, share) {
   const g = FabUI.capitalGrid(d, share, period);
   const short = { "P0 today": "Today's order", "P1 family B first": "Prototypes first", "P2 family cap": "Capped at the door",
     "P3 reservation": "A tool kept for prototypes", "P4 qualification": "Half the tools" };
-  const pay = c => (!c.capital ? (c.verdict === "better" ? "no capital" : "") : paybackText(c.payback) === "never" ? "never pays back" : paybackText(c.payback));
+  const pay = c => (!c.capital ? "no capital" : paybackText(c.payback) === "never" ? "never pays back" : paybackText(c.payback)); // never a blank line (docs/EVIDENCE-REVIEW.md)
   const cellHtml = (f, c, ci) => {
     if (c.base) return `<td class="cg-base"><b>today's fab</b><span>the base</span></td>`;
     if (c.missing) return `<td class="cg-na">—</td>`;
@@ -3087,10 +3106,26 @@ async function openResults(within) {
   else $("dock-body").scrollTop = 0;
 }
 
+/** A contest's numbers with one row per measure and the contestants side by side (docs/EVIDENCE-REVIEW.md). */
+function contestTable(nb) {
+  const who = [...new Set(nb.rows.map(r => r[0]))], measures = [...new Set(nb.rows.map(r => r[1]))];
+  const cell = (r) => { const v = r[5] === "no clear effect" ? "unclear" : r[5]; return `<td class="v">${esc(r[3])} <small>(${esc(r[4])})</small> <span class="pill ${v}">${esc(r[5])}</span></td>`; };
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  return `<div class="res-scroll"><table class="captab contest"><thead><tr><th>Measure</th><th>Today's rule</th>${who.map(w => `<th>${esc(cap(w))}: change</th>`).join("")}</tr></thead><tbody>` +
+    measures.map(m => { const rs = who.map(w => nb.rows.find(r => r[0] === w && r[1] === m)); return `<tr><td>${esc(m)}</td><td class="v">${esc(rs[0][2])}</td>${rs.map(r => (r ? cell(r) : "<td>—</td>")).join("")}</tr>`; }).join("") + "</tbody></table></div>";
+}
+
 function drawResults() {
   const kindOn = document.querySelector("#res-kind button.on");
   const all = FabUI.filterResults(RESULTS.page.concat(RESULTS.saved || []), $("res-q").value, kindOn ? kindOn.dataset.k : "all");
-  const KIND = { sweep: "sweep", search: "search", training: "training", contest: "contest", "what-if": "your change", question: "your question" };
+  // the badge says the filter's word (docs/EVIDENCE-REVIEW.md), and each filter counts its runs
+  const KIND = { sweep: "study", search: "search", training: "training", contest: "contest", "what-if": "your change", question: "your question" };
+  const pool = RESULTS.page.concat(RESULTS.saved || []);
+  document.querySelectorAll("#res-kind button").forEach(b => {
+    if (!b.dataset.label) b.dataset.label = b.textContent.trim();
+    const n = b.dataset.k === "all" ? pool.length : pool.filter(e => e.kind === b.dataset.k).length;
+    b.textContent = `${b.dataset.label} (${n})`;
+  });
   const when = iso => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const table = (cols, rows) => `<div class="res-scroll"><table class="captab"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
     rows.map(r => `<tr>${r.map((x, i) => `<td class="${i >= cols.length - 1 && /better|worse|no clear/.test(x) ? "" : /^[−+\-$\d]/.test(String(x)) ? "v" : ""}">${/^(better|worse|no clear effect)$/.test(x) ? `<span class="pill ${x === "no clear effect" ? "unclear" : x}">${x}</span>` : esc(String(x))}</td>`).join("")}</tr>`).join("") + `</tbody></table></div>`;
@@ -3098,10 +3133,10 @@ function drawResults() {
     <summary><span class="kind">${esc(KIND[e.kind] || e.kind)}</span><span class="t">${esc(e.title)}</span><span class="w">${esc(when(e.when))}</span><span class="h">${esc(e.headline)}</span></summary>
     <div class="res-body">${e.question ? `<p class="q">${esc(e.question)}</p>` : ""}
       <h4>Settings in the simulator</h4>${table(["Setting", "Value"], e.settings)}
-      <h4>Numbers that came out</h4>${table(e.numbers.columns, e.numbers.rows)}
+      <h4>Numbers that came out</h4>${e.kind === "contest" && e.numbers.columns[0] === "Contestant" ? contestTable(e.numbers) : table(e.numbers.columns, e.numbers.rows)}
       ${e.id === "two-families" ? `<p><button type="button" class="link" data-open-numbers>Open it in Numbers</button></p>` : ""}
       ${e.files.length ? `<h4>Files</h4><p class="files">${e.files.map(f => `<code>${esc(f)}</code>`).join(" ")}</p>` : ""}
-      <p class="note small">${esc(e.note)}</p></div></details>`).join("")
+      ${e.note && !/^Run on a fab built from the SMT2020 testbed/.test(e.note) ? `<p class="note small">${esc(e.note)}</p>` : ""}</div></details>`).join("")
     : `<p class="note">${RESULTS.saved && RESULTS.saved.length ? "No result matches." : "No results in this build (run web/build.sh)."}</p>`;
   $("res-list").querySelectorAll("[data-open-numbers]").forEach(b => (b.onclick = () => openNumbers()));
 }

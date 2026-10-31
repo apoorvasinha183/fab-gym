@@ -602,3 +602,22 @@ body.opening-on .topbar, body.opening-on .maptools, body.evidence-on .topbar, bo
 .cmd-examples button::before { content: "→ "; color: var(--accent); font-weight: 700; }
 .cmd-examples button:hover, .cmd-examples button:focus-visible { border-color: var(--accent); background: #12262D; }
 @media (max-width: 760px) { .open-doors { grid-template-columns: 1fr; } }
+
+/* ---------- Evidence after review (docs/EVIDENCE-REVIEW.md) */
+.fpic.bars .bt { position: relative; overflow: visible; }
+.fpic.bars .bt i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.fpic.bars .bt .zero { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); }
+.find-proof { margin-top: 8px; color: var(--accent); font-weight: 600; font-size: 13px; padding: 0; background: none; border: 0; cursor: pointer; }
+.ev-toc { display: none; }
+body.evidence-on .ev-toc { display: flex; gap: 6px; position: sticky; top: 0; z-index: 5; margin: -4px 0 12px; padding: 8px 0; background: var(--card); border-bottom: 1px solid var(--line); }
+body.evidence-on .ev-toc button { border-radius: 999px; padding: 5px 14px; font-size: 13px; }
+body.evidence-on .ev-toc button:hover { border-color: var(--accent); }
+body.evidence-on #findings, body.evidence-on #numbers, body.evidence-on #results, body.evidence-on #long-sec { scroll-margin-top: 52px; }
+body.evidence-on #dock-close { display: none; }
+body.evidence-on .res-scroll { max-height: none; overflow: visible; }
+.captab.contest td small { color: var(--muted); }
+.sub-ev { display: none; }
+body.evidence-on .brand .sub-floor { display: none; }
+body.evidence-on .brand .sub-ev { display: inline; }
+/* the contents bar: opaque, and flush with the panel's top so nothing shows above or behind it */
+body.evidence-on .ev-toc { top: -14px; margin: -14px -18px 12px; padding: 10px 18px; background: #0E1B1F; }

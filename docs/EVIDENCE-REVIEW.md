@@ -44,3 +44,10 @@ no capital and no gain prints a blank second line; amounts under $10,000 print i
 - `web/tests/cleanup.test.mjs` (the money formatter) changes with item 3: $8,000 is $8k.
 
 ## Changes
+
+- 31 Oct, while writing the code: replacing the bars' lines took the closing brace of their block with them (a syntax
+  error caught before any run); the contents bar was see-through (the panel's colour is translucent) and stopped below
+  the panel's top padding, so text scrolled visibly behind and above it; it is opaque and flush with the top.
+- 31 Oct, results: EV1 to EV8 pass, and the page suite (238 tests, the paused floor coach's three left out) passes run
+  one file at a time. Seen on the way: in every contest the evolved rule's changes are 0.0 (0.0 to 0.0), so on those days
+  it chose exactly as today's rule did; the table now shows that plainly, side by side with the trained AI.

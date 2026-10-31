@@ -14,7 +14,7 @@
 <header class="card brand">
   <div class="brand-row"><div class="title">Fab Gym</div>
     <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#evidence" data-page="evidence">Evidence</a></nav></div>
-  <div class="sub">The full fab, 1,043 machines, running live in your browser</div>
+  <div class="sub"><span class="sub-floor">The full fab, 1,043 machines, running live in your browser</span><span class="sub-ev">What the simulator found, and every run behind it</span></div>
   <div class="help-row"><button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button><button id="glossary-open" class="link help-link" type="button" data-tab="glossary" aria-label="Glossary: what the words mean">? Glossary</button></div>
 </header>
 
@@ -98,6 +98,7 @@
     <button type="button" class="icon close" id="dock-close" aria-label="Close the panel">✕</button>
   </div>
   <div class="dock-body" id="dock-body">
+  <nav class="ev-toc" aria-label="Evidence"><button type="button" data-jump="findings">What we found</button><button type="button" data-jump="numbers">Lab notebook</button><button type="button" data-jump="results">Runs</button></nav>
   <section id="pane-ask" class="pane" role="tabpanel" aria-label="Ask" hidden>
     <h2>Ask the fab</h2>
     <p class="pane-lead">Type a question in the bar at the top (⌘K), or pick one below.</p>
@@ -164,7 +165,6 @@
     <h2>What we found</h2>
     <p class="pane-lead">Four things the simulator taught us, in plain words, each with how sure we are. The tables and every run behind them are in the lab notebook below.</p>
     <div id="find-list" class="find-list"></div>
-    <p class="note small">All of it is simulated on a fab built from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times. No real company's data is used, and every price is made up.</p>
   </section>
 
   <section id="numbers" class="pane wide" role="tabpanel" aria-label="Numbers" hidden>
@@ -216,6 +216,7 @@
       </div>
     </div>
     <div id="res-list"></div>
+    <p class="note small ev-foot">All of it is simulated on a fab built from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times. No real company's data is used, and every price is made up.</p>
   </section>
 
   <section id="glossary" class="pane wide" role="tabpanel" aria-label="Glossary" hidden>
