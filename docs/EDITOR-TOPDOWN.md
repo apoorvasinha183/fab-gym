@@ -39,4 +39,9 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
 
 ## Changes
 
-(none yet)
+- 31 Oct, while writing the code: a leftover rule dimmed every palette button but Select while the run played (from
+  the Run and Build modes, cut in docs/SITE-CUTS.md); it went, which is likely part of what looked "not engraved".
+  The old pods-under-a-label drawing went with the labels.
+- 31 Oct, results: D1 to D6 pass, and all 139 page tests (the earlier editor tests click by tile and pass straight
+  down too). The map is taller than before, since square tiles take more height than the tilted view; zoom and pan
+  reach all of it.

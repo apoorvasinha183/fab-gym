@@ -78,7 +78,8 @@
   }
 
   // ---------- the 2.5D floor
-  const ISO = { r: -0.36, q: 0.5, pad: 0.03 };
+  // straight down (docs/EDITOR-TOPDOWN.md): x across, y down, square tiles
+  const ISO = { r: 0, q: 1, pad: 0.03 };
   const cv = $("map"), ctx = cv.getContext("2d");
   let F = null;
   function fit(cw) {
@@ -86,7 +87,7 @@
     const pts = [[0, 0], [s.W, 0], [0, s.H], [s.W, s.H]].map(([x, y]) => [x * co - y * sn, (x * sn + y * co) * ISO.q]);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     const pad = cw * ISO.pad, sc = (cw - 2 * pad) / (Math.max(...xs) - Math.min(...xs));
-    const lift = sc * 1.6, depth = sc * 0.7;
+    const lift = 0, depth = 0;
     return { s: sc, co, sn, ox: pad - Math.min(...xs) * sc, oy: pad + lift - Math.min(...ys) * sc, ch: (Math.max(...ys) - Math.min(...ys)) * sc + 2 * pad + lift + depth, depth };
   }
   const P = (x, y, z) => [F.ox + (x * F.co - y * F.sn) * F.s, F.oy + (x * F.sn + y * F.co) * ISO.q * F.s - (z || 0) * F.s];
@@ -148,47 +149,36 @@
     const vs = showRun() && win ? vehicles(clock) : [];
     for (const v of vs) items.push({ v, d: P(v.x + 0.5, v.y + 0.5)[1] });
     items.sort((a, b) => a.d - b.d);
-    const labels = [];
+
     for (const it of items) {
       if (it.v) { drawVehicle(it.v); continue; }
-      const b = it.b, col = b.kind === "group" ? FAM[b.area] || "#8FB3AE" : b.kind === "stocker" ? "#8FB3AE" : "#7EE8D8";
-      const tall = b.kind === "group" ? (b.area === "litho" ? 1.05 : b.area === "diff" ? 1.15 : 0.75) : b.kind === "stocker" ? 0.9 : 0.35;
-      const i = 0.14;
-      const bs = [P(b.x + i, b.y + i), P(b.x + b.w - i, b.y + i), P(b.x + b.w - i, b.y + b.h - i), P(b.x + i, b.y + b.h - i)];
-      const tp = bs.map((p) => [p[0], p[1] - tall * F.s]);
-      prism(bs, tp, "#26343B", "#33434B");
-      const cx = tp.reduce((a, p) => a + p[0], 0) / 4, cy = tp.reduce((a, p) => a + p[1], 0) / 4;
-      const inner = tp.map((p) => [cx + (p[0] - cx) * 0.72, cy + (p[1] - cy) * 0.72]);
-      poly(inner); ctx.fillStyle = col; ctx.globalAlpha = 0.92; ctx.fill(); ctx.globalAlpha = 1;
-      if (b.area === "litho") { ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 14; poly(inner); ctx.fill(); ctx.restore(); }
-      const ic = b.kind === "group" ? b.area : b.kind;
-      if (IC[ic]) icon(ic, cx, cy, Math.max(10, F.s * 0.95), "#0B1418", 2);
+      // a flat tile (docs/EDITOR-TOPDOWN.md): the area's colour, a darker rim, a lit top edge, the icon engraved
+      const b = it.b, col = b.kind === "group" ? FAM[b.area] || "#8FB3AE" : b.kind === "stocker" ? "#8A6A2C" : "#2F6F68";
+      const i = 0.08, [ax, ay] = P(b.x + i, b.y + i), [bx, by] = P(b.x + b.w - i, b.y + b.h - i), w = bx - ax, h = by - ay;
+      const en = E.engrave(col);
+      ctx.beginPath(); ctx.roundRect(ax, ay, w, h, Math.min(w, h) * 0.12); ctx.fillStyle = col; ctx.fill();
+      ctx.lineWidth = Math.max(1.5, F.s * 0.07); ctx.strokeStyle = en.cut; ctx.globalAlpha = 0.6; ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(255,255,255,.2)"; ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, w - 6, Math.max(2, h * 0.05), 2); ctx.fill();
       let q = 0;
       if (b.kind === "group" && fr) { const gi = run.group_names.indexOf(b.group); q = gi >= 0 ? fr.queues[gi] : 0; }
-      if (b.kind === "group") labels.push([`${SHORT[b.area] || b.group} ×${b.count}`, cx, bs.reduce((a, p) => (p[1] > a[1] ? p : a), bs[0])[1] + 3, q]);
+      const ic = b.kind === "group" ? b.area : b.kind, cx = ax + w / 2, cy = ay + h / 2 - (q ? h * 0.07 : 0), sz = Math.min(w, h) * 0.5;
+      if (IC[ic]) { icon(ic, cx, cy + Math.max(1, F.s * 0.04), sz, en.light, 2.2); icon(ic, cx, cy, sz, en.cut, 2.2); }
+      if (q) podsIn(ax, ay, w, h, q);
       if (b.kind === "group" && fr) {
         const mood = E.blockMood(run, fi, b.group);
         if (mood) {
-          const tr = tp.reduce((a, p) => (p[0] - p[1] > a[0] - a[1] ? p : a), tp[0]), r = Math.max(5, F.s * 0.36);
-          ctx.fillStyle = MOOD[mood][1]; ctx.beginPath(); ctx.arc(tr[0], tr[1], r, 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke();
-          icon(MOOD[mood][2], tr[0], tr[1], r * 1.35, "#15191C", 2.2);
+          const r = Math.max(5, F.s * 0.3), mx = ax + w - r - 2, my = ay + r + 2;
+          ctx.fillStyle = MOOD[mood][1]; ctx.beginPath(); ctx.arc(mx, my, r, 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke();
+          icon(MOOD[mood][2], mx, my, r * 1.35, "#15191C", 2.2);
         }
       }
-      if (b.kind === "group" && (b.fail || b.rec)) { const bl = tp.reduce((a, p) => (p[0] < a[0] ? p : a), tp[0]); ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(bl[0], bl[1], Math.max(4, F.s * 0.28), 0, 7); ctx.fill(); icon("bolt", bl[0], bl[1], Math.max(7, F.s * 0.4), "#1B1E22", 2); }
-      if (b.kind === "group" && (bad.has(b.group) || [...bad].some((a) => typeof a === "string" && a.startsWith(b.group + "#")))) { ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 2; poly(tp); ctx.stroke(); ctx.restore(); }
-      if (sel && sel.id === b.id) { ctx.strokeStyle = "#7EE8D8"; ctx.lineWidth = 2.2; poly(tp); ctx.stroke(); }
-    }
-    // labels last, on a dark pill, so blocks in front never cut them
-    ctx.font = `600 ${Math.max(9, Math.round(F.s * 0.36))}px "Chakra Petch",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    for (const [t, x, y, q] of labels) {
-      const w = ctx.measureText(t).width + 8, h = Math.max(13, F.s * 0.5);
-      ctx.fillStyle = "rgba(7,16,19,.8)"; ctx.beginPath(); ctx.roundRect(x - w / 2, y, w, h, 4); ctx.fill();
-      ctx.fillStyle = "#CFE3E0"; ctx.fillText(t, x, y + h / 2 + 0.5);
-      if (q) pods(x, y + h + 2, q, h);
+      if (b.kind === "group" && (b.fail || b.rec)) { const r = Math.max(4, F.s * 0.26), fx = ax + r + 2, fy = ay + h - r - 2; ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(fx, fy, r, 0, 7); ctx.fill(); icon("bolt", fx, fy, r * 1.4, "#1B1E22", 2); }
+      if (b.kind === "group" && (bad.has(b.group) || [...bad].some((a) => typeof a === "string" && a.startsWith(b.group + "#")))) { ctx.save(); ctx.setLineDash([5, 4]); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(ax - 2, ay - 2, w + 4, h + 4, 6); ctx.stroke(); ctx.restore(); }
+      if (sel && sel.id === b.id) { ctx.strokeStyle = "#7EE8D8"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.roundRect(ax - 2, ay - 2, w + 4, h + 4, 6); ctx.stroke(); }
     }
     // a stretch set to break: a red bolt over it
-    for (const c of breaks) { ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(c[0], c[1] - F.s * 0.35, Math.max(6, F.s * 0.38), 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke(); icon("bolt", c[0], c[1] - F.s * 0.35, Math.max(9, F.s * 0.52), "#1B1E22", 2); }
-    if (flash) { const p = P(flash[0] + 0.5, flash[1] + 0.5); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p[0], p[1], F.s * 1.8, F.s * 0.9, 0, 0, 7); ctx.stroke(); }
+    for (const c of breaks) { ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(c[0], c[1], Math.max(6, F.s * 0.38), 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke(); icon("bolt", c[0], c[1], Math.max(9, F.s * 0.52), "#1B1E22", 2); }
+    if (flash) { const p = P(flash[0] + 0.5, flash[1] + 0.5); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p[0], p[1], F.s * 1.4, 0, 7); ctx.stroke(); }
     const outline = (x0, y0, w, h, col, dash) => {
       poly([P(x0, y0), P(x0 + w, y0), P(x0 + w, y0 + h), P(x0, y0 + h)]);
       ctx.setLineDash(dash || []); ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
@@ -216,30 +206,26 @@
     }
   }
 
-  /** Lots waiting at a group: a row of pods under its label, the eighth and on as a count. */
-  function pods(x, y, n, h) {
-    const k = Math.min(n, 8), pw = Math.max(6, h * 0.55), ph = Math.max(5, h * 0.45), gap = 2;
-    const more = n > k ? `+${n - k}` : "";
-    ctx.font = `700 ${Math.max(9, Math.round(h * 0.7))}px "IBM Plex Mono",monospace`;
-    const tw = more ? ctx.measureText(more).width + 4 : 0, W = k * (pw + gap) - gap + tw + 8;
-    ctx.fillStyle = "rgba(7,16,19,.8)"; ctx.beginPath(); ctx.roundRect(x - W / 2, y, W, ph + 6, 4); ctx.fill();
-    let px = x - W / 2 + 4;
-    for (let i = 0; i < k; i++, px += pw + gap) {
-      ctx.fillStyle = n >= 8 ? "#FFB020" : "#F4E7C6"; ctx.fillRect(px, y + 3, pw, ph);
-      ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1; ctx.strokeRect(px, y + 3, pw, ph);
-    }
-    if (more) { ctx.fillStyle = "#FFB020"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(more, px + 2, y + 3 + ph / 2 + 0.5); ctx.textAlign = "center"; }
-    ctx.font = `600 ${Math.max(9, Math.round(F.s * 0.36))}px "Chakra Petch",sans-serif`;
+  /** A vehicle seen from above: a flat token on its track piece, lit when it carries a lot. */
+  function drawVehicle(v) {
+    const [cx, cy] = P(v.x + 0.5, v.y + 0.5), r = Math.max(3, F.s * 0.3);
+    ctx.save();
+    if (v.loaded) { ctx.shadowColor = v.hot ? "#FF8A4C" : "#F2B33D"; ctx.shadowBlur = 8; }
+    ctx.beginPath(); ctx.roundRect(cx - r, cy - r, 2 * r, 2 * r, r * 0.35);
+    ctx.fillStyle = v.hot ? "#FF8A4C" : v.loaded ? "#F2B33D" : "#8A9AA2"; ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.2; ctx.stroke();
   }
 
-  function drawVehicle(v) {
-    const z = 0.38, i = 0.2, x = v.x, y = v.y;
-    const bs = [P(x + i, y + i, 0.1), P(x + 1 - i, y + i, 0.1), P(x + 1 - i, y + 1 - i, 0.1), P(x + i, y + 1 - i, 0.1)];
-    const tp = bs.map((p) => [p[0], p[1] - z * F.s]);
-    ctx.save();
-    if (v.loaded) { ctx.shadowColor = v.hot ? "#FF8A4C" : "#F2B33D"; ctx.shadowBlur = 10; }
-    prism(bs, tp, v.hot ? "#B4532A" : v.loaded ? "#9C7A22" : "#4A5961", v.hot ? "#FF8A4C" : v.loaded ? "#F2B33D" : "#8A9AA2");
-    ctx.restore();
+  /** Lots waiting at a group, inside its tile's lower edge: up to eight pods, a ninth in amber when there are more. */
+  function podsIn(ax, ay, w, h, q) {
+    const k = Math.min(q, 8), n = k + (q > 8 ? 1 : 0), pw = Math.max(3, w * 0.075), ph = Math.max(3, h * 0.07), gap = Math.max(1.5, w * 0.02);
+    let px = ax + (w - (n * (pw + gap) - gap)) / 2;
+    const py = ay + h - ph - Math.max(3, h * 0.07);
+    for (let j = 0; j < n; j++, px += pw + gap) {
+      ctx.fillStyle = j === 8 ? "#FFB020" : "#F4E7C6"; ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1; ctx.strokeRect(px, py, pw, ph);
+    }
   }
 
   // ---------- the replay
@@ -469,7 +455,7 @@
     draw();
   }
   function pan(dx, dy) { if (FIT) { V = E.panBy(viewNow(), dx, dy); draw(); } }
-  const tallOf = (b) => (b.kind === "group" ? (b.area === "litho" ? 1.05 : b.area === "diff" ? 1.15 : 0.75) : b.kind === "stocker" ? 0.9 : 0.35);
+  const tallOf = () => 0; // nothing stands up when seen from above (docs/EDITOR-TOPDOWN.md)
   function hull(pts) {
     pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];

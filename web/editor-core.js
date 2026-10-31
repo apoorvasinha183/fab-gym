@@ -423,8 +423,15 @@
     return out;
   }
 
+  /** An icon engraved into a tile of colour `c` (docs/EDITOR-TOPDOWN.md): the cut, a dark shade of the tile, and a
+   * see-through white line along its lower edge. */
+  function engrave(c) {
+    const n = parseInt(String(c).replace("#", ""), 16), k = 0.38;
+    return { cut: `rgb(${Math.round((n >> 16) * k)},${Math.round(((n >> 8) & 255) * k)},${Math.round((n & 255) * k)})`, light: "rgba(255,255,255,0.35)" };
+  }
+
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
-    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar };
+    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);
