@@ -81,14 +81,19 @@
   // straight down (docs/EDITOR-TOPDOWN.md): x across, y down, square tiles
   const ISO = { r: 0, q: 1, pad: 0.03 };
   const cv = $("map"), ctx = cv.getContext("2d");
-  let F = null;
+  let F = null, room = null;
   function fit(cw) {
     const co = Math.cos(ISO.r), sn = Math.sin(ISO.r);
     const pts = [[0, 0], [s.W, 0], [0, s.H], [s.W, s.H]].map(([x, y]) => [x * co - y * sn, (x * sn + y * co) * ISO.q]);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-    const pad = cw * ISO.pad, sc = (cw - 2 * pad) / (Math.max(...xs) - Math.min(...xs));
+    const wx = Math.max(...xs) - Math.min(...xs), wy = Math.max(...ys) - Math.min(...ys), pad = cw * ISO.pad;
+    // the smaller of the column's width and the window's height below the map, never under 360 px (docs/EDITOR-TOPDOWN.md)
+    // kept until the room changes by 8 px or more, so small reflows above the map do not make it breathe
+    const r = Math.max(360, window.innerHeight - (cv.getBoundingClientRect().top + window.scrollY) - 24);
+    if (room == null || Math.abs(r - room) >= 8) room = r;
+    const sc = Math.min((cw - 2 * pad) / wx, (room - 2 * pad) / wy);
     const lift = 0, depth = 0;
-    return { s: sc, co, sn, ox: pad - Math.min(...xs) * sc, oy: pad + lift - Math.min(...ys) * sc, ch: (Math.max(...ys) - Math.min(...ys)) * sc + 2 * pad + lift + depth, depth };
+    return { s: sc, co, sn, ox: (cw - wx * sc) / 2 - Math.min(...xs) * sc, oy: pad + lift - Math.min(...ys) * sc, ch: wy * sc + 2 * pad + lift + depth, depth };
   }
   const P = (x, y, z) => [F.ox + (x * F.co - y * F.sn) * F.s, F.oy + (x * F.sn + y * F.co) * ISO.q * F.s - (z || 0) * F.s];
   const unP = (sx, sy) => { const X = (sx - F.ox) / F.s, Y = (sy - F.oy) / (ISO.q * F.s); return [X * F.co + Y * F.sn, -X * F.sn + Y * F.co]; };
@@ -314,7 +319,8 @@
       }
       return `<div class="sc${bad ? " bad" : ""}${stale ? " stale" : ""}"><span class="k">${k}</span><span class="n">${n}${unit ? ` <small>${unit}</small>` : ""}</span>${dl}</div>`;
     };
-    if (!sc) { $("score").innerHTML = ""; return; }
+    // before the first run the three cards wait in place, so their arrival does not move the map
+    if (!sc) { $("score").innerHTML = ["Wafers out a day", "Days a wafer takes", "Extra spend"].map((k) => `<div class="sc stale"><span class="k">${k}</span><span class="n">…</span><span class="dl">running</span></div>`).join(""); return; }
     const top = run.spendTop;
     $("score").innerHTML =
       card("Wafers out a day", Math.round(sc.wafers_per_day).toLocaleString(), "", sc.wafers_per_day, p && p.wafers_per_day, (d) => d > 0, c && sc.wafers_per_day < c.target.wafers) +
@@ -780,7 +786,7 @@
   }
   requestAnimationFrame(loop);
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { V = null; draw(); }, 80); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { V = null; room = null; draw(); }, 80); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => s && draw());
   // for page tests: where a floor cell's centre is on screen, and the map's state (read only)
   window.FabEditorPage = {

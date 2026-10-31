@@ -56,3 +56,11 @@ across. Square tiles, picking, zoom and pan are unchanged.
 - 31 Oct, results: D1 to D6 pass, and all 139 page tests (the earlier editor tests click by tile and pass straight
   down too). The map is taller than before, since square tiles take more height than the tilted view; zoom and pan
   reach all of it.
+- 31 Oct, fitting the window: sizing the map by the window's height made it depend on where the map starts, and the
+  page moved under it after loading (the earlier "map shifts about 4 px after load"): the score cards appeared after
+  the first run (+63 px), and the web font, loaded with `display=swap`, changed line heights twice (+3.5 and +5.5 px),
+  so B2's "F fits again" failed. Fixed: the three score cards wait in place before the first run, the controls whose
+  `font` shorthand reset their line height now have a fixed one (1.3), and the fit keeps its height until the room
+  changes by 8 px or more (a resize recomputes it). Left: under half a pixel when the font arrives.
+- 31 Oct, results: D1 to D8 pass, and all 51 tests in the seven files that open the editor. At 1440 x 900 the map is
+  about 467 px tall, its bottom inside the window.
