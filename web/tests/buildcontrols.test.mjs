@@ -1,0 +1,175 @@
+// Build: every machine in reach, every control in view, part 1 (docs/BUILD-CONTROLS.md). Written before the code.
+// On a teaching fab of our own, built from the SMT2020 testbed's shapes; not a real fab.
+//
+//     node --test web/tests/buildcontrols.test.mjs   (needs Google Chrome and the .venv)
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
+import { rmSync as rmProfile } from "node:fs";
+// headless Chrome profiles: made per browser, removed when this file's tests end, so test runs cannot fill the disk
+const PROFILES = [];
+const profileDir = (prefix) => { const d = mkdtempSync(join(tmpdir(), prefix)); PROFILES.push(d); return d; };
+process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recursive: true, force: true }); } catch { /* already gone */ } } });
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..", "..");
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const PY = join(ROOT, ".venv", "bin", "python");
+const ready = existsSync(CHROME) && existsSync(PY);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const skip = !ready && "needs Google Chrome and the .venv";
+async function openEditor(path = "editor.html?ch=1", w = 1440, h = 1000, stars = null) {
+  const hp = 8800 + Math.floor(Math.random() * 600);
+  const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
+  for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/editor.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
+  const cp = 9300 + Math.floor(Math.random() * 400);
+  const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, `--window-size=${w},${h}`, "--hide-scrollbars", `--user-data-dir=${profileDir("build-")}`, "about:blank"], { stdio: "ignore" });
+  let ws = null;
+  for (let i = 0; i < 60 && !ws; i++) { try { const l = await (await fetch(`http://127.0.0.1:${cp}/json`)).json(); const p = l.find((t) => t.type === "page"); if (p) ws = new WebSocket(p.webSocketDebuggerUrl); } catch { /* not up */ } if (!ws) await sleep(200); }
+  await new Promise((r) => (ws.onopen = r));
+  let id = 0; const wait = new Map();
+  ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && wait.has(d.id)) { wait.get(d.id)(d.result); wait.delete(d.id); } };
+  const send = (method, params = {}) => new Promise((r) => { const i = ++id; wait.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  const ev = async (expr) => (await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result?.value;
+  const mouse = (type, x, y, extra = {}) => send("Input.dispatchMouseEvent", { type, x, y, button: "left", clickCount: 1, ...extra });
+  const key = async (k, code) => { await send("Input.dispatchKeyEvent", { type: "keyDown", key: k, code }); await send("Input.dispatchKeyEvent", { type: "keyUp", key: k, code }); };
+  await send("Page.enable");
+  await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+  if (stars) await send("Page.addScriptToEvaluateOnNewDocument", { source: `try { localStorage.setItem("fabgym.stars", ${JSON.stringify(JSON.stringify(stars))}); } catch (e) {}` });
+  await send("Page.navigate", { url: `http://127.0.0.1:${hp}/${path}` });
+  for (let i = 0; i < 200; i++) { await sleep(50); if (await ev("!!(window.FabEditorPage && FabEditorPage.runs() >= 1)")) break; }
+  return { ev, send, mouse, key, close: () => { try { ws.close(); } catch { /* closed */ } ch.kill(); helper.kill(); } };
+}
+
+const J = async (p, e) => JSON.parse(await p.ev(`JSON.stringify(${e})`));
+const until = async (p, cond, ms = 8000) => { for (let t = 0; t < ms; t += 100) { if (await p.ev(cond)) return true; await sleep(100); } return false; };
+const chTab = async (p, k) => { const r0 = await p.ev("FabEditorPage.runs()"); await p.ev(`document.querySelectorAll("#chtabs button")[${k}].click()`); await until(p, `FabEditorPage.runs() > ${r0}`, 8000); await sleep(300); };
+const KINDS = ["Lithography", "Litho metrology", "Dry etch", "Wet etch and clean", "Diffusion", "Dielectric", "Thin film", "Thin film metrology", "Ion implant", "Polishing (CMP)", "Defect inspection"];
+// each challenge's levers (docs/BUILD-CONTROLS.md), in order; free build has none
+const LEVERS = [
+  ["The broken track: when it stops", "Cap on lots inside"],
+  ["Polishing (CMP) machines", "Polishing (CMP): when it breaks", "Cap on lots inside"],
+  ["Lithography machines", "Lithography: when it breaks"],
+  ["Polishing (CMP) machines", "Polishing (CMP): when it breaks", "Cap on lots inside"],
+  [],
+];
+const LEVER_KINDS = [[], ["Polishing (CMP)"], ["Lithography"], ["Polishing (CMP)"], []];
+const ROUTE = ["Diffusion", "Lithography", "Litho metrology", "Dry etch", "Wet etch and clean", "Thin film", "Thin film metrology", "Polishing (CMP)", "Defect inspection",
+  "Ion implant", "Lithography", "Litho metrology", "Dry etch", "Wet etch and clean", "Dielectric", "Polishing (CMP)", "Defect inspection", "Wet etch and clean"];
+const MINUTES = [50, 40, 12, 35, 25, 30, 10, 35, 14, 18, 40, 12, 35, 25, 20, 35, 14, 25];
+const machines = (p) => J(p, `[...document.querySelectorAll("#pal [data-kind]")].map(b => ({ kind: b.dataset.kind, name: (b.querySelector(".nm") || {}).textContent,
+  n: (b.querySelector(".n") || {}).textContent || "", price: (b.querySelector(".pr") || {}).textContent || "", img: !!(b.querySelector("img") && b.querySelector("img").naturalWidth),
+  lever: b.classList.contains("lever"), locked: b.disabled || b.classList.contains("locked") }))`);
+
+test("BC1 every machine in the palette, with its picture, count and price; the levers' kinds marked, none locked", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=1", 1440, 900);
+  try {
+    for (let k = 0; k < 5; k++) {
+      if (k) await chTab(p, k);
+      await sleep(400);
+      const ms = await machines(p), blocks = await J(p, "FabEditorPage.blocks()");
+      assert.deepEqual(ms.map((m) => m.name), KINDS, `tab ${k}: the 11 kinds in order`);
+      for (const m of ms) {
+        const on = blocks.filter((b) => b.kind === "group" && b.area === m.kind).reduce((a, b) => a + b.count, 0);
+        assert.ok(m.img, `tab ${k} ${m.name}: a picture`);
+        assert.match(m.n, new RegExp(`^${on} on the floor`), `tab ${k} ${m.name}: its count (${m.n} against ${on})`);
+        assert.match(m.price, /^\$\d+(\.\d)?M$/, `tab ${k} ${m.name}: its price (${m.price})`);
+        assert.equal(m.locked, false, `tab ${k} ${m.name}: nothing is locked`);
+        assert.equal(m.lever, LEVER_KINDS[k].includes(m.name), `tab ${k} ${m.name}: marked as a lever only if a lever names it`);
+      }
+    }
+  } finally { p.close(); }
+});
+
+test("BC2 BC3 a machine in the palette opens its controls; the panel's three tabs; All controls changes the fab as + does", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=2", 1440, 900);
+  try {
+    await sleep(400);
+    await p.ev(`document.querySelector('#pal [data-kind="cmp"]').click(), 1`); await sleep(300);
+    assert.equal(await p.ev(`document.querySelector('#ctl-tabs [data-tab="sel"]').getAttribute("aria-selected")`), "true", "the Selected tab opens");
+    assert.match(await p.ev(`document.getElementById("insp").innerText`), /Polishing \(CMP\)/, "on the polishing group");
+    const tabs = await J(p, `[...document.querySelectorAll("#ctl-tabs [data-tab]")].map(b => b.textContent.trim())`);
+    assert.deepEqual(tabs, ["Selected", "Whole fab", "All controls"]);
+    await p.ev(`document.querySelector('#ctl-tabs [data-tab="fab"]').click(), 1`); await sleep(200);
+    // only the open tab's panel shows
+    const shown = (id) => p.ev(`document.getElementById("${id}").getClientRects().length > 0`);
+    assert.deepEqual([await shown("insp"), await shown("ctl-fab"), await shown("ctl-all")], [false, true, false], "Whole fab alone shows");
+    const fab = await p.ev(`document.getElementById("ctl-fab").innerText`);
+    assert.match(fab, /Cars on the track/); assert.match(fab, /Cap on lots inside/);
+    await p.ev(`document.querySelector('#ctl-tabs [data-tab="all"]').click(), 1`); await sleep(200);
+    assert.deepEqual([await shown("insp"), await shown("ctl-fab"), await shown("ctl-all")], [false, false, true], "All controls alone shows");
+    const groups = await J(p, `FabEditorPage.blocks().filter(b => b.kind === "group").map(b => b.group)`);
+    const rows = await J(p, `[...document.querySelectorAll("#ctl-all tr[data-group]")].map(r => r.dataset.group)`);
+    assert.deepEqual(rows.slice().sort(), groups.slice().sort(), "a row per machine group");
+    const before = await J(p, `FabEditorPage.blocks().find(b => b.group === "Litho_T").count`);
+    await p.ev(`document.querySelector('#ctl-all tr[data-group="Litho_T"] [data-up]').click(), 1`); await sleep(400);
+    assert.equal(await J(p, `FabEditorPage.blocks().find(b => b.group === "Litho_T").count`), before + 1, "one more machine");
+    assert.match(await p.ev("FabEditorPage.fab()"), new RegExp(`group\\tLitho_T\\t${before + 1}\\t`), "the next fab file has it");
+    await p.ev(`document.querySelector('#pal [data-kind="litho"]').click(), 1`); await sleep(300);
+    assert.match(await p.ev(`document.querySelector("#insp .count b").textContent`), new RegExp(`^${before + 1}$`), "Selected shows the same count");
+  } finally { p.close(); }
+});
+
+test("BC4 each challenge's levers open their control and light it", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=1", 1440, 900);
+  try {
+    for (let k = 0; k < 5; k++) {
+      if (k) await chTab(p, k);
+      await sleep(300);
+      const lv = await J(p, `[...document.querySelectorAll("#levers button")].map(b => b.textContent.trim())`);
+      assert.equal(lv.length, LEVERS[k].length, `tab ${k}: ${JSON.stringify(lv)}`);
+      LEVERS[k].forEach((want, i) => assert.ok(lv[i].startsWith(want), `tab ${k}: lever ${i} is "${want}" (${lv[i]})`));
+      for (let i = 0; i < lv.length; i++) {
+        await p.ev(`document.querySelectorAll("#levers button")[${i}].click(), 1`); await sleep(250);
+        const lit = await J(p, `(() => { const e = document.querySelector(".ctlrow.lit"); if (!e) return null; const r = e.getBoundingClientRect(); return { text: e.innerText, shown: r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < innerHeight }; })()`);
+        assert.ok(lit && lit.shown, `tab ${k} lever ${i}: its control is lit and in view`);
+      }
+    }
+  } finally { p.close(); }
+});
+
+test("BC5 every control says what it does", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=1", 1440, 900);
+  try {
+    await sleep(400);
+    const check = async (where) => {
+      const rows = await J(p, `[...document.querySelectorAll("${where} .ctlrow")].map(r => (r.querySelector(".why") || {}).textContent || "")`);
+      assert.ok(rows.length > 0, `${where}: controls`);
+      for (const w of rows) assert.ok(w.trim().length > 12, `${where}: a line on what it does ("${w}")`);
+    };
+    await p.ev(`document.querySelector('#pal [data-kind="litho"]').click(), 1`); await sleep(250);
+    await check("#insp");
+    await p.ev(`document.querySelector('#ctl-tabs [data-tab="fab"]').click(), 1`); await sleep(200);
+    await check("#ctl-fab");
+    await p.ev(`document.querySelector('#ctl-tabs [data-tab="all"]').click(), 1`); await sleep(200);
+    await check("#ctl-all");
+  } finally { p.close(); }
+});
+
+test("BC6 About shows the fab's 18 steps in order, and how many a real product takes", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=1", 1440, 900);
+  try {
+    await p.ev(`document.getElementById("about").open = true, 1`); await sleep(200);
+    const steps = await J(p, `[...document.querySelectorAll("#process li")].map(li => ({ name: (li.querySelector(".nm") || {}).textContent, min: (li.querySelector(".mn") || {}).textContent }))`);
+    assert.deepEqual(steps.map((s) => s.name), ROUTE, "the 18 steps in order");
+    assert.deepEqual(steps.map((s) => parseInt(s.min, 10)), MINUTES, "each step's minutes");
+    assert.match(await p.ev(`document.getElementById("about").innerText`), /583/, "a real product's 583 steps");
+  } finally { p.close(); }
+});
+
+for (const [w, h] of [[1440, 900], [1440, 760], [1280, 720]]) {
+  test(`BC7 at ${w} x ${h} the page does not scroll`, { skip }, async () => {
+    const p = await openEditor("editor.html?ch=2", w, h);
+    try {
+      await sleep(600);
+      const o = await J(p, `({ sh: document.documentElement.scrollHeight, ih: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth })`);
+      assert.ok(o.sh <= o.ih + 1, `no vertical scroll (${o.sh} against ${o.ih})`);
+      assert.ok(o.sw <= o.iw + 1, `no sideways scroll (${o.sw} against ${o.iw})`);
+    } finally { p.close(); }
+  });
+}

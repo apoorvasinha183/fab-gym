@@ -108,7 +108,8 @@ async function openEditor() {
 }
 const until = async (p, expr, ms) => { const t = Date.now(); while (Date.now() - t < ms) { if (await p.ev(expr)) return true; await sleep(30); } return false; };
 const tab = async (p, k) => { const r0 = await p.ev("FabEditorPage.runs()"); await p.ev(`[...document.querySelectorAll("#tabs button, .tabs button, button.tab")][${k}].click()`); await until(p, `FabEditorPage.runs() > ${r0}`, 5000); await sleep(200); };
-const palette = (p) => p.ev(`[...document.querySelectorAll("#pal button")].map((b) => b.dataset.t)`);
+// the palette's tools (docs/BUILD-CONTROLS.md lists the machines beside them, with data-kind)
+const palette = (p) => p.ev(`[...document.querySelectorAll("#pal button[data-t]")].map((b) => b.dataset.t)`);
 
 test("G7 the hint line follows the tool, and the lit cell follows the pointer", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const p = await openEditor();
