@@ -47,6 +47,7 @@ test("K3 Home keeps its two doors and drops 'or explore the floor'", () => {
   const doors = between(index, 'id="open-doors"', "</section>");
   assert.match(doors, /Play a challenge/);
   assert.match(doors, /Ask the fab/);
+  assert.match(doors, /Watch the whole fab at work/, "a third door to the Floor (docs/HOME-REVIEW.md)");
   assert.ok(!/id="open-explore"/.test(index), "no 'or explore the floor'");
 });
 

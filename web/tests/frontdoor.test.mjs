@@ -18,14 +18,16 @@ const index = read("web/index.html"), editor = read("web/editor.html"), app = re
 
 test("the landing leads with the gym, by the chosen words", () => {
   assert.match(index, /<h1 id="open-title">A gym for wafer fabs\.<\/h1>/);
-  assert.ok(index.includes("Build a fab, watch every machine work out, and fix what hurts. Meta's models propose changes, the simulator scores them, and a person signs off."));
+  // the models named by their jobs since docs/HOME-REVIEW.md (item 5)
+  assert.ok(index.includes("Build a fab, watch every machine work out, and fix what hurts. Muse Spark sets up the what-ifs you ask, Muse Wonder plays the challenges against you, the simulator scores every change, and a person signs off."));
   assert.ok(index.includes("Fab Gym · from the SMT2020 testbed"));
 });
 
 test("two doors: play a challenge opens the editor, ask the fab keeps the question box", () => {
   const doors = index.slice(index.indexOf('id="open-doors"'), index.indexOf("</section>", index.indexOf('id="open-doors"')));
   assert.ok(doors.length > 0, "a doors block on the landing");
-  assert.match(doors, /<a [^>]*href="editor\.html"[^>]*>[\s\S]*Play a challenge/);
+  // Play a challenge became a door of four challenge links and a Start button (docs/HOME-REVIEW.md)
+  assert.match(doors, /Play a challenge[\s\S]*<a [^>]*href="editor\.html\?ch=1"[^>]*>Start challenge 1/);
   assert.match(doors, /Ask the fab/);
   assert.match(doors, /id="open-q"/, "the question box sits in the Ask door");
   assert.ok(!/id="open-explore"/.test(index), "or explore the floor went: the nav's Floor does it (docs/SITE-CUTS.md)");
