@@ -2155,7 +2155,8 @@ async function chromeSetup() {
   try { bundled = await fetch("data/examples.json").then(r => r.json()); } catch { bundled = []; }
   const o = FabUI.openingState(st, bundled);
   $("open-examples").innerHTML = o.examples.map((q, i) => `<button type="button" data-i="${i}">${esc(q)}</button>`).join("");
-  $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => askFrom(o.examples[+b.dataset.i])));
+  // a suggestion fills the box to read or edit; only Go asks (docs/HOME-REVIEW.md)
+  $("open-examples").querySelectorAll("button").forEach(b => (b.onclick = () => { $("open-q").value = o.examples[+b.dataset.i]; $("open-q").focus(); }));
   $("open-form").onsubmit = e => { e.preventDefault(); askFrom($("open-q").value); };
   setTimeout(() => $("open-q").focus(), 60);
 

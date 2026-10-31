@@ -313,23 +313,37 @@
 <section id="opening" class="opening" aria-labelledby="open-title">
   <div class="eyebrow">Fab Gym · from the SMT2020 testbed</div>
   <h1 id="open-title">A gym for wafer fabs.</h1>
-  <p class="open-sub">Build a fab, watch every machine work out, and fix what hurts. Meta's models propose changes, the simulator scores them, and a person signs off.</p>
+  <p class="open-sub">Build a fab, watch every machine work out, and fix what hurts. Muse Spark sets up the what-ifs you ask, Muse Wonder plays the challenges against you, the simulator scores every change, and a person signs off.</p>
   <div id="open-doors" class="open-doors">
-    <a class="door door-play" href="editor.html">
-      <span class="door-cast" aria-hidden="true"><img src="cast/base/10-cmp.webp" alt=""><img src="cast/base/01-litho.webp" alt=""><img src="cast/base/03-dry.webp" alt=""></span>
+    <div class="door door-play">
       <span class="door-k">Play a challenge</span>
+      <div class="ch-tiles">
+        <a class="ch-tile" href="editor.html?ch=1"><img src="cast/litho/full.webp" alt="" width="224" height="224"><span class="n">1</span><span class="t">Rush hour on the spine</span></a>
+        <a class="ch-tile" href="editor.html?ch=2"><img src="cast/cmp/tired.webp" alt="" width="224" height="224"><span class="n">2</span><span class="t">The gassed polisher</span></a>
+        <a class="ch-tile" href="editor.html?ch=3"><img src="cast/litho/hurt.webp" alt="" width="224" height="224"><span class="n">3</span><span class="t">Breakdown, no spare</span></a>
+        <a class="ch-tile" href="editor.html?ch=4"><img src="cast/cmp/hold.webp" alt="" width="224" height="224"><span class="n">4</span><span class="t">Lean or redundant?</span></a>
+      </div>
       <span class="door-s">A small fab is already running, and something is holding it back. Find the problem, fix it and hit the target.</span>
-      <span class="door-go">Start the first challenge →</span>
-    </a>
+      <span class="inside">4 challenges · a free build · up to 3 stars each</span>
+      <a class="btn-solid" href="editor.html?ch=1">Start challenge 1 →</a>
+    </div>
     <div class="door door-ask">
       <span class="door-k">Ask the fab</span>
-      <span class="door-s">Ask a what-if about the full fab. Meta's model sets up the experiment, and the simulator shows you what changes.</span>
+      <span class="door-s">Ask a what-if about the full fab. Muse Spark sets up the experiment, and the simulator shows you what changes.</span>
       <form id="open-form" class="open-form" autocomplete="off">
         <label for="open-q" class="sr">Your question</label>
-        <input id="open-q" type="text" placeholder="Prototype orders double next quarter. What should we do?">
+        <input id="open-q" type="text" placeholder="Ask a what-if about the full fab…">
         <button type="submit" class="primary">Go</button>
       </form>
-      <div id="open-examples" class="open-examples" aria-label="Example questions"></div>
+      <div id="open-examples" class="open-examples" aria-label="Example questions: pick one to put it in the box"></div>
+    </div>
+    <div class="door door-floor">
+      <img src="cast/ceo.webp" alt="The fab's CEO: a cream robot in a navy coat and red tie, flexing a watch whose face is a silicon wafer" width="384" height="384">
+      <div class="door-floor-text">
+        <span class="door-k">Watch the whole fab at work</span>
+        <span class="door-s">1,043 machines from the SMT2020 testbed, running live in your browser. A new random run each visit.</span>
+      </div>
+      <a class="btn-solid" href="#floor">Watch it live →</a>
     </div>
   </div>
   <p class="fine">Every fab here starts from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times (Kopp, Hassoun, Kalir, Mönch 2020). No real company's data is used.</p>

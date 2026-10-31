@@ -37,3 +37,7 @@ fab of our own and the SMT2020 testbed; not a real fab.
   Start button to `editor.html?ch=1`.
 
 ## Changes
+
+- 31 Oct, results: HO1 to HO5 pass, and the page suite (216 tests, the paused floor coach's three left out) passes run one
+  file at a time once the two landing tests followed items 2 and 5. The CEO on the door is a 384 px copy
+  (`web/cast/ceo.webp`, 21 KB) of `~/fab-gym-paper/mascot/flex-robot-suit.webp`.

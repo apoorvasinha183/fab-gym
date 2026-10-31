@@ -1234,5 +1234,6 @@
       return null;
     },
   };
-  load(0);
+  // a challenge from the address: editor.html?ch=N, N from 1 (docs/HOME-REVIEW.md)
+  { const q = Number(new URLSearchParams(location.search).get("ch")); load(Number.isInteger(q) && q >= 1 && q <= E.CHALLENGES.length ? q - 1 : 0); }
 })();
