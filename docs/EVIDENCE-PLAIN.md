@@ -54,3 +54,10 @@ In headless Chrome with a helper of its own in quick mode (skipped without Googl
 - **K7** (docs/SITE-CUTS.md) still holds: the cap study, the money table and the results are all on the page.
 
 ## Changes
+
+- 31 Oct, while writing the code: at eight times today's prototype orders, holding prototypes at the door on today's floor
+  loses money (about −$185k a day), so the first finding says where it stops paying. Looked at on screen, the findings'
+  titles came out in capitals (an older rule for headings in panels) and three columns left the fourth card alone; the
+  titles now keep their case and the cards sit two by two. The new picture caption was 11.5 px and the cleanup's rule
+  13 (nothing under 12 px) caught it; it is 12 px.
+- 31 Oct, results: EV1 to EV9 pass and all 174 page tests, K7 included.

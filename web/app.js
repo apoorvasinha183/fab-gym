@@ -1789,8 +1789,8 @@ function openDock(tab) {
   dock.classList.toggle("wide", DOCK_WIDE.has(tab));
   document.body.classList.add("dock-open");
   document.body.classList.toggle("dock-wide", DOCK_WIDE.has(tab));
-  for (const [t, id] of [["ask", "pane-ask"], ["change", "pane-change"], ["numbers", "numbers"], ["results", "results"], ["glossary", "glossary"]])
-    $(id).hidden = !(t === tab || (tab === "evidence" && (t === "numbers" || t === "results")));
+  for (const [t, id] of [["ask", "pane-ask"], ["change", "pane-change"], ["findings", "findings"], ["numbers", "numbers"], ["results", "results"], ["glossary", "glossary"]])
+    $(id).hidden = !(t === tab || (tab === "evidence" && (t === "findings" || t === "numbers" || t === "results")));
   $("dock-title").textContent = DOCK_TITLE[tab] || "";
   document.body.classList.toggle("evidence-on", tab === "evidence");
   document.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle("on", on); if (b.getAttribute("role") === "tab") b.setAttribute("aria-selected", on); });
@@ -1806,8 +1806,31 @@ function closeDock() {
 // Evidence (docs/SITE-CUTS.md): the long studies and the results on a page of their own
 async function openEvidence() {
   openDock("evidence");
+  drawFindings();
   await openNumbers(true);
   await openResults(true);
+}
+// What we found (docs/EVIDENCE-PLAIN.md): four findings in plain words, from the same data as the notebook's tables
+let FINDINGS = null;
+async function drawFindings() {
+  if (!FINDINGS) {
+    try {
+      const get = p => fetch(p).then(r => (r.ok ? r.json() : Promise.reject(new Error(p))));
+      const [sweep, long, results, lean] = await Promise.all([get("data/two-families.json"), get("data/lean-long.json"), get("data/results.json"), get("data/lean-check.json")]);
+      FINDINGS = FabEvidence.findings({ sweep: sweep.pl ? FabUI.withPl(sweep, sweep.pl) : sweep, long, results, lean }, FabUI);
+    } catch { $("find-list").innerHTML = '<p class="note">The findings could not be loaded.</p>'; return; }
+  }
+  const pic = f => {
+    if (f.id === "prototypes") {
+      const m = Math.max(...f.levels.map(l => Math.abs(l.value)));
+      return `<div class="fpic bars">${f.levels.map(l => `<div class="bar-row"><span class="bl">${({ 1: "Today's orders", 2: "Twice as many", 4: "Four times", 8: "Eight times" })[l.share]}</span><span class="bt"><i class="${l.verdict === "better" ? "good" : l.verdict === "worse" ? "bad" : "flat"}" style="width:${Math.max(3, (Math.abs(l.value) / m) * 100)}%"></i></span><b>${FabEvidence.usd(l.value)}</b></div>`).join("")}<p class="cap">Profit a day from holding prototypes at the door, against today's fab</p></div>`;
+    }
+    if (f.id === "cap") return `<div class="fpic duo"><div><b>${Math.round(f.normal.daysSooner)} days</b><span>sooner for each wafer, normal fab</span></div><div class="bad"><b>−${Math.round(f.breaks.wafersLost)} wafers</b><span>a day when machines break twice as often</span></div></div>`;
+    if (f.id === "ai") return `<div class="fpic duo"><div><b>The fab's rule</b><span>wins on ten new days</span></div><div class="bad"><b>−${Math.round(f.lower)} points</b><span>the trained AI's score against it</span></div></div>`;
+    return `<div class="fpic big"><b>${f.passed} / ${f.runs}</b><span>scored runs passed the proof-checked referee</span></div>`;
+  };
+  $("find-list").innerHTML = FINDINGS.map((f, i) => `<article class="find" id="find-${f.id}"><div class="fnum">${i + 1}</div><div class="fbody"><h3>${esc(f.title)}</h3>${pic(f)}` +
+    `<dl><dt>What we did</dt><dd>${esc(f.what)}</dd><dt>What it means</dt><dd>${esc(f.means)}</dd><dt>How sure</dt><dd class="sure">${esc(f.sure)}</dd></dl></div></article>`).join("");
 }
 function goTab(tab) {
   if (tab === "numbers" || tab === "results" || tab === "evidence") { location.hash = "#evidence"; return; }
@@ -2476,7 +2499,7 @@ const POLICY_WORDS = Object.fromEntries(FabUI.POLICIES.map(k => [k, FabUI.policy
 const METRIC = {
   profit: { name: "Operating profit a day", unit: "$ a day", higher: true, base: v => FabUI.usd3(v), tick: v => FabUI.usd3(v) },
   a_wafers: { name: "Volume wafers a day", unit: "wafers a day", higher: true, base: v => fmtN(v, 0) },
-  b_cycle: { name: "Prototype cycle time", unit: "days", higher: false, base: v => fmtN(v, 1) },
+  b_cycle: { name: "Prototype cycle time", unit: "days", higher: false, base: v => `${fmtN(v, 1)} days` },
 };
 const LINE_COLORS = ["#7EE8D8", "#FF8AD8", "#FFC857", "#7F9CFF"];
 const VERDICT_COLOR = { better: "#4FE3A3", worse: "#FF6262", "no clear effect": "#8FB3AE" };
@@ -2652,7 +2675,7 @@ function drawCapital(d, share) {
   const g = FabUI.capitalGrid(d, share, period);
   const short = { "P0 today": "Today's order", "P1 family B first": "Prototypes first", "P2 family cap": "Capped at the door",
     "P3 reservation": "A tool kept for prototypes", "P4 qualification": "Half the tools" };
-  const pay = c => (!c.capital ? (c.verdict === "better" ? "no capital" : "") : paybackText(c.payback));
+  const pay = c => (!c.capital ? (c.verdict === "better" ? "no capital" : "") : paybackText(c.payback) === "never" ? "never pays back" : paybackText(c.payback));
   const cellHtml = (f, c, ci) => {
     if (c.base) return `<td class="cg-base"><b>today's fab</b><span>the base</span></td>`;
     if (c.missing) return `<td class="cg-na">—</td>`;

@@ -441,3 +441,32 @@ body.evidence-on #floor, body.evidence-on #key, body.evidence-on .kpis, body.evi
 body.evidence-on .cmd, body.evidence-on .lenses, body.evidence-on #lens-note, body.evidence-on #hint, body.evidence-on #ticker { visibility: hidden; }
 body.evidence-on .dock, body.evidence-on .dock.wide { left: max(18px, env(safe-area-inset-left, 0px)); right: max(18px, env(safe-area-inset-right, 0px)); width: auto; top: 112px; bottom: 18px; }
 body.evidence-on .dock-title { font-size: 20px; }
+
+/* What we found (docs/EVIDENCE-PLAIN.md): four findings in plain words, then the lab notebook */
+.findings h2 { font-size: 22px; }
+.find-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 6px 0 12px; }
+.find { display: grid; grid-template-columns: 34px 1fr; gap: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(126,232,216,.18); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+.find .fnum { width: 30px; height: 30px; border-radius: 50%; background: #173A35; color: #7EE8D8; font: 700 15px/30px var(--display, inherit); text-align: center; }
+.find .fbody { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.find h3 { margin: 0; font-size: 17px; line-height: 1.35; color: var(--text); text-wrap: balance; text-transform: none; letter-spacing: 0; font-weight: 700; }
+.find dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; font-size: 13px; line-height: 1.45; }
+.find dt { color: var(--muted2); font-weight: 600; }
+.find dd { margin: 0; color: var(--text); }
+.find dd.sure { color: #CFE9E4; }
+.fpic { background: rgba(0,0,0,.18); border-radius: 8px; padding: 10px 12px; }
+.fpic.bars .bar-row { display: grid; grid-template-columns: 110px 1fr 74px; gap: 10px; align-items: center; font-size: 12.5px; margin: 3px 0; }
+.fpic.bars .bt { height: 12px; background: rgba(255,255,255,.05); border-radius: 6px; overflow: hidden; }
+.fpic.bars .bt i { display: block; height: 100%; border-radius: 6px; }
+.fpic.bars i.good { background: #4FE3A3; } .fpic.bars i.bad { background: #FF6262; } .fpic.bars i.flat { background: #8FA9A6; }
+.fpic.bars b { text-align: right; font-variant-numeric: tabular-nums; }
+.fpic .cap { margin: 6px 0 0; font-size: 12px; color: var(--muted2); }
+.fpic.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fpic.duo > div { display: flex; flex-direction: column; gap: 2px; }
+.fpic.duo b, .fpic.big b { font-size: 20px; color: #4FE3A3; font-variant-numeric: tabular-nums; }
+.fpic.duo .bad b { color: #FF8A7A; }
+.fpic.duo span, .fpic.big span { font-size: 12px; color: var(--muted2); }
+.fpic.big { display: flex; align-items: baseline; gap: 12px; }
+.fpic.big b { font-size: 30px; }
+.notebook-h { margin-top: 18px !important; padding-top: 14px; border-top: 1px solid rgba(126,232,216,.2); }
+@media (max-width: 900px) { .find-list { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .find dl { grid-template-columns: 1fr; } .fpic.bars .bar-row { grid-template-columns: 90px 1fr 64px; } }

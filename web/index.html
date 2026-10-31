@@ -121,8 +121,17 @@
     </div>
   </section>
 
+  <section id="findings" class="pane wide findings" aria-label="What we found" hidden>
+    <h2>What we found</h2>
+    <p class="pane-lead">Four things the simulator taught us, in plain words, each with how sure we are. The tables and every run behind them are in the lab notebook below.</p>
+    <div id="find-list" class="find-list"></div>
+    <p class="note small">All of it is simulated on a fab built from the SMT2020 testbed, a public research set of a chip fab's machines, routes and times. No real company's data is used, and every price is made up.</p>
+  </section>
+
   <section id="numbers" class="pane wide" role="tabpanel" aria-label="Numbers" hidden>
-    <h2>Prototypes and the main product: what each change is worth</h2>
+    <h2 class="notebook-h">Lab notebook</h2>
+    <p class="pane-lead">The tables and runs behind the findings above, for readers who want the detail.</p>
+    <h3>Prototypes and the main product: what each change is worth</h3>
     <div class="num-controls">
       <div class="seg" role="group" aria-label="Measure" id="num-metric">
         <button type="button" data-m="profit" class="on">Operating profit</button>
@@ -284,6 +293,7 @@
 <script src="ask.js"></script>
 <script src="building.js"></script>
 <script src="journey.js"></script>
+<script src="evidence.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

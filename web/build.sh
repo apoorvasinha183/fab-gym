@@ -6,6 +6,8 @@ cargo build --release --target wasm32-unknown-unknown -p fabweb
 cp target/wasm32-unknown-unknown/release/fabweb.wasm web/
 cargo run --release -q --bin fabsim -- web-data web/data "${1:-data/smt2020/hvlm}"
 cp results/lean-long-units/summary.json web/data/lean-long.json
+# every scored run's Lean referee verdict, summed for Evidence (docs/EVIDENCE-PLAIN.md)
+python3 results/lean-check/summary.py
 # the two-family sweep with today's baselines, and the recorded example questions (docs/FLOOR-UI.md)
 node -e '
 const fs = require("fs"); const U = require("./web/ui.js");
