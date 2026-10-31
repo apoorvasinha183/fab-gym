@@ -76,7 +76,7 @@ function simulate(opts) {
   const fleetE = e.fg_fleet_entries_len ? new Float32Array(e.memory.buffer, e.fg_fleet_entries_ptr(), e.fg_fleet_entries_len()).slice() : new Float32Array(0);
   const fleetH = e.fg_fleet_hoists_len ? new Float32Array(e.memory.buffer, e.fg_fleet_hoists_ptr(), e.fg_fleet_hoists_len()).slice() : new Float32Array(0);
   // the editor's moods for this run, every 30 minutes, from the same Rust code as `fabsim moods` (docs/FLOOR-LOOK.md)
-  const moods = e.fg_moods && e.fg_moods(MOOD_EVERY) === 0 ? readJson() : null;
+  const moods = opts.moods !== false && e.fg_moods && e.fg_moods(MOOD_EVERY) === 0 ? readJson() : null;
   return { j, trace, states, secs, fleetE, fleetH, moods };
 }
 const MOOD_EVERY = 30;
@@ -939,7 +939,7 @@ function frame(now) {
   if (JOURNEY.on && !JOURNEY.paused && JOURNEY.P) { JOURNEY.p = Math.min(JOURNEY.P.total, JOURNEY.p + dt * JOURNEY.rate); journeyCamera(dt); }
   if (playing && P) {
     t = Math.min(P.j.until, t + dt * speed);
-    if (t >= P.j.until) playing = false, ($("play").textContent = "▶");
+    if (t >= P.j.until && !P.quick) playing = false, ($("play").textContent = "▶");
   }
   if (P) {
     cur.seek(t);
@@ -972,6 +972,18 @@ function groupAt(mx, my) {
 function showTip(h) {
   const tip = $("tip");
   const g = h.g;
+  const area = FabLook.areaOf(sim.area[P.j.groups[g][0]]);
+  tip.classList.toggle("tcard", !!area);
+  tip.style.setProperty("--fam", area ? FabLook.FAM[area] : "transparent");
+  tip.innerHTML = tipHtml(g);
+  tip.hidden = false;
+  const p = FabUI.tipPlace(h.mx, h.my, tip.offsetWidth, tip.offsetHeight, innerWidth, innerHeight);
+  tip.style.left = p.x + "px";
+  tip.style.top = p.y + "px";
+}
+
+// a group's hover card (docs/FLOOR-LOOK.md)
+function tipHtml(g) {
   const counts = [0, 0, 0, 0, 0];
   for (const k of P.groupTools[g]) counts[cur.toolState[k]]++;
   const G0 = P.j.groups[g];
@@ -979,16 +991,10 @@ function showTip(h) {
   const parts = counts.map((n, i) => (n ? `<span style="color:${STATE_COLORS[i]}">●</span> ${n} ${STATE_NAMES[i]}` : "")).filter(Boolean);
   const st = FabStages.byKey(FabStages.stageOfArea(sim.area[G0[0]]));
   const area = FabLook.areaOf(sim.area[G0[0]]), mood = moodNow(g) || "work", M = FabLook.MOOD[mood];
-  const art = area ? `<div class="tip-art" style="background:${FabLook.FAM[area]}33"><img src="cast/${area}/${mood}.webp" alt="${FabLook.AREA[area].name}, ${M.name.toLowerCase()}" width="224" height="224"></div><div class="tip-mood" style="background:${M.color}">${P.moods ? M.name : "Before a run"}</div>` : "";
-  tip.classList.toggle("tcard", !!area);
-  tip.style.setProperty("--fam", area ? FabLook.FAM[area] : "transparent");
-  tip.innerHTML = `<b>${area ? FabLook.label(G0[0], area) : P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}${art}${parts.join("<br>")}` +
+  const art = area ? `<div class="tip-art" style="background:${FabLook.FAM[area]}33"><img src="cast/${area}/${mood}.webp" alt="${FabLook.AREA[area].name}, ${M.name.toLowerCase()}" width="224" height="224"></div><div class="tip-mood" style="background:${M.color}">${P.moods ? M.name : P.moodsPending ? "Working out how it's doing…" : "Before a run"}</div>` : "";
+  return `<b>${area ? FabLook.label(G0[0], area) : P.plain[g]}</b>${st ? `<span class="m"> · ${st.name}</span>` : ""}${art}${parts.join("<br>")}` +
     `<div class="tip-q"><span>${cur.queue[g]}</span> lots waiting now · <span>${avgWait.toFixed(0)} min</span> mean wait</div>` +
     (area ? `<div class="tip-ex">${FabLook.AREA[area].exercise}. ${FabLook.AREA[area].about}</div>` : "");
-  tip.hidden = false;
-  const p = FabUI.tipPlace(h.mx, h.my, tip.offsetWidth, tip.offsetHeight, innerWidth, innerHeight);
-  tip.style.left = p.x + "px";
-  tip.style.top = p.y + "px";
 }
 
 function setupInput() {
@@ -1485,14 +1491,74 @@ async function main() {
     $("runnote").textContent = "Could not load the simulator: " + err.message;
     return;
   }
-  const first = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
+  // the first hours first (docs/FLOOR-SPEED.md): the same run's first 6 hours draw and play at once, while a worker
+  // runs the full 3 days; the simulator is exact, so those hours are the start of the full run
+  const BOOT_RUN = { seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 };
+  const first = simulate({ ...BOOT_RUN, days: QUICK_DAYS, moods: false });
   setFloor(first);
+  P.quick = true;
+  P.moodsPending = true;
+  fit();
+  document.body.dataset.floor = "drawn";
+  $("runnote").textContent = "Playing the first hours while the full 3 days run in the background…";
+  fullRun(BOOT_RUN);
   await loadLong();
   fit();
-  $("runnote").textContent = `Ran 3 days of the fab (${first.j.moves.toLocaleString()} deliveries) in ${first.secs.toFixed(2)} s, right here in your browser.`;
   askSetup();
   applyHash();
 }
+
+const QUICK_DAYS = 0.25;
+const BOOT = { full: null };
+
+// the full run from the worker (web/floorworker.js), swapped in where the first hours are playing
+function fullRun(opts) {
+  const done = run => {
+    BOOT.full = run;
+    if (P && P.quick) swapIn(run);
+  };
+  if (typeof Worker === "undefined") { done(simulate(opts)); document.body.dataset.moods = "in"; return; }
+  const w = new Worker("floorworker.js");
+  w.onmessage = ({ data }) => {
+    if (data.type === "run") {
+      done({ j: data.j, trace: data.trace, states: data.states, fleetE: data.fleetE, fleetH: data.fleetH, F: data.F,
+        vehicles: data.vehicles, secs: data.secs, moods: null });
+    } else if (data.type === "moods") {
+      if (BOOT.full) BOOT.full.moods = data.moods;
+      if (P && BOOT.full && P.j === BOOT.full.j) { P.moods = data.moods; P.moodsPending = false; document.body.dataset.moods = "in"; }
+      w.terminate();
+    } else {
+      $("runnote").textContent = "Could not run the full 3 days: " + data.error;
+      w.terminate();
+    }
+  };
+  w.postMessage({ shopUrl: sim.baseUrl, dials: DEFAULT_DIALS, opts: { ...opts, every: MOOD_EVERY } });
+}
+
+function swapIn(run) {
+  const keep = t, was = playing;
+  setFloor(run);
+  P.moodsPending = !run.moods;
+  t = Math.min(keep, P.j.until);
+  cur.reset();
+  cur.seek(t);
+  playing = was;
+  $("play").textContent = playing ? "❚❚" : "▶";
+  document.body.dataset.floor = "full";
+  $("runnote").textContent = `Ran 3 days of the fab (${run.j.moves.toLocaleString()} deliveries) in ${run.secs.toFixed(2)} s, right here in your browser.`;
+}
+
+// for page tests (docs/FLOOR-SPEED.md): read only
+window.FabFloorPage = {
+  moves: () => (P && !P.quick ? P.j.moves : null),
+  groups: () => (P ? P.nG : 0),
+  mood: g => moodNow(g),
+  cardText: g => {
+    const box = document.createElement("div");
+    box.innerHTML = tipHtml(g);
+    return box.textContent;
+  },
+};
 
 // lay the floor out for a run's groups (today's fab, or a setup from the ask box) and play the run
 function setFloor(run) {
@@ -1855,10 +1921,13 @@ function realPrepare(run, j, trace) {
   const boxOf = FabBuilding.toolBoxes(B, names, j.tools);
   const toolOfBox = new Int32Array(B.tools.length).fill(-1);
   boxOf.forEach((b, k) => { if (b >= 0) toolOfBox[b] = k; });
-  let nv = 0;
-  for (let i = 0; i < run.fleetE.length; i += 5) nv = Math.max(nv, run.fleetE[i] + 1);
-  for (let i = 0; i < run.fleetH.length; i += 6) nv = Math.max(nv, run.fleetH[i] + 1);
-  const F = FabBuilding.prepFleet(run.fleetE, run.fleetH, nv, j.until);
+  // the full run's fleet comes prepared from the worker (docs/FLOOR-SPEED.md); a run made here is prepared here
+  let nv = run.vehicles || 0, F = run.F || null;
+  if (!F) {
+    for (let i = 0; i < run.fleetE.length; i += 5) nv = Math.max(nv, run.fleetE[i] + 1);
+    for (let i = 0; i < run.fleetH.length; i += 6) nv = Math.max(nv, run.fleetH[i] + 1);
+    F = FabBuilding.prepFleet(run.fleetE, run.fleetH, nv, j.until);
+  }
   // each tool's steps in start order, for the wafers drawn at a tool
   const steps = Array.from({ length: j.tools.length }, () => []);
   for (let r = 0; r < trace.length / 6; r++) steps[trace[r * 6 + 2]].push([trace[r * 6 + 4], trace[r * 6 + 5], trace[r * 6]]);

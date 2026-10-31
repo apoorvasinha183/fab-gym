@@ -151,7 +151,8 @@ test("the floor wires the panel, the fly to a hall and the hall card", () => {
   const app = readFileSync(join(WEB, "app.js"), "utf8");
   assert.match(app, /function flyToHall\(/);
   assert.match(app, /"Escape"/);
-  const tip = app.slice(app.indexOf("function showTip("), app.indexOf("\n}\n", app.indexOf("function showTip(")));
+  // the card's words are built in tipHtml (docs/FLOOR-SPEED.md, Changes), which showTip draws
+  const tip = app.slice(app.indexOf("function tipHtml("), app.indexOf("\n}\n", app.indexOf("function tipHtml(")));
   // the hover card names the group's stage; its drawing lives in How a chip is made (docs/FLOOR-CLEANUP.md, item 7)
   assert.match(tip, /FabStages\.byKey\(/);
   assert.match(tip, /st\.name/);

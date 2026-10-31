@@ -51,4 +51,10 @@ S2 and S3 need Google Chrome at its usual place and skip without it. Times are t
 
 ## Changes
 
-(none yet)
+- 31 Oct, while writing the code: the hover card's words moved from `showTip` into `tipHtml(g)`, so the page test
+  hook can read a card without a pointer; `showTip` draws it. The older test that reads the card's source
+  (`web/tests/stages.test.mjs`, "the floor wires the panel …") now reads `tipHtml`; what it checks is unchanged.
+- 31 Oct, results: S1 to S3 pass, and all 108 page tests. Measured from a cold link in headless Chrome (two loads):
+  machines drawn at 535 and 557 ms, the clock moving at 558 and 584 ms, the full run in at 2,749 and 2,760 ms
+  (70,131 moves, as before), moods in at 5.7 and 5.9 s. The one task over 50 ms after the first draw is the swap to
+  the full run, 163 and 166 ms. Before: nothing drawn for 5.4 s.
