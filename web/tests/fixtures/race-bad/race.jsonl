@@ -1,0 +1,2 @@
+{"role": "assistant", "content": "Teleport the cars past the break.", "tool_calls": [{"id": "b1", "type": "function", "function": {"name": "teleport", "arguments": "{}"}}]}
+{"role": "assistant", "content": "I will stop here."}

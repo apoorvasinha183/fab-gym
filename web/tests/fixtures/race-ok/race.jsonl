@@ -1,0 +1,4 @@
+{"role": "assistant", "content": "First I read the map.", "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "look", "arguments": "{}"}}]}
+{"role": "assistant", "content": "Cars queue behind the broken piece at (3, 6); let them route round it.", "tool_calls": [{"id": "c2", "type": "function", "function": {"name": "set_when_it_breaks", "arguments": "{\"x\": 3, \"y\": 6, \"kind\": \"route_around\"}"}}]}
+{"role": "assistant", "content": "Run it.", "tool_calls": [{"id": "c3", "type": "function", "function": {"name": "run", "arguments": "{}"}}]}
+{"role": "assistant", "content": "Done: the cars now route round the break."}
