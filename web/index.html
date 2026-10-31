@@ -26,7 +26,7 @@
   <kbd>⌘K</kbd>
   <div id="cmd-examples" class="cmd-examples" aria-label="Example questions: pick one to put it in the bar" hidden></div>
 </form>
-<button type="button" id="change-open" class="primary try" data-tab="change">⚙︎ Try a change</button>
+<button type="button" id="change-open" class="primary try" data-tab="change">⚙︎ Simulation settings</button>
 </div>
 <div id="maptools" class="maptools card" role="group" aria-label="Map view">
   <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (scroll)">+</button>
@@ -117,8 +117,8 @@
     </details>
   </section>
 
-  <section id="pane-change" class="pane" role="tabpanel" aria-label="Try a change" hidden>
-    <h2>Try a change</h2>
+  <section id="pane-change" class="pane" role="tabpanel" aria-label="Simulation settings" hidden>
+    <p class="pane-lead">Change a setting, then run it against today on the same 10 random days.</p>
     <label class="field">Which lot a free machine picks next
       <select id="rule">
         <option value="0">Today's rule: urgent first, then no re-setup, then oldest</option>
@@ -146,7 +146,7 @@
     <details class="advanced">
       <summary>Advanced: which random day, and how many days</summary>
       <div class="row">
-        <label class="field">Random day number <input id="seed" type="number" min="0" value="0"></label>
+        <label class="field">Run number <input id="seed" type="number" min="0" value="0"></label>
         <label class="field">Days <input id="days" type="number" min="1" max="14" value="3"></label>
       </div>
     </details>

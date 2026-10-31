@@ -1298,7 +1298,7 @@ function showDials() {
 
 function readOpts() {
   return {
-    seed: +$("seed").value || 0,
+    seed: $("seed").value === "" ? RUN : +$("seed").value, // the run on screen unless another is typed (docs/SIM-SETTINGS.md)
     days: Math.min(14, Math.max(1, +$("days").value || 3)),
     rule: +$("rule").value,
     downGroup: +$("down-group").value,
@@ -1416,6 +1416,7 @@ async function compare(o) {
         into.set(seed, r.q);
         done++;
         renderCompare(o, base, chg, done, total);
+        if (done === 2) { const first = $("cmp-what"); if (first) first.scrollIntoView({ block: "start" }); } // the answer in view (docs/SIM-SETTINGS.md)
       }));
     }
   }
@@ -1482,7 +1483,7 @@ function rerun() {
     try { run = simulate(opts); } catch (err) { $("runnote").textContent = "Could not run: " + err.message; return; }
     load(run);
     const moves = run.j.moves.toLocaleString();
-    $("runnote").textContent = `Ran ${opts.days} day${opts.days > 1 ? "s" : ""} (random day ${opts.seed}): ${moves} deliveries and ${run.j.decisions.toLocaleString()} choices of what to run next, in ${run.secs.toFixed(2)} s here in your browser.`;
+    $("runnote").textContent = `Ran ${opts.days} day${opts.days > 1 ? "s" : ""} (run #${opts.seed}): ${moves} deliveries and ${run.j.decisions.toLocaleString()} choices of what to run next, in ${run.secs.toFixed(2)} s here in your browser.`;
     compare(opts);
   }, 20);
 }
@@ -1741,6 +1742,7 @@ function startRun(n, keepView) {
   const q = new URLSearchParams(location.search); q.set("run", String(n));
   history.replaceState(null, "", `${location.pathname}?${q}${location.hash}`);
   $("run-no").textContent = `Run #${n}`;
+  $("seed").value = String(n); // the settings panel changes the run on screen (docs/SIM-SETTINGS.md)
   const opts = { seed: n, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 };
   const first = simulate({ ...opts, days: QUICK_DAYS, moods: false });
   setFloor(first);
@@ -2055,7 +2057,7 @@ function floorPad() {
 
 // ------------------------------------------------------------------ the dock: Ask, Change, Numbers, Results, Glossary
 const DOCK = { tab: null };
-const DOCK_TITLE = { ask: "Your question", change: "Try a change", glossary: "What the words mean", evidence: "Evidence", numbers: "Evidence", results: "Evidence" };
+const DOCK_TITLE = { ask: "Your question", change: "Simulation settings", glossary: "What the words mean", evidence: "Evidence", numbers: "Evidence", results: "Evidence" };
 const DOCK_WIDE = new Set(["numbers", "results", "glossary", "evidence"]);
 function openDock(tab) {
   closeOpening();
@@ -3065,7 +3067,7 @@ function logCompare(o, base, chg) {
   ];
   const head = rows.find(r => r[4] !== "no clear effect");
   RESULTS.page.unshift(FabUI.runEntry({
-    kind: "what-if", title: `Try a change: ${describe(o)}`, question: "What does this change do against today's fab on the same seeds?",
+    kind: "what-if", title: `Simulation settings: ${describe(o)}`, question: "What does this change do against today's fab on the same seeds?",
     settings, columns: ["Measure", "Today's fab", "Change", "95% interval", "Verdict"], rows,
     headline: head ? `${head[0]}: ${head[2]} (${head[3]}), ${head[4]}.` : "No clear effect on any measure.",
   }));

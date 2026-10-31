@@ -30,3 +30,13 @@ parameters or something?" By quiz: the name "Simulation settings"; this first, t
 - `web/tests/sitecuts.test.mjs` **K4** and `web/tests/floorreview.test.mjs` **FR1** follow the name.
 
 ## Changes
+
+- 1 Nov, results: SS1 to SS3 pass, and the page suite (241 tests, the paused floor coach's three left out) passes run one
+  file at a time. The panel's advanced field says "Run number" to match. The answer is brought into view as soon as the
+  first pair of runs is in.
+- 1 Nov, the founder: "Raise the caps". By quiz ("Generous"): the helper's total from $5 to $20, Race the AI from $2 to
+  $8, pictures from $1 to $5, sketch reading from $1 to $2, and a new glossary meter at $5, all under the total
+  (`agent/helper.py`; tests in `agent/tests/test_spend.py` and the three at-the-cap tests, which now fill a meter to its
+  own cap). Spent so far: $0.98 of the helper's budget (Race the AI $0.89, pictures $0.09, sketch reading $0.002). The
+  founder: "Make sure the language is not clankery": the at-the-cap messages now say, for example, "Race the AI has used
+  its $8 budget. Raise its cap to keep playing."
