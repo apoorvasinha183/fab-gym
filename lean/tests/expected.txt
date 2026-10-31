@@ -1,0 +1,22 @@
+v-base yes
+v-at-limit yes
+b-overlap no one-job
+b-overlap-batch-tool no one-job
+b-wrong-group no route
+b-skip no route
+b-start-before-arrival no route
+b-arrive-before-left no route
+b-overfill no batch
+b-mixed-steps no batch
+b-two-lots-not-batch no batch
+b-job-in-breakdown no down
+b-down-starts-in-job no down
+b-breach-high no breach
+b-breach-low no breach
+b-breach-window no breach
+f-out-of-order no format
+f-cut-off no format
+f-unknown-tool no format
+f-unknown-lot no format
+f-header-after-event no format
+f-wrong-counts no format
