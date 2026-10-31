@@ -15,17 +15,25 @@
   <div class="brand-row"><div class="title">Fab Gym</div>
     <nav class="topnav" aria-label="Pages"><a href="#home" data-page="home">Home</a><a href="#floor" data-page="floor">Floor</a><a href="editor.html" data-page="build">Build</a><a href="#evidence" data-page="evidence">Evidence</a></nav></div>
   <div class="sub">The full fab, 1,043 machines, running live in your browser</div>
-  <button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button>
+  <div class="help-row"><button id="stages-open" class="link stages-open" type="button" aria-haspopup="dialog" aria-controls="stages">How a chip is made</button><button id="glossary-open" class="link help-link" type="button" data-tab="glossary" aria-label="Glossary: what the words mean">? Glossary</button></div>
 </header>
 
+<div id="topbar" class="topbar">
 <form id="cmd" class="cmd" role="search" autocomplete="off">
   <span class="cmd-ic" aria-hidden="true">✦</span>
   <label for="cmd-q" class="sr">Ask anything about the fab</label>
   <input id="cmd-q" type="text" placeholder="Ask anything about the fab…">
   <kbd>⌘K</kbd>
 </form>
+<button type="button" id="change-open" class="primary try" data-tab="change">⚙︎ Try a change</button>
+</div>
+<div id="maptools" class="maptools card" role="group" aria-label="Map view">
+  <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (scroll)">+</button>
+  <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (scroll)">−</button>
+  <button type="button" id="fit-map" aria-label="Fit the whole fab" title="Fit (F)">Fit</button>
+  <button type="button" id="tilt-map" aria-label="Tilt the floor" title="Tilt (T)">Tilt</button>
+</div>
 <div class="lenses" role="group" aria-label="Follow">
-  <button type="button" id="follow-open">Follow one lot</button>
   <button type="button" id="proto-open" hidden>Show prototypes</button>
 </div>
 <div id="lens-note" class="lens-note" aria-live="polite"></div>
@@ -49,31 +57,32 @@
     <h3>Output</h3>
     <div class="hp-big"><span class="v" id="h-done">0</span><span class="u">lots finished</span></div>
     <div class="row"><span class="nm" id="h-wafers-l">wafers out</span><span class="n" id="h-wafers">0</span></div>
-    <div class="row"><span class="nm" id="h-24-l">in the last 24 h</span><span class="n" id="h-24">0</span></div>
-    <div class="row"><span class="nm">mean wait for a tool, per step</span><span class="n" id="h-ws">–</span></div>
+    <div class="row"><span class="nm" id="h-24-l">lots finished in the last 24 h</span><span class="n" id="h-24">0</span></div>
   </div>
   <div class="hp-sec">
     <h3>Lots in the fab</h3>
     <div class="hp-big"><span class="v" id="h-wip">0</span><span class="u">released, not finished</span></div>
     <div class="hp-bar" id="h-lotbar" aria-hidden="true"></div>
-    <div class="row"><span class="nm"><i class="sq lw"></i>waiting for a tool</span><span class="n" id="h-wait">0</span></div>
+    <div class="row spot" data-spot="waiting" role="button" tabindex="0" title="Light the groups with lots waiting"><span class="nm"><i class="sq lw"></i>waiting for a tool</span><span class="n"><span class="dl" id="h-wait-d" hidden></span><span id="h-wait">0</span></span></div>
     <div class="row"><span class="nm"><i class="sq lp"></i>being processed</span><span class="n" id="h-proc">0</span></div>
     <div class="row"><span class="nm"><i class="sq lm"></i>moving between tools</span><span class="n" id="h-move">0</span></div>
     <div class="row"><span class="nm"><i class="sq lr"></i>resting in storage</span><span class="n" id="h-rest">0</span></div>
+    <div class="row"><span class="nm">wait for a tool, last hour</span><span class="n"><span class="dl" id="h-wh-d" hidden></span><span id="h-wh">–</span></span></div>
+    <div class="hp-act"><button type="button" id="follow-open">Follow one lot</button><span class="hp-note" id="h-ago-note" hidden>▲▼ vs this time yesterday</span></div>
   </div>
   <div class="hp-sec">
     <h3>Tools <span class="hp-of" id="h-nt"></span></h3>
     <div class="hp-bar" id="h-toolbar" aria-hidden="true"></div>
-    <div class="row"><span class="nm"><i class="sq s0"></i>working</span><span class="n" id="h-t0">0</span></div>
-    <div class="row"><span class="nm"><i class="sq s1"></i>idle</span><span class="n" id="h-t1">0</span></div>
-    <div class="row"><span class="nm"><i class="sq s4"></i>changing setup</span><span class="n" id="h-t4">0</span></div>
-    <div class="row"><span class="nm"><i class="sq s2"></i>in maintenance</span><span class="n" id="h-t2">0</span></div>
-    <div class="row"><span class="nm"><i class="sq s3"></i>broken down</span><span class="n" id="h-t3">0</span></div>
-    <div class="hp-pair"><div><span class="v" id="h-avail">–</span><span class="u">available</span></div><div><span class="v" id="h-busy">–</span><span class="u">of available working</span></div></div>
+    <div class="row spot" data-spot="s0" role="button" tabindex="0" title="Light the machines working"><span class="nm"><i class="sq s0"></i>working</span><span class="n" id="h-t0">0</span></div>
+    <div class="row spot" data-spot="s1" role="button" tabindex="0" title="Light the machines idle"><span class="nm"><i class="sq s1"></i>idle</span><span class="n" id="h-t1">0</span></div>
+    <div class="row spot" data-spot="s4" role="button" tabindex="0" title="Light the machines changing setup"><span class="nm"><i class="sq s4"></i>changing setup</span><span class="n" id="h-t4">0</span></div>
+    <div class="row spot" data-spot="s2" role="button" tabindex="0" title="Light the machines in maintenance"><span class="nm"><i class="sq s2"></i>in maintenance</span><span class="n" id="h-t2">0</span></div>
+    <div class="row spot" data-spot="s3" role="button" tabindex="0" title="Light the machines broken down"><span class="nm"><i class="sq s3"></i>broken down</span><span class="n" id="h-t3">0</span></div>
+    <div class="hp-pair"><div><span class="v"><span id="h-avail">–</span> <span class="dl" id="h-avail-d" hidden></span></span><span class="u">available</span></div><div><span class="v" id="h-busy">–</span><span class="u">of available working</span></div></div>
   </div>
   <div class="hp-sec">
     <h3>Longest queue</h3>
-    <div class="row"><span class="nm" id="h-lq-name">–</span><span class="n" id="h-lq">0</span></div>
+    <div class="row spot" data-spot="longest" role="button" tabindex="0" title="Fly to this group"><span class="nm"><span id="h-lq-name">–</span> <span class="loc" aria-hidden="true">⌖</span></span><span class="n" id="h-lq">0</span></div>
   </div>
   <div class="hp-sec">
     <h3>Latest events</h3>
@@ -81,10 +90,6 @@
   </div>
 </section>
 
-<nav id="rail" class="rail" aria-label="Panels">
-  <button type="button" data-tab="change"><span class="ic" aria-hidden="true">⚙︎</span>Try a change</button>
-  <button type="button" data-tab="glossary" aria-label="Glossary: what the words mean"><span class="ic" aria-hidden="true">?</span>Words</button>
-</nav>
 
 <aside id="dock" class="card dock" aria-label="Panels" hidden>
   <div class="dock-head">
@@ -258,7 +263,11 @@
 </section>
 
 <section id="key" class="card key" aria-label="What the marks on the floor mean">
-  <h2 class="hp-title">What the marks mean</h2>
+  <h2 class="hp-title"><button type="button" id="key-fold" class="fold" aria-expanded="true" aria-controls="key">What the marks mean <span class="chev" aria-hidden="true">▾</span></button></h2>
+  <div class="hp-sec">
+    <h3>Areas</h3>
+    <ul class="legend lgbadge lgarea" id="areakey"></ul>
+  </div>
   <div class="hp-sec">
     <h3>Tool light</h3>
     <ul class="legend lg2">
@@ -266,7 +275,7 @@
       <li><i class="sw s4"></i><span class="nm">changing setup</span></li><li><i class="sw s2"></i><span class="nm">maintenance</span></li>
       <li><i class="sw s3"></i><span class="nm">broken down</span></li>
     </ul>
-    <p class="key-note">A block's colour is its area: lithography, etch, polishing and so on.</p>
+    <p class="key-note">The light on a tool is its state; the tool's colour is its area.</p>
   </div>
   <div class="hp-sec">
     <h3>Group badge</h3>

@@ -866,6 +866,9 @@ function drawGroup(c, cx, cy, showLabels) {
 
 function drawSpark() {
   const sp = document.getElementById("spark");
+  // sized when drawn: sized on resize alone, it stayed 0 px wide when the Floor first showed behind Home (docs/FLOOR-REVIEW.md)
+  const dpr = window.devicePixelRatio || 1, want = [Math.round(sp.clientWidth * dpr), Math.round(sp.clientHeight * dpr)];
+  if (want[0] && (sp.width !== want[0] || sp.height !== want[1])) { sp.width = want[0]; sp.height = want[1]; }
   const c = sp.getContext("2d");
   c.clearRect(0, 0, sp.width, sp.height);
   if (!P) return;
@@ -924,6 +927,7 @@ function hud() {
   $("day").textContent = `Day ${day}`;
   $("time").textContent = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   renderHealth(health());
+  { const sp = $("spark"); if (sp.clientWidth && sp.width !== Math.round(sp.clientWidth * (window.devicePixelRatio || 1))) drawSpark(); }
   $("scrub").value = t;
   ticker();
 }
@@ -932,35 +936,121 @@ function hud() {
 
 /** The fab at the cursor's time: output, lots in the fab and where they are, tools by state, availability, the longest
  * queue. Read from the run on screen; nothing is estimated. */
+// the fab 24 hours earlier, for the comparisons (docs/FLOOR-REVIEW.md); its own cursor, moved forward with the clock
+let curAgo = null;
+/** Lots waiting (and the longest queue) and tool states by a cursor; the mean wait of machine steps started in the
+ * hour up to tq. */
+function readingsAt(c, tq) {
+  let waiting = 0, longest = { g: -1, lots: 0 };
+  for (let g = 0; g < P.nG; g++) {
+    if (g === P.holdingGroup) continue;
+    waiting += c.queue[g];
+    if (c.queue[g] > longest.lots) longest = { g, lots: c.queue[g] };
+  }
+  const n = [0, 0, 0, 0, 0];
+  let machines = 0;
+  for (let k = 0; k < P.nT; k++) if (P.toolGroup[k] !== P.holdingGroup) { n[c.toolState[k]]++; machines++; }
+  const n0 = countBelow(P.waitStart, tq - 60), n1 = countBelow(P.waitStart, tq);
+  const waitHour = n1 > n0 ? (P.waitSum[n1] - P.waitSum[n0]) / (n1 - n0) : null;
+  return { waiting, longest, n, machines, available: (machines - n[2] - n[3]) / machines, waitHour };
+}
+
 function health() {
   const tq = seekTime(t), nT = P.nT; // nT counts storage slots too
   const finished = countBelow(P.done, t);
   const day = t >= 1440 ? countBelow(P.done, t - 1440) : 0;
   const inFab = countBelow(P.released, tq) - countBelow(P.done, tq);
-  let waiting = 0, longest = { g: -1, lots: 0 };
-  for (let g = 0; g < P.nG; g++) {
-    if (g === P.holdingGroup) continue;
-    waiting += cur.queue[g];
-    if (cur.queue[g] > longest.lots) longest = { g, lots: cur.queue[g] };
+  const now = readingsAt(cur, tq), { waiting, longest } = now;
+  let ago = null;
+  if (t >= 1440) {
+    if (!curAgo || curAgo.P !== P) { curAgo = makeCursor(P); curAgo.P = P; }
+    curAgo.seek(seekTime(t - 1440));
+    const y = readingsAt(curAgo, seekTime(t - 1440));
+    ago = { waiting: y.waiting, available: y.available, waitHour: y.waitHour };
   }
   const resting = (P.holdingGroup >= 0 ? cur.queue[P.holdingGroup] : 0) + countBelow(P.hStart, tq) - countBelow(P.hEnd, tq);
   const processing = countBelow(P.mStart, tq) - countBelow(P.mEnd, tq);
   const moving = cur.active.length;
   // machines only: the storage group's slots are not tools
-  const n = [0, 0, 0, 0, 0];
-  let machines = 0;
-  for (let k = 0; k < nT; k++) if (P.toolGroup[k] !== P.holdingGroup) { n[cur.toolState[k]]++; machines++; }
+  const { n, machines } = now;
   const up = machines - n[2] - n[3];
   const ctN = P.finCtN[finished], nW = countBelow(P.waitStart, tq);
   return {
     t, finished, wafersOut: P.finWafers[finished], last24: finished - day, sinceStart: t < 1440,
     cycleDays: ctN ? P.finCt[finished] / ctN / 1440 : null,
-    waitPerStep: nW ? P.waitSum[nW] / nW : null, stepsStarted: nW,
+    waitPerStep: nW ? P.waitSum[nW] / nW : null, stepsStarted: nW, waitHour: now.waitHour, ago,
     inFab, waiting, processing, moving, resting,
     tools: { working: n[0], idle: n[1], maintenance: n[2], down: n[3], setup: n[4] }, nT: machines,
     available: up / machines, busy: up ? n[0] / up : 0,
-    longest: { name: longest.g >= 0 ? P.plain[longest.g] : "", lots: longest.lots },
+    longest: { g: longest.g, name: longest.g >= 0 ? P.plain[longest.g] : "", lots: longest.lots },
   };
+}
+
+// a row of the panel lights what it names (docs/FLOOR-REVIEW.md): { kind: "state", s } or { kind: "waiting" }
+let SPOT = null;
+function spotTool(k) {
+  if (!SPOT || k < 0) return true;
+  if (P.toolGroup[k] === P.holdingGroup) return false;
+  return SPOT.kind === "state" ? cur.toolState[k] === SPOT.s : cur.queue[P.toolGroup[k]] > 0;
+}
+function litNow() {
+  if (!SPOT || !P) return null;
+  if (SPOT.kind === "state") { const tools = []; for (let k = 0; k < P.nT; k++) if (spotTool(k)) tools.push(k); return { tools }; }
+  const groups = []; for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup && cur.queue[g] > 0) groups.push(g); return { groups };
+}
+function spotRow(el) {
+  const k = el.dataset.spot;
+  if (k === "longest") { const h = health(); if (h.longest.g >= 0) flyToGroup(h.longest.g); return; }
+  const want = k === "waiting" ? { kind: "waiting" } : { kind: "state", s: +k.slice(1) };
+  SPOT = SPOT && SPOT.kind === want.kind && SPOT.s === want.s ? null : want;
+  document.querySelectorAll("#health .row.spot").forEach(r => r.classList.toggle("on", !!SPOT && r === el));
+  draw();
+}
+
+// fly the map to a group and outline its tools for a few seconds
+function flyToGroup(g) {
+  if (!G) return;
+  const pad = floorPad();
+  const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
+  updateTilt();
+  const [sx, sy] = untilt(pad.l + w / 2, pad.t + h / 2);
+  let to = null, boxes = [];
+  if (G.real) {
+    const B = G.B, R = P.real;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < B.tools.length; i++) {
+      const k = R.toolOfBox[i];
+      if (k < 0 || P.toolGroup[k] !== g) continue;
+      const b = B.tools[i]; boxes.push([b[1], b[2], b[3], b[4]]);
+      x0 = Math.min(x0, b[1]); x1 = Math.max(x1, b[2]); y0 = Math.min(y0, b[3]); y1 = Math.max(y1, b[4]);
+    }
+    if (!boxes.length) return;
+    const [cx, cy] = rw((x0 + x1) / 2, (y0 + y1) / 2);
+    to = { cx, cy, s: Math.min(40, Math.max(0.5, Math.min(w / (x1 - x0 + 30), h / (y1 - y0 + 30)))) };
+  } else {
+    for (let i = 0; i < HALLS_L.length && !to; i++) for (const c of HALLS_L[i].cells) if (!c.label && c.gi === g) {
+      const p = G.pos[i];
+      to = { cx: p.x + 3 + c.x + c.w / 2, cy: p.y + c.y + c.h / 2, s: Math.min(40, Math.max(0.5, Math.min(w / (c.w + 24), h / (c.h + 24)))) };
+      break;
+    }
+    if (!to) return;
+  }
+  const from = { cx: view.x + sx / view.s, cy: view.y + sy / view.s, s: view.s };
+  ST.fly = { from, to, sx, sy, t0: performance.now(), ms: 900 };
+  if (boxes.length) ST.flash = { boxes, until: performance.now() + 4500 };
+}
+
+/** The map's own region on the screen: [middle x, middle y, width, height]. */
+function mapMiddle() {
+  const pad = floorPad(), w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
+  return [pad.l + w / 2, pad.t + h / 2, w, h];
+}
+function zoomBy(f) {
+  const [mx, my] = mapMiddle(), [sx, sy] = untilt(mx, my);
+  const cx = view.x + sx / view.s, cy = view.y + sy / view.s;
+  view.s = Math.min(60, Math.max(0.3, view.s * f));
+  view.x = cx - sx / view.s; view.y = cy - sy / view.s;
+  $("fit").hidden = false;
 }
 
 let healthShown = "";
@@ -971,8 +1061,22 @@ function renderHealth(h) {
   healthShown = key;
   const set = (id, v) => { const e = $(id); if (e.textContent !== v) e.textContent = v; };
   set("h-done", f(h.finished)); set("h-wafers", f(h.wafersOut));
-  set("h-24-l", h.sinceStart ? "since the start" : "in the last 24 h"); set("h-24", f(h.last24));
-  set("h-ws", h.waitPerStep === null ? "–" : h.waitPerStep >= 60 ? `${(h.waitPerStep / 60).toFixed(1)} h` : `${Math.round(h.waitPerStep)} min`);
+  set("h-24-l", h.sinceStart ? "lots finished since the start" : "lots finished in the last 24 h"); set("h-24", f(h.last24));
+  const mins = (m) => (m === null ? "–" : m >= 60 ? `${(m / 60).toFixed(1)} h` : `${Math.round(m)} min`);
+  set("h-wh", mins(h.waitHour));
+  // against the same time yesterday, in this run (docs/FLOOR-REVIEW.md); none on day 1
+  const diff = (id, d, unit, worseUp) => {
+    const e = $(id);
+    if (d === null) { e.hidden = true; return; }
+    const r = Math.round(d), txt = `${r > 0 ? "▲" : r < 0 ? "▼" : "="} ${Math.abs(r).toLocaleString("en-US")}${unit}`;
+    e.hidden = false; if (e.textContent !== txt) e.textContent = txt;
+    e.className = `dl ${r === 0 ? "" : (r > 0) === worseUp ? "worse" : "better"}`;
+  };
+  const A = h.ago;
+  diff("h-wait-d", A ? h.waiting - A.waiting : null, "", true);
+  diff("h-avail-d", A ? (h.available - A.available) * 100 : null, " pts", false);
+  diff("h-wh-d", A && h.waitHour !== null && A.waitHour !== null ? h.waitHour - A.waitHour : null, " min", true);
+  $("h-ago-note").hidden = !A;
   set("h-wip", f(h.inFab)); set("h-wait", f(h.waiting)); set("h-proc", f(h.processing)); set("h-move", f(h.moving)); set("h-rest", f(h.resting));
   set("h-nt", `· ${f(h.nT)}`);
   const T = h.tools;
@@ -1129,6 +1233,25 @@ function setupInput() {
   }));
   $("scrub").oninput = e => { t = +e.target.value; };
   $("fit").onclick = fit;
+  // the map's buttons (docs/FLOOR-REVIEW.md): the same as scroll, F and T
+  $("zoom-in").onclick = () => zoomBy(1.25);
+  $("zoom-out").onclick = () => zoomBy(0.8);
+  $("fit-map").onclick = fit;
+  $("tilt-map").onclick = () => { TILT.on = !TILT.on; fit(); };
+  // a row of the panel lights what it names; Enter or Space as well as a click
+  document.querySelectorAll("#health .row.spot").forEach(r => {
+    r.onclick = () => spotRow(r);
+    r.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); spotRow(r); } };
+  });
+  // the legend folds, remembered in this browser
+  const keyFold = folded => {
+    $("key").classList.toggle("folded", folded);
+    $("key-fold").setAttribute("aria-expanded", String(!folded));
+    try { localStorage.setItem("fabgym.keyFolded", folded ? "1" : "0"); } catch { /* storage blocked: folding still works */ }
+    fit();
+  };
+  $("key-fold").onclick = () => keyFold(!$("key").classList.contains("folded"));
+  try { if (localStorage.getItem("fabgym.keyFolded") === "1") { $("key").classList.add("folded"); $("key-fold").setAttribute("aria-expanded", "false"); } } catch { /* storage blocked */ }
   addEventListener("keydown", e => {
     if (e.key === "Escape" && !$("stages").hidden) { stagesClose(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
@@ -1577,6 +1700,10 @@ async function main() {
   markPage(pageOfHash());
   chromeSetup();
   stagesSetup();
+  $("areakey").innerHTML = FabLook.MAT_KEY.map(([name, col, as]) => {
+    const names = as.map(a => FabLook.AREA[a].name);
+    return `<li><span class="mat" style="background:${col}"></span><span class="nm">${name}</span>${names.length > 1 || names[0] !== name ? `<span class="rule">${names.join(", ")}</span>` : ""}</li>`;
+  }).join("");
   $("moodkey").innerHTML = FabLook.TOOL_MOODS.map(m => { const M = FabLook.MOOD[m]; return `<li><span class="badge" style="background:${M.color}">${FabLook.svg(M.badge, "#15191C")}</span><span class="nm">${M.fact}</span><span class="rule">${M.rule}</span></li>`; }).join("");
   requestAnimationFrame(frame);
   try {
@@ -1650,6 +1777,25 @@ window.FabFloorPage = {
   groups: () => (P ? P.nG : 0),
   mood: g => moodNow(g),
   health: () => (P ? health() : null),
+  // docs/FLOOR-REVIEW.md
+  lit: () => litNow(),
+  toolState: k => cur.toolState[k],
+  queueNow: g => cur.queue[g],
+  isStorage: g => g === P.holdingGroup,
+  longestGroup: () => health().longest.g,
+  stateLights: () => ({ working: STATE_COLORS[0], maintenance: STATE_COLORS[2], down: STATE_COLORS[3], setup: STATE_COLORS[4] }),
+  toolTop: k => toolPanel(k),
+  areaOfTool: k => FabLook.areaOf(sim.area[P.j.groups[P.toolGroup[k]][0]]),
+  view: () => ({ ...view }),
+  tilted: () => TILT.on,
+  badgesDrawn: () => BADGES.slice(),
+  mapMiddle: () => mapMiddle(),
+  groupName: g => P.plain[g],
+  screenOfGroup: g => {
+    if (G.real) { const m = P.real.mid[g]; return m && m[2] ? S(...rw(m[0] / m[2], m[1] / m[2])) : null; }
+    for (let i = 0; i < HALLS_L.length; i++) for (const c of HALLS_L[i].cells) if (!c.label && c.gi === g) { const p = G.pos[i]; return S(p.x + 3 + c.x + c.w / 2, p.y + c.y + c.h / 2); }
+    return null;
+  },
   cardText: g => {
     const box = document.createElement("div");
     box.innerHTML = tipHtml(g);
@@ -1870,7 +2016,8 @@ function floorPad() {
   const wide = innerWidth > 900;
   const dock = $("dock");
   const r = !wide ? 24 : !dock.hidden ? dock.offsetWidth + 40 : $("health").offsetWidth + 32; // the health panel (docs/FLOOR-HEALTH.md)
-  return { l: wide && !document.body.classList.contains("dock-wide") ? 330 : 24, r, t: 116, b: 96 };
+  const keyOpen = !document.body.classList.contains("dock-wide") && !$("key").classList.contains("folded");
+  return { l: wide && keyOpen ? 330 : 24, r: r + (wide && dock.hidden ? 52 : 0), t: 116, b: 96 }; // room for the map's buttons
 }
 
 // ------------------------------------------------------------------ the dock: Ask, Change, Numbers, Results, Glossary
@@ -1992,7 +2139,7 @@ async function chromeSetup() {
   });
   // the rail and the dock's tabs; a rail button on the open tab closes the dock
   document.querySelectorAll("[data-tab]").forEach(b => (b.onclick = () => {
-    if (b.closest("#rail") && DOCK.tab === b.dataset.tab && !$("dock").hidden) closeDock();
+    if (b.closest("#topbar, .help-row") && DOCK.tab === b.dataset.tab && !$("dock").hidden) closeDock();
     else goTab(b.dataset.tab);
   }));
   $("dock-close").onclick = () => (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
@@ -2121,6 +2268,7 @@ function block(x0, x1, y0, y1, h, top, panel, edge) {
 }
 
 function drawReal(s) {
+  BADGES = []; // filled by groupBadges when the zoom shows labels
   const B = G.B, R = P.real;
   if (!R) return;
   const detail = FabUI.zoomDetail(s);
@@ -2166,13 +2314,15 @@ function drawReal(s) {
     }
     // the editor's look: a dark body, the area's colour as the top panel, and a light for the tool's state
     const area = k >= 0 ? FabLook.areaOf(sim.area[P.j.groups[P.toolGroup[k]][0]]) : null;
-    top = "#33434B"; panel = area ? FabLook.FAM[area] : "#8FB3AE";
+    top = "#33434B"; panel = toolPanel(k);
+    const off = !spotTool(k);
     if (UI.lens === "heat" && k >= 0) { const q = cur.queue[P.toolGroup[k]]; panel = q > 0 ? FabUI.heatColor(Math.min(1, q / 30)) : "#3A4A52"; }
     if (k === followTool) { ctx.globalAlpha = 1; top = LOOK.proto; }
     if (st === 1 && !dimTools && UI.lens !== "heat") ctx.globalAlpha = 0.55;
+    if (off) ctx.globalAlpha = 0.12;
     const hz = block(b[1], b[2], b[3], b[4], b[7], top, panel, "rgba(8,16,20,.9)");
     ctx.globalAlpha = dimTools ? 0.35 : 1;
-    if (k >= 0 && st !== 1 && s >= 3) lights.push([b, hz, STATE_COLORS[st]]);
+    if (k >= 0 && st !== 1 && s >= 3 && !off) lights.push([b, hz, STATE_COLORS[st]]);
   }
   ctx.globalAlpha = 1;
   // state lights: a small disc on the top's corner of every tool that is not idle
@@ -2237,6 +2387,7 @@ function drawReal(s) {
 /** Each group at its tools' centre in the editor's look: an icon tile in the area's colour, its label, its mood badge
  * and, zoomed in further, its lots waiting as pods. */
 function groupBadges(R, s, detail) {
+  BADGES = [];
   screenSpace();
   const size = Math.max(10, Math.min(15, 0.95 * s));
   R.mid.forEach((m, g) => {
@@ -2250,16 +2401,24 @@ function groupBadges(R, s, detail) {
     const tw = ctx.measureText(text).width + 8, ic = size * 1.35, w = ic + 3 + tw;
     const xl = x0 - w / 2;
     // the icon tile
-    ctx.fillStyle = FabLook.FAM[area]; ctx.beginPath(); ctx.roundRect(xl, y - ic / 2, ic, ic, 3); ctx.fill();
-    FabLook.icon(ctx, area, xl + ic / 2, y, ic * 0.78, "#0B1418", 2);
+    ctx.fillStyle = FabLook.MAT[area]; ctx.beginPath(); ctx.roundRect(xl, y - ic / 2, ic, ic, 3); ctx.fill();
+    FabLook.icon(ctx, area, xl + ic / 2, y, ic * 0.78, "#E3ECEE", 2);
     // the label
     const h = FabLook.pill(ctx, text, xl + ic + 3 + tw / 2, y - Math.max(13, size * 1.35) / 2, size);
     // the mood badge on the label's end
+    // Running is drawn only on the hovered group, so the badges left are the ones that need a look (docs/FLOOR-REVIEW.md)
     const mood = moodNow(g);
-    if (mood) FabLook.badge(ctx, mood, xl + w + size * 0.55, y, size * 0.62);
+    if (mood && (mood !== "work" || (hover && hover.g === g))) { FabLook.badge(ctx, mood, xl + w + size * 0.55, y, size * 0.62); BADGES.push(mood); }
     if (detail.chips && cur.queue[g] > 0) FabLook.pods(ctx, x0, y + h / 2 + 2, cur.queue[g], h);
   });
   floorSpace();
+}
+
+let BADGES = [];
+/** A tool's top on the Floor: its area's muted mat (docs/FLOOR-REVIEW.md). */
+function toolPanel(k) {
+  const area = k >= 0 ? FabLook.areaOf(sim.area[P.j.groups[P.toolGroup[k]][0]]) : null;
+  return area ? FabLook.MAT[area] : "#5C5C60";
 }
 
 function realToolOfLot(R, lot) {
@@ -2312,7 +2471,7 @@ function realFlyTo(areas) {
 }
 
 function realFlash(f, now) {
-  const bx = realBox(f.areas || (HALLS_L[f.i] && HALLS_L[f.i].areas) || []);
+  const bx = f.boxes ? { bays: f.boxes.map(b => [b[0], b[1], b[2], b[3]]) } : realBox(f.areas || (HALLS_L[f.i] && HALLS_L[f.i].areas) || []);
   if (!bx) return;
   const a = 0.55 + 0.45 * Math.sin(now / 180);
   ctx.save();

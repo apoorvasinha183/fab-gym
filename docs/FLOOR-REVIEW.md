@@ -51,3 +51,20 @@ private); the founder: "lgtm" (all seven changes, in order, areas as muted mats)
   four buttons and the legend's fold make 17.
 
 ## Changes
+
+- 31 Oct, while writing the code:
+  - **The mats were picked by measurement.** A first muted set left Lithography 6.0 from broken down for protans, and
+    films and implant 5.2 apart; darker mats put every area at least 14.0 from every state light in all four modes, and
+    the nearest two areas (Lithography and etch) 7.7 apart. The bound in the test stays at 12 and 7.
+  - **Badges show only zoomed in.** Group labels and badges are drawn once the zoom shows names, so FR6 zooms in first,
+    and the list of badges drawn is reset every frame.
+  - An older rule gives every primary button the full width; the strip's Try a change sets its own.
+  - Two test mistakes fixed: a bracket in FR3's page script, and FR6 checking badges before zooming in.
+  - K6 and the cleanup test's first check followed items 1, 5 and 7, as listed above.
+  - The disk filled during the first full run (143 MB free): fab-gym's leftover test browser profiles and its debug build
+    were cleared with the founder's OK (about 260 MB); the founder is clearing more.
+  - Seen by eye: single-area rows in the Areas key had a blank second line; Glossary had picked up the other link's mark;
+    the last hour's wait label was cut and its value wrapped; Follow one lot and the yesterday note wrapped.
+- 31 Oct, results: FR1 to FR8 pass, and the page suite (205 tests, the paused floor coach's three left out) passes run one
+  file at a time. On day 2 at 08:30: lots waiting 1,100, up 130 on the same time yesterday; availability 87%, down 6
+  points; the last hour's wait 58 min, down 11.

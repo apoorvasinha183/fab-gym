@@ -45,6 +45,15 @@
     cmp: { name: "Polishing (CMP)", short: "CMP", exercise: "The plank", about: "Polishes the wafer flat between layers." },
     defmet: { name: "Defect inspection", short: "Defect", exercise: "Spotting the bench press", about: "Looks for defects and sends bad lots back." },
   };
+  // the Floor's muted mats for areas, darker than every state light and apart from them for the common colour
+  // blindnesses (docs/FLOOR-REVIEW.md); Build keeps FAM. MAT_KEY groups areas that share a mat, for the legend.
+  const MAT_KEY = [
+    ["Lithography", "#6A5420", ["litho"]], ["Metrology and inspection", "#5C5C60", ["lithomet", "tfmet", "defmet"]],
+    ["Etch", "#6E3923", ["dry", "wet"]], ["Diffusion", "#64284A", ["diff"]], ["Films", "#1F476E", ["diel", "tf"]],
+    ["Ion implant", "#4D3170", ["imp"]], ["Polishing (CMP)", "#075F55", ["cmp"]],
+  ];
+  const MAT = {};
+  for (const [, c, as] of MAT_KEY) for (const a of as) MAT[a] = c;
   // SMT2020's area names to the cast's areas; Delay_32 (lots resting in stockers) has none
   const AREA_OF = { Litho: "litho", Litho_Met: "lithomet", Dry_Etch: "dry", Wet_Etch: "wet", Diffusion: "diff", Dielectric: "diel", TF: "tf", TF_Met: "tfmet", Implant: "imp", Planar: "cmp", Def_Met: "defmet" };
   const TOOL_MOODS = ["work", "sleep", "tired", "full", "batch", "setup", "pm", "hurt", "physio", "hold"];
@@ -130,7 +139,7 @@
   /** An inline SVG of an icon, for HTML. */
   const svg = (name, col) => `<svg viewBox="0 0 24 24" fill="none" stroke="${col || "currentColor"}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICONS[name]}"/></svg>`;
 
-  const api = { ICONS, FAM, AREA, AREA_OF, TOOL_MOODS, MOOD, LOTS, areaOf, label, groupMood, icon, badge, pill, pods, svg };
+  const api = { ICONS, FAM, MAT, MAT_KEY, AREA, AREA_OF, TOOL_MOODS, MOOD, LOTS, areaOf, label, groupMood, icon, badge, pill, pods, svg };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabLook = api;
 })(typeof window !== "undefined" ? window : globalThis);
