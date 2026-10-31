@@ -52,4 +52,13 @@ In headless Chrome with a helper of its own (skipped without Google Chrome):
 
 ## Changes
 
-(none yet)
+- 31 Oct, while writing the code: `FabEditorPage.firstFree(w, h)` returns the first spot that is free and can be
+  pointed at, every cell's middle picking that cell. Free on the floor alone was not enough: in B1 the storage block
+  placed first is tall, and in the tilted view it covers the next free cells, so a click there picks the block, as it
+  would for a person.
+- 31 Oct, B2: the cell under the pointer is measured on the map itself. Measured on the page, it moved 4.2 px in one
+  run because the panels above the map settle just after the first run and push the map down a few pixels; the zoom
+  itself keeps the cell within 0.2 px. That small shift is a layout bug of its own, noted for the polish list.
+- 31 Oct, results: C1 to C3 and B1 to B4 pass (twice in a row), and all 115 page tests. An erase drag is one undo step
+  too. Space alone still plays and pauses; Space held while dragging pans instead.
+

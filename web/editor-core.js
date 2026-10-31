@@ -300,7 +300,58 @@
     return moods[0];
   }
 
-  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt };
+  // ---------- the editor's basics (docs/EDITOR-BASICS.md)
+
+  /** Undo and redo. Push the state before each step; undo and redo take the state now and give the one to show.
+   * At most `limit` steps are kept; every state kept is a copy. */
+  function History(limit) {
+    const copy = (x) => JSON.parse(JSON.stringify(x));
+    let back = [], fwd = [];
+    return {
+      push(st) { back.push(copy(st)); if (back.length > limit) back.shift(); fwd = []; },
+      undo(now) { if (!back.length) return null; fwd.push(copy(now)); return back.pop(); },
+      redo(now) { if (!fwd.length) return null; back.push(copy(now)); return fwd.pop(); },
+      canUndo: () => back.length > 0,
+      canRedo: () => fwd.length > 0,
+      clear() { back = []; fwd = []; },
+    };
+  }
+
+  /** Zoom a view ({s, ox, oy}: screen = o + world × s) by `factor` about the screen point (px, py), keeping s within
+   * [lo, hi]; the point under (px, py) stays there. */
+  function zoomAt(v, factor, px, py, lo, hi) {
+    const sc = Math.max(lo, Math.min(hi, v.s * factor)), f = sc / v.s;
+    return { s: sc, ox: px - (px - v.ox) * f, oy: py - (py - v.oy) * f };
+  }
+
+  function panBy(v, dx, dy) {
+    return { s: v.s, ox: v.ox + dx, oy: v.oy + dy };
+  }
+
+  /** Whether a w × h footprint at (x, y) is clear of the floor's edge, track and other blocks (`skipId` may stay). */
+  function isFree(st, x, y, w, h, skipId) {
+    if (x < 0 || y < 0 || x + w > st.W || y + h > st.H) return { ok: false, why: "Off the edge of the floor." };
+    for (let i = 0; i < w; i++) {
+      for (let j = 0; j < h; j++) {
+        if (st.rail[key(x + i, y + j)]) return { ok: false, why: "Track is in the way." };
+        const b = st.blocks.find((z) => z.id !== skipId && x + i >= z.x && x + i < z.x + z.w && y + j >= z.y && y + j < z.y + z.h);
+        if (b) return { ok: false, why: b.kind === "group" ? "A machine is in the way." : "Something is in the way." };
+      }
+    }
+    return { ok: true, why: "" };
+  }
+
+  /** A block's footprint in tiles: wafers in and out are 1 × 2, the rest 2 × 2. */
+  const footprint = (kind) => (kind === "entry" || kind === "exit" ? [1, 2] : [2, 2]);
+
+  /** The ghost of a block about to be placed at (x, y): its footprint and whether it fits. */
+  function ghost(st, kind, x, y) {
+    const [w, h] = footprint(kind), f = isFree(st, x, y, w, h);
+    return { kind, x, y, w, h, ok: f.ok, why: f.why };
+  }
+
+  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
+    History, zoomAt, panBy, isFree, footprint, ghost };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;
 })(typeof window !== "undefined" ? window : globalThis);

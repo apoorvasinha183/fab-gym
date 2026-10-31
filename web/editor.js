@@ -27,6 +27,9 @@
   let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 60;
   let clock = 0, win = null, nextWin = null, fetching = false;
   let tool = "select", sel = null, hover = null, drag = null, flash = null, checks = null, checkTimer = null;
+  // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
+  let V = null, FIT = null, ghostAt = null, panDrag = null, spaceHeld = false, spacePanned = false, lastSnap = null, rerunTimer = null, runSeq = 0, runsDone = 0;
+  const hist = E.History(200);
   const met = new Set();
   try { for (const id of JSON.parse(localStorage.getItem("fabgym.met") || "[]")) met.add(id); } catch (e) { /* no storage */ }
   const ch = () => (chIdx < E.CHALLENGES.length ? E.CHALLENGES[chIdx] : null);
@@ -69,7 +72,8 @@
 
   function draw() {
     const dpr = window.devicePixelRatio || 1, cw = cv.parentElement.clientWidth || 800;
-    F = fit(cw);
+    FIT = fit(cw);
+    F = V ? { ...FIT, s: V.s, ox: V.ox, oy: V.oy } : FIT;
     cv.width = Math.round(cw * dpr); cv.height = Math.round(F.ch * dpr); cv.style.height = F.ch + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const g = ctx.createRadialGradient(cw / 2, F.ch * 0.45, 10, cw / 2, F.ch * 0.45, cw * 0.7);
@@ -153,14 +157,14 @@
     // a stretch set to break: a red bolt over it
     for (const c of breaks) { ctx.fillStyle = "#FF4D4F"; ctx.beginPath(); ctx.arc(c[0], c[1] - F.s * 0.35, Math.max(6, F.s * 0.38), 0, 7); ctx.fill(); ctx.strokeStyle = "#0B1418"; ctx.lineWidth = 1.5; ctx.stroke(); icon("bolt", c[0], c[1] - F.s * 0.35, Math.max(9, F.s * 0.52), "#1B1E22", 2); }
     if (flash) { const p = P(flash[0] + 0.5, flash[1] + 0.5); ctx.strokeStyle = "#FF6B57"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p[0], p[1], F.s * 1.8, F.s * 0.9, 0, 0, 7); ctx.stroke(); }
-    if (hover && mode === "build" && ["group", "stocker", "entry", "exit"].includes(placeKind())) {
-      const [w, h] = placeKind() === "entry" || placeKind() === "exit" ? [1, 2] : [2, 2];
-      poly([P(hover[0], hover[1]), P(hover[0] + w, hover[1]), P(hover[0] + w, hover[1] + h), P(hover[0], hover[1] + h)]);
-      ctx.fillStyle = free(hover[0], hover[1], w, h) ? "rgba(126,232,216,.3)" : "rgba(255,107,87,.35)"; ctx.fill();
+    if (ghostAt) {
+      const g = ghostAt, q = [P(g.x, g.y), P(g.x + g.w, g.y), P(g.x + g.w, g.y + g.h), P(g.x, g.y + g.h)];
+      poly(q); ctx.fillStyle = g.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)"; ctx.fill();
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = g.ok ? "rgba(126,232,216,.9)" : "rgba(255,107,87,.95)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
     }
-    if (stale) {
-      ctx.font = '600 14px "Chakra Petch",sans-serif'; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#F2B33D";
-      ctx.fillText(running ? "Running the simulator on your layout…" : "You changed the layout. Press Run again to see it move.", 12, 10);
+    if (stale || running) {
+      ctx.font = '600 13px "Chakra Petch",sans-serif'; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#F2B33D";
+      ctx.fillText(running ? "Updating the run with your changes…" : "Your changes run as soon as the checks pass.", 12, 10);
     }
   }
 
@@ -247,9 +251,11 @@
   }
 
   // ---------- runs and the score
-  async function runNow() {
-    running = true; stale = true; $("again").disabled = true; $("again").textContent = "Running…"; $("goaltext").textContent = "Running the simulator…"; draw();
+  async function runNow(keepClock) {
+    const seq = ++runSeq;
+    running = true; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
     const r = await post("/api/fab/run", { fab: fab(), seed: 1, days: days(), every: 60, overrides: E.overridesFor(s) });
+    if (seq !== runSeq) return;
     running = false; $("again").disabled = false; $("again").textContent = "Run again with my changes";
     if (r.checks) { checks = r.checks; renderChecks(); }
     if (r.error) { if (!r.checks || r.checks.ok) { checks = { error: r.error }; renderChecks(); } $("goaltext").textContent = r.error; draw(); return; }
@@ -259,8 +265,9 @@
     const c = ch();
     if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
     $("slider").max = run.frames.length - 1;
+    runsDone++;
     renderTabs(); renderScore(); setMode("run");
-    await jumpTo(startTime());
+    await jumpTo(keepClock && clock > 0 ? Math.min(clock, days() * 1440 - WINDOW) : startTime());
   }
 
   function renderScore() {
@@ -321,6 +328,7 @@
     $("chgoal").textContent = c ? c.goal : "There is no target here. The scores show how your layout does.";
     $("showfix").hidden = !c;
     $("tmpl").hidden = !!c;
+    hist.clear(); lastSnap = snap(); V = null; syncUndo();
     renderTabs(); buildPalette(); inspector(); renderChecks(); renderScore(); draw();
     await runNow();
   }
@@ -331,8 +339,7 @@
     $("modeRun").setAttribute("aria-pressed", String(m === "run")); $("modeBuild").setAttribute("aria-pressed", String(m === "build"));
     $("editor").classList.toggle("running", m === "run");
     $("again").hidden = !(m === "build" || stale);
-    if (m === "build") playing = false;
-    else { playing = !matchMedia("(prefers-reduced-motion: reduce)").matches || playing; tool = "select"; syncPal(); }
+    if (m === "run") { playing = !matchMedia("(prefers-reduced-motion: reduce)").matches || playing; tool = "select"; syncPal(); }
     playBtn(); draw();
   }
   function playBtn() { $("play").textContent = playing ? "❚❚" : "▶"; $("play").setAttribute("aria-label", playing ? "Pause" : "Play"); }
@@ -373,13 +380,41 @@
     return true;
   }
   function edited() {
-    if (!stale) { stale = true; renderScore(); }
-    if (mode !== "build") setMode("build");
+    // one undo step per gesture: the state before the gesture is kept once, at its first change
+    if (!(drag && drag.recorded)) { hist.push(lastSnap); if (drag) drag.recorded = true; }
+    lastSnap = snap();
+    syncUndo();
+    changed();
+  }
+  // after any change (an edit, an undo, a redo): check, then run again by itself, keeping the clock
+  function changed() {
     $("again").hidden = false;
     clearTimeout(checkTimer);
-    checkTimer = setTimeout(async () => { checks = await post("/api/fab/check", { fab: fab() }); renderChecks(); draw(); }, 350);
+    checkTimer = setTimeout(async () => {
+      checks = await post("/api/fab/check", { fab: fab() });
+      renderChecks(); draw();
+      if (checks && checks.ok) runNow(true);
+    }, 600);
     draw();
   }
+  const snap = () => JSON.parse(JSON.stringify(s));
+  function restore(st) {
+    if (!st) return;
+    s = st; if (setupNow) setupNow.state = s; sel = null; drag = null;
+    lastSnap = snap();
+    buildPalette(); inspector(); syncUndo(); changed();
+  }
+  function undo() { restore(hist.undo(s)); }
+  function redo() { restore(hist.redo(s)); }
+  function syncUndo() { $("undo").disabled = !hist.canUndo(); $("redo").disabled = !hist.canRedo(); }
+  /** The view as drawn: the user's, or the fitted one. */
+  const viewNow = () => (V ? { ...V } : FIT ? { s: FIT.s, ox: FIT.ox, oy: FIT.oy } : null);
+  function zoom(factor, px, py) {
+    if (!FIT) return;
+    V = E.zoomAt(viewNow(), factor, px, py, FIT.s * 0.25, FIT.s * 4);
+    draw();
+  }
+  function pan(dx, dy) { if (FIT) { V = E.panBy(viewNow(), dx, dy); draw(); } }
   const tallOf = (b) => (b.kind === "group" ? (b.area === "litho" ? 1.05 : b.area === "diff" ? 1.15 : 0.75) : b.kind === "stocker" ? 0.9 : 0.35);
   function hull(pts) {
     pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -404,6 +439,14 @@
   }
   cv.addEventListener("pointerdown", (e) => {
     const [x, y] = cellOf(e);
+    const empty = !(x >= 0 && y >= 0 && x < s.W && y < s.H) || (!blockAt(x, y) && !s.rail[E.key(x, y)]);
+    if (e.button === 1 || spaceHeld || (tool === "select" && e.button === 0 && empty)) {
+      if (tool === "select" && !spaceHeld && e.button === 0) { sel = null; inspector(); }
+      panDrag = { x: e.clientX, y: e.clientY, v: viewNow() };
+      if (spaceHeld) spacePanned = true;
+      cv.setPointerCapture(e.pointerId); cv.classList.add("panning");
+      e.preventDefault(); draw(); return;
+    }
     if (x < 0 || y < 0 || x >= s.W || y >= s.H) return;
     const k = E.key(x, y), b = blockAt(x, y);
     if (tool === "select") {
@@ -411,7 +454,7 @@
       if (b && mode === "build") { drag = { move: b, dx: x - b.x, dy: y - b.y }; cv.setPointerCapture(e.pointerId); }
       inspector(); draw(); return;
     }
-    if (tool === "erase") { if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) delete s.rail[k]; else return; sel = null; buildPalette(); inspector(); edited(); drag = { erase: true }; cv.setPointerCapture(e.pointerId); return; }
+    if (tool === "erase") { if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) delete s.rail[k]; else return; sel = null; buildPalette(); inspector(); edited(); drag = { erase: true, recorded: true }; cv.setPointerCapture(e.pointerId); return; }
     if (tool === "rail") { if (b) return; if (!s.rail[k]) s.rail[k] = { o: [0, 0, 0, 0] }; drag = { last: k }; sel = { rail: k }; cv.setPointerCapture(e.pointerId); inspector(); edited(); return; }
     const kind = placeKind(), [w, h] = kind === "entry" || kind === "exit" ? [1, 2] : [2, 2];
     if (!free(x, y, w, h)) return;
@@ -426,8 +469,14 @@
     sel = { id }; inspector(); edited();
   });
   cv.addEventListener("pointermove", (e) => {
+    if (panDrag) { V = E.panBy(panDrag.v, e.clientX - panDrag.x, e.clientY - panDrag.y); draw(); return; }
     const [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
     hover = inb ? [x, y] : null;
+    const pk = placeKind();
+    if (inb && ["group", "stocker", "entry", "exit"].includes(pk)) {
+      ghostAt = E.ghost(s, pk, x, y);
+      if (ghostAt.ok && pk === "group" && !nextGroup(tool)) ghostAt = { ...ghostAt, ok: false, why: "Every group of this kind is placed. Add machines with + under Selected." };
+    } else ghostAt = null;
     if (drag && inb) {
       const k = E.key(x, y);
       if (drag.move) {
@@ -450,8 +499,16 @@
     status(x, y, inb);
     if (!drag && !playing) draw();
   });
-  cv.addEventListener("pointerup", () => { drag = null; inspector(); });
-  cv.addEventListener("pointerleave", () => { hover = null; $("hover").hidden = true; if (!playing) draw(); });
+  cv.addEventListener("pointerup", () => { if (panDrag) { panDrag = null; cv.classList.remove("panning"); return; } drag = null; inspector(); });
+  cv.addEventListener("pointerleave", () => { hover = null; ghostAt = null; $("hover").hidden = true; if (!playing) draw(); });
+  // scroll or pinch zooms about the pointer
+  cv.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = cv.getBoundingClientRect();
+    zoom(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  $("undo").onclick = undo;
+  $("redo").onclick = redo;
 
   function groupNow(b) {
     if (!showRun()) return null;
@@ -596,11 +653,22 @@
   $("showfix").onclick = () => load(chIdx, true);
   $("template").onchange = () => load(E.CHALLENGES.length);
   $("slider").oninput = () => { if (!run) return; const t = run.frames[+$("slider").value].t; lastHour = -1; jumpTo(Math.min(t, days() * 1440 - WINDOW)); };
+  document.addEventListener("keyup", (e) => {
+    if (e.key === " " && spaceHeld) { spaceHeld = false; if (!spacePanned) $("play").click(); spacePanned = false; }
+  });
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select,input,textarea")) return;
     const k = e.key.toLowerCase(), m = { v: "select", b: "rail", e: "erase" };
+    if (e.metaKey || e.ctrlKey) {
+      if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+      else if (k === "y") { e.preventDefault(); redo(); }
+      return;
+    }
+    if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
+    if (k === "f") { V = null; draw(); return; }
+    const step = 40, dirs = { w: [0, step], arrowup: [0, step], s: [0, -step], arrowdown: [0, -step], a: [step, 0], arrowleft: [step, 0], d: [-step, 0], arrowright: [-step, 0] };
+    if (dirs[k]) { e.preventDefault(); pan(dirs[k][0], dirs[k][1]); return; }
     if (m[k]) { tool = m[k]; if (tool !== "select" && mode === "run") setMode("build"); syncPal(); }
-    if (k === " ") { e.preventDefault(); $("play").click(); }
     if (k === "r" && sel && sel.rail && s.rail[sel.rail]) { const v = s.rail[sel.rail]; v.o = [v.o[3], v.o[0], v.o[1], v.o[2]]; inspector(); edited(); }
     if ((k === "delete" || k === "backspace") && sel && sel.id) { s.blocks = s.blocks.filter((b) => b.id !== sel.id); sel = null; buildPalette(); inspector(); edited(); }
     if (k === "escape") { sel = null; inspector(); draw(); }
@@ -610,18 +678,40 @@
   function loop(ts) {
     const dt = Math.min(0.1, (ts - (last || ts)) / 1000);
     last = ts;
-    if (playing && mode === "run" && !stale && !document.hidden && win) { advance(dt); tickUi(); draw(); }
+    if (playing && !document.hidden && win && run) { advance(dt); tickUi(); draw(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(draw, 80); });
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { V = null; draw(); }, 80); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => s && draw());
   // for page tests: where a floor cell's centre is on screen, and the map's state (read only)
   window.FabEditorPage = {
     screenOf(x, y, z) { const r = cv.getBoundingClientRect(), p = P(x + 0.5, y + 0.5, z || 0); return [r.left + p[0], r.top + p[1]]; },
     blocks: () => s.blocks.map((b) => ({ ...b })),
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
+    // the editor's basics (docs/EDITOR-BASICS.md)
+    view: () => viewNow(),
+    ghost: () => (ghostAt ? { ...ghostAt } : null),
+    rails: () => Object.keys(s.rail).length,
+    runs: () => runsDone,
+    clock: () => clock,
+    canUndo: () => hist.canUndo(),
+    canRedo: () => hist.canRedo(),
+    // the first spot that is free and can be pointed at: every cell's middle picks that cell, not a block drawn in front
+    firstFree(w, h) {
+      const r = cv.getBoundingClientRect();
+      const picks = (x, y) => { const p = P(x + 0.5, y + 0.5); const c = cellOf({ clientX: r.left + p[0], clientY: r.top + p[1] }); return c[0] === x && c[1] === y; };
+      for (let y = 0; y < s.H; y++) {
+        for (let x = 0; x < s.W; x++) {
+          if (!E.isFree(s, x, y, w, h).ok) continue;
+          let ok = true;
+          for (let i = 0; i < w && ok; i++) for (let j = 0; j < h && ok; j++) ok = picks(x + i, y + j);
+          if (ok) return [x, y];
+        }
+      }
+      return null;
+    },
   };
   load(0);
 })();

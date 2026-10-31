@@ -176,13 +176,16 @@ test("B2 scroll zooms about the pointer; dragging empty floor pans; F fits", { s
     await b.key("v", "KeyV");
     const fitted = await page(b, "F.view()");
     const [x, y] = await page(b, "F.firstFree(1, 1)");
+    // positions measured on the map itself, so a shift of the page around it does not count
+    const onMap = async (cx, cy) => page(b, `(() => { const r = document.getElementById("map").getBoundingClientRect(), p = F.screenOf(${cx}, ${cy}); return [p[0] - r.left, p[1] - r.top]; })()`);
     const [sx, sy] = await page(b, `F.screenOf(${x}, ${y})`);
+    const [mx0, my0] = await onMap(x, y);
     await b.send("Input.dispatchMouseEvent", { type: "mouseWheel", x: sx, y: sy, deltaX: 0, deltaY: -240 });
     await sleep(150);
     const z = await page(b, "F.view()");
     assert.ok(z.s > fitted.s * 1.1, `zoomed in (${fitted.s} to ${z.s})`);
-    const [sx2, sy2] = await page(b, `F.screenOf(${x}, ${y})`);
-    assert.ok(Math.hypot(sx2 - sx, sy2 - sy) <= 2, `the cell under the pointer stayed (moved ${Math.hypot(sx2 - sx, sy2 - sy).toFixed(1)} px)`);
+    const [mx1, my1] = await onMap(x, y);
+    assert.ok(Math.hypot(mx1 - mx0, my1 - my0) <= 2, `the cell under the pointer stayed (moved ${Math.hypot(mx1 - mx0, my1 - my0).toFixed(1)} px)`);
     // drag empty floor with Select: the view moves by the drag
     const [ex, ey] = await page(b, "F.firstFree(1, 1)");
     const [px, py] = await page(b, `F.screenOf(${ex}, ${ey})`);
