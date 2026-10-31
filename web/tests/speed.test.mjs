@@ -128,7 +128,8 @@ test("S2 from a cold link the floor draws in a second, moves, and takes the full
   const server = await serve();
   const b = await chrome();
   try {
-    const seen = await coldLoad(b, `http://127.0.0.1:${server.address().port}/index.html#floor`);
+    // run 0, the run this test's numbers come from (docs/RANDOM-RUNS.md)
+    const seen = await coldLoad(b, `http://127.0.0.1:${server.address().port}/index.html?run=0#floor`);
     assert.ok(seen.drawn !== null && seen.drawn <= 1000, `machines drawn within 1,000 ms (at ${seen.drawn} ms)`);
     assert.ok(seen.moving !== null && seen.moving <= 1500, `the clock moving within 1,500 ms (at ${seen.moving} ms)`);
     assert.ok(seen.full !== null && seen.full <= 6000, `the full run in within 6,000 ms (at ${seen.full} ms)`);

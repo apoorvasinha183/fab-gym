@@ -113,7 +113,8 @@ test("K6 the floor's first screen has at most 12 controls, and nothing fails to 
     await sleep(500);
     const n = await p.ev(VISIBLE_CONTROLS);
     // 13 after the cuts; docs/FLOOR-REVIEW.md adds the map's four buttons and the legend's fold (the strip and help row swap two for two)
-    assert.ok(n <= 17, `${n} controls on the first screen (was 21)`);
+    // and docs/RANDOM-RUNS.md adds New run
+    assert.ok(n <= 18, `${n} controls on the first screen (was 21)`);
     assert.deepEqual(p.failed, [], "no failed request");
   } finally { p.close(); }
 });
