@@ -96,6 +96,8 @@ input[type=number]{width:5.5em;font-family:var(--mono)}
 .mode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .mode .tab{border:0;border-radius:0}
 .clock{font:13px var(--mono);padding:5px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+.run-no{font:13px var(--mono);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.watching{grid-column:1/-1;margin:2px 0 0;font-size:13px;color:var(--muted)}
 .mapbox{border-radius:8px;overflow:hidden;border:1px solid var(--line);line-height:0;position:relative;background:#0B1418}
 canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .time{display:flex;gap:10px;align-items:center}
@@ -203,6 +205,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span><b class="starmark">★</b><b class="starmark">★</b><b class="starmark">★</b></div><div class="goaltext" id="goaltext">Running the simulator…</div>
       <button class="btn" id="showfix">Stuck? Show me a fix</button> <button class="btn" id="ai-go" title="Muse Wonder plays this challenge with your moves">Let the AI try</button></div>
     <div class="score" id="score" aria-label="Score of the last run"></div>
+    <p class="watching" id="watching" hidden></p>
   </section>
 
   <section class="editor running" id="editor">
@@ -216,6 +219,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
         <button class="btn" id="jammap" aria-pressed="false" title="The jam map (J): only the waits show">Jams <kbd>J</kbd></button>
         <button class="btn" id="speed" aria-label="Playback speed" title="1× is 20 fab minutes a second; 3× and 12× are faster">1×</button>
         <span class="clock" id="clock">Day 1 · 00:00:00</span>
+        <span class="run-no" id="run-no" title="Each run is one random history of breakdowns and arrivals">Run #1</span><button class="btn" id="new-run" title="Watch another random run; stars still count run #1, the challenge's own">⟳ New run</button>
         <button class="btn go" id="again" hidden>Run again with my changes</button>
         <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">The small fab</option><option value="smt2020">The full fab (SMT2020)</option></select></span>
       </div>

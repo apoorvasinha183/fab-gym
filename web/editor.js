@@ -22,6 +22,8 @@
 
   // ---------- state
   let chIdx = 0; // 0..3 a challenge, 4 free build
+  // the run watched (docs/RANDOM-RUNS.md): run #1 is the challenge's own, which always gives the score and the stars
+  let watch = 1;
   let setupNow = null, base = E.TEACHING_SHOP, s = null, spend0 = 0, areaOfGroup = {};
   let run = null, prev = null, stale = false, running = false;
   let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 20; // fab minutes a real second, the floor's steps (docs/EDITOR-SPEED.md)
@@ -316,7 +318,7 @@
   // a window holds about 4 real seconds of play, at least WINDOW fab minutes (docs/EDITOR-SPEED.md)
   const span = () => Math.max(WINDOW, speed * 4);
   async function fetchWindow(from, wait) {
-    const body = { fab: fab(), seed: 1, start: from, minutes: span(), overrides: E.overridesFor(s) };
+    const body = { fab: fab(), seed: watch, start: from, minutes: span(), overrides: E.overridesFor(s) };
     const r = wait ? await postWait("/api/fab/replay", body) : await post("/api/fab/replay", body);
     if (r.busy) busyUntil = performance.now() + 120;
     if (r.error) return null;
@@ -359,7 +361,11 @@
   async function runNow(keepClock) {
     const seq = ++runSeq;
     running = true; pendingEdits = false; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
-    const r = await postWait("/api/fab/run", { fab: fab(), seed: 1, days: days(), every: 60, overrides: E.overridesFor(s) });
+    const req = { fab: fab(), days: days(), every: 60, overrides: E.overridesFor(s) };
+    const r = await postWait("/api/fab/run", { ...req, seed: watch });
+    if (seq !== runSeq) return;
+    // watching another run: run #1 is run too, and gives the score, so stars stay fair (docs/RANDOM-RUNS.md)
+    const r1 = watch !== 1 && !r.error ? await postWait("/api/fab/run", { ...req, seed: 1 }) : null;
     if (seq !== runSeq) return;
     running = false; $("again").disabled = false; $("again").textContent = "Run again with my changes";
     if (r.checks) { checks = r.checks; renderChecks(); }
@@ -367,6 +373,11 @@
     if (run) prev = { ...run.score, spend: run.spendTop };
     prevRun = keepClock ? run : null;
     run = r.moods; run.every = 60; run.spendTop = E.spend(s) - spend0;
+    run.watchScore = run.score;
+    if (r1 && r1.moods) run.score = r1.moods.score;
+    $("watching").hidden = watch === 1;
+    if (watch !== 1) $("watching").textContent = `Watching run #${watch}: ${Math.round(run.watchScore.wafers_per_day).toLocaleString()} wafers a day, ${run.watchScore.cycle_days.toFixed(2)} days a wafer takes. Stars count run #1, the challenge's own${r1 && r1.moods ? "" : " (it did not run, so this score is the run watched)"}.`;
+    $("run-no").textContent = `Run #${watch}`;
     if (prevRun) afterChange(prevRun, run);
     stale = false;
     const c = ch();
@@ -549,6 +560,14 @@
       '<p class="note">The checks below say what is still missing. Keep it to go on drawing, or Discard to go back.</p>';
     $("sketch-keep").hidden = false; $("sketch-discard").hidden = false;
   }
+  // another random run to watch; the score stays run #1's (docs/RANDOM-RUNS.md)
+  $("new-run").onclick = () => {
+    let n = watch;
+    while (n === watch || n === 1) { const a = new Uint32Array(1); crypto.getRandomValues(a); n = 2 + (a[0] % 9998); }
+    watch = n; $("run-no").textContent = `Run #${watch}`;
+    if (checks && checks.ok === false) return; // the checks refuse the layout: it runs when they pass
+    runNow(false);
+  };
   $("sketch-go").onclick = () => $("sketch-file").click();
   $("sketch-file").onchange = (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) fromSketch(f); };
   $("sketch-keep").onclick = () => { $("sketch-panel").hidden = true; sketchBefore = null; };
@@ -677,6 +696,7 @@
   }
   async function load(i, fixed) {
     chIdx = i; sel = null; run = null; prev = null; win = null; checks = null; prevRun = null; flashes = []; lastEditAt = null;
+    watch = 1; $("run-no").textContent = "Run #1"; $("watching").hidden = true; // a challenge starts on its own run
     const c = ch();
     if (c) { setupNow = c.setup(); if (fixed) setupNow = c.fix(setupNow); }
     else {
@@ -1179,6 +1199,7 @@
     ghost: () => (ghostAt ? { ...ghostAt } : null),
     rails: () => Object.keys(s.rail).length,
     runs: () => runsDone,
+    watching: () => watch,
     showsRun: () => !!showRun(),
     clock: () => clock,
     cars: () => lastCars,

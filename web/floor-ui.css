@@ -565,3 +565,5 @@ body.opening-on .brand .help-link { display: none; }
 .brand .help-link { text-decoration: none; }
 .hp-act { flex-wrap: wrap; }
 .hp-note { font-size: 12px; }
+.pill .run-no { font: 600 13px var(--sans); color: var(--muted2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill #new-run { font-size: 12.5px; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }

@@ -44,3 +44,14 @@ The quiz said "a new day", but the clock already reads "Day 2 08:30", so a rando
 - `web/tests/sitecuts.test.mjs` **K6** allows 18 controls on the Floor's first screen: New run is one more.
 
 ## Changes
+
+- 31 Oct, while writing the code:
+  - A new run on the Floor stops the full run still being worked out in the background and ignores anything it sends,
+    so an older run can never be swapped in over a newer one.
+  - Build runs the run watched and then run #1, one after the other, only while another run is watched; on run #1 there
+    is one run, as before.
+- 31 Oct, results: RR1 to RR5 pass, and the page suite (210 tests, the paused floor coach's three left out) passes run
+  one file at a time, once K6 allowed New run.
+- 31 Oct, seen live on challenge 1 (run #1: 650 wafers a day, 1.17 days a wafer takes): run #8614 also gave 650, since
+  the small fab's output is set mostly by how fast lots are released, so the line about the run watched adds the days a
+  wafer takes; runs #1332 and #2752 gave 738 wafers a day in 0.88 days and 625 in 1.19.

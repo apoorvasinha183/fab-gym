@@ -1233,6 +1233,7 @@ function setupInput() {
   }));
   $("scrub").oninput = e => { t = +e.target.value; };
   $("fit").onclick = fit;
+  $("new-run").onclick = () => startRun(randomRun(RUN), true); // docs/RANDOM-RUNS.md
   // the map's buttons (docs/FLOOR-REVIEW.md): the same as scroll, F and T
   $("zoom-in").onclick = () => zoomBy(1.25);
   $("zoom-out").onclick = () => zoomBy(0.8);
@@ -1714,33 +1715,64 @@ async function main() {
   }
   // the first hours first (docs/FLOOR-SPEED.md): the same run's first 6 hours draw and play at once, while a worker
   // runs the full 3 days; the simulator is exact, so those hours are the start of the full run
-  const BOOT_RUN = { seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 };
-  const first = simulate({ ...BOOT_RUN, days: QUICK_DAYS, moods: false });
-  setFloor(first);
-  P.quick = true;
-  P.moodsPending = true;
-  fit();
-  document.body.dataset.floor = "drawn";
-  $("runnote").textContent = "Playing the first hours while the full 3 days run in the background…";
-  fullRun(BOOT_RUN);
+  startRun(runFromAddress(), false);
   await loadLong();
   fit();
   askSetup();
   applyHash();
 }
 
+// the run on the Floor (docs/RANDOM-RUNS.md): a random history numbered 1 to 9,999, in the address so it replays;
+// run 0 is the one the Floor used to play
+let RUN = 0;
+function runFromAddress() {
+  const v = new URLSearchParams(location.search).get("run");
+  if (v !== null && /^\d{1,5}$/.test(v)) return +v;
+  return randomRun(-1);
+}
+function randomRun(not) {
+  let n = not;
+  while (n === not) { const a = new Uint32Array(1); crypto.getRandomValues(a); n = 1 + (a[0] % 9999); }
+  return n;
+}
+/** Play run n: its first hours at once, the full three days from the worker behind them. */
+function startRun(n, keepView) {
+  RUN = n;
+  const q = new URLSearchParams(location.search); q.set("run", String(n));
+  history.replaceState(null, "", `${location.pathname}?${q}${location.hash}`);
+  $("run-no").textContent = `Run #${n}`;
+  const opts = { seed: n, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 };
+  const first = simulate({ ...opts, days: QUICK_DAYS, moods: false });
+  setFloor(first);
+  P.quick = true;
+  P.moodsPending = true;
+  if (!keepView) fit();
+  document.body.dataset.floor = "drawn";
+  delete document.body.dataset.moods;
+  $("runnote").textContent = "Playing the first hours while the full 3 days run in the background…";
+  fullRun(opts);
+}
+
 const QUICK_DAYS = 0.25;
 const BOOT = { full: null };
 
 // the full run from the worker (web/floorworker.js), swapped in where the first hours are playing
+let fullWorker = null, fullSeq = 0;
 function fullRun(opts) {
+  // a new run makes the one still running in the background stale: stop it and ignore anything it sends
+  const seq = ++fullSeq;
+  if (fullWorker) { fullWorker.terminate(); fullWorker = null; }
+  BOOT.full = null;
   const done = run => {
+    if (seq !== fullSeq) return;
     BOOT.full = run;
     if (P && P.quick) swapIn(run);
   };
   if (typeof Worker === "undefined") { done(simulate(opts)); document.body.dataset.moods = "in"; return; }
   const w = new Worker("floorworker.js");
+  fullWorker = w;
   w.onmessage = ({ data }) => {
+    if (seq !== fullSeq) return;
     if (data.type === "run") {
       done({ j: data.j, trace: data.trace, states: data.states, fleetE: data.fleetE, fleetH: data.fleetH, F: data.F,
         vehicles: data.vehicles, secs: data.secs, moods: null });
@@ -1777,6 +1809,7 @@ window.FabFloorPage = {
   groups: () => (P ? P.nG : 0),
   mood: g => moodNow(g),
   health: () => (P ? health() : null),
+  runNumber: () => RUN,
   // docs/FLOOR-REVIEW.md
   lit: () => litNow(),
   toolState: k => cur.toolState[k],
@@ -1981,11 +2014,11 @@ async function showArm(j, k) {
     await loadShopText(text);
     const rc = FabAsk.ruleCode(arm);
     $("rule").value = rc.code < 3 ? String(rc.code) : "0";
-    const run = simulate({ seed: 0, days: 3, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 });
+    const run = simulate({ seed: RUN, days: 3, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 });
     setFloor(run);
     fit();
     ASK.onFloor = arm.name;
-    $("runnote").innerHTML = `On the floor: <b>${esc(arm.name)}</b>, seed 0, first 3 days.${rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so it uses today's rule."} Prototype lots are pink. <button type="button" class="link" id="back-today">Back to today's fab</button>`;
+    $("runnote").innerHTML = `On the floor: <b>${esc(arm.name)}</b>, run #${RUN}, first 3 days.${rc.exact ? "" : " The page's simulator cannot run this candidate's rule, so it uses today's rule."} Prototype lots are pink. <button type="button" class="link" id="back-today">Back to today's fab</button>`;
     $("back-today").onclick = backToToday;
   } catch (err) {
     $("runnote").textContent = "Could not show it: " + err.message;
@@ -1998,7 +2031,7 @@ async function backToToday() {
   const text = await fetch(sim.baseUrl || "data/shop.txt").then(r => r.text());
   await loadShopText(text);
   $("rule").value = "0";
-  const run = simulate({ seed: 0, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
+  const run = simulate({ seed: RUN, days: 3, rule: 0, downGroup: -1, downAt: 0, downHours: 0 });
   setFloor(run);
   fit();
   $("runnote").textContent = `Today's fab: ran 3 days (${run.j.moves.toLocaleString()} deliveries) in ${run.secs.toFixed(2)} s, right here in your browser.`;
