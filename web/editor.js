@@ -28,6 +28,7 @@
   const MAX = -1; // the Max step: one fab hour each drawn frame, no cars
   let lastCars = 0;
   // the editor as a game (docs/EDITOR-GAME.md)
+  let aiPlaying = false, pendingEdits = false; // Race the AI (docs/RACE-AI.md)
   let cursorCell = null, jamMap = false, showLast = false, prevRun = null, flashes = [], lastEditAt = null, lastBadges = [], lastDrawFi = 0;
   let clock = 0, win = null, nextWin = null, fetching = false;
   let tool = "select", sel = null, hover = null, drag = null, flash = null, checks = null, checkTimer = null;
@@ -357,7 +358,7 @@
   // ---------- runs and the score
   async function runNow(keepClock) {
     const seq = ++runSeq;
-    running = true; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
+    running = true; pendingEdits = false; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
     const r = await postWait("/api/fab/run", { fab: fab(), seed: 1, days: days(), every: 60, overrides: E.overridesFor(s) });
     if (seq !== runSeq) return;
     running = false; $("again").disabled = false; $("again").textContent = "Run again with my changes";
@@ -370,7 +371,7 @@
     stale = false;
     const c = ch();
     if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
-    if (c) {
+    if (c && !aiPlaying) {
       const st = E.stars(run.score, c.target, run.spendTop);
       if (st > (best[c.id] || 0)) {
         const first = !best[c.id];
@@ -386,6 +387,115 @@
     if (keepClock) { $("again").hidden = true; draw(); } else setMode("run");
     await jumpTo(keepClock && clock > 0 ? Math.min(clock, days() * 1440 - WINDOW) : startTime());
   }
+
+  // ---------- Race the AI (docs/RACE-AI.md): the AI's moves are the editor's own, each one an undoable edit
+  const DIRS = { E: 0, S: 1, W: 2, N: 3 };
+  const int = (v) => Number.isInteger(v);
+  function lookNow() {
+    const c = ch(), sc = run && !stale ? run.score : null;
+    return {
+      challenge: c ? { title: c.title, problem: c.problem, goal: c.goal, target_wafers_a_day: c.target.wafers, budget: c.target.budget ?? null } : { title: "Free build" },
+      floor: { width: s.W, height: s.H, note: "x is the column from 0 at the left, y the row from 0 at the top" },
+      tools_you_may_use: c && c.tools ? c.tools : "all",
+      pieces: s.blocks.map((b) => ({ kind: b.kind, group: b.group, area: b.area, name: b.kind === "group" ? AREA[b.area][0] : INFRA[b.kind][0], x: b.x, y: b.y, w: b.w, h: b.h,
+        machines: b.count, breaks: b.fail ? b.fail.kind : "as in the data", when_it_breaks: b.rec ? b.rec.kind : "fix it where it stands" })),
+      areas_you_can_still_place: E.AREAS.filter((a) => nextGroup(a)),
+      track: Object.entries(s.rail).map(([k, v]) => ({ at: k, out: DN.filter((_, i) => v.o[i]).join(""), ...(v.fail ? { breaks: true, when_it_breaks: (v.rec || {}).kind || "wait" } : {}) })),
+      cars: s.vehicles, cap_on_lots: s.cap || 0,
+      checks: checks && checks.issues ? checks.issues.map((i) => `${i.severity}: ${i.message || i.text || ""}`) : [],
+      advice: $("advice").textContent,
+      last_run: sc ? { wafers_a_day: Math.round(sc.wafers_per_day), days_a_wafer_takes: +sc.cycle_days.toFixed(2), extra_spend: run.spendTop } : null,
+      stars: sc && c ? E.stars(sc, c.target, run.spendTop) : null,
+    };
+  }
+  async function afterRun() {
+    for (let i = 0; i < 300 && (pendingEdits || running); i++) await new Promise((r) => setTimeout(r, 100));
+    const c = ch(), sc = run && !stale ? run.score : null;
+    if (!checks || !checks.ok) return { ran: false, checks: checks && checks.issues ? checks.issues.map((i) => `${i.severity}: ${i.message || i.text || ""}`) : [], note: "The checks did not pass, so nothing ran." };
+    return { ran: true, wafers_a_day: sc ? Math.round(sc.wafers_per_day) : null, days_a_wafer_takes: sc ? +sc.cycle_days.toFixed(2) : null, extra_spend: run ? run.spendTop : null,
+      target: c ? c.target.wafers : null, stars: sc && c ? E.stars(sc, c.target, run.spendTop) : null, advice: $("advice").textContent };
+  }
+  const refuse = (error) => ({ ok: false, error });
+  const done = (note) => { buildPalette(); inspector(); edited(); draw(); return { ok: true, note }; };
+  const TOOLS = {
+    look: () => lookNow(),
+    lay_track({ path }) {
+      if (!allowed("rail")) return refuse("This challenge does not use track.");
+      if (!Array.isArray(path) || !path.length || !path.every((c) => Array.isArray(c) && c.length === 2 && int(c[0]) && int(c[1]))) return refuse("path must be a list of [x, y] cells.");
+      for (let i = 1; i < path.length; i++) if (Math.abs(path[i][0] - path[i - 1][0]) + Math.abs(path[i][1] - path[i - 1][1]) !== 1) return refuse(`step ${i} is not next to the cell before it.`);
+      let cells = path.map((c) => [...c]);
+      for (const [x, y] of cells) if (blockAt(x, y)) return refuse(`(${x}, ${y}) is covered by a piece.`);
+      for (let i = 0; i < cells.length; i++) { const d = growFor(cells[i][0], cells[i][1], 1, 1); if (!d) return refuse("That is as far as the floor goes."); if (d[0] || d[1]) cells = cells.map((c) => [c[0] + d[0], c[1] + d[1]]); }
+      for (let i = 0; i < cells.length; i++) {
+        const k = E.key(cells[i][0], cells[i][1]);
+        if (!s.rail[k]) s.rail[k] = { o: [0, 0, 0, 0] };
+        if (i) { const p = cells[i - 1], dir = D.findIndex((v) => v[0] === cells[i][0] - p[0] && v[1] === cells[i][1] - p[1]); s.rail[E.key(p[0], p[1])].o[dir] = 1; }
+      }
+      return done(`Laid ${cells.length} track piece${cells.length > 1 ? "s" : ""}.`);
+    },
+    set_track_direction({ x, y, dir, on }) {
+      const v = s.rail[E.key(x, y)];
+      if (!v) return refuse(`There is no track at (${x}, ${y}).`);
+      if (!(dir in DIRS)) return refuse("dir is N, E, S or W.");
+      v.o[DIRS[dir]] = on ? 1 : 0;
+      return done(`(${x}, ${y}) ${on ? "now runs" : "no longer runs"} ${DLONG[DIRS[dir]]}.`);
+    },
+    erase({ x, y }) {
+      if (!allowed("erase")) return refuse("This challenge does not use Erase.");
+      const b = blockAt(x, y);
+      if (b) { s.blocks = s.blocks.filter((z) => z !== b); return done("Removed the piece."); }
+      if (s.rail[E.key(x, y)]) { delete s.rail[E.key(x, y)]; return done("Removed the track piece."); }
+      return refuse(`Nothing at (${x}, ${y}).`);
+    },
+    place({ piece, x, y }) {
+      if (!(piece in AREA) && !["stocker", "entry", "exit"].includes(piece)) return refuse("piece is an area name or stocker, entry or exit.");
+      if (!allowed(piece)) return refuse("This challenge does not use that piece.");
+      if (!int(x) || !int(y)) return refuse("x and y are whole numbers.");
+      const kind = piece in AREA ? "group" : piece, [w, h] = E.footprint(kind);
+      if (kind === "group" && !nextGroup(piece)) return refuse("Every group of that area is placed. Use set_machines.");
+      const f = E.isFree(s, x, y, w, h, undefined, true);
+      if (!f.ok) return refuse(f.why);
+      const d = growFor(x, y, w, h); if (!d) return refuse("That is as far as the floor goes.");
+      const id = Math.max(0, ...s.blocks.map((z) => z.id)) + 1, px = x + d[0], py = y + d[1];
+      if (kind === "group") s.blocks.push({ id, kind: "group", group: nextGroup(piece), area: piece, count: 1, x: px, y: py, w, h });
+      else s.blocks.push({ id, kind, x: px, y: py, w, h });
+      return done(`Placed ${kind === "group" ? AREA[piece][0].toLowerCase() : INFRA[kind][0].toLowerCase()} at (${px}, ${py}).`);
+    },
+    set_machines({ group, count }) {
+      const b = s.blocks.find((z) => z.group === group);
+      if (!b) return refuse(`No machine group called ${group}.`);
+      if (!int(count) || count < 1) return refuse("count is a whole number, 1 or more.");
+      b.count = count;
+      return done(`${AREA[b.area][0]} now has ${count} machine${count > 1 ? "s" : ""}.`);
+    },
+    set_when_it_breaks({ group, x, y, kind, spares }) {
+      if (group != null) {
+        const b = s.blocks.find((z) => z.group === group);
+        if (!b) return refuse(`No machine group called ${group}.`);
+        if (!["", "as set", "swap_to_spare", "repair_and_hold_lots"].includes(kind)) return refuse("For a group, kind is as set, swap_to_spare or repair_and_hold_lots.");
+        b.rec = kind === "swap_to_spare" ? { kind, spares: int(spares) && spares > 0 ? spares : 1, swap_minutes: 20 } : kind === "repair_and_hold_lots" ? { kind, lookback_minutes: 60, hold_minutes: 120 } : undefined;
+        return done(`${AREA[b.area][0]}: ${kind || "as set"} when it breaks.`);
+      }
+      const v = s.rail[E.key(x, y)];
+      if (!v) return refuse(`There is no track at (${x}, ${y}).`);
+      if (!v.fail) return refuse(`The track at (${x}, ${y}) never breaks.`);
+      if (!["wait", "route_around"].includes(kind)) return refuse("For track, kind is wait or route_around.");
+      v.rec = { kind };
+      return done(kind === "route_around" ? `Cars now route round (${x}, ${y}) when it breaks.` : `Cars wait at (${x}, ${y}) for the repair.`);
+    },
+    set_cars({ count }) { if (!int(count) || count < 1) return refuse("count is a whole number, 1 or more."); s.vehicles = count; return done(`${count} cars on the track.`); },
+    set_cap({ lots }) { if (!int(lots) || lots < 0) return refuse("lots is a whole number, 0 or more."); if (lots) s.cap = lots; else delete s.cap; return done(lots ? `At most ${lots} lots inside.` : "No cap on lots."); },
+    run: () => afterRun(),
+  };
+  window.FabEditorTools = {
+    names: Object.keys(TOOLS),
+    async call(name, args) {
+      if (!Object.prototype.hasOwnProperty.call(TOOLS, name)) return refuse(`unknown tool ${name}`);
+      try { return await TOOLS[name](args || {}); } catch (e) { return refuse(`the tool failed: ${e.message}`); }
+    },
+    setPlaying(on) { aiPlaying = !!on; },
+    challenge: () => { const c = ch(); return c ? { title: c.title, problem: c.problem, goal: c.goal, target: c.target } : null; },
+  };
 
   // ---------- the moment a challenge is met (docs/EDITOR-ROOM.md)
   function celebrate(st, c, first) {
@@ -596,13 +706,13 @@
   }
   // after any change (an edit, an undo, a redo): check, then run again by itself, keeping the clock
   function changed() {
-    $("again").hidden = false;
+    pendingEdits = true; // reruns are automatic; "Run again" shows only when the run is out of date
     clearTimeout(checkTimer);
     checkTimer = setTimeout(async () => {
       if (drag) return changed(); // never mid-drag: wait for the release
       checks = await postWait("/api/fab/check", { fab: fab() });
       renderChecks(); draw();
-      if (checks && checks.ok) runNow(true);
+      if (checks && checks.ok) runNow(true); else pendingEdits = false;
     }, 250);
     draw();
   }
@@ -999,6 +1109,7 @@
     runs: () => runsDone,
     clock: () => clock,
     cars: () => lastCars,
+    railAt: (x, y) => { const v = s.rail[E.key(x, y)]; return v ? JSON.parse(JSON.stringify(v)) : null; },
     cursor: () => (cursorCell ? [...cursorCell] : null),
     badges: () => lastBadges.map((b) => ({ ...b })),
     groupsNow: () => (run ? s.blocks.filter((b) => b.kind === "group").map((b) => { const gi = run.group_names.indexOf(b.group), q = gi >= 0 ? run.frames[lastDrawFi].queues[gi] : 0, mood = E.blockMood(run, lastDrawFi, b.group); return { group: b.group, mood, queue: q, trouble: E.trouble(mood, q) }; }) : []),

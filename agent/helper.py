@@ -22,6 +22,7 @@ from pathlib import Path
 
 from agent import ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
+from agent import race
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = Path.home() / ".config" / "fab-gym"
@@ -42,7 +43,7 @@ QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", 
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
-                 preset="meta", spend_cap=SPEND_CAP):
+                 preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=2.0, meta_key_file=None, meta_base_url=None):
         p = PRESETS[preset]
         self.preset = preset
         self.provider = p["provider"]
@@ -58,6 +59,13 @@ class Helper:
         self.reasoning_effort = p["reasoning_effort"]
         self.meter = spend.Meter(spend.price(self.provider, self.model_name), cap_usd=spend_cap,
                                  path=self.jobs_dir.parent / "spend.json")
+        # Meta's models in the 2D gym (docs/RACE-AI.md): a meter per feature, all under the helper's total, and a
+        # stand-in that answers from recorded replies and spends nothing
+        self.total_cap = float(spend_cap)
+        self.stand_in = Path(stand_in) if stand_in else None
+        self.meta_key_file = Path(meta_key_file).expanduser() if meta_key_file else PRESETS["meta"]["key_file"]
+        self.meta_base_url = meta_base_url or PRESETS["meta"]["base_url"]
+        self.race_meter = spend.Meter(spend.price("meta", race.MODEL), cap_usd=race_cap, path=self.jobs_dir.parent / "spend-race.json")
         self.threads = threads
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
@@ -293,6 +301,40 @@ class Helper:
         return arms[k]["shop"] if 0 <= k < len(arms) else None
 
 
+    # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
+    def spent_total(self):
+        return self.meter.usd + self.race_meter.usd
+
+    def race_step(self, body):
+        """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
+        messages = body.get("messages")
+        why = race.validate(messages)
+        if why:
+            return {"error": why}
+        base = {"cap_usd": self.race_meter.cap_usd}
+        if self.stand_in:
+            return {"message": race.replay(self.stand_in, messages), "model": "stand-in", "cost_usd": 0,
+                    "spent_usd": round(self.race_meter.usd, 6), **base}
+        if self.race_meter.usd >= self.race_meter.cap_usd:
+            return {"error": f"The AI's ${self.race_meter.cap_usd:g} for Race the AI is spent.", **base}
+        if self.spent_total() >= self.total_cap:
+            return {"error": f"The helper's ${self.total_cap:g} for all models is spent.", **base}
+        if not self.meta_key_file.is_file():
+            return {"error": "No Meta key on this Mac, so the AI cannot play. Start the helper with --stand-in to watch a recorded game.", **base}
+        m = HttpModel(self.meta_base_url, race.MODEL, key_file=self.meta_key_file, max_tokens=4000, reasoning_effort="low",
+                      meter=self.race_meter, timeout=120)
+        before = self.race_meter.usd
+        try:
+            msg = m.chat([{"role": "system", "content": race.SYSTEM}, *messages], tools=race.TOOLS)
+        except spend.CapReached:
+            return {"error": f"The AI's ${self.race_meter.cap_usd:g} for Race the AI is spent.", **base}
+        except Exception as e:  # noqa: BLE001 - the page shows the reason
+            return {"error": f"The model did not answer: {e}", **base}
+        msg = {k: msg[k] for k in ("role", "content", "tool_calls") if k in msg}
+        return {"message": msg, "model": race.MODEL, "cost_usd": round(self.race_meter.usd - before, 6),
+                "spent_usd": round(self.race_meter.usd, 6), **base}
+
+
 def serve(h, port=8766):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -345,6 +387,8 @@ def serve(h, port=8766):
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
                               every=float(body.get("every", 60)), overrides=body.get("overrides"))
+            elif self.path == "/api/race/step":
+                r = h.race_step(body)
             elif self.path == "/api/fab/replay":
                 r = h.fab_replay(body.get("fab") or "", seed=int(body.get("seed", 1)), start=float(body.get("start", 0)),
                                  minutes=float(body.get("minutes", 30)), overrides=body.get("overrides"))
@@ -363,8 +407,9 @@ def main():
     a.add_argument("--preset", choices=sorted(PRESETS), default="meta",
                    help="meta: muse-spark-1.3-contributor at low effort (ideas, trials); open: Muse Spark Open on Baseten (submission runs)")
     a.add_argument("--spend-cap", type=float, default=SPEND_CAP, help="stop asking the model once this many dollars are spent")
+    a.add_argument("--stand-in", help="answer Meta's models from recorded replies in this folder (tests, no key); spends nothing")
     o = a.parse_args()
-    h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap)
+    h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap, stand_in=o.stand_in)
     srv = serve(h, o.port)
     state = f"{h.model_name} on {h.provider_label}" if h.model_connected() else "not connected: examples and hand-written scenarios only"
     s = h.meter.summary()

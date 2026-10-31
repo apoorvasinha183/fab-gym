@@ -125,6 +125,17 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .wstars .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .wcard p{margin:4px 0;color:#CFE0E3;font-size:14px}
 .wbtns{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.ai{border-color:#6E3D63}
+.ai h4{display:flex;justify-content:space-between;align-items:center}
+.ai-btns{display:flex;gap:6px}
+.ai-cost{font:12px/1.3 var(--body);color:var(--muted);margin:2px 0}
+.ai-status{font:600 13px/1.35 var(--body);color:#F4E7C6;margin:4px 0}
+.ai-stars{font:20px/1 var(--body);color:#F2B33D;letter-spacing:3px;margin:2px 0}
+.ai-moves{margin:6px 0 0;padding-left:20px;max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px;font:13px/1.35 var(--body)}
+.ai-move code{font:12px var(--mono);color:#FF8AD8}
+.ai-move .why{display:block;color:var(--ink)}
+.ai-move .res{display:block;color:var(--muted);font-size:12px}
+.ai-move.refused .res{color:#FF8A7A}
 #jammap kbd{font:10px var(--mono);color:var(--muted);margin-left:4px}
 #jammap[aria-pressed="true"]{color:#FF8A7A}
 .pal .keys{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -183,7 +194,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
     <div class="ch-ico" aria-hidden="true">🏁</div>
     <div class="ch-text"><div class="eyebrow" id="cheye"></div><b id="chproblem"></b><span id="chgoal"></span></div>
     <div><div class="goalbar" id="goalbar"><i id="goalfill" style="width:0"></i><span id="goaltick"></span><b class="starmark">★</b><b class="starmark">★</b><b class="starmark">★</b></div><div class="goaltext" id="goaltext">Running the simulator…</div>
-      <button class="btn" id="showfix">Stuck? Show me a fix</button></div>
+      <button class="btn" id="showfix">Stuck? Show me a fix</button> <button class="btn" id="ai-go" title="Muse Wonder plays this challenge with your moves">Let the AI try</button></div>
     <div class="score" id="score" aria-label="Score of the last run"></div>
   </section>
 
@@ -207,6 +218,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
     </div>
     <aside class="side">
+      <div class="card ai" id="ai-panel" hidden aria-live="polite"><h4><span>The AI's turn</span><span class="ai-btns"><button class="btn" id="ai-stop">Stop</button><button class="btn" id="ai-close" aria-label="Close">✕</button></span></h4>
+        <p class="ai-cost" id="ai-cost">Muse Wonder</p><p class="ai-status" id="ai-status"></p><p class="ai-stars" id="ai-stars"></p><ol class="ai-moves" id="ai-moves"></ol></div>
       <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
       <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
     </aside>
@@ -216,5 +229,6 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 <script src="look.js"></script>
 <script src="editor-core.js"></script>
 <script src="editor.js"></script>
+<script src="race.js"></script>
 </body>
 </html>

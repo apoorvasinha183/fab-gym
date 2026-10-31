@@ -61,3 +61,19 @@ the others. On a teaching fab of our own; not a real fab. Agents propose, the si
 - **RA8** one undo after the game takes back the AI's last change.
 
 ## Changes
+
+- 31 Oct, while writing the code: edits now mark themselves pending until their rerun starts (or their checks fail),
+  so `run` waits for exactly the changes made; while the AI plays, its stars do not count as the player's (no card, no
+  tab stars), and show in the AI's panel instead.
+- 31 Oct, results: RA1 to RA8 pass, and all 73 agent tests.
+- 31 Oct, one live game (challenge 1, inside the $2 cap; the panel's text in `results/race-ai-live-challenge1.txt`):
+  Muse Wonder read the map, set the broken piece at (3, 6) to let cars route round it (675 wafers a day, one star),
+  tried 15, 10 and 13 cars (each 663), went back to 12, then capped the lots inside at 20: 713 wafers a day, three
+  stars, beyond the challenge's own hint. 15 moves, 61 s, $0.16.
+- 31 Oct, the full suite: RA6 failed because the panel showed the session's real Wonder spend ($0.16 from the live
+  game), which the stand-in reports truthfully; the panel now shows this game's cost and the spend so far, and RA6's
+  "$0.00" is this game's. R5 (docs/EDITOR-ROOM.md) failed by 1.1 px: every edit still showed the old "Run again with
+  my changes" button for a moment, which made the toolbar a hair taller and moved the map; reruns are automatic, so the
+  button now shows only when the run is out of date.
+- 31 Oct, results after the fixes: 185 of 186 page tests and all 80 agent tests pass; the one failure was B1's own helper
+  not starting in time under the full suite's load ("the helper did not start"), and B1 passed three in three alone.

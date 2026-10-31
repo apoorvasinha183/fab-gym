@@ -162,8 +162,14 @@ class HttpModel:
             )
         return text
 
-    def _ask(self, messages, max_tokens):
+    def chat(self, messages, tools=None):
+        """The reply's whole message, tool calls included (docs/RACE-AI.md). Counted by the meter like any request."""
+        return self._ask(messages, self.max_tokens, tools=tools)["message"]
+
+    def _ask(self, messages, max_tokens, tools=None):
         payload = {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
+        if tools:
+            payload["tools"] = tools
         if self.reasoning_effort:
             payload["reasoning_effort"] = self.reasoning_effort
         headers = {"Content-Type": "application/json", **self.__headers}

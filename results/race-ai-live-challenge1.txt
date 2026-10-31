@@ -1,0 +1,55 @@
+THE AI'S TURN
+Stop
+✕
+
+muse-wonder-1.0 · $0.16 of $2
+
+Ended with three stars. Best: ★★★
+
+★★★
+
+look
+Starting by looking at the fab to find the breaking track and the lithography loop.
+read the map
+set_when_it_breaks
+The breaking piece is at 3,6 with cars set to wait, but the north loop from 2,6 to 5,6 can bypass it — I'll set that piece to route around instead.
+Cars now route round (3, 6) when it breaks.
+run
+That piece now routes around via the loop, so I'll run the fab to see the output.
+675 wafers a day · ★☆☆
+set_cars
+675 beats the 670 target but not by enough for more stars, so I'll try adding more cars to push output higher.
+15 cars on the track.
+run
+More cars are on the track now, so I'll run again to check if output rises.
+663 wafers a day · ☆☆☆
+set_cars
+Fifteen cars made it worse, likely from congestion, so I'll try fewer cars instead.
+10 cars on the track.
+run
+Ten cars are set, so I'll run to see if fewer cars helps.
+663 wafers a day · ☆☆☆
+look
+Both 10 and 15 cars gave 663, which is odd, so I'll look to check the route-around setting is still in place.
+read the map
+set_cars
+The routing is still set, so the drop may just be car count — I'll restore 12 cars, which gave the best result.
+12 cars on the track.
+run
+Back to 12 cars, so I'll run to confirm the score returns.
+675 wafers a day · ★☆☆
+set_cars
+675 is only one star, so I'll try 13 cars to nudge output toward the higher star thresholds.
+13 cars on the track.
+run
+Thirteen cars are set, so I'll run to test this small increase.
+663 wafers a day · ☆☆☆
+set_cars
+Thirteen cars also hurts, so 12 is the sweet spot; I'll try capping lots in the fab to cut congestion instead.
+12 cars on the track.
+set_cap
+Cars are back to 12, so I'll set a lot cap to try easing congestion.
+At most 20 lots inside.
+run
+The cap is set, so I'll run to see if it lifts output.
+713 wafers a day · ★★★
