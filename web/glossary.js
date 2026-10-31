@@ -11,6 +11,76 @@
   const std = (text) => ({ kind: "standard", text });
   const asm = (text, range) => ({ kind: "assumed", text, range });
 
+  // the newcomer's line for each term: drafted by Muse Spark from the entry, signed off by a person (docs/GLOSSARY-PLUS.md)
+  const PLAIN = {
+    "SMT2020": "A published starting factory that researchers share, so everyone tests ideas from the same place.",
+    "Wafer": "A thin round disc of silicon where hundreds of tiny chips are built at once.",
+    "Lot": "A box of wafers that moves and waits together through the factory.",
+    "Route": "The fixed, ordered list of jobs a wafer must go through to become chips.",
+    "Step": "One job on a wafer, like printing a pattern, cleaning or polishing.",
+    "Tool": "One machine in the factory, working on one box of wafers at a time.",
+    "Tool group": "A set of identical machines; a waiting box takes whichever one comes free.",
+    "Area": "One part of the factory where the same kind of work happens.",
+    "Hall": "A room on the map that holds one kind of machine.",
+    "Lithography": "Printing tiny patterns onto wafers with light, like developing a photo.",
+    "Etch": "Cutting away the uncovered parts of a layer to leave the printed pattern behind.",
+    "Polishing (CMP)": "Rubbing a wafer's top flat so the next layer goes on smooth and even.",
+    "Checks (metrology)": "Measuring wafers without changing them, to catch mistakes early.",
+    "Track (overhead track)": "The ceiling rail that carries boxes of wafers between rooms.",
+    "Simulator": "A program that plays the factory forward in time, so you can see what would happen.",
+    "Volume wafers (family A)": "The everyday products, made in large numbers for regular customers.",
+    "Prototype lots (family B)": "Small, urgent boxes of new designs: few of them, but worth much more.",
+    "Hot lot": "An urgent box that jumps ahead of others waiting in line.",
+    "Setup change": "The waiting time while a machine gets ready for a new kind of job.",
+    "Batch": "Several boxes cooked together at once in the same machine.",
+    "Breakdown": "A sudden machine stop that needs fixing before work can restart.",
+    "Repair time": "How long a broken machine stays down until fixed.",
+    "Rework": "Doing some steps again when a check finds a mistake.",
+    "Defect hold": "When a fault turns up, the machine stops for a check and the wafers it just made wait too.",
+    "Queue-time limit": "The longest a box may wait between two steps before its wafers spoil.",
+    "Cycle time": "How long a box of wafers takes to get through the whole factory.",
+    "WIP": "All the unfinished work inside the factory right now.",
+    "WIP cap": "A limit that holds new work at the door until old work leaves.",
+    "Move": "One box of wafers finishing one step; factories count them to see how busy they are.",
+    "Dispatch rule": "The rule a free machine uses to pick which waiting box to work on next.",
+    "Today's rule": "The picking order the factory uses now: urgent boxes first, then the easiest, then the oldest.",
+    "Today's fab": "The factory as it runs today, with nothing changed; every result is compared with it.",
+    "Shared floor": "Prototypes and everyday products share the same machines, and nothing new is built.",
+    "Prototype wing": "A new building next door with extra machines just for prototypes.",
+    "Copies in the halls": "The same extra machines as the wing, squeezed into spare space in the existing rooms.",
+    "Prototypes first": "Every machine serves a waiting prototype before any everyday product.",
+    "Family cap": "Extra prototypes wait outside until there is room for them.",
+    "Reservation": "One machine in each busy group is kept free for prototypes.",
+    "Prototypes on half the tools": "Prototypes may use only half the machines in each busy group.",
+    "Operating profit": "The money left each day after paying for materials, running costs and wear on the machines.",
+    "Operating cash": "Money in minus money out each day, before counting wear on the machines.",
+    "Capital": "Money spent once on something that lasts for years, like a new machine.",
+    "Depreciation": "Spreading the cost of a big purchase over the years it is used.",
+    "Payback": "How long the extra money a change brings takes to cover what it cost.",
+    "Net present value": "What a change is worth today, counting that money later is worth less than money now.",
+    "Qualification": "Testing a new machine until it is proven to make good wafers.",
+    "Assumed": "A number we chose ourselves; it is marked wherever it appears and tested over a range.",
+    "Seed": "A number that fixes the luck of a run, so the same run can be played again.",
+    "Paired seeds": "Testing both versions with the same luck, so only the change makes the difference.",
+    "Warm-up": "The first days of a run, left out of the score while the factory fills up.",
+    "Window": "The stretch of a run that is scored, after the start-up days are left out.",
+    "95% interval": "The range the true difference most likely falls in, given the runs tried.",
+    "Bonferroni": "Widening every range when many ideas are compared at once, so lucky flukes do not slip through.",
+    "Verdict": "Better, worse or no clear effect, judged by which side of zero the whole range sits.",
+    "Held-out seeds": "Fresh luck kept aside for one final test, so nothing could have practised on it.",
+    "Reinforcement learning": "Teaching a program by letting it try choices and rewarding the ones that work out.",
+    "PPO": "A popular way of training such a program in small, careful steps.",
+    "Episode": "One practice run for a learning program, from start to score.",
+    "Reward": "The points a learning program earns: finished work, minus a little for every hour work waits.",
+    "E2 (evolutionary search)": "Breeding factory layouts and picking rules over generations, keeping the strongest each round.",
+    "Genetic programming": "Mixing and tweaking picking rules, written as formulas, to grow better ones.",
+    "Ant colony search": "Good choices leave a stronger trail, so later tries follow them more often.",
+    "Scenario": "A what-if question written so the simulator can run it.",
+    "Candidate": "One possible change, tested against how the factory runs today.",
+    "Flows view": "A replay of one wafer's whole journey, showing the rooms it keeps coming back to.",
+    "Waiting heat": "Machines glow by how much work is piled up waiting for them.",
+  };
+
   const TERMS = [
     // ------------------------------------------------------------ the fab
     { term: "SMT2020", topic: "The fab", aliases: ["SMT2020 testbed"],
@@ -393,6 +463,39 @@
     }
     if (buf) out.push({ text: buf });
     return out;
+  }
+
+  // ------------------------------------------------------------ pictures, figures and the expert fold (docs/GLOSSARY-PLUS.md)
+  // A picture for every term: the cast's where it has one, else glossary/<name>.webp (web/glossary/pictures.json).
+  const CAST = { "Wafer": "cast/base/12-wafer.webp", "Lithography": "cast/base/01-litho.webp", "Etch": "cast/base/03-dry.webp",
+    "Polishing (CMP)": "cast/base/10-cmp.webp", "Checks (metrology)": "cast/base/02-lithomet.webp", "Lot": "cast/lots/fresh.webp",
+    "Hot lot": "cast/lots/hot.webp", "Batch": "cast/lots/batch.webp", "Rework": "cast/lots/redo.webp", "Defect hold": "cast/lots/hold.webp",
+    "Queue-time limit": "cast/lots/clock.webp", "Move": "cast/lots/ride.webp", "Breakdown": "cast/cmp/hurt.webp",
+    "Repair time": "cast/cmp/physio.webp", "Setup change": "cast/cmp/setup.webp" };
+  // the figure each term shows (web/glossary-figs.js)
+  const FIGURE = { "Route": "route", "Lot": "lot", "Dispatch rule": "dispatch", "Rework": "rework", "Defect hold": "hold", "Batch": "batch",
+    "WIP cap": "wipcap", "Simulator": "simulator", "Reinforcement learning": "rl", "E2 (evolutionary search)": "e2", "Tool": "tool",
+    "Breakdown": "breakdown", "Repair time": "breakdown", "Queue-time limit": "qtime", "Setup change": "setup", "Warm-up": "warmup",
+    "Window": "warmup", "Hot lot": "hotlot", "Paired seeds": "paired", "95% interval": "interval", "Verdict": "verdict", "WIP": "little",
+    "Cycle time": "little" };
+  // the formula in the expert fold, for the terms that have one
+  const FORMULA = {
+    "WIP": "Little's law: WIP = throughput × cycle time. It holds for the averages of any long, steady run, whatever the rule or the luck.",
+    "Cycle time": "Cycle time = time worked on + time waiting + time moving. For one tool group, Kingman's estimate of the wait is W ≈ ((cₐ² + cₛ²) / 2) × (ρ / (1 − ρ)) × t, where ρ is how busy the group is, t its mean time per lot and cₐ, cₛ how much arrivals and work times vary; the wait climbs steeply as ρ nears 1.",
+    "Paired seeds": "For seeds i = 1 to n, dᵢ = changedᵢ − todayᵢ. The estimate is the mean d̄ with standard error s_d / √n; the luck the two runs share cancels in each dᵢ.",
+    "95% interval": "d̄ ± t(0.975, n − 1) × s_d / √n: the t interval on the paired differences dᵢ.",
+    "Bonferroni": "With m comparisons, each interval is set at 1 − 0.05 / m, so all m hold together with at least 95% confidence.",
+    "Net present value": "NPV = Σ cash_d / 1.10^(d / days in a year) − capital, summed over each day d of 5 years: each day's extra cash discounted at 10% a year.",
+    "Payback": "Payback = capital ÷ extra cash a day, in days. No extra cash means no payback.",
+    "Depreciation": "Straight line: depreciation a day = cost ÷ days of life (tools 5 years, buildings 20, the bridge 10).",
+    "PPO": "PPO maximises E[min(rₜÂₜ, clip(rₜ, 1 − ε, 1 + ε)Âₜ)], where rₜ is how much more likely the new policy makes the action than the old one and Âₜ how much better than expected it turned out; the clip keeps each update small.",
+  };
+  const slugOf = (s) => s.toLowerCase().replace(/%/g, " percent").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  for (const t of TERMS) {
+    t.picture = CAST[t.term] || `glossary/${slugOf(t.term)}.webp`;
+    if (FIGURE[t.term]) t.figure = FIGURE[t.term];
+    if (FORMULA[t.term]) t.formula = FORMULA[t.term];
+    if (PLAIN[t.term]) t.plain = PLAIN[t.term];
   }
 
   // a term's other names as shown: codes such as P1 or D2 are left out

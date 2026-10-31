@@ -640,3 +640,39 @@ body.evidence-on .ev-toc { top: -14px; margin: -14px -18px 12px; padding: 10px 1
 .curve .key span.mine::before { background: #FF8A7A; }
 #curves-open.on { border-color: var(--accent); color: var(--accent); }
 body.opening-on .curves, body.evidence-on .curves { display: none; }
+
+/* ---------- the glossary for newcomers and experts (docs/GLOSSARY-PLUS.md) */
+.gl-lead { display: grid; grid-template-columns: 128px 1fr; gap: 16px; align-items: center; margin-bottom: 6px; }
+.gl-pic { width: 128px; height: 128px; object-fit: contain; border-radius: 14px; background: #F4F1EA; }
+.gl-plain { font-size: 17px; line-height: 1.45; color: #E8F2F0; margin-top: 6px !important; }
+.gl-fig { margin: 14px 0 4px; padding: 12px 12px 8px; border: 1px solid #23434B; border-radius: 12px; background: #0B1418; max-width: 640px; }
+.gl-fig svg { display: block; width: 100%; height: auto; font-family: inherit; }
+.gl-fig figcaption { margin-top: 6px; font-size: 13px; color: #A9C4C0; }
+.gl-fig .node rect { fill: #13262B; stroke: #3A6B73; stroke-width: 1.2; }
+.gl-fig .node text { fill: #E8F2F0; }
+.gl-fig .node.start rect { stroke: #7EE8D8; }
+.gl-fig .node.end rect { fill: rgba(79, 227, 163, 0.12); stroke: #4FE3A3; }
+.gl-fig .node.ask rect { fill: rgba(255, 200, 87, 0.10); stroke: #FFC857; }
+.gl-fig .node.bad rect { fill: rgba(255, 107, 107, 0.12); stroke: #FF8A7A; }
+.gl-fig .node.hot rect { fill: rgba(232, 149, 90, 0.18); stroke: #E8955A; }
+.gl-fig .node.ghost rect { fill: none; stroke-dasharray: 4 3; }
+.gl-fig .node.ghost text { fill: #A9C4C0; }
+.gl-fig .edge { fill: none; stroke: #7FA6A2; stroke-width: 1.4; }
+.gl-fig .arrowhead { fill: #7FA6A2; }
+.gl-fig .elabel, .gl-fig .rlabel { fill: #A9C4C0; }
+.gl-fig .mark.bad { fill: #FF8A7A; }
+.gl-fig .bracket { fill: none; stroke: #7FA6A2; stroke-width: 1.2; }
+.gl-fig .zero { stroke: #5D7F84; stroke-dasharray: 3 3; }
+.gl-fig .ival line { stroke: #CFE3E0; stroke-width: 2; }
+.gl-fig .ival circle { fill: #CFE3E0; }
+.gl-fig .ival.better line, .gl-fig .ival.better circle { stroke: #4FE3A3; fill: #4FE3A3; }
+.gl-fig .ival.worse line, .gl-fig .ival.worse circle { stroke: #FF8A7A; fill: #FF8A7A; }
+.gl-fig .rlabel.better { fill: #4FE3A3; } .gl-fig .rlabel.worse { fill: #FF8A7A; }
+.gl-expert { margin-top: 16px; border: 1px solid #23434B; border-radius: 10px; padding: 8px 12px; background: rgba(11, 20, 24, 0.6); }
+.gl-expert > summary { cursor: pointer; font-weight: 600; color: #E8F2F0; }
+.gl-expert h4:first-of-type { margin-top: 10px; }
+.gl-formula { font-size: 14px; font-variant-numeric: tabular-nums; color: #E8F2F0; background: #0B1418; padding: 8px 10px; border-radius: 8px; }
+.gl-article .gl-lead h3 { margin: 2px 0 0; font-size: 24px; letter-spacing: 0; text-transform: none; color: #E8F2F0; }
+.gl-fig .edge.pair { stroke-dasharray: 3 3; }
+/* a picture not made yet: an empty tile with the cast's background, never a broken image */
+.gl-pic.missing { opacity: 0.35; }

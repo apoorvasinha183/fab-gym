@@ -3248,13 +3248,20 @@ function drawGlossaryArticle() {
   const t = FabGlossary.TERMS.find(x => x.term === GL.term);
   if (!t) { $("gl-article").innerHTML = ""; return; }
   const link = name => `<button type="button" class="gl-see" data-term="${esc(name)}">${esc(name)}</button>`;
-  $("gl-article").innerHTML = `<div class="gl-topic">${esc(t.topic)}</div><h3>${esc(t.term)}</h3>` +
-    (FabGlossary.shownAliases(t).length ? `<p class="gl-aka">Also: ${FabGlossary.shownAliases(t).map(esc).join(", ")}</p>` : "") +
-    `<p class="gl-meaning">${esc(t.meaning)}</p>` +
+  // the newcomer's view first (picture, one plain line, the figure, this fab, an example), the expert's in a fold
+  // (docs/GLOSSARY-PLUS.md)
+  const fig = t.figure && window.FabGlossaryFigs && FabGlossaryFigs.FIGS[t.figure];
+  $("gl-article").innerHTML = `<div class="gl-lead"><img class="gl-pic" src="${esc(t.picture)}" alt="${esc(t.plain || "")}" width="128" height="128" onerror="this.onerror=null;this.classList.add('missing');this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'">` +
+    `<div><div class="gl-topic">${esc(t.topic)}</div><h3>${esc(t.term)}</h3><p class="gl-plain">${esc(t.plain || t.meaning)}</p>` +
+    (FabGlossary.shownAliases(t).length ? `<p class="gl-aka">Also: ${FabGlossary.shownAliases(t).map(esc).join(", ")}</p>` : "") + `</div></div>` +
+    (fig ? `<figure class="gl-fig">${FabGlossaryFigs.draw(t.figure)}<figcaption>${esc(fig.caption)}</figcaption></figure>` : "") +
     `<h4>In this fab</h4><p>${esc(t.here)}</p>` +
     `<h4>Example</h4><p>${esc(t.example)}</p>` +
+    `<details class="gl-expert"><summary>For experts</summary>` +
+    `<h4>Definition</h4><p class="gl-def">${esc(t.meaning)}</p>` +
+    (t.formula ? `<h4>Formula</h4><p class="gl-formula">${esc(t.formula)}</p>` : "") +
     `<h4>Where it comes from</h4><p><span class="gl-src ${t.source.kind}">${GL_SOURCE[t.source.kind]}</span> ${esc(t.source.text)}` +
-    (t.source.range ? `<br><span class="note">Range tried: ${esc(t.source.range)}</span>` : "") + `</p>` +
+    (t.source.range ? `<br><span class="note">Range tried: ${esc(t.source.range)}</span>` : "") + `</p></details>` +
     `<h4>See also</h4><p class="gl-links">${t.see.map(link).join(" ")}</p>`;
   $("gl-article").scrollTop = 0;
 }

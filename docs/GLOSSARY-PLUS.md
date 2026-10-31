@@ -62,3 +62,22 @@ The work comes in three parts, each with its own tests written first:
   on the glossary meter.
 
 ## Changes
+- 1 Nov, while writing the code: GP8's test gave the model no key file, and the model reads its key when it is made; the
+  test now writes a stand-in key. The figures' first layout put yes and no labels on their arrows and cut off the hot
+  lot's curve at the top; columns are wider, side labels sit beside diagonal lines, and a curve above the boxes gets room.
+  Paired seeds are joined by dashed lines without arrowheads, since neither run leads to the other. The formula is set in
+  the body font, which reads better than a code font for a sentence. The glossary has 66 terms (the plan said 69): 51
+  new pictures and 15 from the cast.
+- 1 Nov, newcomer lines: Muse Spark drafted all 66 in three requests for $0.15 on the glossary meter (the estimate was
+  under a cent; the model spends most of its tokens thinking). Its drafts called wafers "plates", began 20 lines with
+  "It is", and got five wrong (a dispatch rule picks a "batch", a move is "done for one batch"); we edited 59 and kept
+  7, before the founder's sign-off.
+- 1 Nov, pictures: 51 made for $0.51, none failed. The line drafter and the picture run each kept their own copy of the
+  glossary meter's file, and the picture run wrote over the drafter's $0.15; the file was corrected by hand to $0.66 and
+  the helper restarted to read it. Four pictures (Held-out seeds, PPO, Scenario, Genetic programming) mostly redrew the
+  polishing robot from the references; at the founder's word they were redrawn ($0.04) with the polishing robot left out
+  of their references, which a term may now name for itself in pictures.json. The glossary has spent $0.70 of $5.
+- 1 Nov, results: GP1 to GP8 pass, and the page and helper suites pass run one file at a time, except the Floor's speed
+  check S2 (the full run in within 6 s), which failed at 9.4 s with the laptop's load at 4 to 16 (a 15-minute question
+  was scoring on 4 cores). Run alternately on the last commit and on this work under the same load, it failed 2 of 3
+  times on each, so the load and not this change is the cause; the curves' calculation takes 9 ms of it.
