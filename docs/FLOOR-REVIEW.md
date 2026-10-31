@@ -68,3 +68,6 @@ private); the founder: "lgtm" (all seven changes, in order, areas as muted mats)
 - 31 Oct, results: FR1 to FR8 pass, and the page suite (205 tests, the paused floor coach's three left out) passes run one
   file at a time. On day 2 at 08:30: lots waiting 1,100, up 130 on the same time yesterday; availability 87%, down 6
   points; the last hour's wait 58 min, down 11.
+- 31 Oct, after Argon's review of Home: the top strip (Try a change) and the map's buttons showed on Home, over the
+  opening, because the old rail's hiding rules did not cover them. They are hidden on Home and on Evidence; **FR1b**
+  checks that nothing of the Floor's shows on Home (failing before the fix: the strip, Try a change and the map buttons).

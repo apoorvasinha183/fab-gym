@@ -103,6 +103,18 @@ test("FR1 one strip for actions: Try a change by the ask bar, Glossary by How a 
   } finally { p.close(); }
 });
 
+test("FR1b on Home the Floor's strip, map buttons and panels stay hidden", { skip }, async () => {
+  const server = await serve(); const b = await chrome();
+  try {
+    await b.send("Page.enable");
+    await b.send("Page.navigate", { url: `http://127.0.0.1:${server.address().port}/index.html#home` });
+    for (let i = 0; i < 300; i++) { await b.sleep(100); if (await b.ev(`document.body && document.body.classList.contains("opening-on") && !!window.FabFloorPage`)) break; }
+    await b.sleep(800);
+    const shown = JSON.parse(await b.ev(`JSON.stringify(["#topbar", "#change-open", "#maptools", "#health", "#key"].filter(s => { const e = document.querySelector(s); return e && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden"; }))`));
+    assert.deepEqual(shown, [], "nothing of the Floor's on Home");
+  } finally { b.close(); server.close(); }
+});
+
 test("FR2 the play bar's chart is drawn at its size, with a line across it", { skip }, async () => {
   const p = await floor();
   try {

@@ -567,3 +567,5 @@ body.opening-on .brand .help-link { display: none; }
 .hp-note { font-size: 12px; }
 .pill .run-no { font: 600 13px var(--sans); color: var(--muted2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pill #new-run { font-size: 12.5px; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+/* the Floor's strip and map buttons belong to the Floor (docs/FLOOR-REVIEW.md, FR1b) */
+body.opening-on .topbar, body.opening-on .maptools, body.evidence-on .topbar, body.evidence-on .maptools { display: none; }
