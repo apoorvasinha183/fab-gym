@@ -48,3 +48,22 @@ fold; the map's canvas fills to the window's bottom, so anything under it falls 
   else. **D8** (a map of at least 360 pixels in a short window) stands: below 360 the page scrolls.
 
 ## Changes
+
+- 31 Oct, while writing the code:
+  - **The map's height.** The canvas filled to the window's bottom, so the playback bar fell off. A first fix allowed a
+    fixed margin and missed the page's padding (33 px over at 1,280 x 800). A second measured everything below the map
+    in the page, which counts the side column too and fed back on itself, and its new variable shadowed the map's
+    "resize only on an 8 px change" memory, so every redraw threw and Build's sketch and Race the AI broke (caught by their
+    tests). The map now measures only what sits under it in its own column plus the page's fixed padding, and fits the
+    window when that leaves it 360 px or more; in a shorter window it keeps the old 430 px and the page scrolls (D8).
+  - **Names on the tiles.** Drawn on top of the icons they crowded them, and a trouble badge clipped some ("Wet e"). A
+    named tile keeps its name left-aligned along its top edge, short of the badge, with its icon a little lower and
+    smaller; a tall, narrow tile (wafers in and out) takes its name sideways. At 1,280 x 800 the tiles are about 35 px, so
+    the names show from 1,440 x 900 up or once zoomed in.
+- 31 Oct, results: BR1 to BR8 pass, and the page suite (229 tests, the paused floor coach's three left out) passes run one
+  file at a time; at 1,440 x 900 and 1,280 x 800 Build does not scroll.
+- 31 Oct, the founder: "still doesn't fit the page". BR6 had checked 1,440 x 900, the screen; the page a laptop's
+  browser gets is about 760 to 790 px tall, where Build ran 76 to 146 px over (measured). BR6 now checks 1,440 x 760 and
+  1,280 x 720 as well, and the space above and below the map shrinks: the advice line joins the toolbar's row, and the
+  status line becomes an overlay inside the map.
+  The map fits the window when that leaves it 330 px or more (it was 360): 1,280 x 720 leaves about 350.

@@ -82,7 +82,7 @@ input[type=number]{width:5.5em;font-family:var(--mono)}
 .pal button[aria-pressed="true"]{border-color:var(--amber);background:var(--amber-soft)}
 .pal button:disabled{opacity:.42;cursor:default}
 .pal svg{width:20px;height:20px;flex:none}
-.pal kbd{margin-left:auto;font:10px var(--mono);color:var(--muted)}
+.pal kbd{margin-left:auto;font:600 11px var(--mono);color:var(--ink);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--bg);line-height:1.4}
 /* raised keys (docs/EDITOR-TOPDOWN.md): keycaps with a shadow under them, pressed down while held or chosen */
 .btn,.pal button{background:linear-gradient(#22363D,#172930);border:1px solid #2E4952;border-bottom-color:#0A1417;color:var(--ink);box-shadow:0 2px 0 #071013,0 3px 6px rgba(0,0,0,.25);transition:transform .06s,box-shadow .06s}
 .btn:active:not(:disabled),.btn[aria-pressed="true"],.pal button:active:not(:disabled),.pal button[aria-pressed="true"]{transform:translateY(2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.5);background:linear-gradient(#17292F,#1C3036);border-color:#1F343B;color:#7EE8D8}
@@ -189,6 +189,27 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 @media (max-width:1100px){.editor{grid-template-columns:minmax(0,1fr)}.pal{flex-direction:row;flex-wrap:wrap}.pal h4{width:100%}.pal button{width:auto}.pal kbd{display:none}}
 @media (max-width:900px){.banner{grid-template-columns:1fr}.ch-ico{display:none}.score{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Build after review (docs/BUILD-REVIEW.md) */
+.tabrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tabstars small{font-size:12px;color:var(--muted);margin-right:3px;font-weight:500}
+.tabstars i{font-style:normal;color:var(--muted)}
+.about{position:relative;margin-left:auto;font-size:12.5px}
+.about>summary{cursor:pointer;color:var(--muted);list-style:none}
+.about>summary::-webkit-details-marker{display:none}
+.about[open]>p{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:min(420px,80vw);margin:0;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.35);color:var(--ink);line-height:1.45}
+.playbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.playbar #slider{flex:1;min-width:160px}
+.banner{padding:6px 14px;gap:4px 14px}
+.banner .score{display:flex;flex-wrap:wrap;gap:6px}
+.banner .sc{display:flex;align-items:baseline;gap:8px;padding:2px 10px}
+.banner .sc .n{font-size:17px}
+.banner .sc .dl{font-size:12px}
+/* Build in a laptop's browser (docs/BUILD-REVIEW.md): the advice beside the tools, the status line inside the map */
+.toolrow{display:flex;gap:10px;align-items:center;min-width:0}
+.toolrow .maptools{flex:0 0 auto}
+.toolrow .advice{flex:1;min-width:0}
+.mapbox .status{position:absolute;top:8px;left:10px;z-index:2;max-width:calc(100% - 20px);padding:3px 8px;border-radius:6px;background:rgba(11,20,24,.78);color:#C9D6DA;line-height:1.4;min-height:0;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -196,7 +217,8 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
   <header class="top">
     <div class="brandrow"><h1>Fab Gym <span>· Build your own fab</span></h1>
       <nav class="topnav" aria-label="Pages"><a href="index.html">Home</a><a href="index.html#floor">Floor</a><a href="editor.html" aria-current="page">Build</a><a href="index.html#evidence">Evidence</a></nav></div>
-    <div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
+    <div class="tabrow"><div class="tabs" id="chtabs" role="group" aria-label="Challenge"></div>
+      <details class="about" id="about"><summary>ⓘ About the sim</summary><p>What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p></details></div>
   </header>
 
   <section class="banner" aria-live="polite">
@@ -211,34 +233,36 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
   <section class="editor running" id="editor">
     <nav class="pal" id="pal" aria-label="Palette"></nav>
     <div class="mapcol">
+      <div class="toolrow">
       <div class="maptools">
         
-        <button class="btn" id="play" aria-label="Pause">❚❚</button>
         <button class="btn" id="undo" aria-label="Undo" title="Undo (⌘Z)" disabled>↶</button><button class="btn" id="redo" aria-label="Redo" title="Redo (⇧⌘Z)" disabled>↷</button>
-        <button class="btn" id="sketch-go" title="Build a fab from a photo of a drawing on paper (Muse Spark reads it)">From a sketch</button><input type="file" id="sketch-file" accept="image/png,image/jpeg" hidden>
+        <button class="btn" id="sketch-go" title="Build a fab from a photo of a drawing on paper (Muse Spark reads it)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg> Build from a photo</button><input type="file" id="sketch-file" accept="image/png,image/jpeg" hidden>
         <button class="btn" id="jammap" aria-pressed="false" title="The jam map (J): only the waits show">Jams <kbd>J</kbd></button>
-        <button class="btn" id="speed" aria-label="Playback speed" title="1× is 20 fab minutes a second; 3× and 12× are faster">1×</button>
-        <span class="clock" id="clock">Day 1 · 00:00:00</span>
-        <span class="run-no" id="run-no" title="Each run is one random history of breakdowns and arrivals">Run #1</span><button class="btn" id="new-run" title="Watch another random run; stars still count run #1, the challenge's own">⟳ New run</button>
         <button class="btn go" id="again" hidden>Run again with my changes</button>
         <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">The small fab</option><option value="smt2020">The full fab (SMT2020)</option></select></span>
       </div>
       <div class="advice" id="advice" aria-live="polite"></div>
-      <div class="mapbox" id="mapbox"><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+      </div>
+      <div class="mapbox" id="mapbox"><div class="status" id="status">Point at a machine or a car to see how it is doing.</div><canvas id="map" role="img" aria-label="The fab floor from above, with vehicles moving as the simulator ran them"></canvas><div class="hint" id="hint"></div><div class="hover" id="hover" hidden></div><div class="floats" id="floats" aria-live="polite"></div><div class="lastrun" id="lastrun" hidden></div><canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
         <div class="win" id="win" hidden role="dialog" aria-labelledby="win-h"><div class="wcard"><h3 id="win-h">Challenge met!</h3><div class="wstars" id="win-stars"></div><p id="win-line"></p><p class="note" id="win-next"></p><div class="poster-box" id="poster-box"><button class="btn" id="poster-go" hidden>Make a poster</button><img id="poster-img" hidden alt="Your fab as a poster, made by Muse Image"><p class="note" id="poster-note"></p><a class="btn" id="poster-dl" hidden download="fab-gym-poster.png">Download</a></div><div class="wbtns"><button class="btn go" id="win-go">Next challenge →</button><button class="btn" id="win-stay">Keep improving</button></div></div></div></div>
-      <div class="time"><span class="note">Fab time</span><input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour"><span class="note" id="slabel"></span></div>
-      <div class="status" id="status">Point at a machine or a car to see how it is doing.</div>
+      <div class="playbar" id="playbar">
+        <button class="btn" id="play" aria-label="Pause">❚❚</button>
+        <button class="btn" id="speed" aria-label="Playback speed" title="1× is 20 fab minutes a second; 3× and 12× are faster">1×</button>
+        <span class="clock" id="clock">Day 1 · 00:00:00</span>
+        <input type="range" id="slider" min="0" max="47" value="0" aria-label="Fab time, by the hour">
+        <span class="run-no" id="run-no" title="Each run is one random history of breakdowns and arrivals">Run #1</span><button class="btn" id="new-run" title="Play another random run of the same layout (your edits rerun on their own); stars still count run #1, the challenge's own">⟳ New run</button>
+      </div>
     </div>
     <aside class="side">
       <div class="card ai" id="sketch-panel" hidden aria-live="polite"><h4><span>From your sketch</span></h4><div id="sketch-body"></div>
         <div class="ai-btns" style="margin-top:8px"><button class="btn go" id="sketch-keep">Keep</button><button class="btn" id="sketch-discard">Discard</button></div></div>
       <div class="card ai" id="ai-panel" hidden aria-live="polite"><h4><span>The AI's turn</span><span class="ai-btns"><button class="btn" id="ai-stop">Stop</button><button class="btn" id="ai-close" aria-label="Close">✕</button></span></h4>
         <p class="ai-cost" id="ai-cost">Muse Wonder</p><p class="ai-status" id="ai-status"></p><p class="ai-stars" id="ai-stars"></p><ol class="ai-moves" id="ai-moves"></ol></div>
-      <div class="card"><h4><span>Checks</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
+      <div class="card"><h4><span>Layout</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
       <div class="card"><h4><span>Selected</span></h4><div class="insp" id="insp"></div></div>
     </aside>
   </section>
-  <p class="note">What you see is the simulator's real run, played back: every car, machine and line of lots is where the simulator had it. One floor tile is 3 m. Prices are made up for the game. The small fab is our own design, and the full fab is built from the SMT2020 testbed. Neither is a real fab.</p>
 </div>
 <script src="look.js"></script>
 <script src="editor-core.js"></script>

@@ -255,7 +255,7 @@
       // the last stars need a cap on the lots inside (docs/THIRD-STAR.md)
       tip: "try a cap on the lots inside (click empty floor, then Cap on lots inside). Too low a cap starves the fab.",
       problem: "A piece of the main track by the lithography bay keeps breaking down, and every car behind it sits and waits.",
-      goal: "Get output up to 670 wafers a day. Hint: the bay's own loop can carry the cars around the break.",
+      goal: "Get output up to 670 wafers a day. Hint: click the broken track and set When it stops to Cars go around it; the bay's own loop carries them.",
       spot: { rail: "fail" }, tools: ["select", "rail", "erase", "entry", "exit", "stocker"],
       target: { wafers: 670, budget: 0 },
       setup() { const x = teach(); const v = x.state.rail[laneCell(x.state, 3)]; v.fail = { kind: "random", mttf_minutes: 120, mttr_minutes: 90 }; v.rec = { kind: "wait" }; return withOverrides(x); },

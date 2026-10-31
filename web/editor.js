@@ -31,7 +31,7 @@
   let lastCars = 0;
   // the editor as a game (docs/EDITOR-GAME.md)
   let aiPlaying = false, pendingEdits = false; // Race the AI (docs/RACE-AI.md)
-  let cursorCell = null, jamMap = false, showLast = false, prevRun = null, flashes = [], lastEditAt = null, lastBadges = [], lastDrawFi = 0;
+  let cursorCell = null, jamMap = false, showLast = false, prevRun = null, flashes = [], lastEditAt = null, lastBadges = [], lastDrawFi = 0, lastLabels = [];
   let clock = 0, win = null, nextWin = null, fetching = false;
   let tool = "select", sel = null, hover = null, drag = null, flash = null, checks = null, checkTimer = null;
   // the editor's basics (docs/EDITOR-BASICS.md): the view, undo, the ghost, runs made by themselves
@@ -112,7 +112,18 @@
     const wx = Math.max(...xs) - Math.min(...xs), wy = Math.max(...ys) - Math.min(...ys), pad = cw * ISO.pad;
     // the smaller of the column's width and the window's height below the map, never under 360 px (docs/EDITOR-TOPDOWN.md)
     // kept until the room changes by 8 px or more, so small reflows above the map do not make it breathe
-    const r = Math.max(430, window.innerHeight - (cv.getBoundingClientRect().top + window.scrollY) - 24);
+    // everything the page holds below the map (the playback bar, the status line, the page's own padding) stays in the
+    // window (docs/BUILD-REVIEW.md)
+    // measured from the map's own column and the page's fixed padding, never from the side column, so the answer does
+    // not depend on the map's own height (an earlier version fed back on itself)
+    const cr = cv.getBoundingClientRect(), col = cv.closest(".mapcol"), ed = $("editor"), cs = getComputedStyle(ed);
+    const colBelow = col ? col.getBoundingClientRect().bottom - cr.bottom : 0;
+    const edPad = parseFloat(cs.paddingBottom) + parseFloat(cs.borderBottomWidth);
+    const after = Math.max(0, document.documentElement.scrollHeight - (ed.getBoundingClientRect().bottom + window.scrollY));
+    const below = colBelow + edPad + after;
+    // fit the window when that leaves the map 330 px or more; in a shorter window keep the old 430 px and let the page
+    // scroll (D8: the floor stays usable)
+    const avail = window.innerHeight - (cr.top + window.scrollY) - below, r = avail >= 330 ? avail : 430;
     if (room == null || Math.abs(r - room) >= 8) room = r;
     const sc = Math.min((cw - 2 * pad) / wx, (room - 2 * pad) / wy);
     const lift = 0, depth = 0;
@@ -195,7 +206,7 @@
     lastCars = vs.length;
     for (const v of vs) items.push({ v, d: P(v.x + 0.5, v.y + 0.5)[1] });
     items.sort((a, b) => a.d - b.d);
-    lastBadges = [];
+    lastBadges = []; lastLabels = [];
 
     for (const it of items) {
       if (it.v) { drawVehicle(it.v); continue; }
@@ -211,8 +222,24 @@
       ctx.lineWidth = Math.max(1.5, F.s * 0.07); ctx.strokeStyle = en.cut; ctx.globalAlpha = 0.6; ctx.stroke(); ctx.globalAlpha = 1;
       ctx.fillStyle = "rgba(255,255,255,.2)"; ctx.beginPath(); ctx.roundRect(ax + 3, ay + 3, w - 6, Math.max(2, h * 0.05), 2); ctx.fill();
       const pl = E.pile(q), rows = Math.ceil((pl.shown + (pl.more ? 1 : 0)) / 6);
-      const ic = b.kind === "group" ? b.area : b.kind, cx = ax + w / 2, cy = ay + h / 2 - (rows ? h * 0.06 * rows : 0), sz = Math.min(w, h) * (rows > 1 ? 0.4 : 0.5);
+      // a named tile (docs/BUILD-REVIEW.md) keeps its name along the top, so its icon sits a little lower and smaller
+      const named = Math.max(w, h) >= 40 && w >= 40;
+      const ic = b.kind === "group" ? b.area : b.kind, cx = ax + w / 2, cy = ay + h / 2 - (rows ? h * 0.06 * rows : 0) + (named ? h * 0.08 : 0), sz = Math.min(w, h) * (rows > 1 ? 0.36 : named ? 0.42 : 0.5);
       if (IC[ic]) { icon(ic, cx, cy + Math.max(1, F.s * 0.04), sz, en.light, 2.2); icon(ic, cx, cy, sz, en.cut, 2.2); }
+      // the tile's name, once the tile can hold it (docs/BUILD-REVIEW.md)
+      if (Math.max(w, h) >= 40) {
+        const name = b.kind === "group" ? SHORT[b.area] || b.group : INFRA[b.kind] ? INFRA[b.kind][0] : b.kind;
+        const long = Math.max(w, h), fs = Math.max(10, Math.min(13, long * 0.15));
+        ctx.font = `700 ${fs}px "Chakra Petch",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = en.cut;
+        // a tall, narrow tile (wafers in and out) takes its name sideways
+        if (w < 40 && h > w) { ctx.save(); ctx.translate(ax + Math.max(4, w * 0.12), ay + h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(name, 0, 0, h - 8); ctx.restore(); }
+        else {
+          // left-aligned along the top, short of the trouble badge in the top-right corner
+          const room = w - 10 - (tr ? 2 * Math.max(5, F.s * 0.3) + 4 : 0);
+          ctx.textAlign = "left"; ctx.fillText(name, ax + 5, ay + Math.max(5, h * 0.06), Math.max(16, room));
+        }
+        lastLabels.push(name);
+      }
       ctx.restore();
       if (q) podsIn(ax, ay, w, h, q);
       // badges only for trouble (docs/EDITOR-GAME.md); the mood's own icon inside
@@ -650,6 +677,7 @@
     const met = !!(c && E.meets(run.score, c.target, run.spendTop));
     const stars = c && met ? E.stars(run.score, c.target, run.spendTop) : 0;
     $("advice").textContent = E.advise({ brokenJam, worst, met, stars, tip: c && c.tip });
+    $("advice").title = $("advice").textContent; // the whole line on hover, when the row cuts it short
   }
 
   function renderScore() {
@@ -691,7 +719,7 @@
   // ---------- challenges
   function renderTabs() {
     const names = [...E.CHALLENGES.map((c, i) => `${i + 1} · ${c.title}`), "Free build"];
-    const starsOf = (i) => { const n = i < E.CHALLENGES.length ? best[E.CHALLENGES[i].id] || 0 : 0; return n ? `<span class="met tabstars" aria-label="${n} of 3 stars">${"★".repeat(n)}${"☆".repeat(3 - n)}</span>` : ""; };
+    const starsOf = (i) => { const n = i < E.CHALLENGES.length ? best[E.CHALLENGES[i].id] || 0 : 0; return n ? `<span class="met tabstars" aria-label="best: ${n} of 3 stars"><small>best</small><b>${"★".repeat(n)}</b><i>${"☆".repeat(3 - n)}</i></span>` : ""; };
     $("chtabs").innerHTML = names.map((n, i) => `<button class="tab" data-ch="${i}" aria-pressed="${i === chIdx}">${esc(n)}${starsOf(i)}</button>`).join("");
     $("chtabs").querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => load(+b.dataset.ch)));
   }
@@ -740,7 +768,7 @@
     const fi = frameIdx();
     if (fi === lastHour) return;
     lastHour = fi;
-    $("slider").value = fi; $("slabel").textContent = hhmmss(run.frames[fi].t).replace(/:00$/, "");
+    $("slider").value = fi;
     renderAdvice();
     const lots = run.frames[fi].lots;
     void lots;
@@ -754,7 +782,7 @@
   }
   function buildPalette() {
     // a grid of keys, only this challenge's tools, nothing greyed (docs/EDITOR-GAME.md)
-    const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
+    const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}${k ? ` (key ${k})` : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
     const sec = (name, keys) => (keys ? `<h4>${name}</h4><div class="keys">${keys}</div>` : "");
     let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E"));
     h += sec("Machines", E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join(""));
@@ -768,6 +796,7 @@
       let kb = btn.querySelector("kbd");
       if (!kb) { kb = document.createElement("kbd"); btn.appendChild(kb); }
       kb.textContent = String(i + 1);
+      btn.title = `${btn.title.replace(/ \(key \w+\)$/, "")} (key ${i + 1})`;
     });
   }
   function syncPal() { $("pal").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
@@ -1101,10 +1130,10 @@
     if (!checks) { ul.innerHTML = '<li><span class="chip warning">…</span><span>Checking the layout.</span></li>'; $("verdict").innerHTML = ""; return; }
     if (checks.error) { ul.innerHTML = `<li><span class="chip error">refused</span><span>${esc(checks.error)}</span></li>`; $("verdict").innerHTML = '<span class="chip error">refused</span>'; return; }
     const errs = checks.issues.filter((i) => i.severity === "error").length;
-    $("verdict").innerHTML = errs ? `<span class="chip error">${errs} to fix</span>` : '<span class="chip ok">ready to run</span>';
+    $("verdict").innerHTML = errs ? `<span class="chip error">${errs} to fix</span>` : '<span class="chip ok">complete</span>';
     ul.innerHTML = checks.issues.length
       ? checks.issues.map((i, n) => `<li data-n="${n}"><span class="chip ${i.severity}">${i.severity === "error" ? "fix" : "note"}</span><span>${esc(i.message)}</span></li>`).join("")
-      : '<li><span class="chip ok">ok</span><span>Looks good. Every machine is on the track, and wafers can get from the way in to every machine and out again.</span></li>';
+      : '<li><span class="chip ok">ok</span><span>Complete and connected: every machine is on the track, and wafers can get from the way in to every machine and out again.</span></li>';
     ul.querySelectorAll("li[data-n]").forEach((li) => (li.onclick = () => {
       const i = checks.issues[+li.dataset.n];
       const at = i.at.map((a) => E.cellOfNode(a)).find(Boolean) || (() => { const b = s.blocks.find((z) => i.at.includes(z.group) || i.at.some((a) => z.group && a.startsWith(z.group + "#"))); return b ? [b.x, b.y] : null; })();
@@ -1200,6 +1229,7 @@
     ghost: () => (ghostAt ? { ...ghostAt } : null),
     rails: () => Object.keys(s.rail).length,
     runs: () => runsDone,
+    tileLabels: () => lastLabels.slice(),
     watching: () => watch,
     showsRun: () => !!showRun(),
     clock: () => clock,
