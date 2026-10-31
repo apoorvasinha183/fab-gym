@@ -120,21 +120,33 @@ A lot is a pod of 25 wafers. Its mood is what the simulator knows about it.
 </tr>
 </table>
 
-## Build your own fab (in progress)
+## Build your own fab
 
-SMT2020 is one fab. Fab Gym is opening up so anyone can lay out their own and let the simulator judge it.
+SMT2020 is one fab. In the **Build** page you lay out your own and the simulator judges it, as a game: four challenges and a free build, each run scored the moment you stop drawing.
 
-<p align="center"><img src="docs/img/editor-mock.jpg" width="820" alt="The map editor's design mock: the fab as a tilted 2.5D slab with walled halls, raised tools with mood badges, rails, and the CMP robot's card open showing it gassed"></p>
-<p align="center"><sub>The editor as designed so far: a working mock in the floor page's 2.5D look, on a sample fab of our own with a spine and ten bays. Example values.</sub></p>
+<p align="center"><img src="docs/img/build.jpg" width="820" alt="The Build page: a top-down fab on grid paper with tools, track and cars; a Challenge met card with one of three stars lit and a Next challenge button; confetti over the map"></p>
+<p align="center"><sub>Challenge 1 met: one star of three, with what the next two need. A teaching fab of our own.</sub></p>
 
-Built and tested:
+- **Draw on paper.** Grid paper all round; the floor grows when you draw past its edge. Undo, zoom, box select, copy and paste, and keys for every tool.
+- **See the jam.** A machine wears a badge only when something is wrong; lots waiting pile up on it; jammed track turns thick and red. Press J and only the waits glow.
+- **Know your first move.** Each challenge rings its trouble spot, and one line of advice above the map changes with the hour on screen.
+- **See your change work.** The simulator reruns 250 ms after you stop drawing; the result floats up where you changed something, cleared jams flash, and holding H shows the last run's jams.
+- **Earn stars.** Meet the target for one; beat it by 2% for two, by 5% for three.
+
+Under it:
 
 - **One file for any fab** (`docs/FAB-FILE.md`). Tool types with counts and prices, rail points and one-way links with lengths (splits, merges, zig-zags), where each tool stands and loads, stockers, and where wafers enter and leave. `fabsim fab-export` writes today's campus as one: 1,249 rail points, 1,318 links, 1,043 tool stops.
 - **Failure and recovery, your way** (`docs/OVERRIDES.md`). A small JSON file changes breakdowns, maintenance and recovery for a tool group, a single tool or a rail stretch: random breakdowns or wear by wafer count, maintenance on a calendar or by wafers, repair in place, swap to a spare, or hold the lots a tool just finished. An empty file is today's fab exactly; the golden logs prove it.
 
-On the way, a finding: on today's campus no stretch of rail has a way round. Each of the 158 stretches that leaves a split cuts part of the track off when it breaks. The rail has no redundancy, which is exactly the kind of thing the editor should let you fix.
+On the way, a finding: on today's campus no stretch of rail has a way round. Each of the 158 stretches that leaves a split cuts part of the track off when it breaks. Challenge 1 is that problem in miniature.
 
-Next, in order: the checks a layout must pass (every tool reachable, entry and exit, no traps), rails of any shape read straight from the file, run results for every tool's card, the editor itself, and a Meta model that writes a fab from a description.
+## What we found, and how we checked
+
+The **Evidence** page leads with four findings in plain words, each with how sure we are; the tables and every run sit below it as the lab notebook.
+
+<p align="center"><img src="docs/img/evidence.jpg" width="820" alt="The Evidence page: four finding cards, on rush prototypes, a cap on work inside, the trained AI against the fab's own rule, and 120 of 120 scored runs passing the referee"></p>
+
+**Every scored run is checked.** The simulator writes a receipt for each run: every job, every machine state, every breach. A referee written in Lean 4 reads it and checks five rules: no machine does two jobs at once, every lot follows its route, no batch is overfilled, nothing runs on a broken machine, and the breaches counted match. Its proofs say that whenever it answers yes, the five rules hold. All 120 scored runs of the long study passed, about 423 million jobs, and tampered copies are rejected (`docs/LEAN-CHECK.md`). A yes shows a run follows the fab's rules; it does not show the simulator matches a real fab.
 
 ## The machine that answers questions
 
@@ -157,7 +169,7 @@ A discrete-event simulator in Rust that reproduces the reference engine's event 
 # the SMT2020 files go in data/smt2020/hvlm (see data/smt2020/README.md)
 cargo build --release                      # the simulator and its tools
 web/build.sh                               # the browser simulator and the floor page's data
-python3 -m agent.helper --port 8766        # the floor page with its ask box, on 127.0.0.1
+python3 -m agent.helper --port 8766        # the pages on http://127.0.0.1:8766: Floor, Build, Evidence
                                            #   (--preset open for Muse Spark Open, --spend-cap 5)
 fabsim fab-export SHOP > my.fab.txt        # a campus with drawn rails, as one fab file
 fabsim log SHOP SEED --overrides my.json   # a run with your own failures and recoveries
