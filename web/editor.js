@@ -648,7 +648,8 @@
     let worst = null;
     run.group_names.forEach((g, i) => { const b = s.blocks.find((z) => z.group === g); if (b && b.area && (!worst || f.queues[i] > worst.queue)) worst = { name: AREA[b.area][0], queue: f.queues[i] }; });
     const met = !!(c && E.meets(run.score, c.target, run.spendTop));
-    $("advice").textContent = E.advise({ brokenJam, worst, met });
+    const stars = c && met ? E.stars(run.score, c.target, run.spendTop) : 0;
+    $("advice").textContent = E.advise({ brokenJam, worst, met, stars, tip: c && c.tip });
   }
 
   function renderScore() {

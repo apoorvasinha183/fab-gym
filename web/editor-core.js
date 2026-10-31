@@ -252,6 +252,8 @@
   const CHALLENGES = [
     {
       id: "rush", title: "Rush hour on the spine", days: 2,
+      // the last stars need a cap on the lots inside (docs/THIRD-STAR.md)
+      tip: "try a cap on the lots inside (click empty floor, then Cap on lots inside). Too low a cap starves the fab.",
       problem: "A piece of the main track by the lithography bay keeps breaking down, and every car behind it sits and waits.",
       goal: "Get output up to 670 wafers a day. Hint: the bay's own loop can carry the cars around the break.",
       spot: { rail: "fail" }, tools: ["select", "rail", "erase", "entry", "exit", "stocker"],
@@ -261,6 +263,7 @@
     },
     {
       id: "polisher", title: "The gassed polisher", days: 2,
+      tip: "try a cap on the lots inside (click empty floor, then Cap on lots inside). Too low a cap starves the fab.",
       problem: "The whole fab shares one polishing machine. It cannot keep up, and work piles up in front of it.",
       goal: "Get output up to 780 wafers a day. You can afford one more polishing machine.",
       spot: { group: "Planar_T" }, tools: ["select"],
@@ -279,6 +282,7 @@
     },
     {
       id: "lean", title: "Lean or redundant?", days: 2,
+      tip: "try a cap on the lots inside (click empty floor, then Cap on lots inside). Too low a cap starves the fab.",
       problem: "On day two the polishing machines are down for ten hours. Do you keep the fab lean, or pay for a backup?",
       goal: "Keep output at 650 wafers a day through the outage. You can afford one more polishing machine.",
       spot: { group: "Planar_T" }, tools: ["select"],
@@ -335,7 +339,10 @@
   /** How a piece of track is drawn from its jam (extra minutes a car waits on it). */
   const jamStyle = (j) => (j > 1 ? { kind: "red", width: 2 } : j > 0.2 ? { kind: "amber", width: 1.5 } : { kind: "calm", width: 1 });
   /** One line of advice from the hour on screen. */
-  function advise({ brokenJam, worst, met }) {
+  function advise({ brokenJam, worst, met, stars, tip }) {
+    // met with one or two stars: name them and give the challenge's tip for the next (docs/THIRD-STAR.md)
+    if (met && stars === 3 && tip) return "Three stars. Try another challenge.";
+    if (met && (stars === 1 || stars === 2) && tip) return `${stars === 1 ? "One star" : "Two stars"}. For the next star, ${tip}`;
     if (met) return "Challenge met. Try another one, or push the number higher.";
     if (brokenJam) return "Cars are queuing behind the broken track. Give them a way around the break.";
     if (worst && worst.queue >= LINE_AT) return `The longest line is at ${worst.name}: ${worst.queue} lots waiting.`;

@@ -34,3 +34,6 @@ No challenge's text mentions the cap, so three of the four stop short of three s
 - `web/tests/editorgame.test.mjs` **G4** keeps passing: with no stars or tip given, `advise` says what it said.
 
 ## Changes
+
+- 31 Oct, results: TS1 to TS3 pass, G4 unchanged, and the page suite (220 tests, the paused floor coach's three left out)
+  passes run one file at a time.
