@@ -60,6 +60,16 @@ fn reach(from: &[usize], adj: &[Vec<usize>]) -> Vec<bool> {
 
 /// The checks, errors first. A shop that read without error has every name in its plan defined.
 pub fn check(shop: &Shop) -> Vec<Issue> {
+    let mut issues = check_layout(shop);
+    // storage made real (docs/BUILD-CONTROLS.md, part 3): a port limit needs storage for the lots beyond it
+    if shop.inports.is_some_and(|n| n > 0) && shop.plan.as_ref().is_some_and(|p| p.stockers.is_empty()) {
+        let n = shop.inports.unwrap_or(0);
+        issues.push(warn("no_storage", format!("Machines take {n} lot{} each at their ports, but there is no storage, so the extra lots wait in an unlimited line. Place storage beside the track.", if n == 1 { "" } else { "s" }), vec![]));
+    }
+    issues
+}
+
+fn check_layout(shop: &Shop) -> Vec<Issue> {
     let Some(p) = &shop.plan else {
         return vec![err("no_plan", "The file has no floor plan: add nodes, links, a stop for every tool, an entry and an exit.".into(), vec![])];
     };

@@ -239,9 +239,22 @@ pub struct RunResult {
     pub holds: Vec<Hold>,
     /// the fleet's results (docs/FLEET.md); None without a `fleet` record
     pub fleet: Option<FleetOut>,
+    /// storage made real (docs/BUILD-CONTROLS.md, part 3): only when the shop sets `inports`
+    pub storage: Option<StorageOut>,
     /// every breakdown and maintenance down as it fell due, and every rail stretch's breakdown (only with `record`;
     /// docs/OVERRIDES.md)
     pub due: Vec<Due>,
+}
+
+/// What storage did in a run with a port limit: moves to and from storage, lots still stored at the end, and per
+/// group the most lots at or headed to its ports and the most in storage at once.
+#[derive(Clone, Debug, Default)]
+pub struct StorageOut {
+    pub to_storage: i64,
+    pub from_storage: i64,
+    pub still_stored: usize,
+    pub peak_ports: Vec<u32>,
+    pub peak_stored: Vec<u32>,
 }
 
 /// A down as it fell due: `what` is breakdown, maintenance or rail; `tool` the tool (`GROUP#k`) or stretch
@@ -479,6 +492,11 @@ struct Lot {
     last_start: f64,
     held_until: f64,
     parked: bool,
+    /// storage made real (docs/BUILD-CONTROLS.md, part 3): on its way to storage; counted at its group's ports;
+    /// in storage since (its wait for the group counts from then)
+    to_store: bool,
+    at_port: bool,
+    stored_since: Option<f64>,
 }
 
 type QKey = (F, F, u64);
@@ -584,6 +602,11 @@ struct Sim<'a, 'c> {
     /// per rail stretch, random breakdowns (mean minutes to failure, to repair)
     rail_bd: Vec<Option<(f64, f64)>>,
     due: Vec<Due>,
+    // storage made real (docs/BUILD-CONTROLS.md, part 3); with `inports` 0 nothing below changes a run
+    inports: u32,
+    at_ports: Vec<u32>,
+    stored: Vec<VecDeque<u32>>,
+    st_out: StorageOut,
 }
 
 /// A defect finding: the tool that did the step, when, the step, the lot found, and the lots held with it.
@@ -680,7 +703,9 @@ impl<'a, 'c> Sim<'a, 'c> {
             let lot = &self.lots[l as usize];
             (st.group, st.per, st.setup, st.batch_wait, (lot.route, lot.step))
         };
-        self.lots[l as usize].arrived = t;
+        // a lot back from storage has waited for this group since it was stored (docs/BUILD-CONTROLS.md, part 3)
+        let since = self.lots[l as usize].stored_since.take();
+        self.lots[l as usize].arrived = since.unwrap_or(t);
         if self.lots[l as usize].held_until > t {
             self.lots[l as usize].parked = true;
             let until = self.lots[l as usize].held_until;
@@ -1165,6 +1190,18 @@ impl<'a, 'c> Sim<'a, 'c> {
         };
         let begin = t + s_min;
         self.at(begin, Ev::Begin(ti, batch.clone(), dur));
+        // the lots leave their ports: stored lots may come up (docs/BUILD-CONTROLS.md, part 3)
+        let mut freed = false;
+        for &l in &batch {
+            if self.lots[l as usize].at_port {
+                self.lots[l as usize].at_port = false;
+                self.at_ports[g as usize] -= 1;
+                freed = true;
+            }
+        }
+        if freed {
+            self.recall(g as usize, t);
+        }
         for &l in &batch {
             self.lots[l as usize].last_start = t;
             let waited = t - self.lots[l as usize].arrived;
@@ -1453,6 +1490,9 @@ impl<'a, 'c> Sim<'a, 'c> {
             last_start: f64::NEG_INFINITY,
             held_until: f64::NEG_INFINITY,
             parked: false,
+            to_store: false,
+            at_port: false,
+            stored_since: None,
         });
         (self.lots.len() - 1) as u32
     }
@@ -1514,6 +1554,8 @@ impl<'a, 'c> Sim<'a, 'c> {
         let to_place = self.place_of[g].unwrap_or(Place { bay: usize::MAX, y: 0.0, ..from_place });
         self.lots[l as usize].at = to_place;
         let tool = self.from_tool;
+        // storage made real (docs/BUILD-CONTROLS.md, part 3): with the group's ports full, the lot goes to storage
+        let store_to = self.port_or_store(l, g);
         let fl = self.fl.as_ref().unwrap();
         // from the port of the tool that finished it, when tools have ports; else where the lot stands
         let from = match tool {
@@ -1525,9 +1567,10 @@ impl<'a, 'c> Sim<'a, 'c> {
             None => self.lots[l as usize].node,
         };
         // to the port of the group's tool with the fewest deliveries on their way (ties to the first tool)
-        let to = match fl.group_ports[g].iter().min_by_key(|&&n| fl.port_load[n]) {
-            Some(&n) => n,
-            None => fl.stop_of_group[g].unwrap_or_else(|| fl.track.node_of(&to_place)),
+        let to = match (store_to, fl.group_ports[g].iter().min_by_key(|&&n| fl.port_load[n])) {
+            (Some(n), _) => n,
+            (None, Some(&n)) => n,
+            (None, None) => fl.stop_of_group[g].unwrap_or_else(|| fl.track.node_of(&to_place)),
         };
         if let Some(ti) = tool {
             self.tool_out(ti, true, t);
@@ -1537,6 +1580,74 @@ impl<'a, 'c> Sim<'a, 'c> {
         fl.out.asked += 1;
         fl.pending.push_back(Job { lot: l, from, to, asked: t, tool });
         self.fleet_assign(t);
+    }
+
+    /// How many lots a group takes at its ports (0: no limit, or no tools, or no storage to send the rest to).
+    fn port_cap(&self, g: usize) -> u32 {
+        if self.inports == 0 || self.fl.is_none() {
+            return 0;
+        }
+        self.inports * self.group_tools[g].len() as u32
+    }
+
+    /// The storage nearest the group's stop by track distance, if the floor has any.
+    fn nearest_store(&self, g: usize) -> Option<usize> {
+        let fl = self.fl.as_ref()?;
+        let from = fl.stop_of_group[g].or_else(|| fl.group_ports[g].first().copied())?;
+        let nodes = fl.track.nodes();
+        (0..nodes.len()).filter(|&n| nodes[n].stocker).min_by(|&a, &b| fl.track.dist(from, a).total_cmp(&fl.track.dist(from, b)))
+    }
+
+    /// A lot about to move to group g: counted at its ports (None), or sent to the nearest storage (Some(node)).
+    fn port_or_store(&mut self, l: u32, g: usize) -> Option<usize> {
+        let cap = self.port_cap(g);
+        if cap == 0 {
+            return None;
+        }
+        if self.at_ports[g] >= cap {
+            if let Some(n) = self.nearest_store(g) {
+                self.lots[l as usize].to_store = true;
+                self.st_out.to_storage += 1;
+                return Some(n);
+            }
+            return None; // no storage on the floor: the line is unlimited, as before
+        }
+        self.at_ports[g] += 1;
+        self.st_out.peak_ports[g] = self.st_out.peak_ports[g].max(self.at_ports[g]);
+        self.lots[l as usize].at_port = true;
+        None
+    }
+
+    /// Ports have come free at group g: carry the oldest stored lots up to them.
+    fn recall(&mut self, g: usize, t: f64) {
+        let cap = self.port_cap(g);
+        if cap == 0 {
+            return;
+        }
+        let mut asked = false;
+        while self.at_ports[g] < cap {
+            let Some(l) = self.stored[g].pop_front() else { break };
+            self.at_ports[g] += 1;
+            self.st_out.peak_ports[g] = self.st_out.peak_ports[g].max(self.at_ports[g]);
+            self.lots[l as usize].at_port = true;
+            self.st_out.from_storage += 1;
+            let from = self.lots[l as usize].node;
+            let fl = self.fl.as_mut().unwrap();
+            let to = match fl.group_ports[g].iter().min_by_key(|&&n| fl.port_load[n]) {
+                Some(&n) => n,
+                None => match fl.stop_of_group[g] {
+                    Some(n) => n,
+                    None => from,
+                },
+            };
+            fl.port_load[to] += 1;
+            fl.out.asked += 1;
+            fl.pending.push_back(Job { lot: l, from, to, asked: t, tool: None });
+            asked = true;
+        }
+        if asked {
+            self.fleet_assign(t);
+        }
     }
 
     fn tool_out(&mut self, ti: u32, up: bool, t: f64) {
@@ -1832,6 +1943,18 @@ impl<'a, 'c> Sim<'a, 'c> {
         self.transport_minutes += d;
         self.lots[job.lot as usize].node = job.to;
         self.fleet_release(n, t);
+        if self.lots[job.lot as usize].to_store {
+            // in storage now: it waits for a port at its group (docs/BUILD-CONTROLS.md, part 3)
+            let l = job.lot;
+            self.lots[l as usize].to_store = false;
+            self.lots[l as usize].stored_since = Some(t);
+            let g = self.step_of(l).expect("a stored lot has a step to do").group as usize;
+            self.stored[g].push_back(l);
+            self.st_out.peak_stored[g] = self.st_out.peak_stored[g].max(self.stored[g].len() as u32);
+            self.recall(g, t);
+            self.fleet_assign(t);
+            return;
+        }
         self.arrive(job.lot, t);
         self.fleet_assign(t);
     }
@@ -2114,6 +2237,10 @@ fn build<'a, 'c>(
         spares: vec![0; shop.groups.len()],
         rail_bd: vec![],
         due: vec![],
+        inports: shop.inports.unwrap_or(0),
+        at_ports: vec![0; shop.groups.len()],
+        stored: vec![VecDeque::new(); shop.groups.len()],
+        st_out: StorageOut { peak_ports: vec![0; shop.groups.len()], peak_stored: vec![0; shop.groups.len()], ..Default::default() },
     };
 
     // each tool's breakdowns, maintenance and recovery: its group's records unless the overrides say otherwise
@@ -2505,6 +2632,7 @@ impl<'a, 'c> Sim<'a, 'c> {
                 f.out
             }),
             due: std::mem::take(&mut sim.due),
+            storage: sim.shop.inports.map(|_| StorageOut { still_stored: sim.stored.iter().map(|q| q.len()).sum(), ..std::mem::take(&mut sim.st_out) }),
         }
     }
 }

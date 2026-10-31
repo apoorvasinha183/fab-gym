@@ -177,6 +177,8 @@ pub struct Shop {
     pub transport: (f64, f64),
     /// a WIP cap (CONWIP): releases wait while this many lots are in the fab
     pub cap: Option<i64>,
+    /// load ports per tool for lots coming in (docs/BUILD-CONTROLS.md, part 3): beyond them lots wait in storage
+    pub inports: Option<u32>,
     pub probes: Vec<f64>,
     pub groups: Vec<Group>,
     pub routes: Vec<Route>,
@@ -466,6 +468,10 @@ impl Shop {
                     need(2)?;
                     s.cap = Some(pi(f[1])?);
                 }
+                "inports" => {
+                    need(2)?;
+                    s.inports = Some(f[1].parse().map_err(|_| format!("line {}: inports wants a whole number of ports", no + 2))?);
+                }
                 "probe" => {
                     need(2)?;
                     s.probes.push(pf(f[1])?);
@@ -752,6 +758,9 @@ impl Shop {
         let _ = writeln!(o, "transport\t{}\t{}", pyrepr(self.transport.0), pyrepr(self.transport.1));
         if let Some(c) = self.cap {
             let _ = writeln!(o, "cap\t{c}");
+        }
+        if let Some(n) = self.inports {
+            let _ = writeln!(o, "inports\t{n}");
         }
         for p in &self.probes {
             let _ = writeln!(o, "probe\t{}", pyrepr(*p));

@@ -147,3 +147,14 @@ written by Build's own `fabText`):
   does nothing for a square machine. The page gains read-only test hooks (`freeBeside`, `freeRowBeside`, `select`,
   `spend`, `overrides`, `checks`); the row search looks both ways along the track.
 - 1 Nov, part 2, results: BP1 to BP6 pass, with Build's other tests, the helper's Build tests and R9.
+- 1 Nov, part 3, while writing the code: BS2 read the ports setting's options before opening Whole fab, which draws
+  only when opened; the test opens it first. Storage's description now reads "whose next machine's ports are full"
+  (BS3 looks for "ports are full", and it reads better). The layout checks became an inner function so the storage
+  warning is added to what they find.
+- 1 Nov, part 3, results: ST1 to ST4 and BS1 to BS3 pass; the simulator's whole suite passes with its golden runs
+  unchanged; Build's other tests and the helper's pass. The referee accepts storage-on runs (one port a machine; 12
+  and 2 cars). Measured on Free build's starting fab (two days, run #1; it has no random breakdowns, so every run is
+  the same): with 3 or more cars, one, two or three ports a machine leave output at 812.5 wafers a day, since a
+  stored lot is carried up while its machine works on the lot ahead; with 2 cars, one or two ports give 800, against
+  812.5 unlimited. Storage changes where lots wait and adds car trips; it costs output only when cars are scarce or
+  storage is far from its machines.

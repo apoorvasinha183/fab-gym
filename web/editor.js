@@ -16,7 +16,7 @@
   const AREA = {}, SHORT = {}, MOOD = {};
   for (const a in L.AREA) { AREA[a] = [L.AREA[a].name, L.AREA[a].exercise, L.AREA[a].about]; SHORT[a] = L.AREA[a].short; }
   for (const m in L.MOOD) MOOD[m] = [L.MOOD[m].name, L.MOOD[m].color, L.MOOD[m].badge];
-  const INFRA = { stocker: ["Storage", "Holds lots between steps when a machine has no room for them."], entry: ["Wafers in", "New lots enter the fab here."], exit: ["Wafers out", "Finished lots leave the fab here."] };
+  const INFRA = { stocker: ["Storage", "Holds lots whose next machine's ports are full; a car brings them back when a port frees."], entry: ["Wafers in", "New lots enter the fab here."], exit: ["Wafers out", "Finished lots leave the fab here."] };
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const money = (d) => (Math.abs(d) >= 1e6 ? `$${(d / 1e6).toFixed(d % 1e6 ? 1 : 0)}M` : `$${Math.round(d).toLocaleString()}`);
 
@@ -76,6 +76,11 @@
   let best = {};
   try { best = JSON.parse(localStorage.getItem("fabgym.stars") || "{}") || {}; } catch (e) { best = {}; }
   const ch = () => (chIdx < E.CHALLENGES.length ? E.CHALLENGES[chIdx] : null);
+  // a challenge run with a port limit is an experiment: its targets are tuned with unlimited ports, so it earns no stars
+  // (docs/BUILD-CONTROLS.md, part 3)
+  const experiment = () => !!(ch() && s && s.inports);
+  const starsFor = (sc, c, top) => (experiment() ? 0 : E.stars(sc, c.target, top));
+  const meetsFor = (sc, c, top) => !experiment() && E.meets(sc, c.target, top);
   const days = () => (ch() ? ch().days : 2);
   const fab = () => E.fabText(base, s, { vehicles: s.vehicles });
 
@@ -408,9 +413,9 @@
     if (prevRun) afterChange(prevRun, run);
     stale = false;
     const c = ch();
-    if (c && E.meets(run.score, c.target, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
+    if (c && meetsFor(run.score, c, run.spendTop)) { met.add(c.id); try { localStorage.setItem("fabgym.met", JSON.stringify([...met])); } catch (e) { /* no storage */ } }
     if (c && !aiPlaying) {
-      const st = E.stars(run.score, c.target, run.spendTop);
+      const st = starsFor(run.score, c, run.spendTop);
       if (st > (best[c.id] || 0)) {
         const first = !best[c.id];
         best[c.id] = st;
@@ -443,7 +448,7 @@
       checks: checks && checks.issues ? checks.issues.map((i) => `${i.severity}: ${i.message || i.text || ""}`) : [],
       advice: $("advice").textContent,
       last_run: sc ? { wafers_a_day: Math.round(sc.wafers_per_day), days_a_wafer_takes: +sc.cycle_days.toFixed(2), extra_spend: run.spendTop } : null,
-      stars: sc && c ? E.stars(sc, c.target, run.spendTop) : null,
+      stars: sc && c ? starsFor(sc, c, run.spendTop) : null,
     };
   }
   async function afterRun() {
@@ -451,7 +456,7 @@
     const c = ch(), sc = run && !stale ? run.score : null;
     if (!checks || !checks.ok) return { ran: false, checks: checks && checks.issues ? checks.issues.map((i) => `${i.severity}: ${i.message || i.text || ""}`) : [], note: "The checks did not pass, so nothing ran." };
     return { ran: true, wafers_a_day: sc ? Math.round(sc.wafers_per_day) : null, days_a_wafer_takes: sc ? +sc.cycle_days.toFixed(2) : null, extra_spend: run ? run.spendTop : null,
-      target: c ? c.target.wafers : null, stars: sc && c ? E.stars(sc, c.target, run.spendTop) : null, advice: $("advice").textContent };
+      target: c ? c.target.wafers : null, stars: sc && c ? starsFor(sc, c, run.spendTop) : null, advice: $("advice").textContent };
   }
   const refuse = (error) => ({ ok: false, error });
   const done = (note) => { buildPalette(); inspector(); edited(); draw(); return { ok: true, note }; };
@@ -680,8 +685,8 @@
     const brokenJam = failing.some((cell) => Object.keys(jamOf).some((n) => (n.startsWith(cell + ">") || n.endsWith(">" + cell)) && jamOf[n] > 0.2));
     let worst = null;
     run.group_names.forEach((g, i) => { const b = s.blocks.find((z) => z.group === g); if (b && b.area && (!worst || f.queues[i] > worst.queue)) worst = { name: AREA[b.area][0], queue: f.queues[i] }; });
-    const met = !!(c && E.meets(run.score, c.target, run.spendTop));
-    const stars = c && met ? E.stars(run.score, c.target, run.spendTop) : 0;
+    const met = !!(c && meetsFor(run.score, c, run.spendTop));
+    const stars = c && met ? starsFor(run.score, c, run.spendTop) : 0;
     $("advice").textContent = E.advise({ brokenJam, worst, met, stars, tip: c && c.tip });
     $("advice").title = $("advice").textContent; // the whole line on hover, when the row cuts it short
   }
@@ -707,14 +712,15 @@
       card("Days a wafer takes", sc.cycle_days.toFixed(2), "days", sc.cycle_days, p && p.cycle_days, (d) => d < 0) +
       card("Extra spend", money(top), c && c.target.budget ? `of ${money(c.target.budget)} allowed` : c && c.target.budget === 0 ? "no budget here" : "", top, p && p.spend, (d) => d < 0, c && c.target.budget != null && top > c.target.budget);
     if (c) {
-      const w = sc.wafers_per_day, full = c.target.wafers * 1.2, ok = E.meets(sc, c.target, top);
+      const w = sc.wafers_per_day, full = c.target.wafers * 1.2, ok = meetsFor(sc, c, top);
       $("goalfill").style.width = Math.min(100, (w / full) * 100) + "%";
       $("goaltick").style.left = (c.target.wafers / full) * 100 + "%";
       // only the next star is marked (docs/EDITOR-ROOM.md); none after three
-      const got = E.stars(sc, c.target, top);
+      const got = starsFor(sc, c, top);
       [1, 1.02, 1.05].forEach((m, i) => { const el = $("goalbar").querySelectorAll(".starmark")[i]; if (el) { el.hidden = i !== got; el.style.left = `calc(${(c.target.wafers * m / full) * 100}% - 6px)`; el.title = `${i + 1} star${i ? "s" : ""} at ${Math.ceil(c.target.wafers * m)} wafers a day`; } });
       $("goalbar").classList.toggle("met", ok && !blocked);
       $("goaltext").innerHTML = blocked ? `<b>${Math.round(w).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
+      if (experiment() && !blocked) $("goaltext").innerHTML = `<b>An experiment:</b> ${Math.round(w).toLocaleString()} wafers a day with ${s.inports} load port${s.inports > 1 ? "s" : ""} a machine. This challenge is tuned with unlimited ports, so this run earns no stars.`;
     } else {
       $("goalfill").style.width = "0"; $("goalbar").classList.remove("met");
       $("goaltext").innerHTML = blocked ? `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day on your layout`;
@@ -741,7 +747,7 @@
         if (d.error) { $("goaltext").textContent = d.error; return; }
         setupNow = { state: E.template("smt2020", d), base: d.shop, overrides: null };
         for (const l of d.areas.split("\n")) { const [g, a] = l.split("\t"); if (g) areaOfGroup[g] = E.AREA_OF[a]; }
-      } else setupNow = { state: E.template("teaching"), base: E.TEACHING_SHOP, overrides: null };
+      } else setupNow = { state: { ...E.template("teaching"), inports: 2 }, base: E.TEACHING_SHOP, overrides: null }; // real storage (part 3)
     }
     s = setupNow.state; base = setupNow.base;
     for (const l of base.split("\n")) if (l.startsWith("group\t")) { const g = l.split("\t")[1]; if (!areaOfGroup[g]) areaOfGroup[g] = E.AREA_OF[g.replace(/_T$/, "")]; }
@@ -1116,6 +1122,7 @@
     rrec: "Cars wait for the repair, or go around it where there is another way.",
     cars: "More cars carry more lots at once, and can jam the track.",
     cap: "New lots wait at the door while this many are inside; 0 means no cap. Too low starves the fab.",
+    ports: "How many lots each machine takes at its ports; the rest wait in storage until a port frees. Unlimited needs no storage.",
   };
   const num = (id, v, lab, unit) => `<label class="sub">${lab} <input type="number" min="1" step="1" id="${id}" value="${v}"> ${unit}</label>`;
   const why = (k) => `<span class="why">${WHY[k]}</span>`;
@@ -1154,8 +1161,10 @@
   function wholeFab(el) {
     el.innerHTML = `<div class="ttl">${svg("fab")}<span>The whole fab</span></div>` +
       row("cars", `<span>Cars on the track</span><span class="count"><button class="btn" data-cars="-1" aria-label="One fewer car">−</button><b>${s.vehicles}</b><button class="btn" data-cars="1" aria-label="One more car">+</button></span>`) +
-      row("cap", `<label for="${el.id}-cap">Cap on lots inside</label><span class="sub"><input type="number" min="0" step="1" id="${el.id}-cap" value="${s.cap || 0}"> lots</span>`);
+      row("cap", `<label for="${el.id}-cap">Cap on lots inside</label><span class="sub"><input type="number" min="0" step="1" id="${el.id}-cap" value="${s.cap || 0}"> lots</span>`) +
+      row("ports", `<label for="${el.id}-ports">Load ports per machine</label><select id="${el.id}-ports">${[["", "Unlimited"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"]].map(([v, n]) => `<option value="${v}" ${String(s.inports || "") === v ? "selected" : ""}>${n}</option>`).join("")}</select>`);
     el.querySelectorAll("[data-cars]").forEach((bt) => (bt.onclick = () => { s.vehicles = Math.max(1, s.vehicles + Number(bt.dataset.cars)); refreshCtl(); edited(); }));
+    $(`${el.id}-ports`).onchange = (e) => { const n = Number(e.target.value); if (n) s.inports = n; else delete s.inports; refreshCtl(); renderScore(); edited(); };
     $(`${el.id}-cap`).onchange = (e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); if (n) s.cap = n; else delete s.cap; refreshCtl(); edited(); };
   }
   function allControls() {
@@ -1204,7 +1213,8 @@
         bind("ra", (v) => { b.rec.spares = Math.round(v); syncGroup(b); });
         bind("rb", (v) => { b.rec.swap_minutes = v; syncGroup(b); });
       } else {
-        ins.innerHTML = `<div class="ttl">${svg(b.kind)}<span>${INFRA[b.kind][0]}</span></div><p class="note">${INFRA[b.kind][1]}</p><div class="row"><button class="btn" id="del">Remove</button></div>`;
+        const idle = b.kind === "stocker" && !s.inports ? ` With unlimited load ports (this fab's setting, under Whole fab), nothing waits here.` : b.kind === "stocker" ? ` Machines here take ${s.inports} lot${s.inports > 1 ? "s" : ""} each at their ports.` : "";
+        ins.innerHTML = `<div class="ttl">${svg(b.kind)}<span>${INFRA[b.kind][0]}</span></div><p class="note">${INFRA[b.kind][1]}${idle}</p><div class="row"><button class="btn" id="del">Remove</button></div>`;
       }
       $("del").onclick = () => { s.blocks = s.blocks.filter((z) => z !== b); sel = null; buildPalette(); refreshCtl(); edited(); };
     } else if (sel && sel.rail && s.rail[sel.rail]) {
@@ -1385,6 +1395,8 @@
     spend: () => E.spend(s),
     overrides: () => E.overridesFor(s),
     checks: () => checks,
+    experiment: () => experiment(),
+    starsNow: () => (run && run.score && ch() ? starsFor(run.score, ch(), run.spendTop) : null),
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
     // the editor's basics (docs/EDITOR-BASICS.md)
     view: () => viewNow(),

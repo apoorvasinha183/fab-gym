@@ -179,6 +179,8 @@
       }
     }
     if (s.cap) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, `cap\t${s.cap}`);
+    // load ports per machine: lots beyond them wait in storage (docs/BUILD-CONTROLS.md, part 3)
+    if (s.inports) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, `inports\t${s.inports}`);
     const prices = (opts && opts.prices === false) ? [] : s.blocks.filter((b) => b.kind === "group" && PRICE[b.area])
       .map((b) => `price\t${b.group}\t${PRICE[b.area].toFixed(1)}\t${(PRICE[b.area] / 2000).toFixed(1)}`);
     return [...out, ...toPlan(s), ...prices, ""].join("\n");
