@@ -79,12 +79,32 @@ busiest groups with no batch step, over days 60 to 90 of 10 runs from an empty f
 
 ## Part 4: the published testbed
 
-- Raw processing time per product, and the flow factor (cycle time over raw processing time) under the published
-  release rate, beside the published figures. Each published figure is cited only after its source is opened; where only
-  an abstract can be read, that is said. Our files are a later revision than the paper's (fewer tools and steps), so a
-  difference is expected and named, never hidden.
+Every published figure below was read in its source on 1 November 2026 (with the founder's approval to read both):
+[WSC 2019] Hassoun, Kopp, Mönch and Kalir, the paper that introduced the high-volume testbed (pp. 2419 to 2428), and
+[Tassel 2023] Tassel et al., arXiv:2302.07162v1, which ran the same family of files in PySCFabSim, the source of ours.
+The figures, with pages, are in `results/double-check/published-figures.json`; ours are in
+`results/double-check/ours.json`, written by `fabsim published data/smt2020/hvlm --days 180 --seeds 10` (today's rule:
+highest priority, then no setup change, then oldest; 10 runs of 180 days; about 15 s on 4 cores).
 
-Tests: **DC9** our raw processing times, recomputed from the files, are the ones the page shows.
+| | Published | Ours | Note |
+|---|---|---|---|
+| Toolsets and machines | 105 and 1,054 [WSC 2019, p. 2422 and Table 2] | 105 and 1,043 | Our files are a later revision. The testbed's holding group is left out of ours. |
+| Steps, products 3 and 4 | 632 and 374 [WSC 2019, p. 2422] | 583 and 343 | As above. |
+| Processing a lot gets, products 3 and 4 | theoretical cycle time 24.75 and 14.54 days [Tassel 2023, appendix Table 2(a), p. 10] | 24.68 and 14.49 days, exact (part 1) | 0.3% under. All ten high-mix products are within 0.6% of the same table's Table 2(b), every one under or equal. |
+| Raw processing time measured in an empty fab | 28.7 and 17.1 days [WSC 2019, p. 2425] | not measured | It includes waits for maintenance and sampling. In our engine a lone lot at a batch step waits until enough lots come, so an empty fab cannot be timed the same way. |
+| Flow factor at full load, regular lots | median 2.63, 90% between 2.39 and 2.91 [WSC 2019, p. 2426] | median 2.41, 90% between 2.07 and 2.83 (69,123 lots) | Not like for like: their model is an earlier revision with lithography designed as the constraint, first come first served, in AutoSched AP. Ours counts lots released and finished within 180 days, which leaves out the slowest. |
+| Regular lots' cycle time over 6 months, products 3 and 4 | 93.61 (sd 0.71) and 51.52 (sd 0.5) days, hierarchical FIFO, 100 seeds [Tassel 2023, appendix Table 2(a), p. 10] | 60.24 (95%: 59.66 to 60.83) and 34.98 (34.48 to 35.48) days | Far apart, and not explained here. Their start holds 3,635 lots in progress [Tassel 2023, p. 2] against our 2,223; their rule puts lots under a queue-time limit first; which lots their average counts is not stated. |
+| Hot lots, products 3 and 4; super-hot, product 3 | 34.02, 19.80; 33.99 days [as above] | 30.98, 17.86; 30.91 days | |
+| What binds | lithography, by design [WSC 2019, p. 2425] | polishing: Planar_FE_77 passes at most 1,302 wafers a day against 1,430 released | In our engine the fab does not keep up at the release rate: lots inside grow from 2,223 to 3,155 on average over the 180 days (part 3). |
+
+What this supports: the routes, steps and times of our files are the published ones, to within 0.6% on every product of
+both testbeds. What it does not: cycle times. Ours are shorter than the one published run of the same files, for reasons
+not settled here, and the fab cannot keep up at its own release rate. A cycle time from this gym should be quoted as
+the gym's, on these files, never as the published testbed's.
+
+Tests: **DC9** every published figure names its source and page; our raw processing times are the exact chain's and
+within 1% of the published theoretical cycle times, for both products of the high-volume testbed and all ten of the
+high-mix one; `ours.json` holds 10 runs of 180 days for each lot type.
 
 ## Changes
 - Part 1 built 1 November 2026 (tests "Snakes and ladders", code "Dice math"). DC1 to DC3 pass, with every other
@@ -103,8 +123,8 @@ Tests: **DC9** our raw processing times, recomputed from the files, are the ones
   (`LotOut.steps`, and so the canonical run log) leaves out a released lot's first job, since the record opens at the
   lot's first arrival and release skips it. The golden logs match the reference engine with this, so the engine is
   unchanged and DC3 counts jobs from the trace, which has every job.
-- The high-mix testbed's files have no loader yet (its tool file is `tool.txt.1l`), so part 1 covers the high-volume
-  testbed, the Floor's fab and the teaching fab.
+- Corrected in part 4: the high-mix testbed's files do load (`fabsim::smt2020::load` reads `tool.txt.1l` in both
+  folders). DC2 now covers them too: all ten routes pass.
 - Route errors join `fabsim::checks::check` first: `bad_chance`, `rework_target`, and `rework_certain` (a step from
   which no path with a chance above zero reaches the end).
 - Part 2 built 1 November 2026 (tests "Musical chairs", code "One chair spare"). DC4 to DC6 pass, with all 281 engine
@@ -137,3 +157,11 @@ Tests: **DC9** our raw processing times, recomputed from the files, are the ones
   an empty fab at four fifths of the rate, days 60 to 90, the five busiest groups without batches match within their
   95% intervals (Planar_FE_77 71.8% busy against 71.7% of work). The eighth busiest, Litho_REG_BE_63, a back-end group
   lots reach late, was 2.1 points under (95% half-width 1.8), likely still warming up.
+- Part 4 built 1 November 2026 (tests "Peer review", code "Published"). DC9 passes. Reading Tassel 2023 settled a doubt
+  about figures quoted earlier in Chetnova's notes (24.75 and 14.54 days, called raw processing times): the paper's
+  main Table 1 (p. 7) lists 24.75 beside super-hot lots, which looked like a lot type's figure, but its appendix Table 2
+  (p. 10) gives it per product as a theoretical cycle time. The values were right; the name is the paper's
+  "theoretical cycle time". The fetch tool kept both PDFs in a local folder, outside
+  the repo; nothing was added to the repo.
+- `ours.json`'s first run counted lots listed in the starting work with a later start (`wip.*`) as released lots, and
+  its machine count included the testbed's holding group (1,443). Both fixed before it was kept.

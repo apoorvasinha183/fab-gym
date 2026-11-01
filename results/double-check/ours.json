@@ -1,0 +1,98 @@
+{
+  "_about": "Our side of docs/DOUBLE-CHECK.md, part 4: the SMT2020 high-volume files as our engine reads them, today's rule (highest priority, then no setup change, then oldest). Cycle days by lot type count lots released in the run and finished in it; flow factors are over the exact raw processing time. Simulated; not a real fab.",
+  "bottleneck": "Planar_FE_77",
+  "ceiling_wafers_per_day": 1301.9419650285774,
+  "command": "fabsim published data/smt2020/hvlm --days 180 --seeds 10",
+  "cycle_days": {
+    "HotLot_3": {
+      "finished": 1068,
+      "flow_factor": 1.2550714842764803,
+      "hi": 31.052009242826852,
+      "lo": 30.90831451797329,
+      "mean": 30.980161880400072,
+      "runs": 10,
+      "sd": 0.10043568717533014,
+      "unfinished": 222
+    },
+    "HotLot_4": {
+      "finished": 1161,
+      "flow_factor": 1.2325940499950816,
+      "hi": 17.886511543578738,
+      "lo": 17.825577878919194,
+      "mean": 17.856044711248966,
+      "runs": 10,
+      "sd": 0.04258969484390661,
+      "unfinished": 129
+    },
+    "Lot_3": {
+      "finished": 30685,
+      "flow_factor": 2.4406040642443845,
+      "hi": 60.826871338020844,
+      "lo": 59.66078206419309,
+      "mean": 60.24382670110697,
+      "runs": 10,
+      "sd": 0.8150402016777172,
+      "unfinished": 19465
+    },
+    "Lot_4": {
+      "finished": 38438,
+      "flow_factor": 2.4147826278292577,
+      "hi": 35.484621159065966,
+      "lo": 34.47915413360002,
+      "mean": 34.98188764633299,
+      "runs": 10,
+      "sd": 0.7027729914074395,
+      "unfinished": 11712
+    },
+    "SuperHotLot_3": {
+      "finished": 80,
+      "flow_factor": 1.2523770293395866,
+      "hi": 31.04097800756961,
+      "lo": 30.786325999104687,
+      "mean": 30.91365200333715,
+      "runs": 10,
+      "sd": 0.17798948073296622,
+      "unfinished": 20
+    }
+  },
+  "days": 180.0,
+  "lots_inside": {
+    "end_mean": 3154.8,
+    "start": 2223
+  },
+  "once_days": {
+    "part_3": 25.523901388888913,
+    "part_4": 15.003787499999985
+  },
+  "raw_days": {
+    "part_3": 24.68398196319425,
+    "part_4": 14.486557606959256
+  },
+  "regular_flow_factor": {
+    "lots": 69123,
+    "max": 3.1321620667062695,
+    "median": 2.4147404880865007,
+    "p05": 2.0709468404535993,
+    "p95": 2.8345644143294897
+  },
+  "released_wafers_per_day": 1429.9475956969486,
+  "rule": "today",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "steps": {
+    "part_3": 583,
+    "part_4": 343
+  },
+  "tools": 1043,
+  "toolsets": 105
+}

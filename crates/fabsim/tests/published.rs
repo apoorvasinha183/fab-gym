@@ -39,6 +39,16 @@ fn dc9_our_raw_processing_times_are_the_chains_and_near_the_published() {
         let published = figure(&f, &format!("theoretical_{}", c.route));
         assert!(((days - published) / published).abs() < 0.01, "{}: {days:.2} days against the published {published}", c.route);
     }
+    // the high-mix testbed's ten products, beside the same table's low-volume/high-mix column
+    let lv = common::repo().join("data/smt2020/lvhm");
+    if lv.join("route_1.txt").exists() {
+        let shop = fabsim::smt2020::load(&lv).unwrap();
+        for c in analyse(&shop) {
+            let days = c.expected_minutes / 1440.0;
+            let published = figure(&f, &format!("theoretical_lvhm_{}", c.route));
+            assert!(((days - published) / published).abs() < 0.01, "high mix {}: {days:.2} days against the published {published}", c.route);
+        }
+    }
     // the runs behind the comparison: today's rule, 6 months, 10 runs, per lot type
     for k in ["Lot_3", "Lot_4", "HotLot_3", "HotLot_4", "SuperHotLot_3"] {
         let t = &ours["cycle_days"][k];

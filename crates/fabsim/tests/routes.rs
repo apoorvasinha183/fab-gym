@@ -63,6 +63,10 @@ fn dc2_every_route_of_our_fabs_passes_and_broken_ones_are_refused() {
     if let Some(dir) = common::smt2020_dir() {
         shops.push(("the high-volume testbed", fabsim::smt2020::load(&dir).unwrap()));
     }
+    let lv = common::repo().join("data/smt2020/lvhm");
+    if lv.join("route_1.txt").exists() {
+        shops.push(("the high-mix testbed", fabsim::smt2020::load(&lv).unwrap()));
+    }
     for (name, shop) in &shops {
         assert!(issues(shop).is_empty(), "{name}: {:?}", issues(shop));
         let chains = analyse(shop);

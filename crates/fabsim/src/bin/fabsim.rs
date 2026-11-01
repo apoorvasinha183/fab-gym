@@ -1457,6 +1457,100 @@ fn main() {
             let out = fabsim::moods::frames_json(&shop, &r, until, every);
             println!("{out}");
         }
+        // our numbers beside the published testbed's (docs/DOUBLE-CHECK.md, part 4): today's rule over DAYS on SEEDS runs,
+        // cycle times by lot type (lots released in the run and finished in it), flow factors over the exact raw
+        // processing time, as JSON; at most 4 threads
+        Some("published") => {
+            let dir = std::path::Path::new(args.get(1).expect("fabsim published SMT2020DIR [--days N] [--seeds K]"));
+            let flag = |name: &str, d: f64| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(|v| v.parse::<f64>().expect("a number")).unwrap_or(d);
+            let (days, seeds) = (flag("--days", 180.0), flag("--seeds", 10.0) as u64);
+            let shop = fabsim::smt2020::load(dir).unwrap_or_else(|e| {
+                eprintln!("refused: {e}");
+                std::process::exit(1)
+            });
+            let chains = fabsim::routes::analyse(&shop);
+            let area: std::collections::HashMap<String, String> = fabsim::smt2020::areas(dir).unwrap_or_default().into_iter().collect();
+            let machines: Vec<&fabsim::shop::Group> = shop.groups.iter().filter(|g| area.get(&g.name).map(|a| a.as_str()) != Some("Delay_32")).collect();
+            let raw: std::collections::HashMap<String, f64> = chains.iter().map(|c| (c.route.clone(), c.expected_minutes / 1440.0)).collect();
+            let cap = fabsim::bound::capacity(&shop);
+            // one run: per lot type, the cycle days of lots released and finished, the flow factors, and those unfinished
+            type One = (std::collections::BTreeMap<String, (Vec<f64>, usize)>, Vec<f64>, i64, i64);
+            let one = |seed: u64| -> One {
+                let r = fabsim::engine::run(&shop, &RunOptions { seed, until: Some(days * 1440.0), record: false }, None);
+                let mut by: std::collections::BTreeMap<String, (Vec<f64>, usize)> = Default::default();
+                let mut ff = vec![];
+                // only lots from the release records (lots listed with a later start are not released)
+                let prefixes: Vec<&str> = shop.releases.iter().map(|x| x.prefix.as_str()).collect();
+                for l in r.lots.iter().filter(|l| !l.wip) {
+                    let kind = l.id.rsplit_once('.').map(|x| x.0).unwrap_or(&l.id).to_string();
+                    if !prefixes.contains(&kind.as_str()) {
+                        continue;
+                    }
+                    let e = by.entry(kind.clone()).or_default();
+                    match l.done {
+                        Some(d) => {
+                            let ct = (d - l.release) / 1440.0;
+                            e.0.push(ct);
+                            if kind.starts_with("Lot_") {
+                                ff.push(ct / raw[&l.route]);
+                            }
+                        }
+                        None => e.1 += 1,
+                    }
+                }
+                let wip_start = r.lots.iter().filter(|l| l.wip).count() as i64;
+                let wip_end = r.lots.iter().filter(|l| l.done.is_none()).count() as i64;
+                (by, ff, wip_start, wip_end)
+            };
+            let threads = 4.min(seeds.max(1) as usize);
+            let results: Vec<(u64, One)> = std::thread::scope(|sc| {
+                let hs: Vec<_> = (0..threads)
+                    .map(|w| {
+                        let one = &one;
+                        sc.spawn(move || (0..seeds).filter(|s| *s as usize % threads == w).map(|s| (s, one(s))).collect::<Vec<_>>())
+                    })
+                    .collect();
+                let mut all: Vec<(u64, One)> = hs.into_iter().flat_map(|h| h.join().unwrap()).collect();
+                all.sort_by_key(|x| x.0);
+                all
+            });
+            let n = results.len() as f64;
+            let stats = |v: &[f64]| {
+                let m = v.iter().sum::<f64>() / v.len() as f64;
+                let sd = if v.len() > 1 { (v.iter().map(|x| (x - m).powi(2)).sum::<f64>() / (v.len() as f64 - 1.0)).sqrt() } else { 0.0 };
+                (m, sd)
+            };
+            let kinds: std::collections::BTreeSet<String> = results.iter().flat_map(|r| r.1 .0.keys().cloned()).collect();
+            let mut cycle = serde_json::Map::new();
+            for k in &kinds {
+                let means: Vec<f64> = results.iter().filter_map(|r| r.1 .0.get(k)).filter(|x| !x.0.is_empty()).map(|x| x.0.iter().sum::<f64>() / x.0.len() as f64).collect();
+                let finished: usize = results.iter().filter_map(|r| r.1 .0.get(k)).map(|x| x.0.len()).sum();
+                let unfinished: usize = results.iter().filter_map(|r| r.1 .0.get(k)).map(|x| x.1).sum();
+                let (m, sd) = stats(&means);
+                let h = if means.len() > 1 { fabsim::uq::t_quantile(0.975, means.len() as f64 - 1.0) * sd / (means.len() as f64).sqrt() } else { f64::NAN };
+                let route = if k.ends_with('3') { "part_3" } else { "part_4" };
+                cycle.insert(k.clone(), serde_json::json!({"mean": m, "sd": sd, "lo": m - h, "hi": m + h, "runs": means.len(), "finished": finished, "unfinished": unfinished, "flow_factor": m / raw[route]}));
+            }
+            let mut ff: Vec<f64> = results.iter().flat_map(|r| r.1 .1.iter().copied()).collect();
+            ff.sort_by(|a, b| a.total_cmp(b));
+            let q = |p: f64| if ff.is_empty() { f64::NAN } else { ff[((p * (ff.len() - 1) as f64).round()) as usize] };
+            let wip_end: Vec<f64> = results.iter().map(|r| r.1 .3 as f64).collect();
+            let out = serde_json::json!({
+                "_about": "Our side of docs/DOUBLE-CHECK.md, part 4: the SMT2020 high-volume files as our engine reads them, today's rule (highest priority, then no setup change, then oldest). Cycle days by lot type count lots released in the run and finished in it; flow factors are over the exact raw processing time. Simulated; not a real fab.",
+                "command": format!("fabsim published {} --days {days} --seeds {seeds}", dir.display()),
+                "days": days, "seeds": (0..seeds).collect::<Vec<_>>(), "rule": "today",
+                // machines, leaving out the testbed's holding group (area Delay_32), which is not machines
+                "toolsets": machines.len(), "tools": machines.iter().map(|g| g.count).sum::<usize>(),
+                "steps": chains.iter().map(|c| (c.route.clone(), serde_json::json!(c.visits.len()))).collect::<serde_json::Map<_, _>>(),
+                "raw_days": chains.iter().map(|c| (c.route.clone(), serde_json::json!(c.expected_minutes / 1440.0))).collect::<serde_json::Map<_, _>>(),
+                "once_days": chains.iter().map(|c| (c.route.clone(), serde_json::json!(c.once_minutes / 1440.0))).collect::<serde_json::Map<_, _>>(),
+                "released_wafers_per_day": cap.released_per_day, "ceiling_wafers_per_day": cap.wafers_per_day, "bottleneck": cap.bottleneck,
+                "cycle_days": cycle,
+                "regular_flow_factor": {"median": q(0.5), "p05": q(0.05), "p95": q(0.95), "max": ff.last().copied().unwrap_or(f64::NAN), "lots": ff.len()},
+                "lots_inside": {"start": results.first().map(|r| r.1 .2).unwrap_or(0), "end_mean": wip_end.iter().sum::<f64>() / n},
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap());
+        }
         // every lot finishes its route, worked out with no simulator (docs/DOUBLE-CHECK.md, part 1); a directory reads
         // the SMT2020 files
         Some("routes") => {
