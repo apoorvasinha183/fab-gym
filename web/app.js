@@ -917,6 +917,8 @@ function lensNote() {
     txt = n ? (n === 1 ? "1 prototype lot is in the fab now. It is drawn large and pink, and everything else is dimmed." : `${n} prototype lots are in the fab now. They are drawn large and pink, and everything else is dimmed.`)
       : "Today's fab has no prototype lots. To see some, ask a question about prototypes and press “Show on the floor” on one of the answers.";
   }
+  if (SPOT && SPOT.note) txt = SPOT.note; // what the glossary's Show me lit (docs/GLOSSARY-PLUS.md, part 2)
+  $("lens-note").classList.toggle("spot-note", !!(SPOT && SPOT.note));
   if (txt !== lensShown) { $("lens-note").textContent = txt; lensShown = txt; }
 }
 
@@ -989,15 +991,27 @@ function health() {
 
 // a row of the panel lights what it names (docs/FLOOR-REVIEW.md): { kind: "state", s } or { kind: "waiting" }
 let SPOT = null;
+// also { kind: "area", a: [areas] } and { kind: "hot" } from the glossary's Show me (docs/GLOSSARY-PLUS.md, part 2)
+const areaOfToolK = k => FabLook.areaOf(sim.area[P.j.groups[P.toolGroup[k]][0]]);
 function spotTool(k) {
   if (!SPOT || k < 0) return true;
   if (P.toolGroup[k] === P.holdingGroup) return false;
-  return SPOT.kind === "state" ? cur.toolState[k] === SPOT.s : cur.queue[P.toolGroup[k]] > 0;
+  if (SPOT.kind === "state") return cur.toolState[k] === SPOT.s;
+  if (SPOT.kind === "area") return SPOT.a.includes(areaOfToolK(k));
+  if (SPOT.kind === "hot") return cur.hotQ[P.toolGroup[k]] > 0;
+  return cur.queue[P.toolGroup[k]] > 0;
 }
 function litNow() {
   if (!SPOT || !P) return null;
-  if (SPOT.kind === "state") { const tools = []; for (let k = 0; k < P.nT; k++) if (spotTool(k)) tools.push(k); return { tools }; }
-  const groups = []; for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup && cur.queue[g] > 0) groups.push(g); return { groups };
+  if (SPOT.kind === "state" || SPOT.kind === "area") { const tools = []; for (let k = 0; k < P.nT; k++) if (spotTool(k)) tools.push(k); return { tools }; }
+  const by = SPOT.kind === "hot" ? cur.hotQ : cur.queue;
+  const groups = []; for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup && by[g] > 0) groups.push(g); return { groups };
+}
+function clearSpot() {
+  if (!SPOT) return;
+  SPOT = null;
+  document.querySelectorAll("#health .row.spot").forEach(r => r.classList.remove("on"));
+  draw();
 }
 function spotRow(el) {
   const k = el.dataset.spot;
@@ -1893,6 +1907,11 @@ window.FabFloorPage = {
   moves: () => (P && !P.quick ? P.j.moves : null),
   // docs/RUNS.md, part 2: a question's run on the Floor, its jobs and finished lots
   watching: () => (WATCH ? { ...WATCH } : null),
+  // docs/GLOSSARY-PLUS.md, part 2
+  tools: () => (P ? P.nT : 0),
+  toolGroup: k => P.toolGroup[k],
+  openGlossary: term => openGlossary(term),
+  hotWaiting: () => { const out = []; for (let g = 0; g < P.nG; g++) if (g !== P.holdingGroup && cur.hotQ[g] > 0) out.push(g); return out; },
   jobs: () => (P && !P.quick ? P.trace.length / 6 : null),
   finished: () => (P && !P.quick ? P.j.finished : null),
   groups: () => (P ? P.nG : 0),
@@ -2328,6 +2347,7 @@ async function chromeSetup() {
       if (document.body.classList.contains("opening-on")) { location.hash = "#floor"; setTimeout(() => $("cmd-q").focus(), 150); }
       else $("cmd-q").focus();
     } else if (e.key === "Escape") {
+      if (SPOT && SPOT.note) { clearSpot(); return; }
       if (document.activeElement === $("cmd-q")) { $("cmd-examples").hidden = true; $("cmd-q").blur(); }
       else if (!$("dock").hidden) (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());
     }
@@ -2367,6 +2387,7 @@ async function chromeSetup() {
   outage();
   glossarySetup();
   journeySetup();
+  $("lens-note").addEventListener("click", () => { if (SPOT && SPOT.note) clearSpot(); }); // the glossary's Show me, turned off
   // a link from Build's controls opens the glossary at its term (docs/BUILD-CONTROLS.md, part 5)
   const glTerm = new URLSearchParams(location.search).get("term");
   if (glTerm && FabGlossary.TERMS.some(x => x.term === glTerm)) { if (location.hash !== "#floor") history.replaceState(null, "", `${location.pathname}${location.search}#floor`); markPage && markPage("floor"); openGlossary(glTerm); }
@@ -3330,6 +3351,61 @@ function drawGlossaryIndex() {
   $("gl-index").innerHTML = html || `<p class="note">No term matches.</p>`;
 }
 
+// ------------------------------------------------------------------ the glossary, part 2: right now, and Show me
+// Each countable word's reading of the run on screen, the Floor's own count, and what Show me lights
+// (docs/GLOSSARY-PLUS.md, part 2). null for a word the run cannot count.
+const AREA_TERMS = { "Lithography": ["litho"], "Etch": ["dry", "wet"], "Polishing (CMP)": ["cmp"], "Checks (metrology)": ["lithomet", "tfmet", "defmet"] };
+function liveFor(term) {
+  if (!P || !P.j || P.quick) return null;
+  const h = health(), n = x => Number(x).toLocaleString("en-US"), T = h.tools;
+  if (AREA_TERMS[term]) {
+    let total = 0, working = 0;
+    for (let k = 0; k < P.nT; k++) if (P.toolGroup[k] !== P.holdingGroup && AREA_TERMS[term].includes(areaOfToolK(k))) { total++; if (cur.toolState[k] === 0) working++; }
+    return { text: `${n(working)} of ${n(total)} ${term.replace(/ \(.*\)$/, "").toLowerCase()} machines working.`, show: { kind: "area", a: AREA_TERMS[term] }, lit: `the ${term.replace(/ \(.*\)$/, "").toLowerCase()} machines` };
+  }
+  const hot = (cur.hotQ || []).reduce((a, b) => a + b, 0);
+  switch (term) {
+    case "Breakdown": case "Repair time":
+      return { text: `${n(T.down)} of ${n(h.nT)} machines broken down.`, show: { kind: "state", s: 3 }, lit: "the machines broken down now" };
+    case "Setup change": return { text: `${n(T.setup)} machines changing setup.`, show: { kind: "state", s: 4 }, lit: "the machines changing setup now" };
+    case "Tool": return { text: `${n(T.working)} working, ${n(T.idle)} idle, ${n(T.maintenance)} in maintenance, ${n(T.down)} broken down and ${n(T.setup)} changing setup, of ${n(h.nT)} machines.` };
+    case "WIP": return { text: `${n(h.inFab)} lots in the fab; ${n(h.waiting)} wait for a machine.`, show: { kind: "waiting" }, lit: "the groups where lots wait" };
+    case "Lot": return { text: `${n(h.finished)} lots finished so far; ${n(h.inFab)} in the fab, ${n(h.waiting)} waiting.`, show: { kind: "waiting" }, lit: "the groups where lots wait" };
+    case "Wafer": return { text: `${n(h.wafersOut)} wafers out so far.` };
+    case "Cycle time": return { text: h.cycleDays ? `${h.cycleDays.toFixed(2)} days a wafer, over the ${n(h.finished)} lots finished so far.` : "No lot has finished yet." };
+    case "Tool group": return h.longest.g >= 0 ? { text: `The longest line is at ${h.longest.name}: ${n(h.longest.lots)} lots.`, show: { kind: "longest", g: h.longest.g }, lit: `the longest line, at ${h.longest.name}` } : null;
+    case "Hot lot": return { text: `${n(hot)} urgent lot${hot === 1 ? "" : "s"} waiting for a machine.`, show: { kind: "hot" }, lit: "the groups where urgent lots wait" };
+    case "Track (overhead track)": return { text: `${n(h.moving)} lots on the move.` };
+    case "Seed": return { text: `This is run #${RUN}.` };
+    case "Simulator": return { text: `This page simulated ${P.j.until / 1440} days of the fab in ${P.secs ? P.secs.toFixed(1) : "?"} s.` };
+    default: return null;
+  }
+}
+function liveHtml(term) {
+  const l = liveFor(term);
+  if (!l) return "";
+  return `<div class="gl-live" id="gl-live"><span class="gl-live-h">Right now</span> <span id="gl-live-text">${esc(l.text)}</span>${l.show ? ` <button type="button" class="link" data-show>Show me</button>` : ""}</div>`;
+}
+function showMe(term) {
+  const l = liveFor(term);
+  if (!l || !l.show) return;
+  closeDock();
+  if (l.show.kind === "longest") { flyToGroup(l.show.g); return; }
+  SPOT = { ...l.show, note: `Lit: ${l.lit}. Esc or a click here turns it off.` };
+  document.querySelectorAll("#health .row.spot").forEach(r => r.classList.remove("on"));
+  draw();
+}
+let glLiveTimer = null;
+function keepLiveFresh() {
+  clearInterval(glLiveTimer);
+  glLiveTimer = setInterval(() => {
+    const el = $("gl-live-text");
+    if (!el || $("dock").hidden || DOCK.tab !== "glossary") return;
+    const l = liveFor(GL.term);
+    if (l && el.textContent !== l.text) el.textContent = l.text;
+  }, 500);
+}
+
 function drawGlossaryArticle() {
   const t = FabGlossary.TERMS.find(x => x.term === GL.term);
   if (!t) { $("gl-article").innerHTML = ""; return; }
@@ -3340,6 +3416,7 @@ function drawGlossaryArticle() {
   $("gl-article").innerHTML = `<div class="gl-lead"><img class="gl-pic" src="${esc(t.picture)}" alt="${esc(t.plain || "")}" width="128" height="128" onerror="this.onerror=null;this.classList.add('missing');this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'">` +
     `<div><div class="gl-topic">${esc(t.topic)}</div><h3>${esc(t.term)}</h3><p class="gl-plain">${esc(t.plain || t.meaning)}</p>` +
     (FabGlossary.shownAliases(t).length ? `<p class="gl-aka">Also: ${FabGlossary.shownAliases(t).map(esc).join(", ")}</p>` : "") + `</div></div>` +
+    liveHtml(t.term) +
     (fig ? `<figure class="gl-fig">${FabGlossaryFigs.draw(t.figure)}<figcaption>${esc(fig.caption)}</figcaption></figure>` : "") +
     `<h4>In this fab</h4><p>${esc(t.here)}</p>` +
     `<h4>Example</h4><p>${esc(t.example)}</p>` +
@@ -3350,6 +3427,9 @@ function drawGlossaryArticle() {
     (t.source.range ? `<br><span class="note">Range tried: ${esc(t.source.range)}</span>` : "") + `</p></details>` +
     `<h4>See also</h4><p class="gl-links">${t.see.map(link).join(" ")}</p>`;
   $("gl-article").scrollTop = 0;
+  const sb = $("gl-article").querySelector("#gl-live [data-show]");
+  if (sb) sb.onclick = () => showMe(t.term);
+  keepLiveFresh();
 }
 
 function glossarySetup() {

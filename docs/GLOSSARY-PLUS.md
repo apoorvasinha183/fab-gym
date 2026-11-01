@@ -116,3 +116,10 @@ the groups with lots waiting, and flies to a group, from its status panel.
   check S2 (the full run in within 6 s), which failed at 9.4 s with the laptop's load at 4 to 16 (a 15-minute question
   was scoring on 4 cores). Run alternately on the last commit and on this work under the same load, it failed 2 of 3
   times on each, so the load and not this change is the cause; the curves' calculation takes 9 ms of it.
+- 1 Nov, part 2, while writing the code: the note naming what Show me lit first kept the count of the moment of the
+  click ("20 machines broken down") while the run played on; it now names the thing ("the machines broken down now"),
+  since the light follows the run. The Right now label first used a small monospace face, which the Floor's own rules
+  forbid (`web/tests/cleanup.test.mjs` 13); it uses the page's face at 12 px.
+- 1 Nov, part 2, results: GL1 to GL5 pass, with the Floor's and the glossary's page tests (review, health, names,
+  corners, home, simulation settings, site cuts, journey, stages, chrome, evidence, cleanup, plain words, Build's find);
+  the speed check S2 passes and fails by turns at this Mac's load, as before.
