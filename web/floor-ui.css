@@ -236,6 +236,13 @@ details.res summary .h { grid-column: 2 / 4; color: #A9C4C0; font-size: 12.5px; 
 .glossary { width: min(1080px, calc(100vw - 32px)); }
 .gl-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 18px; min-height: 60vh; }
 .gl-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+/* the glossary, part 3: Ask the glossary (docs/GLOSSARY-PLUS.md) */
+.gl-answer { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(242, 179, 61, 0.4); background: rgba(242, 179, 61, 0.07); font-size: 14.5px; line-height: 1.5; color: #E8F2F0; }
+.gl-answer[hidden] { display: none; }
+.gl-answer p { margin: 0 0 6px; }
+.gl-ans-entries { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.gl-ans-foot { color: #A9C4C0; font-size: 12.5px; }
+.gl-ans-text button.gl, .gl-ans-entries button.gl { border: 1px solid rgba(126, 232, 216, 0.45); border-radius: 999px; padding: 0 8px; margin: 0 2px; font-size: 12.5px; line-height: 1.6; color: #7EE8D8; background: rgba(126, 232, 216, 0.08); text-decoration: none; cursor: pointer; }
 .gl-side input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #2C5560; background: #0B1418; color: #E8F2F0; }
 .gl-index { overflow: auto; max-height: 62vh; padding-right: 4px; }
 .gl-head { margin: 10px 0 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent, #7EE8D8); text-transform: uppercase; }

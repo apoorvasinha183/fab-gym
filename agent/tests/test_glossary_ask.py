@@ -31,7 +31,7 @@ class GlossaryAsk(unittest.TestCase):
         self.assertIn("A made-up law", r["answer"], "its words stay")
         self.assertNotIn("[[A made-up law]]", r["answer"], "without brackets")
         self.assertTrue(r["covered"])
-        self.assertEqual(r["entries"], ["Polishing (CMP)", "Lot", "WIP cap"])
+        self.assertEqual(r["entries"], [t["term"] for t in sent], "the entries sent, in the order sent")
         none = glossary_ask.answer(QUESTION, sent, lambda messages: "The glossary does not cover this.")
         self.assertEqual((none["cites"], none["covered"]), ([], False))
         # the question and only the entries sent go to the model

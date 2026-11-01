@@ -100,7 +100,15 @@
     return k === undefined ? { code: 0, exact: !!arm.rule_in_file, show: 0 } : { code: k, exact: true, show: k };
   }
 
-  const api = { scenarioLines, resultRows, summaryLine, familyB, extraHalls, ruleCode };
+  // one place to ask (docs/GLOSSARY-PLUS.md, part 3): a question about what something means goes to the glossary; a
+  // what-if, or a choice between setups, goes to the simulator as before
+  function wordQuestion(q) {
+    const s = String(q || "").trim().toLowerCase();
+    if (/\bwhat (if|would|happens if)\b|\bwould\b|\bshould\b|\bwhich\b|^if\b|\bdo we\b/.test(s)) return false;
+    return /^(what|what's|whats|why|how)\b/.test(s) || /\b(mean|means|meaning|define|explain)\b/.test(s);
+  }
+
+  const api = { scenarioLines, resultRows, summaryLine, familyB, extraHalls, ruleCode, wordQuestion };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabAsk = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -102,7 +102,9 @@ The founder, by quiz: "Explain like I'm five" and "Cited"; and the same day, "No
 before: the glossary is searched by a word's name only; a newcomer's question in their own words ("why do lots wait at
 the polisher?") finds nothing.
 
-1. **A question box** at the top of the Floor's glossary: "Ask the glossary", in your own words.
+1. **The Floor's own question bar.** A question about what something means ("what is…", "what does … mean", "why…",
+   "explain…") goes to the glossary, which opens with the answer at its top; a what-if, or a choice between setups,
+   goes to the simulator as before. (Changed while writing the code, see below.)
 2. **Only the glossary's own entries.** The helper picks the entries that share the most words with the question (the
    term and its other names count most, then its plain line and meaning), at most six, and sends only those to Muse
    Spark (muse-spark-1.3-contributor, at low effort) with the question. The answer is two to four short sentences in
@@ -158,3 +160,14 @@ the polisher?") finds nothing.
 - 1 Nov, part 2, results: GL1 to GL5 pass, with the Floor's and the glossary's page tests (review, health, names,
   corners, home, simulation settings, site cuts, journey, stages, chrome, evidence, cleanup, plain words, Build's find);
   the speed check S2 passes and fails by turns at this Mac's load, as before.
+- 1 Nov, part 3, while writing the code:
+  - GE2 first expected the entries in another order than the order they were sent; it now expects the order sent.
+  - The first box sat at the top of the glossary, a second place to ask, which the Floor's own rule forbids
+    (`web/tests/cleanup.test.mjs` 1: the top bar is the only question box). The founder had just asked for one bar that
+    takes anything ("Keep things simple and intuitive"), so the question goes through the Floor's bar: a question about
+    what something means goes to the glossary (`FabAsk.wordQuestion`, GE8), what-ifs and choices to the simulator.
+    GE6 and GE7 ask through the bar.
+  - Citations show as small chips that open their entry; a name the reply cites that was not among the entries sent
+    keeps its words and gets no chip.
+- 1 Nov, part 3, results: GE1 to GE8 pass, with the helper's tests and the Floor's and the glossary's page tests (the
+  three example questions still go to the simulator); no test calls a model.

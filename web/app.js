@@ -2314,6 +2314,8 @@ function askFrom(q) {
   q = (q || "").trim();
   if (!q) return;
   closeOpening();
+  // a question about what something means goes to the glossary (docs/GLOSSARY-PLUS.md, part 3)
+  if (FabAsk.wordQuestion(q)) { openGlossary(); askGlossary(q); return; }
   openDock("ask");
   if (location.hash !== "#ask") { history.replaceState(null, "", "#ask"); markPage("ask"); }
   if (ASK.helper) ask(q);
@@ -3430,6 +3432,27 @@ function drawGlossaryArticle() {
   const sb = $("gl-article").querySelector("#gl-live [data-show]");
   if (sb) sb.onclick = () => showMe(t.term);
   keepLiveFresh();
+}
+
+// the glossary, part 3: Ask the glossary (docs/GLOSSARY-PLUS.md): an answer from the entries alone, each citation a link
+function glAnswerHtml(r) {
+  const link = name => `<button type="button" class="gl" data-term="${esc(name)}">${esc(name)}</button>`;
+  const entries = (r.entries || []).length ? `<div class="gl-ans-entries">${r.entries.map(link).join("")}</div>` : "";
+  const cost = r.model === "stand-in" ? "A recorded reply (the tests' stand-in), $0." :
+    r.model ? `Muse Spark, $${Number(r.cost_usd || 0).toFixed(4)}; the glossary has spent $${Number(r.spent_usd || 0).toFixed(2)} of $${r.cap_usd}.` : "";
+  if (r.error) return `<p>${esc(r.error)}</p><p class="gl-ans-foot">Nothing was asked.</p>`;
+  if (r.answer == null) return `<p>${esc(r.message || "No answer.")}</p>${entries}<p class="gl-ans-foot">${r.no_model ? "No model is connected; nothing was asked or spent." : "Nothing was asked."}</p>`;
+  if (!r.covered) return `<p>The glossary does not cover this. The closest entries:</p>${entries}<p class="gl-ans-foot">${esc(cost)}</p>`;
+  const text = esc(r.answer).replace(/\[\[([^\[\]]+)\]\]/g, (_, name) => link(name.replace(/&amp;/g, "&")));
+  return `<p class="gl-ans-text">${text}</p><p class="gl-ans-foot">From ${r.entries.length} entr${r.entries.length === 1 ? "y" : "ies"} of this glossary. ${esc(cost)}</p>`;
+}
+async function askGlossary(q) {
+  const box = $("gl-answer");
+  box.hidden = false; box.innerHTML = `<p>Asking…</p>`;
+  let r;
+  try { r = await fetch("/api/glossary/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) }).then(x => x.json()); }
+  catch (e) { r = { error: "Ask the glossary needs the helper on this Mac (python -m agent.helper)." }; }
+  box.innerHTML = glAnswerHtml(r);
 }
 
 function glossarySetup() {

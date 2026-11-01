@@ -75,7 +75,8 @@ async function floorWith(extra) {
   await b.ev(`window.FabFloorPage.openGlossary("Lot"), 1`); await sleep(300);
   const api = async (q) => (await fetch(`http://127.0.0.1:${h.port}/api/glossary/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) })).json();
   const ask = async (q) => {
-    await b.ev(`(() => { const i = document.getElementById("gl-q"); i.value = ${JSON.stringify(q)}; document.getElementById("gl-ask").requestSubmit(); return 1; })()`);
+    // the Floor's one question bar (web/tests/cleanup.test.mjs 1): a question about what something means goes to the glossary
+    await b.ev(`(() => { const i = document.getElementById("cmd-q"); i.value = ${JSON.stringify(q)}; document.getElementById("cmd").requestSubmit(); return 1; })()`);
     for (let i = 0; i < 100; i++) { await sleep(100); if (await b.ev(`!!document.querySelector("#gl-answer .gl-ans-foot")`)) break; }
   };
   return { b, api, ask, close: () => { b.close(); h.close(); } };
@@ -109,4 +110,15 @@ test("GE7 with no model, the box lists the closest entries and says so", { skip:
     assert.deepEqual(listed, want.entries);
     assert.match(await b.ev(`document.getElementById("gl-answer").innerText`), /no model/i);
   } finally { close(); }
+});
+
+test("GE8 the Floor's bar sends a question about meaning to the glossary and a what-if to the simulator", () => {
+  const require2 = createRequire(import.meta.url);
+  const A = require2(join(HERE, "..", "ask.js"));
+  for (const q of ["What's a WIP cap?", "What does cycle time mean?", "Why do lots wait so long at the polisher?", "Explain rework", "How does a batch work?"])
+    assert.equal(A.wordQuestion(q), true, q);
+  for (const q of ["What if breakdowns double?", "Prototype orders double next quarter. Do we give them their own wing or put them first in line?",
+    "Polisher group Planar_FE_79 is down for a shift tomorrow morning. Which dispatch rule should we run?",
+    "If breakdowns get 50% worse, does holding prototype lots at the door protect the volume product?", "Would a second polisher help?"])
+    assert.equal(A.wordQuestion(q), false, q);
 });

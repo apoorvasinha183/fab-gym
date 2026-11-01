@@ -21,7 +21,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from agent import ask, spend
+from agent import ask, glossary_ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
 from agent import poster, race, sketch
 
@@ -600,6 +600,43 @@ class Helper:
                 "spent_usd": round(self.poster_meter.usd, 4), **base}
 
 
+    def _glossary_terms(self):
+        if not hasattr(self, "_gterms"):
+            self._gterms = glossary_ask.terms()
+        return self._gterms
+
+    def glossary_ask(self, body):
+        """Ask the glossary (docs/GLOSSARY-PLUS.md, part 3): Muse Spark answers from the entries that share the question's
+        words, citing them; with no model, the closest entries; a recorded reply in tests."""
+        q = " ".join(str(body.get("question") or "").split())
+        base = {"cap_usd": self.glossary_meter.cap_usd}
+        if not 3 <= len(q) <= 300:
+            return {"error": "Ask in a few words, at most 300 letters.", **base}
+        entries = glossary_ask.related(q, self._glossary_terms())
+        base["entries"] = [t["term"] for t in entries]
+        if not entries:
+            return {"answer": None, "cites": [], "covered": False, "message": "No entry shares a word with that question. Try other words.", **base}
+        if self.stand_in:
+            reply = json.loads((self.stand_in / "glossary-ask.json").read_text())["answer"]
+            r, model, cost = glossary_ask.answer(q, entries, lambda messages: reply), "stand-in", 0
+        else:
+            if not self.meta_key_file.is_file():
+                return {"answer": None, "cites": [], "covered": False, "no_model": True,
+                        "message": "No model is connected, so here are the closest entries.", **base}
+            if self.glossary_meter.usd >= self.glossary_meter.cap_usd:
+                return {"error": f"The glossary has used its ${self.glossary_meter.cap_usd:g} budget. Raise its cap to ask more.", **base}
+            if self.spent_total() >= self.total_cap:
+                return {"error": f"All ${self.total_cap:g} of the model budget is used. Raise the total cap to keep going.", **base}
+            m = HttpModel(self.meta_base_url, glossary_ask.MODEL, key_file=self.meta_key_file, max_tokens=600, reasoning_effort="low",
+                          temperature=0.2, meter=self.glossary_meter, timeout=120)
+            before = self.glossary_meter.usd
+            try:
+                r = glossary_ask.answer(q, entries, m.complete)
+            except Exception as e:  # noqa: BLE001 - the page shows the reason
+                return {"error": f"Muse Spark did not answer: {str(e)[:200]}", **base}
+            model, cost = glossary_ask.MODEL, round(self.glossary_meter.usd - before, 6)
+        return {**base, **r, "model": model, "cost_usd": cost, "spent_usd": round(self.glossary_meter.usd, 6)}
+
     def sketch_read(self, body):
         """Sketch to fab (docs/SKETCH.md): a photo in, Muse Spark's reading out, snapped to the editor's grid."""
         img = body.get("image")
@@ -690,6 +727,8 @@ def serve(h, port=8766):
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
                               every=float(body.get("every", 60)), overrides=body.get("overrides"), record=body.get("record"))
+            elif self.path == "/api/glossary/ask":
+                r = h.glossary_ask(body)
             elif self.path == "/api/runs/record":
                 r = h.record_run(body)
             elif self.path == "/api/sketch":
