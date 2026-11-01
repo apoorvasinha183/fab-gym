@@ -524,10 +524,12 @@
     return st.rail[key(x, y)] ? "rail" : "select";
   }
 
-  /** The pieces (ids) and track (keys) wholly inside the box with corners (x0, y0) and (x1, y1), in any order. */
-  function inBox(st, x0, y0, x1, y1) {
+  /** The pieces (ids) and track (keys) wholly inside the box with corners (x0, y0) and (x1, y1), in any order; with
+   * `crossing`, every piece the box touches (docs/BUILD-CONTROLS.md, part 7). */
+  function inBox(st, x0, y0, x1, y1, crossing) {
     const ax = Math.min(x0, x1), bx = Math.max(x0, x1), ay = Math.min(y0, y1), by = Math.max(y0, y1);
-    const blocks = st.blocks.filter((b) => b.x >= ax && b.y >= ay && b.x + b.w - 1 <= bx && b.y + b.h - 1 <= by).map((b) => b.id);
+    const blocks = st.blocks.filter((b) => (crossing ? b.x <= bx && b.x + b.w - 1 >= ax && b.y <= by && b.y + b.h - 1 >= ay
+      : b.x >= ax && b.y >= ay && b.x + b.w - 1 <= bx && b.y + b.h - 1 <= by)).map((b) => b.id);
     const rails = Object.keys(st.rail).filter((k) => { const [x, y] = k.split(",").map(Number); return x >= ax && x <= bx && y >= ay && y <= by; });
     return { blocks, rails };
   }
@@ -538,7 +540,7 @@
     const rs = sel.rails.filter((k) => st.rail[k]).map((k) => [...k.split(",").map(Number), st.rail[k]]);
     if (!bs.length && !rs.length) return null;
     const ox = Math.min(...bs.map((b) => b.x), ...rs.map((r) => r[0])), oy = Math.min(...bs.map((b) => b.y), ...rs.map((r) => r[1]));
-    const blocks = bs.map((b) => ({ kind: b.kind, area: b.area, count: b.count, w: b.w, h: b.h, dx: b.x - ox, dy: b.y - oy }));
+    const blocks = bs.map((b) => ({ kind: b.kind, area: b.area, group: b.group, count: b.count, w: b.w, h: b.h, dx: b.x - ox, dy: b.y - oy }));
     const rails = rs.map(([x, y, v]) => ({ dx: x - ox, dy: y - oy, o: v.o.slice() }));
     const w = Math.max(...blocks.map((b) => b.dx + b.w), ...rails.map((r) => r.dx + 1));
     const h = Math.max(...blocks.map((b) => b.dy + b.h), ...rails.map((r) => r.dy + 1));
@@ -556,7 +558,8 @@
     for (const c of clip.blocks) {
       const b = { kind: c.kind, x: x + c.dx, y: y + c.dy, w: c.w, h: c.h };
       if (c.kind === "group") {
-        const g = (avail[c.area] || []).shift();
+        // an unplaced group of its kind first; else more machines of its own group, in a new place (part 7)
+        const g = (avail[c.area] || []).shift() || c.group;
         if (!g) { skipped.push(`No unplaced ${c.area} group is left, so one machine was left out.`); continue; }
         Object.assign(b, { area: c.area, group: g, count: c.count });
       }
@@ -571,6 +574,69 @@
       rails[key(rx, ry)] = { o: r.o.slice() };
     }
     return { ok, why, blocks, rails, skipped };
+  }
+
+  // ---------- acting on a selection (docs/BUILD-CONTROLS.md, part 7); each returns a new floor, the old one unchanged
+  const cloneSt = (st) => JSON.parse(JSON.stringify(st));
+  /** The track joined to the piece at `k`, following directions either way. */
+  function connectedRail(st, k0) {
+    if (!st.rail[k0]) return [];
+    const seen = new Set([k0]), todo = [k0];
+    while (todo.length) {
+      const k = todo.pop(), [x, y] = k.split(",").map(Number);
+      for (let d = 0; d < 4; d++) {
+        const nk = key(x + D[d][0], y + D[d][1]);
+        if (seen.has(nk) || !st.rail[nk]) continue;
+        if (st.rail[k].o[d] || st.rail[nk].o[(d + 2) % 4]) { seen.add(nk); todo.push(nk); }
+      }
+    }
+    return [...seen];
+  }
+  /** Put the selection's pieces where `blocks` ({id, x, y, w, h}) and `rails` ({key: piece}) say, if all of it fits. */
+  function placeSel(st, sel, blocks, rails) {
+    const ids = new Set(sel.blocks), rest = cloneSt(st);
+    rest.blocks = rest.blocks.filter((b) => !ids.has(b.id));
+    for (const k of sel.rails) delete rest.rail[k];
+    for (const b of blocks) { const f = isFree(rest, b.x, b.y, b.w, b.h); if (!f.ok) return { ok: false, why: f.why }; }
+    for (const k of Object.keys(rails)) { const [x, y] = k.split(",").map(Number), f = isFree(rest, x, y, 1, 1); if (!f.ok) return { ok: false, why: f.why }; }
+    const out = cloneSt(st);
+    out.blocks = out.blocks.map((b) => { const n = blocks.find((z) => z.id === b.id); return n ? { ...b, x: n.x, y: n.y, w: n.w, h: n.h } : b; });
+    for (const k of sel.rails) delete out.rail[k];
+    Object.assign(out.rail, cloneSt(rails));
+    return { ok: true, why: "", state: out, sel: { blocks: sel.blocks.slice(), rails: Object.keys(rails) } };
+  }
+  const selPieces = (st, sel) => ({ bs: st.blocks.filter((b) => sel.blocks.includes(b.id)), rs: sel.rails.filter((k) => st.rail[k]).map((k) => [...k.split(",").map(Number), st.rail[k]]) });
+  /** The selection moved by (dx, dy). */
+  function moveSel(st, sel, dx, dy) {
+    const { bs, rs } = selPieces(st, sel), rails = {};
+    for (const [x, y, v] of rs) rails[key(x + dx, y + dy)] = v;
+    return placeSel(st, sel, bs.map((b) => ({ id: b.id, x: b.x + dx, y: b.y + dy, w: b.w, h: b.h })), rails);
+  }
+  /** The selection turned a quarter clockwise in its box, or with `mirror` flipped left to right; the box keeps its
+   * top-left corner, and track directions turn with it. */
+  function turnSel(st, sel, mirror) {
+    const { bs, rs } = selPieces(st, sel);
+    if (!bs.length && !rs.length) return { ok: true, why: "", state: cloneSt(st), sel: { blocks: [], rails: [] } };
+    const xs = [...bs.flatMap((b) => [b.x, b.x + b.w - 1]), ...rs.map((r) => r[0])], ys = [...bs.flatMap((b) => [b.y, b.y + b.h - 1]), ...rs.map((r) => r[1])];
+    const x0 = Math.min(...xs), y0 = Math.min(...ys), W = Math.max(...xs) - x0 + 1, H = Math.max(...ys) - y0 + 1;
+    const blocks = bs.map((b) => {
+      const rx = b.x - x0, ry = b.y - y0;
+      return mirror ? { id: b.id, x: x0 + W - (rx + b.w), y: b.y, w: b.w, h: b.h } : { id: b.id, x: x0 + H - (ry + b.h), y: y0 + rx, w: b.h, h: b.w };
+    });
+    const rails = {};
+    for (const [x, y, v] of rs) {
+      const rx = x - x0, ry = y - y0, o = v.o;
+      if (mirror) rails[key(x0 + W - 1 - rx, y)] = { ...v, o: [o[2], o[1], o[0], o[3]] };
+      else rails[key(x0 + H - 1 - ry, y0 + rx)] = { ...v, o: [o[3], o[0], o[1], o[2]] };
+    }
+    return placeSel(st, sel, blocks, rails);
+  }
+  /** The floor with the selection deleted: "all", only "track", only "machines", or only storage and doors ("infra"). */
+  function deleteSel(st, sel, only) {
+    const out = cloneSt(st), ids = new Set(sel.blocks), what = only || "all";
+    out.blocks = out.blocks.filter((b) => !(ids.has(b.id) && (what === "all" || (what === "machines" && b.kind === "group") || (what === "infra" && b.kind !== "group"))));
+    if (what === "all" || what === "track") for (const k of sel.rails) delete out.rail[k];
+    return out;
   }
 
   /** The 1–9 hotbar: Select, Track, Erase, then the six most recent pieces (most recent first), filled in a fixed order. */
@@ -591,7 +657,7 @@
   }
 
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, flowOptions, flowKind, flowWords, applyFlow, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
-    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave,
+    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave, connectedRail, moveSel, turnSel, deleteSel,
     trouble, pile, jamStyle, advise, floatText, grow, roomFor, stars, ROOM_MAX };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;

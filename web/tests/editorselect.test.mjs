@@ -224,7 +224,8 @@ const SKIP = !ready && "needs Google Chrome and the .venv";
 test("SB1 a drag on empty floor selects: right, wholly inside; left, whatever is touched; Space-drag moves the view", { skip: SKIP }, async () => {
   const { b, close } = await openEditor();
   try {
-    const st = await snap(b), bb = bbox(st), mid = Math.floor((bb.y0 + bb.y1) / 2);
+    // the box's top edge runs through a machine's second row, so dragging left touches it and dragging right does not
+    const st = await snap(b), bb = bbox(st), cut = st.blocks.find((z) => z.kind === "group" && z.h > 1), mid = cut.y + 1;
     const A = [bb.x0 - 1, mid], B = [bb.x1 + 1, bb.y1 + 1];
     await drag(b, await cellPt(b, ...A), await cellPt(b, ...B));
     const win = await page(b, "F.selection()");
@@ -292,29 +293,33 @@ test("SB3 double-click a machine: every block of its group; double-click track: 
 test("SB4 the arrows nudge the selection in one undo step; dragging a selected piece moves it; Cmd-D takes a copy", { skip: SKIP }, async () => {
   const { b, close } = await openEditor();
   try {
+    // the whole layout, which has floor around it to move into
     let st = await snap(b);
-    const store = st.blocks.find((z) => z.kind === "stocker");
-    await click(b, await cellPt(b, store.x, store.y), MOD.shift);
-    // a nudge that fits
+    await press(b, "a", "KeyA", MOD.meta);
+    const all = await page(b, "F.selection()");
     const dirs = [["ArrowRight", 1, 0], ["ArrowLeft", -1, 0], ["ArrowDown", 0, 1], ["ArrowUp", 0, -1]];
-    const d = dirs.find(([, dx, dy]) => E.moveSel(st, { blocks: [store.id], rails: [] }, dx, dy).ok);
+    const d = dirs.find(([, dx, dy]) => E.moveSel(st, all, dx, dy).ok);
     assert.ok(d, "a nudge fits somewhere");
+    const one = st.blocks[0];
     await press(b, d[0], d[0]);
-    let now = (await snap(b)).blocks.find((z) => z.id === store.id);
-    assert.deepEqual([now.x, now.y], [store.x + d[1], store.y + d[2]], `${d[0]} nudges one tile`);
+    let now = (await snap(b)).blocks.find((z) => z.id === one.id);
+    assert.deepEqual([now.x, now.y], [one.x + d[1], one.y + d[2]], `${d[0]} nudges one tile`);
+    assert.deepEqual((await snap(b)).rail, E.moveSel(st, all, d[1], d[2]).state.rail, "the track moves with it");
     await press(b, "z", "KeyZ", MOD.meta);
-    now = (await snap(b)).blocks.find((z) => z.id === store.id);
-    assert.deepEqual([now.x, now.y], [store.x, store.y], "one undo puts it back");
-    // drag the selected piece by a move that fits
+    now = (await snap(b)).blocks.find((z) => z.id === one.id);
+    assert.deepEqual([now.x, now.y], [one.x, one.y], "one undo puts it back");
+    // drag a selected piece by a move that fits
     st = await snap(b);
-    await click(b, await cellPt(b, store.x, store.y), MOD.shift); // select it again (the undo cleared the selection)
-    if (!(await page(b, "F.selection()")).blocks.includes(store.id)) await click(b, await cellPt(b, store.x, store.y), MOD.shift);
+    await press(b, "a", "KeyA", MOD.meta);
+    const sel = await page(b, "F.selection()");
     let mv = null;
-    for (let r = 1; r <= 4 && !mv; r++) for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!mv && E.moveSel(st, { blocks: [store.id], rails: [] }, dx, dy).ok) mv = [dx, dy];
+    for (let r = 1; r <= 3 && !mv; r++) for (const [dx, dy] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (!mv && E.moveSel(st, sel, dx, dy).ok) mv = [dx, dy];
     assert.ok(mv, "a move fits somewhere");
-    await drag(b, await cellPt(b, store.x, store.y), await cellPt(b, store.x + mv[0], store.y + mv[1]));
-    now = (await snap(b)).blocks.find((z) => z.id === store.id);
-    assert.deepEqual([now.x, now.y], [store.x + mv[0], store.y + mv[1]], "dragged with the selection");
+    const g = st.blocks.find((z) => z.kind === "group");
+    await drag(b, await cellPt(b, g.x, g.y), await cellPt(b, g.x + mv[0], g.y + mv[1]));
+    now = (await snap(b)).blocks.find((z) => z.id === g.id);
+    assert.deepEqual([now.x, now.y], [g.x + mv[0], g.y + mv[1]], "dragged with the selection");
+    assert.equal((await snap(b)).blocks.find((z) => z.id === one.id).x, one.x + mv[0], "and the rest came along");
     await press(b, "d", "KeyD", MOD.meta);
     assert.ok(await page(b, "F.clipboard()"), "Cmd-D copies");
     assert.equal(await page(b, "F.pasting()"), true, "and takes the copy in hand");

@@ -288,7 +288,8 @@
     }
     if (boxDrag) {
       const [ax, ay] = boxDrag.a, [bx, by] = boxDrag.b;
-      outline(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax) + 1, Math.abs(by - ay) + 1, "rgba(242,179,61,.9)", [6, 4]);
+      // right: wholly inside, a solid line; left: whatever it touches, dashed (part 7)
+      outline(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax) + 1, Math.abs(by - ay) + 1, boxDrag.mode === "sub" ? "rgba(255,107,87,.9)" : "rgba(242,179,61,.9)", bx < ax ? [6, 4] : []);
     }
     if (ghostAt && ghostAt.kind === "paste" && pastePlan) {
       const col = pastePlan.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)";
@@ -881,7 +882,7 @@
       : tool === "erase" ? "Click or drag over track and machines to remove them."
       : tool in AREA ? `Click to place one ${AREA[tool][0].toLowerCase()} machine; click one of them for one more there. Shift-drag fills. Esc puts it down.`
       : ["entry", "exit", "stocker"].includes(tool) ? "Click an empty spot to place it. R turns it."
-      : "Click a machine or a piece of track to change it. Drag empty floor to move the view. J shows the jams.";
+      : "Click a machine or track to change it. Drag to select, Space-drag to move the view. J shows the jams.";
   }
 
   /** Whether a w × h spot at (x, y) touches the track, so a machine there gets a stop. */
@@ -915,6 +916,37 @@
     draw();
   }
   const snap = () => JSON.parse(JSON.stringify(s));
+  // ---------- selections (docs/BUILD-CONTROLS.md, part 7)
+  const selNow = () => (boxSel ? { blocks: boxSel.blocks.slice(), rails: boxSel.rails.slice() } : { blocks: [], rails: [] });
+  /** The selection while a box is dragged: new, added to the selection it started from, or taken away from it. */
+  function boxNow() {
+    const { a, b, mode, base } = boxDrag, got = E.inBox(s, a[0], a[1], b[0], b[1], b[0] < a[0]);
+    if (mode === "new") return got;
+    if (mode === "add") return { blocks: [...new Set([...base.blocks, ...got.blocks])], rails: [...new Set([...base.rails, ...got.rails])] };
+    return { blocks: base.blocks.filter((id) => !got.blocks.includes(id)), rails: base.rails.filter((k) => !got.rails.includes(k)) };
+  }
+  /** Shift-click (or Alt-click) on (x, y): the piece there added to, or taken from, the selection. */
+  function toggled(base, x, y, mode) {
+    const b = blockAt(x, y), k = E.key(x, y), out = { blocks: base.blocks.slice(), rails: base.rails.slice() };
+    const flip = (arr, v) => { const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else if (mode !== "sub") arr.push(v); };
+    if (b) flip(out.blocks, b.id); else if (s.rail[k]) flip(out.rails, k);
+    return out;
+  }
+  function selStatus() {
+    $("status").textContent = boxSel ? `${boxSel.blocks.length} piece${boxSel.blocks.length === 1 ? "" : "s"} and ${boxSel.rails.length} track piece${boxSel.rails.length === 1 ? "" : "s"} selected. Drag to move, R to turn, Delete to remove.` : "";
+  }
+  /** Swap in a new floor (a move, turn or delete of a selection); the caller records the edit. */
+  function useState(st) { s = st; if (setupNow) setupNow.state = s; }
+  /** Act on the selection with a turn, mirror or move result: apply it, or say why not. */
+  function actSel(r) {
+    if (!r.ok) { $("status").textContent = r.why; return false; }
+    useState(r.state); boxSel = r.sel; buildPalette(); inspector(); edited(); selStatus(); return true;
+  }
+  function deleteSelection(only) {
+    if (!boxSel) return;
+    useState(E.deleteSel(s, boxSel, only || "all"));
+    boxSel = null; sel = null; buildPalette(); inspector(); edited();
+  }
   function restore(st) {
     if (!st) return;
     s = st; if (setupNow) setupNow.state = s; sel = null; drag = null; boxSel = null;
@@ -978,21 +1010,34 @@
       const [ax, ay] = floorCell(e), plan = E.pasteAt(s, clip, ax, ay, unplaced());
       if (!plan.ok) { $("status").textContent = plan.why; return; }
       let id = Math.max(0, ...s.blocks.map((z) => z.id));
-      for (const b of plan.blocks) s.blocks.push({ ...b, id: ++id });
+      for (const b of plan.blocks) {
+        // a new place for a group already on the floor takes the group's breakdown settings (part 2)
+        const was = b.kind === "group" && s.blocks.find((z) => z.kind === "group" && z.group === b.group);
+        s.blocks.push({ ...b, id: ++id, ...(was && was.fail ? { fail: JSON.parse(JSON.stringify(was.fail)) } : {}), ...(was && was.rec ? { rec: JSON.parse(JSON.stringify(was.rec)) } : {}) });
+      }
       Object.assign(s.rail, plan.rails);
       buildPalette(); edited();
       if (plan.skipped.length) $("status").textContent = plan.skipped.join(" ");
       return;
     }
-    if (tool === "select" && e.shiftKey && e.button === 0) {
-      const c = floorCell(e);
-      boxDrag = { a: c, b: c }; boxSel = E.inBox(s, c[0], c[1], c[0], c[1]);
-      cv.setPointerCapture(e.pointerId); e.preventDefault(); draw(); return;
-    }
     let [x, y] = cellOf(e);
     const empty = !(x >= 0 && y >= 0 && x < s.W && y < s.H) || (!blockAt(x, y) && !s.rail[E.key(x, y)]);
-    if (e.button === 1 || spaceHeld || (tool === "select" && e.button === 0 && empty)) {
-      if (tool === "select" && !spaceHeld && e.button === 0) { sel = null; inspector(); }
+    // selecting (docs/BUILD-CONTROLS.md, part 7): Shift-drag adds a box, Alt-drag takes one away, a plain drag on empty
+    // floor draws a new one; Shift-click toggles a piece on release
+    if (tool === "select" && e.button === 0 && !spaceHeld && (e.shiftKey || e.altKey || empty)) {
+      const c = floorCell(e), mode = e.altKey ? "sub" : e.shiftKey ? "add" : "new";
+      boxDrag = { a: c, b: c, mode, base: mode === "new" ? { blocks: [], rails: [] } : selNow(), moved: false };
+      if (mode === "new") { boxSel = null; sel = null; inspector(); }
+      cv.setPointerCapture(e.pointerId); e.preventDefault(); draw(); return;
+    }
+    // a selected piece drags the whole selection
+    if (tool === "select" && e.button === 0 && boxSel && !spaceHeld) {
+      const b0 = blockAt(x, y), k0 = E.key(x, y);
+      if ((b0 && boxSel.blocks.includes(b0.id)) || (!b0 && boxSel.rails.includes(k0))) {
+        drag = { moveSel: true, at: [x, y] }; cv.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
+    }
+    if (e.button === 1 || e.button === 2 || spaceHeld) {
       panDrag = { x: e.clientX, y: e.clientY, v: viewNow() };
       if (spaceHeld) spacePanned = true;
       cv.setPointerCapture(e.pointerId); cv.classList.add("panning");
@@ -1009,6 +1054,7 @@
     if (x < 0 || y < 0 || x >= s.W || y >= s.H) return;
     const k = E.key(x, y), b = blockAt(x, y);
     if (tool === "select") {
+      boxSel = null; // a click on one piece selects just that piece
       sel = b ? { id: b.id } : s.rail[k] ? { rail: k } : null;
       if (b && mode === "build") { drag = { move: b, dx: x - b.x, dy: y - b.y }; cv.setPointerCapture(e.pointerId); }
       inspector(); draw(); return;
@@ -1030,7 +1076,21 @@
   });
   cv.addEventListener("pointermove", (e) => {
     if (panDrag) { V = E.panBy(panDrag.v, e.clientX - panDrag.x, e.clientY - panDrag.y); draw(); return; }
-    if (boxDrag) { boxDrag.b = floorCell(e); boxSel = E.inBox(s, boxDrag.a[0], boxDrag.a[1], boxDrag.b[0], boxDrag.b[1]); draw(); return; }
+    if (boxDrag) {
+      boxDrag.b = floorCell(e);
+      if (boxDrag.b[0] !== boxDrag.a[0] || boxDrag.b[1] !== boxDrag.a[1]) boxDrag.moved = true;
+      if (boxDrag.moved) boxSel = boxNow();
+      draw(); return;
+    }
+    if (drag && drag.moveSel) {
+      const [mx, my] = cellOf(e), dx = mx - drag.at[0], dy = my - drag.at[1];
+      if (dx || dy) {
+        const m = E.moveSel(s, boxSel, dx, dy);
+        if (m.ok) { useState(m.state); boxSel = m.sel; drag.at = [mx, my]; edited(); }
+        else $("status").textContent = m.why;
+      }
+      return;
+    }
     let [x, y] = cellOf(e), inb = x >= 0 && y >= 0 && x < s.W && y < s.H;
     if (!inb && drag && drag.last) { const d = growFor(x, y, 1, 1); if (d) { x += d[0]; y += d[1]; inb = true; } }
     hover = inb ? [x, y] : null;
@@ -1074,12 +1134,25 @@
   cv.addEventListener("pointerup", () => {
     if (panDrag) { panDrag = null; cv.classList.remove("panning"); return; }
     if (boxDrag) {
+      const bd = boxDrag;
       boxDrag = null;
+      if (!bd.moved && bd.mode !== "new") boxSel = toggled(bd.base, bd.a[0], bd.a[1], bd.mode);
       if (boxSel && !boxSel.blocks.length && !boxSel.rails.length) boxSel = null;
+      inspector();
       $("status").textContent = boxSel ? `${boxSel.blocks.length} piece${boxSel.blocks.length === 1 ? "" : "s"} and ${boxSel.rails.length} track piece${boxSel.rails.length === 1 ? "" : "s"} selected. ⌘C copies, Delete removes.` : "";
       draw(); return;
     }
     drag = null; inspector();
+  });
+  cv.addEventListener("contextmenu", (e) => e.preventDefault()); // the right button pans
+  // double-click: every block of a machine's group, or all the track joined to a piece (part 7)
+  cv.addEventListener("dblclick", (e) => {
+    if (tool !== "select") return;
+    const [x, y] = cellOf(e), b = blockAt(x, y), k = E.key(x, y);
+    if (b && b.kind === "group") boxSel = { blocks: s.blocks.filter((z) => z.kind === "group" && z.group === b.group).map((z) => z.id), rails: [] };
+    else if (!b && s.rail[k]) boxSel = { blocks: [], rails: E.connectedRail(s, k) };
+    else return;
+    sel = null; ctlTab("sel"); inspector(); selStatus(); draw();
   });
   cv.addEventListener("pointerleave", () => { hover = null; cursorCell = null; ghostAt = null; $("hover").hidden = true; if (!playing) draw(); });
   // scroll or pinch zooms about the pointer
@@ -1241,6 +1314,7 @@
   function inspector() { inspectorDraw(); markMoved(); }
   function inspectorDraw() {
     const ins = $("insp");
+    if (boxSel && (boxSel.blocks.length || boxSel.rails.length)) { bulkPanel(ins); return; }
     if (sel && sel.id) {
       const b = s.blocks.find((z) => z.id === sel.id);
       if (!b) { sel = null; return inspector(); }
@@ -1292,6 +1366,38 @@
       wholeFab(ins);
       ins.insertAdjacentHTML("afterbegin", `<p class="note">Click a machine or a piece of track to change it, or pick a machine in the palette. All controls lists everything at once.</p>`);
     }
+  }
+
+  // ---------- a selection's panel: what is in it, controls for all of it, and its delete buttons (part 7)
+  function bulkPanel(ins) {
+    const bs = s.blocks.filter((b) => boxSel.blocks.includes(b.id)), gs = bs.filter((b) => b.kind === "group"), infra = bs.filter((b) => b.kind !== "group");
+    const groups = [...new Set(gs.map((b) => b.group))], rails = boxSel.rails.filter((k) => s.rail[k]), pl = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    const one = (list, f) => { const v = list.map((x) => JSON.stringify(f(x) || {})); return v.every((x) => x === v[0]) ? JSON.parse(v[0] || "{}") : {}; };
+    let h = `<div class="ttl"><span>Selection</span></div><p class="note">${[gs.length && `${pl(groups.length, "machine group")} (${pl(gs.reduce((a, b) => a + b.count, 0), "machine")})`,
+      infra.length && `${infra.length} storage and door piece${infra.length === 1 ? "" : "s"}`, rails.length && pl(rails.length, "track piece")].filter(Boolean).join(", ")}.</p>`;
+    if (gs.length) {
+      h += row("fail", `<label for="bulk-fail">Breakdowns, for all ${groups.length}</label>${failSel("bulk-fail", one(gs, (b) => b.fail))}`);
+      h += row("rec", `<label for="bulk-rec">When they break</label>${recSel("bulk-rec", one(gs, (b) => b.rec))}`);
+    }
+    if (rails.length) {
+      const any = rails.some((k) => s.rail[k].fail);
+      h += row("rfail", `<label for="bulk-rfail">Track breakdowns</label><select id="bulk-rfail"><option value="">Never</option><option value="random" ${any ? "selected" : ""}>Now and then</option></select>`);
+    }
+    h += `<div class="row bulk-btns"><button class="btn" data-act="turn" title="R">Turn</button><button class="btn" data-act="mirror" title="Shift-R">Mirror</button><button class="btn" data-act="dup" title="⌘D">Duplicate</button></div>`;
+    h += `<div class="row bulk-btns"><span class="note">Delete:</span><button class="btn" data-del="all" title="Delete">All of it</button>${rails.length ? `<button class="btn" data-del="track">Only the track</button>` : ""}${gs.length ? `<button class="btn" data-del="machines">Only the machines</button>` : ""}${infra.length ? `<button class="btn" data-del="infra">Only storage and doors</button>` : ""}</div>`;
+    ins.innerHTML = h;
+    const byGroup = () => groups.map((g) => s.blocks.find((z) => z.kind === "group" && z.group === g)).filter(Boolean);
+    if ($("bulk-fail")) $("bulk-fail").onchange = (e) => { for (const b of byGroup()) setFail(b, e.target.value); refreshCtl(); edited(); };
+    if ($("bulk-rec")) $("bulk-rec").onchange = (e) => { for (const b of byGroup()) setRec(b, e.target.value); refreshCtl(); edited(); };
+    if ($("bulk-rfail")) $("bulk-rfail").onchange = (e) => {
+      for (const k of rails) { const v = s.rail[k]; if (e.target.value) { v.fail = { kind: "random", mttf_minutes: 240, mttr_minutes: 60 }; v.rec = { kind: "wait" }; } else { delete v.fail; delete v.rec; } }
+      refreshCtl(); edited();
+    };
+    ins.querySelectorAll("[data-del]").forEach((bt) => (bt.onclick = () => deleteSelection(bt.dataset.del)));
+    ins.querySelectorAll("[data-act]").forEach((bt) => (bt.onclick = () => {
+      if (bt.dataset.act === "dup") { clip = E.copySel(s, boxSel); if (clip) { pasting = true; ghostAt = null; $("status").textContent = "A copy in hand: click where it should go. Esc drops it."; draw(); } return; }
+      actSel(E.turnSel(s, boxSel, bt.dataset.act === "mirror"));
+    }));
   }
 
   // ---------- gears, find a control, your changes and the glossary (docs/BUILD-CONTROLS.md, part 5)
@@ -1550,6 +1656,8 @@
     if (e.metaKey || e.ctrlKey) {
       if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (k === "y") { e.preventDefault(); redo(); }
+      else if (k === "a") { e.preventDefault(); boxSel = { blocks: s.blocks.map((b) => b.id), rails: Object.keys(s.rail) }; sel = null; ctlTab("sel"); inspector(); selStatus(); draw(); }
+      else if (k === "d" && boxSel) { e.preventDefault(); clip = E.copySel(s, boxSel); if (clip) { tool = "select"; syncPal(); pasting = true; ghostAt = null; $("status").textContent = "A copy in hand: click where it should go. Esc drops it."; draw(); } }
       else if (k === "c" && boxSel) { e.preventDefault(); clip = E.copySel(s, boxSel); $("status").textContent = clip ? "Copied. ⌘V takes it in hand." : ""; }
       else if (k === "v" && clip) { e.preventDefault(); tool = "select"; syncPal(); pasting = true; ghostAt = null; $("status").textContent = "Point where the copy should go and click. Esc drops it."; draw(); }
       return;
@@ -1559,6 +1667,9 @@
       if (hover) { const t = E.pickAt(s, hover[0], hover[1]); if (!take(t) && t !== "select") take("select"); }
       return;
     }
+    if (k === "r" && boxSel && !pasting) { actSel(E.turnSel(s, boxSel, e.shiftKey)); return; }
+    const nudge = { arrowup: [0, -1], arrowdown: [0, 1], arrowleft: [-1, 0], arrowright: [1, 0] }[k];
+    if (nudge && boxSel) { e.preventDefault(); actSel(E.moveSel(s, boxSel, nudge[0], nudge[1])); return; }
     if (k === "r" && ["entry", "exit"].includes(placeKind())) {
       handTurned = !handTurned;
       if (ghostAt && ghostAt.kind === placeKind()) { const [gw, gh] = handDims(ghostAt.kind), f = E.isFree(s, ghostAt.x, ghostAt.y, gw, gh); ghostAt = { ...ghostAt, w: gw, h: gh, ok: f.ok, why: f.why }; }
@@ -1573,12 +1684,7 @@
       }
       return;
     }
-    if ((k === "delete" || k === "backspace") && boxSel) {
-      const ids = new Set(boxSel.blocks);
-      s.blocks = s.blocks.filter((b) => !ids.has(b.id));
-      for (const r of boxSel.rails) delete s.rail[r];
-      boxSel = null; sel = null; buildPalette(); inspector(); edited(); return;
-    }
+    if ((k === "delete" || k === "backspace") && boxSel) { deleteSelection("all"); return; }
     if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; $("win").hidden = true; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
     if (k === "j") { setJamMap(!jamMap); return; }
@@ -1632,6 +1738,9 @@
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
     // part 5: gears, the selection, a track piece selected
     gears: () => lastGears.map((g) => ({ ...g })),
+    // part 7: the floor as it stands (read only), and whether a copy is in hand
+    snapshot: () => JSON.parse(JSON.stringify(s)),
+    pasting: () => !!pasting,
     selected: () => (sel ? { ...sel } : null),
     selectRail: (k) => { sel = { rail: k }; ctlTab("sel"); inspector(); draw(); return true; },
     // the editor's basics (docs/EDITOR-BASICS.md)

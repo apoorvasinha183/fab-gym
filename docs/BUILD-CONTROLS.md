@@ -391,3 +391,10 @@ In headless Chrome with a helper:
 - 1 Nov, part 6, results: BC1, BC8 and BC9 pass, with the rest of the palette and hover tests (controls, placing, game,
   top-down, find, room). Before the change, BC9 failed at 1,280 x 720 with the map's box cutting the card, as the
   founder saw.
+- 1 Nov, part 7, while writing the code:
+  - SB1 first put the box's edge on a row where no machine straddled it, so both directions selected the same; its
+    edge now runs through a machine's second row. SB4 first nudged a storage block boxed in by track and machines;
+    it now moves the whole layout, which has floor around it.
+  - A click on one piece clears a box selection; a pasted machine of a group already on the floor takes the group's
+    breakdown settings; the right button pans, so the map has no right-click menu.
+- 1 Nov, part 7, results: SE1 to SE6 and SB1 to SB6 pass, with B2 and M4 as changed and every other Build page test.
