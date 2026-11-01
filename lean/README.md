@@ -8,6 +8,8 @@ It proves a run obeys the model's rules and says nothing about how closely the m
 - `FabCheck/Core.lean`: the referee (plain Lean 4, no libraries).
 - `Main.lean`: the program, `referee FILE` or `referee -`.
 - `FabCheck/Proofs.lean`: the rules stated plainly, and the proof (Mathlib).
+- `FabCheck/Jam.lean`: the track's no-jam count (docs/DOUBLE-CHECK.md, part 2): a jam closed inside a connected part
+  of the track holds all of it, so fewer cars than the part holds can never jam (Mathlib).
 - `tests/`: hand-made receipts and their expected verdicts (`make.py` writes them).
 - `run.sh`: `build`, `test`, `prove`, `check -- CMD` on the Mac mini.
 

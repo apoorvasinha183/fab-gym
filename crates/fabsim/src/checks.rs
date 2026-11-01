@@ -68,6 +68,18 @@ pub fn check(shop: &Shop) -> Vec<Issue> {
         let n = shop.inports.unwrap_or(0);
         issues.push(warn("no_storage", format!("Machines take {n} lot{} each at their ports, but there is no storage, so the extra lots wait in an unlimited line. Place storage beside the track.", if n == 1 { "" } else { "s" }), vec![]));
     }
+    // the track cannot jam below its smallest connected part's number of cars (docs/DOUBLE-CHECK.md, part 2)
+    if let Some(f) = shop.fleet.as_ref() {
+        let has_track = shop.plan.as_ref().is_some_and(|p| !p.links.is_empty()) || shop.oht.is_some();
+        if has_track && f.vehicles > 0 {
+            if let Some(l) = crate::jam::jam_number(&crate::track::Track::from_shop(shop), f.gap) {
+                if f.vehicles >= l.cars {
+                    let through = if l.names.len() > 4 { format!("{} and {} more stops", l.names[..3].join(", "), l.names.len() - 3) } else { l.names.join(", ") };
+                    issues.push(warn("may_jam", format!("With {} cars, the track can jam: the part through {through} holds only {} cars, and once it is full they wait on each other for ever. Use fewer than {} cars, or add track.", f.vehicles, l.cars, l.cars), l.names.clone()));
+                }
+            }
+        }
+    }
     // a quality hold follows a check that sends a lot back (docs/BUILD-CONTROLS.md, part 4)
     if shop.defects.is_some() && !shop.routes.iter().any(|r| r.steps.iter().any(|s| s.rework.is_some_and(|(_, p)| p > 0.0))) {
         issues.push(warn("holds_without_rework", "Quality holds are on, but no check sends lots back, so nothing is ever held. Set some rework too.".into(), vec![]));

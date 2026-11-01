@@ -37,23 +37,28 @@ Tests (`crates/fabsim/tests/routes.rs`):
 ## Part 2: the track cannot jam below a count of cars (no simulator)
 
 Vehicles block each other only while moving: a stretch of track holds `floor(length / gap)` cars (at least one), a
-stop or junction holds one car while it passes or hoists, and idle cars park off the track. A car waits only for the
-next piece along its way. So a jam where cars wait on each other for ever needs a loop of the track whose every piece
-is full, which takes at least as many cars as that loop holds.
+stop or junction holds one car while it passes or hoists, and idle cars park off the track. A car waits for the next
+piece along its way, and when the stretch it wants is full it takes any other way out with room that still leads to
+its target (`FleetState::way`).
 
-- **The rule:** with fewer moving cars than the smallest loop holds, the track cannot jam. The check finds that loop
-  (a shortest cycle, weighting each stretch by its cars plus one for the stop at its end) and warns `may_jam` when the
-  fab has at least that many cars, naming the loop and its number. Build shows it with the other warnings.
-- **Exhaustive on small tracks:** a separate explorer tries every reachable placement of cars on every track of up to
-  five stops (rings, figure eights, a loop with a shortcut), each car always wanting its next piece: below the loop's
-  number no jam is ever reached; at it, on a ring, one is.
-- **Lean:** the counting argument as a theorem: a closed walk of full pieces holds at least the sum of their sizes.
+- **The rule:** cars that wait on each other for ever fill a whole connected part of the track (a part where every
+  stop reaches every other), not just one loop: inside such a part every way out leads to the stuck car's target, so
+  every way out must be full too. So fewer cars than the smallest connected part holds (its stops plus its stretches'
+  cars) can never jam. The check finds that part and warns `may_jam` when the fab has at least that many cars, naming
+  the part's first stops and the number. Build shows it with the other warnings.
+- **Exhaustive on small tracks:** an explorer tries every placement of cars on small tracks (rings, a figure eight, a
+  loop with a shortcut, two loops joined both ways, a ring with a siding), each car always wanting to move on: below
+  the number no jam exists; at it one does, and on the ring with a siding a car can drive into it.
+- **Lean** (`lean/FabCheck/Jam.lean`, checked by `lean/run.sh prove`): a jam closed inside a connected part and meeting
+  it holds the whole part, so the cars on the track are at least the part's room (`no_jam_below`). Why the engine's
+  stuck cars form such a closed set is argued from the engine's rules in `crates/fabsim/src/jam.rs`, not proved in Lean.
 
 Tests (`crates/fabsim/tests/jam.rs`):
-- **DC4** the smallest loop of a hand-drawn track is found, with its number.
-- **DC5** the explorer finds no reachable jam below the number on any small track, and a jam at it on a ring.
-- **DC6** `may_jam` appears exactly when the cars reach the number; the teaching fab's own track and car count are
-  stated in this file's Changes.
+- **DC4** the number for a hand-drawn figure eight (14: all 5 stops and 9 stretch cars), a ring with a siding (the
+  ring, 6), a line (none), and the teaching fab's track (its part's stops plus inside stretches' cars).
+- **DC5** the explorer finds no jam below the number on any of the six small tracks and one at it; a jam can be driven
+  into on the ring with a siding.
+- **DC6** `may_jam` appears exactly when the cars reach the number, and not for the teaching fab's own 12 cars.
 
 ## Part 3: laws every run obeys (from a run, checked with arithmetic)
 
@@ -96,3 +101,16 @@ Tests: **DC9** our raw processing times, recomputed from the files, are the ones
   testbed, the Floor's fab and the teaching fab.
 - Route errors join `fabsim::checks::check` first: `bad_chance`, `rework_target`, and `rework_certain` (a step from
   which no path with a chance above zero reaches the end).
+- Part 2 built 1 November 2026 (tests "Musical chairs", code "One chair spare"). DC4 to DC6 pass, with all 281 engine
+  tests; the Lean file checks on the Mac mini with only the standard axioms. The teaching fab's track is one connected
+  part of 78 stops holding 160 cars, and Build gives it 12. The real-layout fab (`web/data/shop-real.txt`) is one part of
+  1,275 of its 1,279 stops holding 3,300 cars, and runs 160. Neither warns.
+- The rule changed while writing the code, and the tests with it (after "Musical chairs" was committed; DC4 to DC6
+  were rewritten before any code passed them). The first rule used the smallest loop: a jam holds a loop of full pieces,
+  so fewer cars than the smallest loop holds cannot jam. That is true but loose. On the real-layout fab the smallest
+  loop is a crossover pair at the end of the spine (n1 to n44 and back, 4 cars), so it warned at 160 cars. Reading
+  `FleetState::way` showed that a car facing a full stretch takes any other way out with room that leads to its
+  target, so a jam must fill a whole connected part. The smallest loop is kept as `smallest_loop` for comparison.
+- A second fix in the first tests: on a plain ring the loop's number is all the room on the track, so the only
+  placement with that many cars is the full ring, and nothing leads into it. Reaching a jam is tested on a ring with a
+  siding instead.

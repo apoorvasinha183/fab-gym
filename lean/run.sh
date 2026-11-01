@@ -5,7 +5,8 @@
 #
 #   lean/run.sh build                 copy the project to the mini and build the referee
 #   lean/run.sh test                  L1 to L4: the hand-made receipts, then the toy runs and their tampered copies
-#   lean/run.sh prove                 L5: check the proofs; no sorry, only the standard axioms
+#   lean/run.sh prove                 L5: check the proofs (the referee's, and the track's no-jam count); no sorry, only
+#                                     the standard axioms
 #   lean/run.sh check -- CMD ARGS     stream the receipt CMD writes on stdout into the referee; prints its verdict
 #   lean/run.sh challenges            L9: Build's four challenges, at their start and with their fix, and tampered copies
 #
@@ -71,7 +72,7 @@ test_all() {
 prove() {
   build
   ssh -o BatchMode=yes "$HOST" "cd ~/lean-check && export PATH=\$HOME/.elan/bin:\$PATH &&
-    lake env sh -c 'LEAN_PATH=\$HOME/$REMOTE/.lake/build/lib/lean:\$LEAN_PATH nice -n 10 lean \$HOME/$REMOTE/FabCheck/Proofs.lean'" > /tmp/fabgym-proofs.txt 2>&1 || {
+    lake env sh -c 'LEAN_PATH=\$HOME/$REMOTE/.lake/build/lib/lean:\$LEAN_PATH nice -n 10 lean \$HOME/$REMOTE/FabCheck/Proofs.lean && nice -n 10 lean \$HOME/$REMOTE/FabCheck/Jam.lean'" > /tmp/fabgym-proofs.txt 2>&1 || {
     cat /tmp/fabgym-proofs.txt; echo "the proofs do not check"; exit 1; }
   cat /tmp/fabgym-proofs.txt
   if grep -qi "sorry" /tmp/fabgym-proofs.txt; then echo "FAIL: a sorry remains"; exit 1; fi
