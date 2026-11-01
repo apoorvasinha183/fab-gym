@@ -1,0 +1,27 @@
+{
+ "_about": "Published figures for the SMT2020 high-volume testbed (dataset 1), each read from its source on 1 November 2026 (docs/DOUBLE-CHECK.md, part 4). Values as printed; the units are the source's.",
+ "sources": {
+  "wsc2019": "Hassoun, Kopp, Mönch and Kalir, A New High-Volume/Low-Mix Simulation Testbed for Semiconductor Manufacturing, Proceedings of the 2019 Winter Simulation Conference, pp. 2419-2428 (informs-sim.org/wsc19papers/232.pdf)",
+  "tassel2023": "Tassel, Kovács, Gebser, Schekotihin, Stöckermann and Seidel, Semiconductor Fab Scheduling with Self-Supervised and Reinforcement Learning, arXiv:2302.07162v1, 14 Feb 2023"
+ },
+ "figures": [
+  {"key": "toolsets", "value": 105, "unit": "toolsets", "source": "wsc2019", "where": "p. 2422 and Table 2, p. 2425"},
+  {"key": "tools", "value": 1054, "unit": "tools", "source": "wsc2019", "where": "Table 2, p. 2425"},
+  {"key": "steps_part_3", "value": 632, "unit": "steps", "source": "wsc2019", "where": "p. 2422"},
+  {"key": "steps_part_4", "value": 374, "unit": "steps", "source": "wsc2019", "where": "p. 2422"},
+  {"key": "regular_lot_every", "value": 50.68, "unit": "minutes", "source": "wsc2019", "where": "p. 2422"},
+  {"key": "hot_lot_every", "value": 1976.47, "unit": "minutes", "source": "wsc2019", "where": "p. 2422"},
+  {"key": "rpt_part_3", "value": 28.7, "unit": "days", "source": "wsc2019", "where": "p. 2425: cycle time of lots started far apart in an empty fab, averaged, so it includes waits for maintenance and sampling"},
+  {"key": "rpt_part_4", "value": 17.1, "unit": "days", "source": "wsc2019", "where": "p. 2425, as rpt_part_3"},
+  {"key": "ff_median_full", "value": 2.63, "unit": "flow factor", "source": "wsc2019", "where": "p. 2426: at full capacity, the baseline model, first come first served, AutoSched AP"},
+  {"key": "ff_p05_full", "value": 2.39, "unit": "flow factor", "source": "wsc2019", "where": "p. 2426"},
+  {"key": "ff_p95_full", "value": 2.91, "unit": "flow factor", "source": "wsc2019", "where": "p. 2426"},
+  {"key": "theoretical_part_3", "value": 24.75, "unit": "days", "source": "tassel2023", "where": "appendix Table 2, p. 10: Theoretical Cycle-Time of Lots 3"},
+  {"key": "theoretical_part_4", "value": 14.54, "unit": "days", "source": "tassel2023", "where": "appendix Table 2, p. 10: Theoretical Cycle-Time of Lots 4"},
+  {"key": "ct_regular_3_fifo", "value": 93.61, "sd": 0.71, "unit": "days", "source": "tassel2023", "where": "appendix Table 2(a), p. 10, Hierarchical FIFO, 6 months, 100 seeds (Table 1 caption, p. 7)"},
+  {"key": "ct_regular_4_fifo", "value": 51.52, "sd": 0.5, "unit": "days", "source": "tassel2023", "where": "appendix Table 2(a), p. 10, Hierarchical FIFO, as ct_regular_3_fifo"},
+  {"key": "ct_hot_3_fifo", "value": 34.02, "sd": 0.13, "unit": "days", "source": "tassel2023", "where": "appendix Table 2(a), p. 10, Hierarchical FIFO, as ct_regular_3_fifo"},
+  {"key": "ct_hot_4_fifo", "value": 19.80, "sd": 0.10, "unit": "days", "source": "tassel2023", "where": "appendix Table 2(a), p. 10, Hierarchical FIFO, as ct_regular_3_fifo"},
+  {"key": "ct_superhot_3_fifo", "value": 33.99, "sd": 0.44, "unit": "days", "source": "tassel2023", "where": "appendix Table 2(a), p. 10, Hierarchical FIFO, as ct_regular_3_fifo"}
+ ]
+}
