@@ -68,8 +68,13 @@ Tests (`crates/fabsim/tests/jam.rs`):
 - **The utilisation law:** each group's busy share over a long run is within its 95% interval of the work released to
   it divided by its capacity, from part 1's expected visits and the group's tools (probable, on 10 runs).
 
-Tests (`crates/fabsim/tests/laws.rs`): **DC7** Little's law to rounding on three runs; **DC8** the utilisation law on
-the five busiest groups.
+- Interfaces: `fabsim::routes::loads(&shop) -> Vec<GroupLoad>`, each group's work a day at the release rates, its
+  machines and the busy share that work needs; `exact` when no step at the group batches (a batch's lots per job are not
+  known before the run, so there the share counts the largest batch, a floor). `fabsim routes FILE --load` prints them.
+
+Tests (`crates/fabsim/tests/laws.rs`): **DC7** Little's law to rounding on three runs of the high-volume testbed (days
+5 to 15), with the lots finished and the lots inside at the window's end; **DC8** the utilisation law on the five
+busiest groups with no batch step, over days 10 to 40 of 10 runs.
 
 ## Part 4: the published testbed
 
