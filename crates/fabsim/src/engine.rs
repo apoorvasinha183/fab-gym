@@ -2030,6 +2030,11 @@ fn build<'a, 'c>(
     player: Option<Player>,
     ov: &crate::overrides::Overrides,
 ) -> Sim<'a, 'c> {
+    // the file's own dispatch rule, when the run is handed no rule of its own (docs/BUILD-CONTROLS.md, part 4)
+    let player = match (&chooser, player, shop.dispatch) {
+        (None, None, Some(p)) if p != crate::policy::Policy::Today => Some(Player::rule(shop, p, opts.seed)),
+        (_, pl, _) => pl,
+    };
     // compile the shop into indexes
     let gidx: HashMap<&str, u32> = shop.groups.iter().enumerate().map(|(i, g)| (g.name.as_str(), i as u32)).collect();
     let mut setup_names = vec![String::new()];

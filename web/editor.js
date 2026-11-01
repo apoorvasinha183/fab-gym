@@ -76,9 +76,10 @@
   let best = {};
   try { best = JSON.parse(localStorage.getItem("fabgym.stars") || "{}") || {}; } catch (e) { best = {}; }
   const ch = () => (chIdx < E.CHALLENGES.length ? E.CHALLENGES[chIdx] : null);
-  // a challenge run with a port limit is an experiment: its targets are tuned with unlimited ports, so it earns no stars
-  // (docs/BUILD-CONTROLS.md, part 3)
-  const experiment = () => !!(ch() && s && s.inports);
+  // a challenge run with a port limit, or with any of the Floor's settings changed, is an experiment: its targets are
+  // tuned with unlimited ports and today's settings, so it earns no stars (docs/BUILD-CONTROLS.md, parts 3 and 4)
+  const flowSet = () => !!(s && s.flow && Object.keys(s.flow).length);
+  const experiment = () => !!(ch() && s && (s.inports || flowSet()));
   const starsFor = (sc, c, top) => (experiment() ? 0 : E.stars(sc, c.target, top));
   const meetsFor = (sc, c, top) => !experiment() && E.meets(sc, c.target, top);
   const days = () => (ch() ? ch().days : 2);
@@ -720,7 +721,10 @@
       [1, 1.02, 1.05].forEach((m, i) => { const el = $("goalbar").querySelectorAll(".starmark")[i]; if (el) { el.hidden = i !== got; el.style.left = `calc(${(c.target.wafers * m / full) * 100}% - 6px)`; el.title = `${i + 1} star${i ? "s" : ""} at ${Math.ceil(c.target.wafers * m)} wafers a day`; } });
       $("goalbar").classList.toggle("met", ok && !blocked);
       $("goaltext").innerHTML = blocked ? `<b>${Math.round(w).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
-      if (experiment() && !blocked) $("goaltext").innerHTML = `<b>An experiment:</b> ${Math.round(w).toLocaleString()} wafers a day with ${s.inports} load port${s.inports > 1 ? "s" : ""} a machine. This challenge is tuned with unlimited ports, so this run earns no stars.`;
+      if (experiment() && !blocked) {
+        const what = [s.inports ? `${s.inports} load port${s.inports > 1 ? "s" : ""} a machine` : "", E.flowWords(s.flow, base)].filter(Boolean).join(", ");
+        $("goaltext").innerHTML = `<b>An experiment:</b> ${Math.round(w).toLocaleString()} wafers a day with ${esc(what)}. This challenge is tuned with unlimited ports and today's settings, so this run earns no stars.`;
+      }
     } else {
       $("goalfill").style.width = "0"; $("goalbar").classList.remove("met");
       $("goaltext").innerHTML = blocked ? `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : `<b>${Math.round(sc.wafers_per_day).toLocaleString()}</b> wafers a day on your layout`;
@@ -1123,6 +1127,11 @@
     cars: "More cars carry more lots at once, and can jam the track.",
     cap: "New lots wait at the door while this many are inside; 0 means no cap. Too low starves the fab.",
     ports: "How many lots each machine takes at its ports; the rest wait in storage until a port frees. Unlimited needs no storage.",
+    rule: "Which waiting lot a free machine takes next. Today's rule takes urgent lots first, then lots that need no re-setup, then the oldest.",
+    demand: "How often new lots come in. More lots can mean more wafers out; past what the machines and cars can carry, lines grow and output can fall.",
+    urgent: "Urgent lots go to the front of every line: they finish sooner, and the lots behind them wait longer.",
+    rework: "A check that finds a fault sends the lot back to redo the step before, so machines repeat work. The SMT2020 testbed's lithography checks send back 0.7% to 1.8% of lots.",
+    holds: "When a check sends a lot back, its measuring machine stops and the lots it measured just before wait (lengths assumed, as on the Floor). Needs some rework.",
   };
   const num = (id, v, lab, unit) => `<label class="sub">${lab} <input type="number" min="1" step="1" id="${id}" value="${v}"> ${unit}</label>`;
   const why = (k) => `<span class="why">${WHY[k]}</span>`;
@@ -1166,6 +1175,19 @@
     el.querySelectorAll("[data-cars]").forEach((bt) => (bt.onclick = () => { s.vehicles = Math.max(1, s.vehicles + Number(bt.dataset.cars)); refreshCtl(); edited(); }));
     $(`${el.id}-ports`).onchange = (e) => { const n = Number(e.target.value); if (n) s.inports = n; else delete s.inports; refreshCtl(); renderScore(); edited(); };
     $(`${el.id}-cap`).onchange = (e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); if (n) s.cap = n; else delete s.cap; refreshCtl(); edited(); };
+    // the Floor's settings (docs/BUILD-CONTROLS.md, part 4)
+    const o = E.flowOptions(base), f = s.flow || {}, NAMES = { rule: "Dispatch rule", demand: "Demand", urgent: "Urgent lots", rework: "Rework", holds: "Quality holds" };
+    el.insertAdjacentHTML("beforeend", `<div class="ttl sub-ttl"><span>How the fab runs</span></div>` + Object.keys(NAMES).map((k) =>
+      row(k, `<label for="${el.id}-${k}">${NAMES[k]}</label><select id="${el.id}-${k}">${o[k].map(([v, n]) => `<option value="${v}" ${String(f[k] == null ? "" : f[k]) === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`)).join(""));
+    // the teaching fab's machines need no re-setup and a step takes the same time on every machine of its kind, so the
+    // three rules pick the same lots until urgent lots come in (measured on runs #1 to #3)
+    if (!E.flowKind(base).hot && !f.urgent) $(`${el.id}-rule`).closest(".ctlrow").insertAdjacentHTML("beforeend", `<span class="why">Here all three pick the same lots until there are urgent lots: no machine needs a re-setup, and a step takes the same time on every machine of its kind.</span>`);
+    for (const k of Object.keys(NAMES)) $(`${el.id}-${k}`).onchange = (e) => {
+      const v = e.target.value, flow = { ...(s.flow || {}) };
+      if (v === "") delete flow[k]; else flow[k] = k === "demand" || k === "holds" ? Number(v) : v;
+      if (Object.keys(flow).length) s.flow = flow; else delete s.flow;
+      refreshCtl(); renderScore(); edited();
+    };
   }
   function allControls() {
     const el = $("ctl-all"), groups = s.blocks.filter((b) => b.kind === "group"), broken = Object.keys(s.rail).filter((k) => s.rail[k].fail);

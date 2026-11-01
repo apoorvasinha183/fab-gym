@@ -217,3 +217,19 @@ cannot carry it. Breakdowns and repair are already set per machine group in Buil
   stored lot is carried up while its machine works on the lot ahead; with 2 cars, one or two ports give 800, against
   812.5 unlimited. Storage changes where lots wait and adds car trips; it costs output only when cars are scarce or
   storage is far from its machines.
+- 1 Nov, part 4, while writing the code: the file's rule rides on the run as its built-in player, the way a copied run
+  carries its rule, so every run of the file uses it (the score, a watched run, the receipt) and a rule handed in still
+  wins. The long rule names widened the controls card past its 300 px column; the card may now shrink, and each of
+  the five settings puts its menu on its own line under its name. On the teaching fab the three rules give the same
+  runs until urgent lots come in (no machine needs a re-setup, and a step takes the same time on every machine of its
+  kind), so Whole fab says so under the rule; the demand line now says output can fall past what the fab can carry.
+- 1 Nov, part 4, results: FD1 to FD4 and BF1 to BF7 pass; the simulator's whole suite passes with its golden runs
+  unchanged; Build's other page tests pass, one file at a time. Measured on Free build's starting fab (two days,
+  runs #1 to #3; 812.5 wafers a day and 0.68 days a wafer at today's settings, the same on all three runs):
+  - first come, first served and quickest job first: 812.5 and 0.68 on all three runs; with 1 urgent lot for every
+    10, today's rule gives 787.5 on run #1 and first come, first served 775;
+  - demand ×1.5: 750 wafers a day and 1.59 days a wafer; ×0.75: 737.5 and 0.42 (fewer lots in over two days);
+  - 1 urgent lot for every 5: 750 and 1.12;
+  - rework 2%: 775 to 800; 5%: 737.5 to 775;
+  - rework 5% with quality holds On: 500 to 600 wafers a day and 1.35 to 1.74 days a wafer; ×2: 250 to 387.5. Each
+    check is one machine, so a hold stops every lot that needs it.

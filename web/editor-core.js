@@ -178,12 +178,94 @@
         fleet = true;
       }
     }
+    // the Floor's settings: dispatch rule, demand, urgent lots, rework and quality holds (docs/BUILD-CONTROLS.md, part 4)
+    const ran = applyFlow(out, s.flow);
+    out.length = 0; out.push(...ran);
     if (s.cap) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, `cap\t${s.cap}`);
     // load ports per machine: lots beyond them wait in storage (docs/BUILD-CONTROLS.md, part 3)
     if (s.inports) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, `inports\t${s.inports}`);
     const prices = (opts && opts.prices === false) ? [] : s.blocks.filter((b) => b.kind === "group" && PRICE[b.area])
       .map((b) => `price\t${b.group}\t${PRICE[b.area].toFixed(1)}\t${(PRICE[b.area] / 2000).toFixed(1)}`);
     return [...out, ...toPlan(s), ...prices, ""].join("\n");
+  }
+
+  // ---------- the Floor's settings in Build (docs/BUILD-CONTROLS.md, part 4)
+  const fnum = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(+x.toFixed(6)));
+  const isCheck = (g) => /_Met_T$/.test(g); // the teaching fab's three measuring machines
+  /** The urgent priority of an added stream, as a lot made hot on the Floor. */
+  const URGENT_PRIORITY = 20;
+  /** The assumed quality hold at On, in minutes: the measuring machine, the lookback, the lots (as on the Floor). */
+  const HOLDS = [120, 240, 60];
+  const releasesOf = (lines) => lines.filter((l) => l.startsWith("release\t")).map((l) => l.split("\t"));
+  const lowestOf = (lines) => Math.min(...releasesOf(lines).map((r) => +r[3]));
+  /** Does the fab file have urgent lots of its own (a release above the lowest priority), and rework of its own? */
+  function flowKind(base) {
+    const lines = base.split("\n"), low = lowestOf(lines);
+    return {
+      hot: releasesOf(lines).some((r) => +r[3] > low),
+      rework: lines.some((l) => l.startsWith("step\t") && l.split("\t")[11] !== "-"),
+    };
+  }
+  /** The choices for each setting on this fab file, today's first: [value, label]. */
+  function flowOptions(base) {
+    const k = flowKind(base);
+    return {
+      rule: [["", "Today's rule: urgent first, then no re-setup, then oldest"], ["fifo", "First come, first served"], ["spt", "Quickest job first"]],
+      demand: [["", "×1, as now"], ["0.5", "×0.5"], ["0.75", "×0.75"], ["1.25", "×1.25"], ["1.5", "×1.5"]],
+      urgent: k.hot ? [["", "As the fab has them (×1)"], ["none", "None"], ["x0.5", "×0.5"], ["x2", "×2"]]
+        : [["", "None"], ["1in10", "1 for every 10 lots"], ["1in5", "1 for every 5 lots"]],
+      rework: k.rework ? [["", "As the fab has it (×1)"], ["none", "None"], ["x2", "×2"], ["x4", "×4"]]
+        : [["", "None"], ["p0.01", "1% of lots at each check"], ["p0.02", "2% of lots at each check"], ["p0.05", "5% of lots at each check"]],
+      holds: [["", "Off"], ["1", "On: 120 min, lots 60 min"], ["2", "×2: 240 min, lots 120 min"]],
+    };
+  }
+  /** A fab file's lines with the settings applied; with none set, the lines as they are. */
+  function applyFlow(lines, flow) {
+    const f = flow || {};
+    let out = lines.slice();
+    const low = lowestOf(out);
+    const rel = (fn) => (out = out.map((l) => (l.startsWith("release\t") ? fn(l.split("\t")).join("\t") : l)));
+    if (f.demand && f.demand !== 1) rel((r) => { r[4] = fnum(+r[4] / f.demand); return r; });
+    if (f.urgent === "none") out = out.filter((l) => !(l.startsWith("release\t") && +l.split("\t")[3] > low));
+    else if (/^x[\d.]+$/.test(f.urgent || "")) { const k = +f.urgent.slice(1); rel((r) => { if (+r[3] > low) r[4] = fnum(+r[4] / k); return r; }); }
+    else if (/^1in\d+$/.test(f.urgent || "")) {
+      // one more release beside each regular one: the regular gap times N, its first lot half a regular gap in
+      const n = +f.urgent.slice(3);
+      out = out.flatMap((l) => {
+        if (!l.startsWith("release\t") || +l.split("\t")[3] > low) return [l];
+        const r = l.split("\t");
+        return [l, [r[0], r[1], r[2], fnum(URGENT_PRIORITY), fnum(+r[4] * n), fnum(+r[5] + +r[4] / 2), "-", "Hot"].join("\t")];
+      });
+    }
+    if (f.rework) {
+      let i = -1;
+      out = out.map((l) => {
+        if (l.startsWith("route\t")) i = -1;
+        if (!l.startsWith("step\t")) return l;
+        i++;
+        const st = l.split("\t");
+        if (f.rework === "none") { st[11] = "-"; st[12] = "-"; }
+        else if (f.rework[0] === "x") { if (st[11] !== "-") st[12] = fnum(Math.min(1, +st[12] * +f.rework.slice(1))); }
+        else if (f.rework[0] === "p" && isCheck(st[1]) && i > 0 && st[11] === "-") { st[11] = String(i - 1); st[12] = fnum(+f.rework.slice(1)); }
+        return st.join("\t");
+      });
+    }
+    const head = [];
+    if (f.rule) head.push(`dispatch\t${f.rule}`);
+    if (f.holds) { out = out.filter((l) => !l.startsWith("defects\t")); head.push(`defects\t${HOLDS.map((m) => fnum(m * f.holds)).join("\t")}`); }
+    if (head.length) out.splice(out.findIndex((l) => l.startsWith("transport\t")) + 1, 0, ...head);
+    return out;
+  }
+  /** What the settings change, in words, for a banner ("" when none is set). */
+  function flowWords(flow, base) {
+    const f = flow || {}, o = flowOptions(base), parts = [];
+    const lab = (k) => ((o[k].find(([v]) => v === String(f[k])) || [])[1] || String(f[k])).toLowerCase();
+    if (f.rule) parts.push(lab("rule"));
+    if (f.demand && f.demand !== 1) parts.push(`demand ×${f.demand}`);
+    if (f.urgent) parts.push(`urgent lots ${lab("urgent")}`);
+    if (f.rework) parts.push(`rework ${lab("rework")}`);
+    if (f.holds) parts.push(`quality holds ${f.holds === 1 ? "on" : "×" + f.holds}`);
+    return parts.join(", ");
   }
 
   // Dollars to buy one tool of an area (assumed for the gym; not any vendor's price). Running cost a day is 1/2000.
@@ -508,7 +590,7 @@
     return { cut: `rgb(${Math.round((n >> 16) * k)},${Math.round(((n >> 8) & 255) * k)},${Math.round((n & 255) * k)})`, light: "rgba(255,255,255,0.35)" };
   }
 
-  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
+  const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, flowOptions, flowKind, flowWords, applyFlow, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
     History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave,
     trouble, pile, jamStyle, advise, floatText, grow, roomFor, stars, ROOM_MAX };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

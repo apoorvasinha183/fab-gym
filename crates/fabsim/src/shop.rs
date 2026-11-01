@@ -179,6 +179,8 @@ pub struct Shop {
     pub cap: Option<i64>,
     /// load ports per tool for lots coming in (docs/BUILD-CONTROLS.md, part 3): beyond them lots wait in storage
     pub inports: Option<u32>,
+    /// the dispatch rule a run uses when it is not handed one (docs/BUILD-CONTROLS.md, part 4); None is today's rule
+    pub dispatch: Option<crate::policy::Policy>,
     pub probes: Vec<f64>,
     pub groups: Vec<Group>,
     pub routes: Vec<Route>,
@@ -472,6 +474,12 @@ impl Shop {
                     need(2)?;
                     s.inports = Some(f[1].parse().map_err(|_| format!("line {}: inports wants a whole number of ports", no + 2))?);
                 }
+                "dispatch" => {
+                    need(2)?;
+                    s.dispatch = Some(crate::policy::Policy::parse(f[1]).ok_or_else(|| {
+                        format!("line {}: dispatch wants today, fifo, spt, cr or random, got {:?}", no + 2, f[1])
+                    })?);
+                }
                 "probe" => {
                     need(2)?;
                     s.probes.push(pf(f[1])?);
@@ -761,6 +769,9 @@ impl Shop {
         }
         if let Some(n) = self.inports {
             let _ = writeln!(o, "inports\t{n}");
+        }
+        if let Some(p) = self.dispatch {
+            let _ = writeln!(o, "dispatch\t{}", p.name());
         }
         for p in &self.probes {
             let _ = writeln!(o, "probe\t{}", pyrepr(*p));

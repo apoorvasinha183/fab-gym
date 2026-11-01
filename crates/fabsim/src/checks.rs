@@ -66,6 +66,10 @@ pub fn check(shop: &Shop) -> Vec<Issue> {
         let n = shop.inports.unwrap_or(0);
         issues.push(warn("no_storage", format!("Machines take {n} lot{} each at their ports, but there is no storage, so the extra lots wait in an unlimited line. Place storage beside the track.", if n == 1 { "" } else { "s" }), vec![]));
     }
+    // a quality hold follows a check that sends a lot back (docs/BUILD-CONTROLS.md, part 4)
+    if shop.defects.is_some() && !shop.routes.iter().any(|r| r.steps.iter().any(|s| s.rework.is_some_and(|(_, p)| p > 0.0))) {
+        issues.push(warn("holds_without_rework", "Quality holds are on, but no check sends lots back, so nothing is ever held. Set some rework too.".into(), vec![]));
+    }
     issues
 }
 

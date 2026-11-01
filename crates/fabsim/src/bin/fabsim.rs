@@ -1673,7 +1673,7 @@ fn receipt_cmd(args: &[String]) {
             }
             None => run(&shop, &RunOptions { seed, until: Some(until), record: true }, None),
         };
-        (res, "today".to_string(), Window { from, to: until })
+        (res, shop.dispatch.map(|p| p.name()).unwrap_or("today").to_string(), Window { from, to: until })
     };
     let m = Meta { shop_sha256: sha, seed, policy, until: w.to, from: w.from, to: w.to };
     let stdout = std::io::stdout();
