@@ -68,3 +68,22 @@ In headless Chrome, the Floor from a helper started with `--no-model` (a recorde
   it picks is rephrased into the bar's words and read again by the same rules on the page, so the rules decide what
   happens; the helper drops a pick whose words no rule could read (`agent/bar_route.py`).
 - Settings you had already moved stay, and the card names them.
+
+## Part 2: measure first
+
+The founder, 1 November: "what if route the first question from a cheaper model first?" By quiz: measure first. Before
+any cheaper model goes in front of Muse Spark, count how often the rules miss and what the model picks then.
+
+1. **Every question typed in the bar is one line** in `bar-log.jsonl` beside the helper's spend files (under `data/`,
+   never committed, never sent anywhere): the time, the question, who read it (`rules`, `model`, `stand-in` or
+   `none`), the kind read and its detail, and the model's cost. The page sends the rules' reading
+   (`/api/bar/log`); the helper writes the model's pick itself (`/api/bar/route`).
+2. **A report**, `python -m agent.bar_route report [LOG]`: questions, the share the rules read and by kind, the misses,
+   what the model picked for them (none included), what it cost, and the misses themselves, newest first.
+3. Nothing in the bar's behaviour changes. A test helper writes its log into its own temporary folder.
+
+Tests (written before the code), `agent/tests/test_bar.py`:
+- **OB8** a question the model reads and one with no model each write one line, with who read it, the kind and the
+  cost; `/api/bar/log` writes the rules' reading; a malformed reading is refused and writes nothing.
+- **OB9** the report counts questions, the rules' share and kinds, misses and the model's picks and cost, and lists
+  the misses newest first.
