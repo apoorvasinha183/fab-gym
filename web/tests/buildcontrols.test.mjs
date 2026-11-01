@@ -62,11 +62,13 @@ const LEVER_KINDS = [[], ["Polishing (CMP)"], ["Lithography"], ["Polishing (CMP)
 const ROUTE = ["Diffusion", "Lithography", "Litho metrology", "Dry etch", "Wet etch and clean", "Thin film", "Thin film metrology", "Polishing (CMP)", "Defect inspection",
   "Ion implant", "Lithography", "Litho metrology", "Dry etch", "Wet etch and clean", "Dielectric", "Polishing (CMP)", "Defect inspection", "Wet etch and clean"];
 const MINUTES = [50, 40, 12, 35, 25, 30, 10, 35, 14, 18, 40, 12, 35, 25, 20, 35, 14, 25];
-const machines = (p) => J(p, `[...document.querySelectorAll("#pal [data-kind]")].map(b => ({ kind: b.dataset.kind, name: (b.querySelector(".nm") || {}).textContent,
-  n: (b.querySelector(".n") || {}).textContent || "", price: (b.querySelector(".pr") || {}).textContent || "", img: !!(b.querySelector("img") && b.querySelector("img").naturalWidth),
-  lever: b.classList.contains("lever"), locked: b.disabled || b.classList.contains("locked") }))`);
+const machines = (p) => J(p, `[...document.querySelectorAll("#pal [data-kind]")].map(b => { const r = b.getBoundingClientRect(), path = b.querySelector("svg path");
+  return { kind: b.dataset.kind, name: (b.getAttribute("aria-label") || "").split(":")[0], label: b.getAttribute("aria-label") || "", d: path ? path.getAttribute("d") : null,
+    icon: path ? path.getAttribute("d") === FabLook.ICONS[b.dataset.kind] : false, fam: getComputedStyle(b).getPropertyValue("--fam").trim(), famWant: FabLook.FAM[b.dataset.kind],
+    n: (b.querySelector(".n") || {}).textContent || "", img: !!b.querySelector("img"), x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height),
+    lever: b.classList.contains("lever"), locked: b.disabled || b.classList.contains("locked") }; })`);
 
-test("BC1 every machine in the palette, with its picture, count and price; the levers' kinds marked, none locked", { skip }, async () => {
+test("BC1 every machine in the palette as its map icon, with its count; even rows; the levers' kinds marked, none locked", { skip }, async () => {
   const p = await openEditor("editor.html?ch=1", 1440, 900);
   try {
     for (let k = 0; k < 5; k++) {
@@ -76,14 +78,60 @@ test("BC1 every machine in the palette, with its picture, count and price; the l
       assert.deepEqual(ms.map((m) => m.name), KINDS, `tab ${k}: the 11 kinds in order`);
       for (const m of ms) {
         const on = blocks.filter((b) => b.kind === "group" && b.area === m.kind).reduce((a, b) => a + b.count, 0);
-        assert.ok(m.img, `tab ${k} ${m.name}: a picture`);
-        assert.match(m.n, new RegExp(`^${on} on the floor`), `tab ${k} ${m.name}: its count (${m.n} against ${on})`);
-        assert.match(m.price, /^\$\d+(\.\d)?M$/, `tab ${k} ${m.name}: its price (${m.price})`);
+        assert.ok(m.icon, `tab ${k} ${m.name}: the map's icon`);
+        assert.equal(m.fam.toLowerCase(), m.famWant.toLowerCase(), `tab ${k} ${m.name}: the area's colour`);
+        assert.equal(m.img, false, `tab ${k} ${m.name}: no cartoon in the key`);
+        assert.equal(m.n.trim(), String(on), `tab ${k} ${m.name}: its count as the badge`);
+        assert.match(m.label, new RegExp(`${on} on the floor`), `tab ${k} ${m.name}: its count in its label`);
+        assert.match(m.label, /\$\d+(\.\d)?M/, `tab ${k} ${m.name}: its price in its label`);
         assert.equal(m.locked, false, `tab ${k} ${m.name}: nothing is locked`);
         assert.equal(m.lever, LEVER_KINDS[k].includes(m.name), `tab ${k} ${m.name}: marked as a lever only if a lever names it`);
       }
+      assert.equal(new Set(ms.map((m) => `${m.w}x${m.h}`)).size, 1, `tab ${k}: every key one size`);
+      assert.ok(Math.abs(ms[0].w - ms[0].h) <= 2, `tab ${k}: square keys`);
+      assert.ok(new Set(ms.map((m) => m.x)).size >= 3, `tab ${k}: three or more to a row`);
+      const rows = new Set(ms.map((m) => m.y));
+      for (const y of rows) assert.ok(ms.filter((m) => m.y === y).length >= 1, "rows");
     }
   } finally { p.close(); }
+});
+
+test("BC8 pointing at a machine key shows its cartoon card; leaving hides it", { skip }, async () => {
+  const p = await openEditor("editor.html?ch=2", 1440, 900);
+  try {
+    const r = await J(p, `(() => { const b = document.querySelector('#pal [data-kind="cmp"]').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })()`);
+    await p.mouse("mouseMoved", r.x, r.y); await sleep(300);
+    const card = await J(p, `(() => { const c = document.getElementById("palcard"); if (!c || c.hidden) return null; const im = c.querySelector("img"); return { img: im ? im.getAttribute("src") : "", ok: !!(im && im.complete && im.naturalWidth), text: c.innerText }; })()`);
+    assert.ok(card, "the card shows");
+    assert.match(card.img, /^cast\/base\/\d\d-cmp\.webp$/, "the kind's cartoon");
+    assert.ok(card.ok, "the cartoon loads");
+    const on = (await J(p, "FabEditorPage.blocks()")).filter((b) => b.kind === "group" && b.area === "cmp").reduce((a, b) => a + b.count, 0);
+    assert.match(card.text, /Polishing \(CMP\)/);
+    assert.match(card.text, new RegExp(`${on} on the floor`));
+    assert.match(card.text, /\$5M/);
+    await p.mouse("mouseMoved", 700, 450); await sleep(300);
+    assert.equal(await p.ev(`document.getElementById("palcard").hidden`), true, "leaving hides it");
+  } finally { p.close(); }
+});
+
+test("BC9 the map's card over the lowest machine is whole: inside the window and every box that hides overflow", { skip }, async () => {
+  for (const [w, h] of [[1440, 900], [1280, 720]]) {
+    const p = await openEditor("editor.html?ch=1", w, h);
+    try {
+      await sleep(400);
+      const pt = await J(p, `(() => { const g = FabEditorPage.blocks().filter(b => b.kind === "group"); let best = null;
+        for (const b of g) { const s = FabEditorPage.screenOf(b.x + (b.w - 1) / 2, b.y + (b.h - 1) / 2); if (!best || s[1] > best[1]) best = s; } return best; })()`);
+      await p.mouse("mouseMoved", pt[0] - 3, pt[1] - 3); await sleep(150);
+      await p.mouse("mouseMoved", pt[0], pt[1]); await sleep(400);
+      const o = await J(p, `(() => { const c = document.getElementById("hover"); if (!c || c.hidden) return null; const r = c.getBoundingClientRect(); const cut = [];
+        for (let e = c.parentElement; e && e !== document.documentElement; e = e.parentElement) { const s = getComputedStyle(e); if (/hidden|clip|auto|scroll/.test(s.overflow + s.overflowX + s.overflowY)) { const q = e.getBoundingClientRect(); if (r.top < q.top - 1 || r.bottom > q.bottom + 1 || r.left < q.left - 1 || r.right > q.right + 1) cut.push(e.id || e.className); } }
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, h: r.height, cut }; })()`);
+      assert.ok(o, `${w} x ${h}: the card shows`);
+      assert.ok(o.h > 100, `${w} x ${h}: a whole card`);
+      assert.ok(o.top >= 0 && o.left >= 0 && o.bottom <= h && o.right <= w, `${w} x ${h}: inside the window (${JSON.stringify(o)})`);
+      assert.deepEqual(o.cut, [], `${w} x ${h}: no box cuts it`);
+    } finally { p.close(); }
+  }
 });
 
 test("BC2 BC3 a machine in the palette opens its controls; the panel's three tabs; All controls changes the fab as + does", { skip }, async () => {

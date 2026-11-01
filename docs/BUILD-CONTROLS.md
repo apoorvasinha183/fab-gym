@@ -233,6 +233,34 @@ load ports, storage and demand have no glossary entry; every other control has o
   GP2 and GP6 list them as reused).
 - **BL4** at 1,440 x 900, 1,440 x 760 and 1,280 x 720 the page does not scroll with changes listed and a card open.
 
+## Part 6: the machines as map icons, and a hover card that is never cut (written 1 November 2026, before its tests and code)
+
+The founder: "On the machines part of the build editor, instead of the cartoon icons with name, just the icons which are
+used on the map, if they hover over it you may show the cartoon fella. Stack them neatly like ms paint icons. Also when
+i hover on an icon in the map some of it gets cut from below because it renders inside the nested window, fix that".
+Found before: the map's hover card is drawn inside the map's box, which hides whatever runs past its edges; near the
+bottom of the map, or on a short map, the card is taller than the room left and its bottom is cut off.
+
+1. **The machines as a grid of map tiles.** Each of the 11 kinds is a square key in the area's colour with its map
+   icon engraved, as the map draws it, and a small badge with how many are on the floor; the keys sit in even rows,
+   like a paint program's tool box. The name, the count and the price are in the key's label for a screen reader. The
+   levers' kinds keep their outline.
+2. **The cartoon on hover.** Pointing at a key, or focusing it, shows a card beside the palette: the kind's cartoon,
+   its name, how many are on the floor, the price of one and what it does.
+3. **The map's hover card is never cut.** It is drawn over the page, placed beside the pointer and kept inside the
+   window, flipping to the pointer's other side when the room runs out.
+
+## Part 6: tests (written before the code)
+
+`web/tests/buildcontrols.test.mjs`:
+- **BC1** (rewritten) in every challenge and in free build the palette has the 11 kinds in order, each a key with the
+  map's icon for its kind (the same drawing), the area's colour, the count on the floor as its badge, and its name in
+  its label; the keys are all one size, three or more to a row; the levers' kinds are marked and none is locked.
+- **BC8** pointing at a key shows the card with the kind's cartoon, its name, "N on the floor" and its price; leaving
+  it hides the card.
+- **BC9** pointing at the lowest machine on the map shows the map's card whole: inside the window, and inside every
+  box around it that hides overflow.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
