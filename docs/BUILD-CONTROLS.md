@@ -261,6 +261,64 @@ bottom of the map, or on a short map, the card is taller than the room left and 
 - **BC9** pointing at the lowest machine on the map shows the map's card whole: inside the window, and inside every
   box around it that hides overflow.
 
+## Part 7: select and act on a selection (written 1 November 2026, before its tests and code)
+
+The founder: "Allow for advanced controls like drag a free form rectangle to select, delete or something like that ...
+Intelligent editing", and by quiz all three layers of the proposal: the selection grammar of design and CAD tools,
+acting on a selection, and editing that knows it is a fab (part 8). Found before: Build has box select, copy, paste and
+delete since 31 October (`docs/EDITOR-MOVES.md`), but only with Shift held, because a plain drag on empty floor pans
+the view; a pasted machine whose kind has no unplaced group is left out, although a group may stand in several places
+since part 2.
+
+**Selecting**
+1. **A plain drag on empty floor draws a box** (Select). Dragging right selects what lies wholly inside the box (a
+   solid outline); dragging left selects whatever the box touches (a dashed outline), as CAD programs do. The view
+   moves with Space-drag, the middle or right button, the W A S D keys, or the arrows when nothing is selected.
+2. **Adding and taking away.** Shift-click adds a piece or takes it away again; Shift-drag adds a box; Alt-drag takes a
+   box away. ⌘A (Ctrl+A) selects everything; Esc clears.
+3. **Double-click** a machine to select every block of its group, wherever they stand; double-click track to select
+   all the track joined to it.
+
+**Acting on a selection**
+4. **Move.** Dragging a selected piece moves the whole selection; the arrows nudge it one tile. A move that does not
+   fit says why and changes nothing. Each move is one undo step.
+5. **Duplicate.** ⌘D (Ctrl+D) takes a copy in hand, as ⌘C then ⌘V does. A pasted machine takes an unplaced group of
+   its kind if one is left, and otherwise becomes more machines of its own group in a new place (it was left out).
+6. **Turn and mirror.** R turns the selection a quarter clockwise in its box, Shift-R mirrors it left to right; track
+   directions turn with it. A turn that does not fit says why and changes nothing.
+7. **Edit them all.** With pieces selected, Selected shows what is in the selection and controls that apply to all of
+   it: the machine groups' breakdowns and what happens when they break, the track's breakdowns; and buttons to delete
+   all of it, only the track, only the machines, or only storage and doors. Delete or Backspace deletes all of it.
+
+The logic is in `web/editor-core.js`: `inBox` (with crossing), `connectedRail`, `moveSel`, `turnSel`, `deleteSel`,
+and `pasteAt`; each returns a new floor and leaves the old one as it was.
+
+## Part 7: tests (written before the code)
+
+`web/tests/editorselect.test.mjs`, in Node on `editor-core.js`:
+- **SE1** a box selects what is wholly inside it, or, crossing, whatever it touches.
+- **SE2** the track joined to a piece, in either direction of travel, and nothing else.
+- **SE3** a move shifts pieces and track, directions kept; a move onto something not selected, or off the floor, does
+  not fit and says why; the old floor is unchanged.
+- **SE4** a quarter turn moves and turns pieces in the selection's box and turns track directions; four turns, or two
+  mirrors, give the selection back; a turn that does not fit says why.
+- **SE5** deleting all, only track, only machines, or only storage and doors.
+- **SE6** a pasted machine with no unplaced group of its kind becomes more machines of its own group.
+
+In headless Chrome with a helper:
+- **SB1** a drag on empty floor selects: to the right what is wholly inside, to the left whatever is touched, which is
+  more; Space-drag moves the view.
+- **SB2** Shift-click adds and takes away; Alt-drag takes a box away; ⌘A selects everything; Esc clears.
+- **SB3** double-clicking a machine selects every block of its group; double-clicking track selects the track joined
+  to it.
+- **SB4** the arrows nudge the selection, one undo step; dragging a selected piece moves the selection; ⌘D takes a copy
+  in hand.
+- **SB5** R turns the selection and Shift-R mirrors it, as `turnSel` says, or says why not and changes nothing.
+- **SB6** with everything selected, Selected sets every machine group's breakdowns at once, and "only the track"
+  deletes the track and nothing else.
+- `web/tests/editorbasics.test.mjs` **B2** moves the view with Space-drag, and `web/tests/editormoves.test.mjs` **M4**
+  pastes a machine with no unplaced group as more machines of its own group.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.

@@ -175,7 +175,7 @@ test("B1 undo and redo from the keyboard; a track drag is one step", { skip: !re
   } finally { close(); }
 });
 
-test("B2 scroll zooms about the pointer; dragging empty floor pans; F fits", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+test("B2 scroll zooms about the pointer; Space-drag pans; F fits", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const { b, close } = await openEditor();
   try {
     await b.key("v", "KeyV");
@@ -191,12 +191,14 @@ test("B2 scroll zooms about the pointer; dragging empty floor pans; F fits", { s
     assert.ok(z.s > fitted.s * 1.1, `zoomed in (${fitted.s} to ${z.s})`);
     const [mx1, my1] = await onMap(x, y);
     assert.ok(Math.hypot(mx1 - mx0, my1 - my0) <= 2, `the cell under the pointer stayed (moved ${Math.hypot(mx1 - mx0, my1 - my0).toFixed(1)} px)`);
-    // drag empty floor with Select: the view moves by the drag
+    // Space-drag on the floor: the view moves by the drag (a plain drag selects, docs/BUILD-CONTROLS.md part 7)
     const [ex, ey] = await page(b, "F.firstFree(1, 1)");
     const [px, py] = await page(b, `F.screenOf(${ex}, ${ey})`);
     const before = await page(b, "F.view()");
+    await b.send("Input.dispatchKeyEvent", { type: "keyDown", key: " ", code: "Space" });
     await b.mouse("mouseMoved", px, py); await b.mouse("mousePressed", px, py);
     await b.mouse("mouseMoved", px + 60, py + 30, { buttons: 1 }); await b.mouse("mouseReleased", px + 60, py + 30);
+    await b.send("Input.dispatchKeyEvent", { type: "keyUp", key: " ", code: "Space" });
     await sleep(100);
     const after = await page(b, "F.view()");
     assert.ok(Math.abs(after.ox - before.ox - 60) <= 1 && Math.abs(after.oy - before.oy - 30) <= 1, `panned by the drag (${after.ox - before.ox}, ${after.oy - before.oy})`);

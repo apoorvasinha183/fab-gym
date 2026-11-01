@@ -64,7 +64,7 @@ test("M3 a box selects what is wholly inside it", () => {
   assert.deepEqual(E.inBox(st, 0, 0, 4, 3).blocks, [1], "storage only partly inside is left out");
 });
 
-test("M4 copy and paste: same layout moved; machines take the next unplaced group; nothing changes until placed", () => {
+test("M4 copy and paste: same layout moved; machines take the next unplaced group, else more of their own; nothing changes until placed", () => {
   const st = floor();
   const before = JSON.stringify(st);
   const clip = E.copySel(st, E.inBox(st, 0, 0, 5, 3));
@@ -78,8 +78,9 @@ test("M4 copy and paste: same layout moved; machines take the next unplaced grou
   assert.deepEqual(p.rails[E.key(10, 3)], { o: [1, 0, 0, 0] }, "track directions kept");
   assert.deepEqual(p.rails[E.key(11, 3)], { o: [0, 0, 1, 0] });
   const none = E.pasteAt(st, clip, 10, 0, {});
-  assert.equal(none.blocks.some((b) => b.kind === "group"), false, "no unplaced lithography group: left out");
-  assert.match(none.skipped.join(" "), /no unplaced/i);
+  const more = none.blocks.find((b) => b.kind === "group");
+  assert.deepEqual(more && [more.group, more.count], ["L1", 3], "no unplaced lithography group: more machines of its own group (docs/BUILD-CONTROLS.md, part 7)");
+  assert.deepEqual(none.skipped, []);
   const over = E.pasteAt(st, clip, 0, 0, { litho: ["L2"] });
   assert.equal(over.ok, false);
   assert.match(over.why, /in the way|track/i);
