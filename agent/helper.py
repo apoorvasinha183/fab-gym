@@ -72,19 +72,25 @@ def plan_of(text, today=""):
     }
 
 
+NO_KEY = Path("/nonexistent/fab-gym/no-model.key")  # where a no-model helper looks for keys: nowhere
+
+
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
                  preset="meta", spend_cap=SPEND_CAP, stand_in=None, race_cap=8.0, meta_key_file=None, meta_base_url=None,
-                 poster_cap=5.0, sketch_cap=2.0, glossary_cap=5.0, runs=ROOT / "data" / "ask" / "runs"):
+                 poster_cap=5.0, sketch_cap=2.0, glossary_cap=5.0, runs=ROOT / "data" / "ask" / "runs", no_model=False):
         p = PRESETS[preset]
+        # no paid model (tests; docs/RUNS.md, part 3): the real keys are hidden; a key file named here (a fake server) stays
+        no_model = no_model or os.environ.get("FABGYM_NO_MODEL") == "1"
+        self.no_model = no_model
         self.preset = preset
         self.provider = p["provider"]
         self.provider_label = p["label"]
         self.web = Path(web).resolve()
         self.fabsim = Path(fabsim)
         self.smt2020 = Path(smt2020)
-        self.key_file = Path(key_file if key_file is not None else p["key_file"]).expanduser()
+        self.key_file = Path(key_file).expanduser() if key_file is not None else NO_KEY if no_model else Path(p["key_file"]).expanduser()
         self.jobs_dir = Path(jobs)
         # numbered runs, kept for good (docs/RUNS.md): data/ask/runs/Q-0004/ holds the setup, the log and the report
         self.runs_dir = Path(runs)
@@ -98,7 +104,7 @@ class Helper:
         # stand-in that answers from recorded replies and spends nothing
         self.total_cap = float(spend_cap)
         self.stand_in = Path(stand_in) if stand_in else None
-        self.meta_key_file = Path(meta_key_file).expanduser() if meta_key_file else PRESETS["meta"]["key_file"]
+        self.meta_key_file = Path(meta_key_file).expanduser() if meta_key_file else NO_KEY if no_model else PRESETS["meta"]["key_file"]
         self.meta_base_url = meta_base_url or PRESETS["meta"]["base_url"]
         self.race_meter = spend.Meter(spend.price("meta", race.MODEL), cap_usd=race_cap, path=self.jobs_dir.parent / "spend-race.json")
         self.poster_meter = spend.Meter({}, cap_usd=poster_cap, path=self.jobs_dir.parent / "spend-poster.json")
@@ -645,9 +651,10 @@ def main():
     a.add_argument("--stand-in", help="answer Meta's models from recorded replies in this folder (tests, no key); spends nothing")
     a.add_argument("--runs", default=str(ROOT / "data" / "ask" / "runs"), help="where numbered runs are kept (docs/RUNS.md)")
     a.add_argument("--threads", type=int, default=4, help="cores the simulator uses for a question (at most 4)")
+    a.add_argument("--no-model", action="store_true", help="reach no paid model (tests): examples, hand-written setups and --stand-in only")
     o = a.parse_args()
     h = Helper(smt2020=o.smt2020, quick=o.quick, preset=o.preset, spend_cap=o.spend_cap, stand_in=o.stand_in, runs=o.runs,
-               threads=max(1, min(4, o.threads)))
+               threads=max(1, min(4, o.threads)), no_model=o.no_model)
     srv = serve(h, o.port)
     state = f"{h.model_name} on {h.provider_label}" if h.model_connected() else "not connected: examples and hand-written scenarios only"
     s = h.meter.summary()

@@ -185,3 +185,9 @@ the real `data/ask/runs/`.
   run one file at a time (the paused floor coach's left out), with the two tests changed above. On the Floor, a
   two-family setup (copies in the halls) and a one-family setup with its own rule (first come, first served) play
   their scored runs exactly: the same lot-steps and finished lots as the engine's receipt.
+- 1 Nov, the founder: "i hope the simulation tests are not burning any tokens? Check before interfering", and "No LLM in
+  the testing path". Checked first: no test spent anything (Race the AI, posters and sketches run on recorded replies;
+  questions use the examples or a written setup), but a test helper could see the real Meta key, so one test asking a
+  question outside the examples would have spent. Now a helper started with `--no-model`, or under
+  `FABGYM_NO_MODEL=1`, looks for keys nowhere; every page test's helper passes `--no-model`, the Python tests set the
+  variable, and `agent/tests/test_no_model.py` checks all of it ("Air gap", tests; "Unplugged", code).
