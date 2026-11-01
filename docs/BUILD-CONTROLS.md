@@ -126,6 +126,65 @@ written by Build's own `fabText`):
   no stars are given.
 - **BS3** Storage's description says what it does, and says nothing waits there when ports are unlimited.
 
+## Part 4: the Floor's settings in Build (written 1 November 2026, before its tests and code)
+
+The founder: "Part 4 go". Found before: the Floor's Simulation settings change the SMT2020 testbed with dials (the
+dispatch rule, breakdowns, repair time, demand, urgent lots, rework, quality holds and a cap). Build's fab file
+already has a record for four of them: demand is how often a `release` sends a lot in, urgent lots are a `release`
+of a higher priority, rework is a `step`'s chance of sending a lot back, and quality holds are the `defects` record.
+Build never wrote any of them. The dispatch rule has no record: it is handed to a run from outside, so a fab file
+cannot carry it. Breakdowns and repair are already set per machine group in Build, and the cap and cars in Whole fab.
+
+1. **The simulator reads `dispatch RULE`** (`today`, `fifo`, `spt`, `cr` or `random`, the rules of
+   `docs/PROBLEM.md`). A run that is not handed a rule of its own uses the file's; with no line, or `dispatch today`,
+   nothing changes, so every earlier result stays as it was. An unknown rule is refused with its line number. A
+   receipt names the file's rule as its policy.
+2. **The layout checks warn** (`holds_without_rework`) when quality holds are on and no step sends lots back: a hold
+   only follows a check that finds a fault, so the setting would do nothing.
+3. **Whole fab gains "How the fab runs"**, five rows under the cars, cap and ports, each with a line on what it does:
+   - **Dispatch rule**: Today's rule (urgent first, then no re-setup, then oldest), First come, first served, or
+     Quickest job first; the last two write `dispatch fifo` or `dispatch spt`.
+   - **Demand**: ×0.5, ×0.75, ×1, ×1.25 or ×1.5; every `release` sends lots that much more often (the teaching fab
+     sends a lot every 30 minutes at ×1 and every 20 at ×1.5).
+   - **Urgent lots**: on the teaching fab, which has none, None, 1 for every 10 lots, or 1 for every 5: a second
+     `release` of priority 20 named `Hot`, its gap the regular gap times 10 or 5, its first lot half a regular gap in.
+     On the SMT2020 testbed, which has its own urgent lots, None, ×0.5, ×1 or ×2 of them, as the Floor's dial does.
+   - **Rework**: on the teaching fab, which has none, None, 1%, 2% or 5%: each check (the five steps on the three
+     measuring machines) sends that share of lots back to redo the step before, as the SMT2020 testbed's lithography
+     checks do (0.7% to 1.8% of lots, back to the exposure). On the SMT2020 testbed, None, ×1, ×2 or ×4 of its own.
+   - **Quality holds**: Off, On or ×2. On writes `defects 120 240 60`: when a check sends a lot back, the measuring
+     machine that found it is held for 120 minutes, and the other lots it measured in the 240 minutes before are held
+     for 60 (assumed, as on the Floor; `docs/RL-DEFECTS.md`).
+   Demand scales the urgent lots too. At their first settings nothing is written, so Free build's fab file is as it was.
+4. **Challenges start at today's settings.** Changing any of the five in a challenge makes the run an experiment that
+   earns no stars, as a port limit does, and the banner names what changed.
+
+## Part 4: tests (written before the code)
+
+`crates/fabsim/tests/dispatch.rs`:
+- **FD1** with no `dispatch` line and with `dispatch today`, a run of the Free build fixture is the same, event for
+  event, on two seeds.
+- **FD2** with `dispatch fifo`, and with `dispatch spt`, a run is the run `policy::run_with` gives under that rule on
+  the file without the line; an unknown rule is refused naming its line; the record survives writing the shop out.
+- **FD3** `fabsim receipt` on a file with `dispatch fifo` names `fifo` as the policy and lists the FIFO run's jobs.
+- **FD4** the checks warn `holds_without_rework` for quality holds with no step sending lots back, and not once a step
+  does.
+
+`web/tests/buildsettings.test.mjs` (in Node on editor-core.js, and headless Chrome with a helper; nothing is spent):
+- **BF1** at the first settings, the fab file is the one written before part 4, for Free build and every challenge.
+- **BF2** each setting writes its lines on the teaching fab: `dispatch fifo`; demand ×1.5 gives a release every 20
+  minutes; 1 urgent lot for every 5 gives a priority 20 release every 100 minutes at ×1.5; rework 5% sends lots back
+  from each of the five check steps to the step before with chance 0.05; quality holds On give `defects 120 240 60`
+  and ×2 give `defects 240 480 120`.
+- **BF3** on a fab that has its own urgent lots and rework (as the SMT2020 testbed does), urgent ×2 halves those
+  releases' gaps, None removes them, and rework ×2 doubles each rework chance (at most 1).
+- **BF4** Whole fab shows the five rows, each with a line on what it does; choosing an option changes the next fab file.
+- **BF5** a fab file with all five set passes the layout checks and runs through the helper; with quality holds On and
+  no rework, the checks give the warning.
+- **BF6** in a challenge the five start at today's settings; changing one makes the run an experiment with no stars,
+  and the banner says so.
+- **BF7** at 1,440 x 900, 1,440 x 760 and 1,280 x 720 the page does not scroll with Whole fab open.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
