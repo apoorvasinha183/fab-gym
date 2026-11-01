@@ -128,7 +128,7 @@ test("G7 the hint line follows the tool, and the lit cell follows the pointer", 
 test("G8 each challenge's palette holds its own tools, none disabled", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const p = await openEditor();
   try {
-    assert.deepEqual(await palette(p), ["select", "rail", "erase", "entry", "exit", "stocker"], "challenge 1");
+    assert.deepEqual(await palette(p), ["select", "rail", "route", "erase", "entry", "exit", "stocker"], "challenge 1 (Route comes with Track, docs/BUILD-CONTROLS.md part 8)");
     await tab(p, 1);
     assert.deepEqual(await palette(p), ["select"], "challenge 2");
     await tab(p, 4);

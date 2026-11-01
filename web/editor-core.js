@@ -550,7 +550,9 @@
   /** A copy placed with its corner at (x, y), without changing the floor: the new pieces and track, whether all of it
    * fits (and why not), and the machines left out. A copied machine takes the next of `available[area]` (unplaced
    * groups of its kind). */
-  function pasteAt(st, clip, x, y, available) {
+  function pasteAt(st, clip, x, y, available, known) {
+    // the groups this fab knows (a blueprint may come from another fab, part 8); none given means any
+    const knows = (g) => !known || (known instanceof Set ? known.has(g) : known.includes(g));
     const avail = {};
     for (const a of Object.keys(available || {})) avail[a] = available[a].slice();
     const blocks = [], rails = {}, skipped = [];
@@ -559,8 +561,8 @@
       const b = { kind: c.kind, x: x + c.dx, y: y + c.dy, w: c.w, h: c.h };
       if (c.kind === "group") {
         // an unplaced group of its kind first; else more machines of its own group, in a new place (part 7)
-        const g = (avail[c.area] || []).shift() || c.group;
-        if (!g) { skipped.push(`No unplaced ${c.area} group is left, so one machine was left out.`); continue; }
+        const g = (avail[c.area] || []).shift() || (c.group && knows(c.group) ? c.group : null);
+        if (!g) { skipped.push(c.group && !knows(c.group) ? `${c.group} is not in this fab and no unplaced ${c.area} group is left, so it was left out.` : `No unplaced ${c.area} group is left, so one machine was left out.`); continue; }
         Object.assign(b, { area: c.area, group: g, count: c.count });
       }
       const f = isFree(st, b.x, b.y, b.w, b.h);
@@ -639,6 +641,110 @@
     return out;
   }
 
+  // ---------- editing that knows it is a fab (docs/BUILD-CONTROLS.md, part 8)
+  const cellsOf = (kk) => kk.split(",").map(Number);
+  const covered = (st, x, y) => st.blocks.some((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h);
+  /** The shortest way over free floor from `from` (a key or keys: track or free floor) to `to` (a key or keys), laid
+   * as one-way track from start to end and joined to the track at both ends; `avoid` keys are never crossed. */
+  function route(st, from, to, avoid) {
+    const starts = [].concat(from), bad = new Set(avoid || []);
+    const inside = (x, y) => x >= 0 && y >= 0 && x < st.W && y < st.H;
+    const open = (kk) => { const [x, y] = cellsOf(kk); return inside(x, y) && !st.rail[kk] && !bad.has(kk) && !covered(st, x, y); };
+    const goals = new Set([].concat(to).filter((kk) => st.rail[kk] || open(kk)));
+    const prev = new Map(), q = [];
+    for (const s0 of starts) { const [x, y] = cellsOf(s0); if (!prev.has(s0) && inside(x, y) && !covered(st, x, y)) { prev.set(s0, null); q.push(s0); } }
+    if (!q.length) return { ok: false, why: "A route starts on track or on empty floor." };
+    let end = null;
+    for (let i = 0; i < q.length && !end; i++) {
+      const c = q[i], [x, y] = cellsOf(c);
+      for (let d = 0; d < 4 && !end; d++) {
+        const nk = key(x + D[d][0], y + D[d][1]);
+        if (prev.has(nk)) continue;
+        if (goals.has(nk)) { prev.set(nk, c); end = nk; }
+        else if (open(nk)) { prev.set(nk, c); q.push(nk); }
+      }
+    }
+    if (!end) return { ok: false, why: "There is no free way between them: machines or track block every way." };
+    const path = [];
+    for (let c = end; c != null; c = prev.get(c)) path.unshift(c);
+    const out = cloneSt(st);
+    for (let i = 0; i < path.length; i++) {
+      out.rail[path[i]] = out.rail[path[i]] || { o: [0, 0, 0, 0] };
+      if (i + 1 < path.length) {
+        const [x, y] = cellsOf(path[i]), [nx, ny] = cellsOf(path[i + 1]);
+        out.rail[path[i]].o[D.findIndex(([dx, dy]) => x + dx === nx && y + dy === ny)] = 1;
+      }
+    }
+    return { ok: true, why: "", state: out, path };
+  }
+  /** A cut of track (keys) out of `st`: the cut tiles, the pieces left that led into it, and the pieces it led to. */
+  function cutGaps(st, cells) {
+    const cut = new Set(cells), preds = new Set(), succs = new Set();
+    for (const kk of Object.keys(st.rail)) {
+      const [x, y] = cellsOf(kk);
+      st.rail[kk].o.forEach((on, d) => {
+        if (!on) return;
+        const nk = key(x + D[d][0], y + D[d][1]);
+        if (!st.rail[nk]) return;
+        if (!cut.has(kk) && cut.has(nk)) preds.add(kk);
+        if (cut.has(kk) && !cut.has(nk)) succs.add(nk);
+      });
+    }
+    return { cells: [...cut].sort(), preds: [...preds].sort(), succs: [...succs].sort() };
+  }
+  /** Each piece that led into a cut, routed around the cut tiles to the nearest piece the cut led to. */
+  function heal(st, gaps) {
+    let cur = cloneSt(st);
+    const paths = [], cut = new Set(gaps.cells);
+    for (const p of gaps.preds) {
+      if (!cur.rail[p]) continue;
+      const [x, y] = cellsOf(p);
+      cur.rail[p].o = cur.rail[p].o.map((on, d) => (on && cut.has(key(x + D[d][0], y + D[d][1])) ? 0 : on));
+      const targets = gaps.succs.filter((s2) => cur.rail[s2]);
+      if (!targets.length) return { ok: false, why: "Nothing is left after the cut to reconnect to." };
+      const r = route(cur, p, targets, gaps.cells);
+      if (!r.ok) return { ok: false, why: r.why };
+      cur = r.state; paths.push(r.path);
+    }
+    return { ok: true, why: "", state: cur, paths };
+  }
+  /** Does list `a` sort before list `b`, field by field? */
+  const before = (a, b) => { for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i]; return false; };
+  /** A free spot for a w × h piece near (x, y) that touches the track: (x, y) itself if it does, else the nearest within
+   * `radius` tiles; null when there is none. */
+  function snapBeside(st, x, y, w, h, radius) {
+    const r = radius == null ? 3 : radius, fits = (nx, ny) => isFree(st, nx, ny, w, h).ok && beside(st, { x: nx, y: ny, w, h }).length > 0;
+    if (fits(x, y)) return [x, y];
+    let best = null, bk = null;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (!fits(nx, ny)) continue;
+      const kk = [Math.max(Math.abs(dx), Math.abs(dy)), Math.abs(dx) + Math.abs(dy), ny, nx];
+      if (!bk || before(kk, bk)) { best = [nx, ny]; bk = kk; } // nearest by steps, then by distance, then top, then left
+    }
+    return best;
+  }
+  /** The track the entry reaches, and the track from which an exit can be reached, along the track's directions. */
+  function reach(st) {
+    const nodes = (kind) => st.blocks.filter((b) => b.kind === kind).map((b) => beside(st, b)[0]).filter(Boolean).map(([x, y]) => key(x, y));
+    const next = (kk) => { const [x, y] = cellsOf(kk); return st.rail[kk].o.map((on, d) => (on ? key(x + D[d][0], y + D[d][1]) : null)).filter((n) => n && st.rail[n]); };
+    const back = {};
+    for (const kk of Object.keys(st.rail)) for (const n of next(kk)) (back[n] = back[n] || []).push(kk);
+    const walk = (seed, step) => { const seen = new Set(seed), todo = [...seed]; while (todo.length) for (const n of step(todo.pop())) if (!seen.has(n)) { seen.add(n); todo.push(n); } return [...seen]; };
+    return { fromEntry: walk(nodes("entry"), next), toExit: walk(nodes("exit"), (kk) => back[kk] || []) };
+  }
+  /** Every other machine group (`scope` "all") or every group of the same kind ("kind") given this group's breakdowns
+   * and what happens when it breaks. */
+  function sameForKind(st, group, scope) {
+    const out = cloneSt(st), src = out.blocks.find((b) => b.kind === "group" && b.group === group);
+    if (!src) return out;
+    for (const b of out.blocks) {
+      if (b.kind !== "group" || b.group === group || (scope !== "all" && b.area !== src.area)) continue;
+      for (const f of ["fail", "rec"]) { if (src[f] == null) delete b[f]; else b[f] = cloneSt(src[f]); }
+    }
+    return out;
+  }
+
   /** The 1–9 hotbar: Select, Track, Erase, then the six most recent pieces (most recent first), filled in a fixed order. */
   function hotbar(recent) {
     const out = ["select", "rail", "erase"];
@@ -657,7 +763,7 @@
   }
 
   const api = { TILE_M, AREAS, AREA_OF, TEACHING_SHOP, PRICE, CHALLENGES, template, toPlan, fabText, flowOptions, flowKind, flowWords, applyFlow, blockMood, cellOfNode, beside, key, spend, overridesFor, meets, vehicleAt,
-    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave, connectedRail, moveSel, turnSel, deleteSel,
+    History, zoomAt, panBy, isFree, footprint, ghost, turn, pickAt, inBox, copySel, pasteAt, hotbar, engrave, connectedRail, moveSel, turnSel, deleteSel, route, cutGaps, heal, snapBeside, reach, sameForKind,
     trouble, pile, jamStyle, advise, floatText, grow, roomFor, stars, ROOM_MAX };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.FabEditor = api;

@@ -39,6 +39,7 @@
   const hist = E.History(200);
   // the foreman keys (docs/EDITOR-MOVES.md): recent pieces for the hotbar, a turned piece in hand, the box, the clipboard
   let recent = [], handTurned = false, boxSel = null, boxDrag = null, clip = null, pasting = false, pastePlan = null;
+  let routeFrom = null, routePlan = null, healGaps = null; // part 8
   const PIECES = new Set(["stocker", "entry", "exit", ...E.AREAS]);
   /** Take a tool in hand, as the palette, a hotbar key or Q does; a piece goes to the front of the recent list. */
   function take(t) {
@@ -56,6 +57,8 @@
     return handTurned && (kind === "entry" || kind === "exit") ? [h, w] : [w, h];
   }
   /** Unplaced groups of each kind, for a paste. */
+  /** The machine groups this fab's base file has (a blueprint may come from another fab, part 8). */
+  const knownGroups = () => new Set(base.split("\n").filter((l) => l.startsWith("group\t")).map((l) => l.split("\t")[1]));
   function unplaced() {
     const placed = new Set(s.blocks.filter((b) => b.kind === "group").map((b) => b.group)), out = {};
     for (const g of Object.keys(areaOfGroup)) {
@@ -299,6 +302,11 @@
       const g = ghostAt, q = [P(g.x, g.y), P(g.x + g.w, g.y), P(g.x + g.w, g.y + g.h), P(g.x, g.y + g.h)];
       poly(q); ctx.fillStyle = g.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)"; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = g.ok ? "rgba(126,232,216,.9)" : "rgba(255,107,87,.95)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (tool === "route" && routeFrom) {
+      const [fx, fy] = routeFrom.split(",").map(Number);
+      outline(fx, fy, 1, 1, "#7EE8D8");
+      if (routePlan && routePlan.ok) for (const c of routePlan.path) { const [cx, cy] = c.split(",").map(Number); poly([P(cx, cy), P(cx + 1, cy), P(cx + 1, cy + 1), P(cx, cy + 1)]); ctx.fillStyle = "rgba(126,232,216,.28)"; ctx.fill(); }
     }
     drawGears();
     if (stale || running) {
@@ -828,7 +836,7 @@
     // a grid of keys, only this challenge's tools, nothing greyed (docs/EDITOR-GAME.md)
     const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}${k ? ` (key ${k})` : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
     const sec = (name, keys) => (keys ? `<h4>${name}</h4><div class="keys">${keys}</div>` : "");
-    let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E"));
+    let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("route", "Route", "T") + pb("erase", "Erase", "E"));
     // every machine as its map tile, in even rows; its cartoon on hover (docs/BUILD-CONTROLS.md, parts 1 and 6)
     const lever = new Set(leversOf(ch()).map((l) => l.kind).filter(Boolean));
     h += `<h4>Machines</h4><div class="keys mks">` + E.AREAS.map((a) => {
@@ -836,11 +844,20 @@
       return `<button class="mk${lever.has(a) ? " lever" : ""}" data-kind="${a}" style="--fam:${FAM[a]}" aria-label="${esc(AREA[a][0])}: ${n} on the floor, ${money(E.PRICE[a])} a machine${lever.has(a) ? ", one of this challenge's levers" : ""}">` +
         `${svg(a, E.engrave(FAM[a]).cut)}<span class="n">${n}</span></button>`;
     }).join("") + `</div>`;
+    // blueprints (part 8): kept in this browser, each with a small drawing of its pieces
+    const bps = blueprints();
+    if (bps.length) h += `<h4>Blueprints</h4><div class="bps">` + bps.map((bp, i) => `<span class="bp"><button data-bp="${i}" title="Take it in hand">${bpThumb(bp.clip)}<span>${esc(bp.name)}</span></button><button class="bpx" data-bpdel="${i}" aria-label="Forget ${esc(bp.name)}">×</button></span>`).join("") + `</div>`;
     const fresh = E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join("");
     if (fresh) h += sec("New groups", fresh);
     h += sec("Moving wafers", pb("entry", INFRA.entry[0]) + pb("exit", INFRA.exit[0]) + pb("stocker", INFRA.stocker[0]));
     $("pal").innerHTML = h;
     $("pal").querySelectorAll("button[data-t]").forEach((b) => (b.onclick = () => take(b.dataset.t)));
+    $("pal").querySelectorAll("[data-bp]").forEach((bt) => (bt.onclick = () => {
+      const bp = blueprints()[+bt.dataset.bp]; if (!bp) return;
+      clip = bp.clip; tool = "select"; syncPal(); pasting = true; ghostAt = null;
+      $("status").textContent = `"${bp.name}" in hand: click where it should go. Esc drops it.`; draw();
+    }));
+    $("pal").querySelectorAll("[data-bpdel]").forEach((bt) => (bt.onclick = () => { const l = blueprints(); l.splice(+bt.dataset.bpdel, 1); saveBlueprints(l); buildPalette(); }));
     $("pal").querySelectorAll("button[data-kind]").forEach((bt) => (bt.onclick = () => {
       const a = bt.dataset.kind, b = s.blocks.find((z) => z.kind === "group" && z.area === a);
       take(a); // in hand: a click places one machine, Shift-drag fills (part 2)
@@ -858,6 +875,14 @@
       btn.title = `${btn.title.replace(/ \(key \w+\)$/, "")} (key ${i + 1})`;
     });
   }
+  // blueprints in this browser's storage (a convenience for this viewer; part 8)
+  function blueprints() { try { return JSON.parse(localStorage.getItem("fabgym.blueprints") || "[]") || []; } catch (e) { return []; } }
+  function saveBlueprints(l) { try { localStorage.setItem("fabgym.blueprints", JSON.stringify(l)); } catch (e) { $("status").textContent = "This browser would not keep the blueprint."; } }
+  function bpThumb(c) {
+    const W = Math.max(1, c.w), H = Math.max(1, c.h);
+    return `<svg viewBox="0 0 ${W} ${H}" width="34" height="34" aria-hidden="true">` + c.rails.map((r) => `<rect x="${r.dx + 0.3}" y="${r.dy + 0.3}" width=".4" height=".4" fill="#7EE8D8"/>`).join("") +
+      c.blocks.map((b) => `<rect x="${b.dx + 0.08}" y="${b.dy + 0.08}" width="${b.w - 0.16}" height="${b.h - 0.16}" rx=".2" fill="${b.kind === "group" ? FAM[b.area] || "#8FB3AE" : b.kind === "stocker" ? "#8A6A2C" : "#2F6F68"}"/>`).join("") + `</svg>`;
+  }
   const onFloor = (a) => s.blocks.filter((b) => b.kind === "group" && b.area === a).reduce((x, b) => x + b.count, 0);
   /** The cartoon card beside the palette, for the machine key pointed at or focused (part 6). */
   function palCard(bt) {
@@ -874,11 +899,12 @@
   }
   function syncPal() { $("pal").querySelectorAll("button[data-t]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
   // machines are never locked: the budget is what limits them (docs/BUILD-CONTROLS.md)
-  const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || t in AREA; };
+  const allowed = (t) => { const c = ch(); return !c || !c.tools || c.tools.includes(t) || t in AREA || (t === "route" && c.tools.includes("rail")); };
   function renderHint() {
     const h = $("hint"); if (!h) return;
     h.textContent = pasting ? "Click where the copy should go. Esc puts it down."
       : tool === "rail" ? "Drag across the floor to lay track. Cars run the way you drag."
+      : tool === "route" ? (routeFrom ? "Click where the track should go: the shortest free way is laid, one way." : "Click where the track should start: on track or on empty floor.")
       : tool === "erase" ? "Click or drag over track and machines to remove them."
       : tool in AREA ? `Click to place one ${AREA[tool][0].toLowerCase()} machine; click one of them for one more there. Shift-drag fills. Esc puts it down.`
       : ["entry", "exit", "stocker"].includes(tool) ? "Click an empty spot to place it. R turns it."
@@ -894,6 +920,7 @@
     return true;
   }
   function edited() {
+    if ($("heal")) $("heal").hidden = true; // an offer to reconnect lasts until the next edit
     { const b = sel && sel.id && s.blocks.find((z) => z.id === sel.id); lastEditAt = b ? [b.x + (b.w - 1) / 2, b.y + (b.h - 1) / 2] : hover ? [...hover] : null; }
     // one undo step per gesture: the state before the gesture is kept once, at its first change
     if (!(drag && drag.recorded)) { hist.push(lastSnap); if (drag) drag.recorded = true; }
@@ -944,8 +971,15 @@
   }
   function deleteSelection(only) {
     if (!boxSel) return;
+    const gaps = only === "all" || only === "track" || !only ? E.cutGaps(s, boxSel.rails) : null;
     useState(E.deleteSel(s, boxSel, only || "all"));
     boxSel = null; sel = null; buildPalette(); inspector(); edited();
+    if (gaps) offerHeal(gaps);
+  }
+  /** After a cut of track that a run passed through: offer to reconnect around it (never done by itself). */
+  function offerHeal(gaps) {
+    if (!gaps.preds.length || !gaps.succs.length) return;
+    healGaps = gaps; $("heal").hidden = false;
   }
   function restore(st) {
     if (!st) return;
@@ -1007,7 +1041,7 @@
       if (g) { sel = g.kind === "group" ? { id: g.id } : { rail: g.rail }; ctlTab("sel"); inspector(); draw(); return; }
     }
     if (pasting && clip && e.button === 0) {
-      const [ax, ay] = floorCell(e), plan = E.pasteAt(s, clip, ax, ay, unplaced());
+      const [ax, ay] = floorCell(e), plan = E.pasteAt(s, clip, ax, ay, unplaced(), knownGroups());
       if (!plan.ok) { $("status").textContent = plan.why; return; }
       let id = Math.max(0, ...s.blocks.map((z) => z.id));
       for (const b of plan.blocks) {
@@ -1053,16 +1087,36 @@
     }
     if (x < 0 || y < 0 || x >= s.W || y >= s.H) return;
     const k = E.key(x, y), b = blockAt(x, y);
+    // Route (part 8): the first click sets the start, the second lays the shortest way to it
+    if (tool === "route") {
+      if (!routeFrom) {
+        if (b) { $("status").textContent = "A route starts on track or on empty floor."; return; }
+        routeFrom = k; $("status").textContent = "Point where the track should go, then click. Esc starts again."; draw(); return;
+      }
+      const r = E.route(s, routeFrom, k);
+      if (!r.ok) { $("status").textContent = r.why; return; }
+      useState(r.state); routeFrom = null; routePlan = null; sel = { rail: k }; inspector(); edited();
+      $("status").textContent = `Laid ${r.path.length} track pieces.`; return;
+    }
     if (tool === "select") {
       boxSel = null; // a click on one piece selects just that piece
       sel = b ? { id: b.id } : s.rail[k] ? { rail: k } : null;
       if (b && mode === "build") { drag = { move: b, dx: x - b.x, dy: y - b.y }; cv.setPointerCapture(e.pointerId); }
       inspector(); draw(); return;
     }
-    if (tool === "erase") { if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) delete s.rail[k]; else return; sel = null; buildPalette(); inspector(); edited(); drag = { erase: true, recorded: true }; cv.setPointerCapture(e.pointerId); return; }
+    if (tool === "erase") {
+      const before = snap(), cut = [];
+      if (b) s.blocks = s.blocks.filter((z) => z !== b); else if (s.rail[k]) { delete s.rail[k]; cut.push(k); } else return;
+      sel = null; buildPalette(); inspector(); edited(); drag = { erase: true, recorded: true, before, cut }; cv.setPointerCapture(e.pointerId); return;
+    }
     if (tool === "rail") { if (b) return; if (!s.rail[k]) s.rail[k] = { o: [0, 0, 0, 0] }; drag = { last: k }; sel = { rail: k }; cv.setPointerCapture(e.pointerId); inspector(); edited(); return; }
     const kind = placeKind(), [w, h] = handDims(kind);
     if (kind === "group" && b && b.kind === "group" && b.area === tool) { b.count++; sel = { id: b.id }; buildPalette(); refreshCtl(); edited(); return; }
+    // a piece pointed at free floor off the track snaps beside it, within 3 tiles; Alt places it where pointed (part 8)
+    if (!e.altKey && ["group", "stocker", "entry", "exit"].includes(kind) && free(x, y, w, h) && !E.beside(s, { x, y, w, h }).length) {
+      const sp = E.snapBeside(s, x, y, w, h);
+      if (sp) [x, y] = sp;
+    }
     if (!free(x, y, w, h)) return;
     if (kind === "group") {
       const nb = placeMachine(tool, x, y);
@@ -1098,12 +1152,18 @@
     const pk = placeKind();
     if (pasting && clip) {
       const [ax, ay] = floorCell(e);
-      pastePlan = E.pasteAt(s, clip, ax, ay, unplaced());
+      pastePlan = E.pasteAt(s, clip, ax, ay, unplaced(), knownGroups());
       ghostAt = { kind: "paste", x: ax, y: ay, w: clip.w, h: clip.h, ok: pastePlan.ok, why: pastePlan.why };
       $("status").textContent = pastePlan.ok ? `Click to paste${pastePlan.skipped.length ? ". " + pastePlan.skipped.join(" ") : ""}` : pastePlan.why;
+    } else if (tool === "route" && routeFrom && inb) {
+      routePlan = E.route(s, routeFrom, E.key(x, y));
+      $("status").textContent = routePlan.ok ? `${routePlan.path.length} track pieces: click to lay them.` : routePlan.why;
+      ghostAt = null;
     } else if (["group", "stocker", "entry", "exit"].includes(pk)) {
       const [gw, gh] = handDims(pk), f = E.isFree(s, x, y, gw, gh, undefined, true);
       ghostAt = { kind: pk, x, y, w: gw, h: gh, ok: f.ok, why: f.why };
+      // the spot it will snap to (part 8)
+      if (f.ok && !e.altKey && inb && !E.beside(s, { x, y, w: gw, h: gh }).length) { const sp = E.snapBeside(s, x, y, gw, gh); if (sp) ghostAt = { ...ghostAt, x: sp[0], y: sp[1], snapped: true }; }
       if (ghostAt.ok && pk === "group" && !nextGroup(tool)) ghostAt = { ...ghostAt, ok: false, why: "Every group of this kind is placed. Add machines with + under Selected." };
     } else ghostAt = null;
     if (drag && inb) {
@@ -1116,7 +1176,7 @@
         if ((nx !== b.x || ny !== b.y) && free(nx, ny, b.w, b.h, b)) { b.x = nx; b.y = ny; edited(); }
       } else if (drag.erase) {
         const b = blockAt(x, y);
-        if (b) { s.blocks = s.blocks.filter((z) => z !== b); buildPalette(); } else if (s.rail[k]) delete s.rail[k]; else return;
+        if (b) { s.blocks = s.blocks.filter((z) => z !== b); buildPalette(); } else if (s.rail[k]) { delete s.rail[k]; if (drag.cut) drag.cut.push(k); } else return;
         edited();
       } else if (k !== drag.last && !blockAt(x, y)) {
         const [lx, ly] = drag.last.split(",").map(Number), dx = x - lx, dy = y - ly;
@@ -1142,7 +1202,9 @@
       $("status").textContent = boxSel ? `${boxSel.blocks.length} piece${boxSel.blocks.length === 1 ? "" : "s"} and ${boxSel.rails.length} track piece${boxSel.rails.length === 1 ? "" : "s"} selected. ⌘C copies, Delete removes.` : "";
       draw(); return;
     }
+    const was = drag;
     drag = null; inspector();
+    if (was && was.erase && was.cut && was.cut.length) offerHeal(E.cutGaps(was.before, was.cut));
   });
   cv.addEventListener("contextmenu", (e) => e.preventDefault()); // the right button pans
   // double-click: every block of a machine's group, or all the track joined to a piece (part 7)
@@ -1328,9 +1390,13 @@
         if (f.kind === "random") h += `<div class="row">${num("fa", f.mttf_minutes / 60, "about every", "h")}${num("fb", f.mttr_minutes / 60, "fix takes", "h")}</div>`;
         if (f.kind === "by_wafers") h += `<div class="row">${num("fa", f.every, "after", "wafers")}${num("fb", (f.minutes || [60])[0], "fix takes", "min")}</div>`;
         h += row("rec", `<label for="rsel">When it breaks</label>${recSel("rsel", r)}`);
+        // the same breakdowns for every group, or every group of this kind (part 8)
+        const kinds = new Set(s.blocks.filter((z) => z.kind === "group" && z.area === b.area).map((z) => z.group)).size;
+        h += `<div class="row same-btns"><button class="btn" data-same="all">Same for every machine group</button>${kinds > 1 ? `<button class="btn" data-same="kind">Same for every ${esc(AREA[b.area][0])} group</button>` : ""}</div>`;
         if (r.kind === "swap_to_spare") h += `<div class="row">${num("ra", r.spares, "spares", `(${money(r.spares * E.PRICE[b.area])})`)}${num("rb", r.swap_minutes, "swap takes", "min")}</div>`;
         h += `<div class="row"><button class="btn" id="del">Remove</button></div>`;
         ins.innerHTML = h;
+        ins.querySelectorAll("[data-same]").forEach((bt) => (bt.onclick = () => { useState(E.sameForKind(s, b.group, bt.dataset.same)); refreshCtl(); edited(); $("status").textContent = "Breakdowns copied."; }));
         $("up").onclick = () => { b.count++; refreshCtl(); buildPalette(); edited(); };
         $("dn").onclick = () => { b.count = Math.max(1, b.count - 1); refreshCtl(); buildPalette(); edited(); };
         $("fsel").onchange = (e) => { setFail(b, e.target.value); refreshCtl(); edited(); };
@@ -1383,6 +1449,7 @@
       const any = rails.some((k) => s.rail[k].fail);
       h += row("rfail", `<label for="bulk-rfail">Track breakdowns</label><select id="bulk-rfail"><option value="">Never</option><option value="random" ${any ? "selected" : ""}>Now and then</option></select>`);
     }
+    h += `<div class="row bulk-btns"><button class="btn" data-act="save">Save as a blueprint</button></div><div class="row bp-new" id="bp-new" hidden><input id="bp-name" placeholder="Name it" aria-label="Blueprint name" maxlength="40"><button class="btn" id="bp-save">Save</button></div>`;
     h += `<div class="row bulk-btns"><button class="btn" data-act="turn" title="R">Turn</button><button class="btn" data-act="mirror" title="Shift-R">Mirror</button><button class="btn" data-act="dup" title="⌘D">Duplicate</button></div>`;
     h += `<div class="row bulk-btns"><span class="note">Delete:</span><button class="btn" data-del="all" title="Delete">All of it</button>${rails.length ? `<button class="btn" data-del="track">Only the track</button>` : ""}${gs.length ? `<button class="btn" data-del="machines">Only the machines</button>` : ""}${infra.length ? `<button class="btn" data-del="infra">Only storage and doors</button>` : ""}</div>`;
     ins.innerHTML = h;
@@ -1394,7 +1461,14 @@
       refreshCtl(); edited();
     };
     ins.querySelectorAll("[data-del]").forEach((bt) => (bt.onclick = () => deleteSelection(bt.dataset.del)));
+    $("bp-save").onclick = () => {
+      const c = E.copySel(s, boxSel), name = $("bp-name").value.trim() || `Blueprint ${blueprints().length + 1}`;
+      if (!c) return;
+      saveBlueprints([{ name, clip: c }, ...blueprints()].slice(0, 12));
+      buildPalette(); $("bp-new").hidden = true; $("status").textContent = `Saved "${name}" in the palette.`;
+    };
     ins.querySelectorAll("[data-act]").forEach((bt) => (bt.onclick = () => {
+      if (bt.dataset.act === "save") { $("bp-new").hidden = false; $("bp-name").focus(); return; }
       if (bt.dataset.act === "dup") { clip = E.copySel(s, boxSel); if (clip) { pasting = true; ghostAt = null; $("status").textContent = "A copy in hand: click where it should go. Esc drops it."; draw(); } return; }
       actSel(E.turnSel(s, boxSel, bt.dataset.act === "mirror"));
     }));
@@ -1602,6 +1676,38 @@
   }
 
   // ---------- checks
+  // one-click fixes for what the checks find (docs/BUILD-CONTROLS.md, part 8); run() changes the floor, or says why not
+  function fixFor(i) {
+    const nodeKey = (n) => { const c = E.cellOfNode(n); return c ? E.key(c[0], c[1]) : null; };
+    const viaRoute = (from, to) => { const r = E.route(s, from, to); if (!r.ok) return r.why; useState(r.state); return ""; };
+    if (i.code === "missing_stops") return { label: "Move it beside the track", run: () => {
+      const bs = s.blocks.filter((b) => b.kind === "group" && b.group === i.at[0] && !E.beside(s, b).length);
+      for (const b of bs) {
+        const rest = { ...s, blocks: s.blocks.filter((z) => z !== b) }, sp = E.snapBeside(rest, b.x, b.y, b.w, b.h, Math.max(s.W, s.H));
+        if (!sp) return "There is no free spot beside the track for it.";
+        b.x = sp[0]; b.y = sp[1];
+      }
+      return "";
+    } };
+    if (i.code === "unreachable") { const n = nodeKey(i.at[1]); return n && { label: "Connect it", run: () => viaRoute(E.reach(s).fromEntry, n) }; }
+    if (i.code === "no_way_out") { const n = nodeKey(i.at[1]); return n && { label: "Connect it onward", run: () => viaRoute(n, E.reach(s).toExit) }; }
+    if (i.code === "trap") return { label: "Connect it onward", run: () => {
+      const traps = i.at.map(nodeKey).filter(Boolean), sinks = traps.filter((t2) => { const [x, y] = t2.split(",").map(Number); return !s.rail[t2].o.some((on, d) => on && s.rail[E.key(x + D[d][0], y + D[d][1])]); });
+      return viaRoute(sinks.length ? sinks : traps, E.reach(s).toExit);
+    } };
+    if (i.code === "no_storage") return { label: "Place storage", run: () => {
+      const sp = E.snapBeside(s, Math.floor(s.W / 2) - 1, Math.floor(s.H / 2) - 1, 2, 2, Math.max(s.W, s.H));
+      if (!sp) return "There is no free spot beside the track for storage.";
+      s.blocks.push({ id: Math.max(0, ...s.blocks.map((b) => b.id)) + 1, kind: "stocker", x: sp[0], y: sp[1], w: 2, h: 2 });
+      return "";
+    } };
+    if (i.code === "holds_without_rework") return { label: "Set rework", run: () => {
+      const fl = { ...(s.flow || {}) };
+      if (E.flowKind(base).rework) delete fl.rework; else fl.rework = "p0.01";
+      s.flow = fl; return "";
+    } };
+    return null;
+  }
   function renderChecks() {
     const ul = $("issues");
     if (!checks) { ul.innerHTML = '<li><span class="chip warning">…</span><span>Checking the layout.</span></li>'; $("verdict").innerHTML = ""; return; }
@@ -1609,8 +1715,16 @@
     const errs = checks.issues.filter((i) => i.severity === "error").length;
     $("verdict").innerHTML = errs ? `<span class="chip error">${errs} to fix</span>` : '<span class="chip ok">complete</span>';
     ul.innerHTML = checks.issues.length
-      ? checks.issues.map((i, n) => `<li data-n="${n}"><span class="chip ${i.severity}">${i.severity === "error" ? "fix" : "note"}</span><span>${esc(i.message)}</span></li>`).join("")
+      ? checks.issues.map((i, n) => `<li data-n="${n}"><span class="chip ${i.severity}">${i.severity === "error" ? "fix" : "note"}</span><span>${esc(i.message)}${fixFor(i) ? ` <button type="button" class="btn fixbtn" data-fix="${n}">${esc(fixFor(i).label)}</button>` : ""}</span></li>`).join("")
       : '<li><span class="chip ok">ok</span><span>Complete and connected: every machine is on the track, and wafers can get from the way in to every machine and out again.</span></li>';
+    ul.querySelectorAll("[data-fix]").forEach((bt) => (bt.onclick = (e) => {
+      e.stopPropagation();
+      const f = fixFor(checks.issues[+bt.dataset.fix]);
+      if (!f) return;
+      const why = f.run();
+      if (why) { $("status").textContent = why; return; }
+      buildPalette(); refreshCtl(); edited();
+    }));
     ul.querySelectorAll("li[data-n]").forEach((li) => (li.onclick = () => {
       const i = checks.issues[+li.dataset.n];
       const at = i.at.map((a) => E.cellOfNode(a)).find(Boolean) || (() => { const b = s.blocks.find((z) => i.at.includes(z.group) || i.at.some((a) => z.group && a.startsWith(z.group + "#"))); return b ? [b.x, b.y] : null; })();
@@ -1635,6 +1749,13 @@
   $("pal").addEventListener("pointerout", (e) => { const bt = e.target.closest("[data-kind]"); if (bt && !bt.contains(e.relatedTarget)) palCard(null); });
   $("pal").addEventListener("focusin", (e) => { const bt = e.target.closest("[data-kind]"); if (bt) palCard(bt); });
   $("pal").addEventListener("focusout", () => palCard(null));
+  $("heal").onclick = () => {
+    if (!healGaps) return;
+    const h = E.heal(s, healGaps);
+    if (!h.ok) { $("status").textContent = h.why; return; }
+    useState(h.state); healGaps = null; buildPalette(); inspector(); edited();
+    $("status").textContent = `Reconnected around the cut with ${h.paths.reduce((a, p) => a + p.length - 2, 0)} new track pieces.`;
+  };
   $("gears").onclick = () => { gearsBtn = !gearsBtn; $("gears").setAttribute("aria-pressed", String(gearsBtn)); draw(); };
   $("ctl-find").addEventListener("input", findNow);
   $("ctl-find").addEventListener("keydown", (e) => {
@@ -1652,7 +1773,7 @@
   });
   document.addEventListener("keydown", (e) => {
     if (e.target.closest("select,input,textarea")) return;
-    const k = e.key.toLowerCase(), m = { v: "select", b: "rail", e: "erase" };
+    const k = e.key.toLowerCase(), m = { v: "select", b: "rail", e: "erase", t: "route" };
     if (e.metaKey || e.ctrlKey) {
       if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (k === "y") { e.preventDefault(); redo(); }
@@ -1685,7 +1806,7 @@
       return;
     }
     if ((k === "delete" || k === "backspace") && boxSel) { deleteSelection("all"); return; }
-    if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; $("win").hidden = true; }
+    if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; routeFrom = null; routePlan = null; $("win").hidden = true; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
     if (k === "j") { setJamMap(!jamMap); return; }
     if (k === "g") { if (!e.repeat) { gHeld = true; draw(); } return; }

@@ -178,7 +178,7 @@ test("P1 R turns wafers in, in hand and where it stands", { skip: !ready && "nee
     g = await page(b, "F.ghost()");
     assert.deepEqual([g.w, g.h], [2, 1], "R turns the ghost");
     await b.key("r", "KeyR");
-    await click(b, x, y);
+    await click(b, x, y, 1); // Alt: exactly here, since a piece off the track snaps beside it (docs/BUILD-CONTROLS.md, part 8)
     const placed = await page(b, `F.blocks().find((k) => k.kind === "entry" && k.x === ${x} && k.y === ${y})`);
     assert.ok(placed && placed.w === 1 && placed.h === 2, "placed 1 × 2");
     await b.key("v", "KeyV");

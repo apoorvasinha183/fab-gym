@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import re
 import json
+import os
 import mimetypes
 import subprocess
 import threading
@@ -358,7 +359,10 @@ class Helper:
         d = self.jobs_dir.parent / "fab"
         d.mkdir(parents=True, exist_ok=True)
         f = d / f"{hashlib.sha256(text.encode()).hexdigest()[:16]}.fab.txt"
-        f.write_text(text)
+        # written whole, then renamed into place: a run and a check of the same layout at once must never read half a file
+        tmp = d / f".{f.name}.{os.getpid()}.{threading.get_ident()}.tmp"
+        tmp.write_text(text)
+        os.replace(tmp, f)
         return f
 
     def fab_check(self, text):

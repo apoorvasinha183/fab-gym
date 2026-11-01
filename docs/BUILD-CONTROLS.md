@@ -457,3 +457,15 @@ In headless Chrome with a helper:
   - A click on one piece clears a box selection; a pasted machine of a group already on the floor takes the group's
     breakdown settings; the right button pans, so the map has no right-click menu.
 - 1 Nov, part 7, results: SE1 to SE6 and SB1 to SB6 pass, with B2 and M4 as changed and every other Build page test.
+- 1 Nov, part 8, while writing the code:
+  - Route sits in the palette beside Track and comes wherever Track does, so `web/tests/editorgame.test.mjs` G8 lists it
+    in challenge 1's tools. `web/tests/editormoves.test.mjs` P1 places wafers in on free floor off the track, which now
+    snaps beside it; it holds Alt to place them where pointed, as the spec says.
+  - Recording a film of the editing showed the checks once refusing the layout as "not a fabgym-shop 1 file": the
+    helper names a layout's file by its contents, and a run and a check of the same layout wrote the same file at
+    once, so one could read half of it. The helper now writes the file whole under another name and renames it into
+    place.
+  - Route lays track only on free floor inside the floor: on Free build's starting fab, which fills its floor's width,
+    it can run along the free rows only. The Track tool grows the floor; Route does not yet.
+- 1 Nov, part 8, results: SM1 to SM6 and SR1 to SR6 pass, with every other Build page test (G8 and P1 as changed) and
+  the helper's Build tests.
