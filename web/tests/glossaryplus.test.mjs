@@ -74,7 +74,10 @@ const REUSED = { "Wafer": "cast/base/12-wafer.webp", "Lithography": "cast/base/0
   "Polishing (CMP)": "cast/base/10-cmp.webp", "Checks (metrology)": "cast/base/02-lithomet.webp", "Lot": "cast/lots/fresh.webp",
   "Hot lot": "cast/lots/hot.webp", "Batch": "cast/lots/batch.webp", "Rework": "cast/lots/redo.webp", "Defect hold": "cast/lots/hold.webp",
   "Queue-time limit": "cast/lots/clock.webp", "Move": "cast/lots/ride.webp", "Breakdown": "cast/cmp/hurt.webp",
-  "Repair time": "cast/cmp/physio.webp", "Setup change": "cast/cmp/setup.webp" };
+  "Repair time": "cast/cmp/physio.webp", "Setup change": "cast/cmp/setup.webp",
+  // Build's controls (docs/BUILD-CONTROLS.md, part 5)
+  "Car (vehicle)": "cast/lots/ride.webp", "Load port": "cast/cmp/full.webp", "Storage (stocker)": "cast/lots/bench.webp",
+  "Demand (release rate)": "cast/lots/line.webp" };
 const words = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 
 /** A WebP file's width and height from its header (VP8, VP8L or VP8X). */

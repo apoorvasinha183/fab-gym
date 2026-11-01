@@ -185,6 +185,54 @@ cannot carry it. Breakdowns and repair are already set per machine group in Buil
   and the banner says so.
 - **BF7** at 1,440 x 900, 1,440 x 760 and 1,280 x 720 the page does not scroll with Whole fab open.
 
+## Part 5: gears, find a control, your changes, the glossary (written 1 November 2026, before its tests and code)
+
+The founder: "finish all the Build parts. Go". From the ideas page, ideas 4, 5, 7 and 8. Found before: Build locks no
+control (part 1), so the ideas page's grey gears for locked controls become lit gears for a challenge's levers. Cars,
+load ports, storage and demand have no glossary entry; every other control has one.
+
+1. **Gears on the map.** Holding G, or pressing the Controls button above the map, puts a small gear with a number on
+   every machine block and every piece of track set to break: the number of controls it has (a machine block 3:
+   machines, breakdowns, when it breaks; a breaking track piece 3: directions, when it stops, what cars do). In a
+   challenge, the gears of the levers' machines and track are lit. Letting go of G, or pressing the button again,
+   takes them away. Clicking a gear selects what it sits on.
+2. **Find a control.** A box at the top of the controls panel, reached with /, finds a control by its name, its
+   machine or a word it uses: "cap" finds Cap on lots inside, "spare" finds When it breaks (a spare is one of its
+   choices), "polish" finds the polishing machines' controls, "rule" finds Dispatch rule. Enter, or a click, opens the
+   right tab (selecting the machine or the track piece first) and lights the control. No match says so.
+3. **Your changes.** Under the tabs, one line: "Your changes" with how many and what they cost; opened, it lists each
+   change from the challenge's start (or Free build's): "+1 Polishing (CMP) machine, $5M", "Cap on lots inside: 400
+   lots", "Dispatch rule: First come, first served", a breakdown or recovery setting, track pieces added or taken away,
+   storage and doors added or taken away, cars, ports and the Floor's settings. Each has an undo that puts that one
+   thing back as it started, as one step the undo button can take back. The costs add up to the banner's Extra spend.
+   Every control that differs from the start carries a dot.
+4. **Every control explains itself.** Beside each control's name, a small "?" opens its glossary entry in a card in
+   Build: the picture, the plain line, the figure where the entry has one, and a link to the full entry on the Floor,
+   which opens its glossary at that term. Four entries are added, each with every part an entry has and a picture
+   reused from the cast: **Car (vehicle)** (`cast/lots/ride.webp`), **Load port** (`cast/cmp/full.webp`), **Storage
+   (stocker)** (`cast/lots/bench.webp`) and **Demand (release rate)** (`cast/lots/line.webp`).
+
+## Part 5: tests (written before the code)
+
+`web/tests/buildfind.test.mjs` (headless Chrome and a helper; nothing is spent):
+- **BG1** holding G shows a gear with its number on every machine block and every track piece set to break, and
+  letting go hides them; the Controls button does the same; in challenge 2 the polishing machines' gears are lit.
+- **BG2** a click on a machine's gear selects that machine block and opens Selected.
+- **BK1** / puts the cursor in Find a control; "cap" lists Cap on lots inside first, and Enter opens Whole fab with it
+  lit; "spare" lists When it breaks for machines; "polish" lists the polishing machines' controls, and choosing one
+  selects a polishing block with that control lit; "rule" finds Dispatch rule; a word with no match says so.
+- **BY1** at the start Your changes lists none; after one more polishing machine, a cap of 400 and First come, first
+  served, it lists those three, the machine with its price, and its cost is the Extra spend.
+- **BY2** the changed controls carry a dot, and the others do not.
+- **BY3** undoing the cap from the list removes the cap and leaves the other two; undoing the machine puts the group
+  back at its starting count; the undo button brings the cap back.
+- **BL1** every control in the three tabs has a glossary link naming an entry that exists; clicking one opens the
+  card with the entry's picture, its plain line, its figure where it has one, and a link to the Floor.
+- **BL2** the Floor opened at `?term=WIP%20cap` opens its glossary at WIP cap.
+- **BL3** the four new entries have every part an entry needs and their cast pictures (`web/tests/glossaryplus.test.mjs`
+  GP2 and GP6 list them as reused).
+- **BL4** at 1,440 x 900, 1,440 x 760 and 1,280 x 720 the page does not scroll with changes listed and a card open.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
