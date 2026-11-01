@@ -1457,6 +1457,45 @@ fn main() {
             let out = fabsim::moods::frames_json(&shop, &r, until, every);
             println!("{out}");
         }
+        // every lot finishes its route, worked out with no simulator (docs/DOUBLE-CHECK.md, part 1); a directory reads
+        // the SMT2020 files
+        Some("routes") => {
+            let path = args.get(1).expect("fabsim routes FILE|SMT2020DIR [--json]");
+            let p = std::path::Path::new(path);
+            let shop = if p.is_dir() {
+                fabsim::smt2020::load(p).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                })
+            } else {
+                Shop::parse(&std::fs::read_to_string(p).expect("read the fab file")).unwrap_or_else(|e| {
+                    eprintln!("refused: {e}");
+                    std::process::exit(1)
+                })
+            };
+            let issues = fabsim::routes::issues(&shop);
+            let chains = fabsim::routes::analyse(&shop);
+            if args.iter().any(|a| a == "--json") {
+                let v: Vec<serde_json::Value> = chains
+                    .iter()
+                    .map(|c| serde_json::json!({"route": c.route, "steps": c.visits.len(), "expected_steps": c.expected_steps, "size": c.size,
+                        "expected_minutes": c.expected_minutes, "once_minutes": c.once_minutes, "residual": c.residual}))
+                    .collect();
+                let iss: Vec<serde_json::Value> = issues.iter().map(|i| serde_json::json!({"code": i.code, "message": i.message, "at": i.at})).collect();
+                println!("{}", serde_json::json!({"routes": v, "issues": iss}));
+            } else {
+                for i in &issues {
+                    println!("error\t{}\t{}", i.code, i.message);
+                }
+                for c in &chains {
+                    println!(
+                        "{}\t{} steps listed, {:.3} done by a lot on average; processing {:.2} days a lot of {} ({:.2} once through); residual {:.1e}",
+                        c.route, c.visits.len(), c.expected_steps, c.expected_minutes / 1440.0, c.size, c.once_minutes / 1440.0, c.residual
+                    );
+                }
+            }
+            std::process::exit(if issues.is_empty() { 0 } else { 2 });
+        }
         // the checks a layout must pass (docs/FAB-CHECKS.md): exit 0 with no errors, 2 with errors
         Some("fab-check") => {
             let path = args.get(1).expect("fabsim fab-check FILE [--json]");

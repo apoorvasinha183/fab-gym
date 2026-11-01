@@ -21,6 +21,7 @@ links in their direction.
 | `no_way_out` | from a tool's stop no exit can be reached |
 | `route_gap` | a route goes from one group to the next and no stop of the first reaches any stop of the next; also the entry to a route's first group and its last group to an exit |
 | `trap` | a node reachable from an entry from which no exit can be reached: a vehicle that goes in never comes back out (a node with no way out that is not an exit is one) |
+| `bad_chance`, `rework_target`, `rework_certain` | a route's sampling or rework chance is outside 0 to 1, a rework sends lots to a step the route lacks, or from some step no path with a chance above zero reaches the end (docs/DOUBLE-CHECK.md, part 1) |
 
 **Warnings (it can run, but something is off):**
 

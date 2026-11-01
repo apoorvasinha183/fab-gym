@@ -76,3 +76,23 @@ the five busiest groups.
 Tests: **DC9** our raw processing times, recomputed from the files, are the ones the page shows.
 
 ## Changes
+- Part 1 built 1 November 2026 (tests "Snakes and ladders", code "Dice math"). DC1 to DC3 pass, with every other
+  engine test. `fabsim routes` on the high-volume testbed: part_3 has 583 steps, a lot does 522.223 of them on average
+  and gets 24.68 days of processing (25.52 days once through every step); part_4 has 343 steps, 308.523 done, 14.49
+  days (15.00). Residuals 2e-16 or less. The teaching fab's route of 18 steps has no sampling and no rework.
+- DC3's setup changed twice before it passed, never its claim. First, 30 lots from each release record: the
+  super-hot record sends one every 19 days, so they could not all come within the run. Second, a fixed number of lots
+  with no releases after them: about 1 in 6 lots then waited for ever at a batch step whose smallest batch (125 to 150
+  wafers) never filled, since no partners came. A finding: in this engine a lot at a batch step with no wait limit
+  waits until enough lots arrive, so a fab that stops releasing can strand lots. The final setup keeps releases coming
+  at a quarter of the usual rate and counts only the lots released in the first week (about 50 a product a run, all
+  of them finished by day 55).
+- Two engine facts the exact chain now follows. A released lot does its first step for certain: release puts it in
+  that step's queue with no sampling draw (a lot in progress at the start does draw). And a lot's own record
+  (`LotOut.steps`, and so the canonical run log) leaves out a released lot's first job, since the record opens at the
+  lot's first arrival and release skips it. The golden logs match the reference engine with this, so the engine is
+  unchanged and DC3 counts jobs from the trace, which has every job.
+- The high-mix testbed's files have no loader yet (its tool file is `tool.txt.1l`), so part 1 covers the high-volume
+  testbed, the Floor's fab and the teaching fab.
+- Route errors join `fabsim::checks::check` first: `bad_chance`, `rework_target`, and `rework_certain` (a step from
+  which no path with a chance above zero reaches the end).

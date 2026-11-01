@@ -23,6 +23,7 @@ pub mod progress;
 pub mod pyrandom;
 pub mod receipt;
 pub mod regret;
+pub mod routes;
 pub mod scenario;
 pub mod score;
 pub mod shop;

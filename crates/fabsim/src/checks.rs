@@ -60,7 +60,9 @@ fn reach(from: &[usize], adj: &[Vec<usize>]) -> Vec<bool> {
 
 /// The checks, errors first. A shop that read without error has every name in its plan defined.
 pub fn check(shop: &Shop) -> Vec<Issue> {
-    let mut issues = check_layout(shop);
+    // every lot must be able to finish its route (docs/DOUBLE-CHECK.md, part 1): errors, so first
+    let mut issues = crate::routes::issues(shop);
+    issues.extend(check_layout(shop));
     // storage made real (docs/BUILD-CONTROLS.md, part 3): a port limit needs storage for the lots beyond it
     if shop.inports.is_some_and(|n| n > 0) && shop.plan.as_ref().is_some_and(|p| p.stockers.is_empty()) {
         let n = shop.inports.unwrap_or(0);

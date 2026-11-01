@@ -90,21 +90,29 @@ fn dc2_every_route_of_our_fabs_passes_and_broken_ones_are_refused() {
 fn dc3_the_simulator_agrees_on_steps_per_lot() {
     let Some(dir) = common::smt2020_dir() else { return };
     let mut shop = fabsim::smt2020::load(&dir).unwrap();
-    // only lots released in the run, 30 from each release record, so every one of them finishes and none is left out
-    // for being slow (a slow lot is often one sent back for rework)
+    // releases keep coming, at a quarter of the usual rate, so a lot waiting at a batch step always gets partners;
+    // only lots released in the first week are counted, and every one of them must finish, so none is left out for
+    // being slow (a slow lot is often one sent back for rework)
     shop.lots.clear();
     for r in &mut shop.releases {
-        r.count = Some(30);
+        r.every *= 4.0;
     }
     let chains = analyse(&shop);
     let mut steps: std::collections::HashMap<String, Vec<f64>> = Default::default();
     for seed in 0..10u64 {
-        let res = run(&shop, &RunOptions { seed, until: Some(200.0 * 1440.0), record: true }, None);
-        let released: Vec<_> = res.lots.iter().filter(|l| !l.wip).collect();
-        assert_eq!(released.len(), 30 * shop.releases.len(), "run {seed}: every release sent its lots");
-        assert!(released.iter().all(|l| l.done.is_some()), "run {seed}: every lot finished");
-        for l in released {
-            steps.entry(l.route.clone()).or_default().push(l.steps.len() as f64);
+        let res = run(&shop, &RunOptions { seed, until: Some(55.0 * 1440.0), record: true }, None);
+        let early: Vec<_> = res.lots.iter().filter(|l| !l.wip && l.release < 7.0 * 1440.0).collect();
+        assert!(early.len() >= 80, "run {seed}: {} lots released in the first week", early.len());
+        assert!(early.iter().all(|l| l.done.is_some()), "run {seed}: every lot released in the first week finished");
+        // jobs from the trace: a lot's own record leaves out a released lot's first job, as the reference log does
+        let mut jobs = vec![0usize; res.lots.len()];
+        for x in &res.trace {
+            jobs[x.lot as usize] += 1;
+        }
+        for (i, l) in res.lots.iter().enumerate() {
+            if !l.wip && l.release < 7.0 * 1440.0 {
+                steps.entry(l.route.clone()).or_default().push(jobs[i] as f64);
+            }
         }
     }
     for c in &chains {
