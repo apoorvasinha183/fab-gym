@@ -319,6 +319,65 @@ In headless Chrome with a helper:
 - `web/tests/editorbasics.test.mjs` **B2** moves the view with Space-drag, and `web/tests/editormoves.test.mjs` **M4**
   pastes a machine with no unplaced group as more machines of its own group.
 
+## Part 8: editing that knows it is a fab (written 1 November 2026, before its tests and code)
+
+The third layer the founder chose. Found before: track is laid tile by tile by dragging; erasing a piece in a run
+leaves the run cut; a machine dropped one tile away from the track has no stop and the checks refuse the layout; the
+checks name what is wrong but offer no fix; a machine group's breakdown settings are set one group at a time; a
+selection can be copied but not kept.
+
+1. **Route.** A Route tool (T) lays track by itself: click where it starts (a track piece or empty floor), point where
+   it should go, and the shortest way over free floor shows as a ghost; a click lays it, running from the start to the
+   end, joined to the track at both ends. Where no way is free, it says so. One undo step.
+2. **Reconnect a cut.** Erasing track that a run passed through (with Erase, or deleting a selection) shows a button,
+   "Reconnect the track around the cut": the pieces that led into the cut are routed around it to the pieces it led
+   to, avoiding the cut tiles. It is offered and never done by itself, since a cut may be meant.
+3. **Snap beside the track.** A machine, storage or door pointed at free floor that does not touch the track snaps to
+   the nearest free spot within 3 tiles that does; the ghost shows where it will go. Alt places it exactly where
+   pointed.
+4. **One-click fixes from the checks.** A check that has a fix carries a Fix button:
+   - a machine with no track beside it ("missing stops"): moved to the nearest free spot beside the track;
+   - a stop the entry cannot reach ("unreachable"): routed from the nearest track the entry reaches;
+   - a stop or track with no way to an exit ("no way out", "trap"): routed from its dead end to the nearest track
+     that reaches an exit;
+   - ports with no storage: storage placed at the nearest free spot beside the track to the middle of the floor;
+   - quality holds with no rework: rework set (1% at each check on the teaching fab, the fab's own elsewhere).
+   Each fix is one undo step, and the checks run again after it.
+5. **The same for every one of a kind.** A machine group's controls in Selected gain "Same for every machine group",
+   and, where a kind has more than one group (the SMT2020 testbed), "Same for every <kind> group": both copy this
+   group's breakdowns and what happens when it breaks.
+6. **Blueprints.** A selection can be saved as a named blueprint ("Save as a blueprint" in its panel). Blueprints are
+   listed in the palette with a small drawing of their pieces; a click takes one in hand, a click on the floor places
+   it, as a paste does. They are kept in this browser. A blueprint's machine whose group is not in this fab takes an
+   unplaced group of its kind, or is left out with the reason.
+
+The logic is in `web/editor-core.js`: `route`, `cutGaps`, `heal`, `snapBeside`, `reach`, `sameForKind`, and `pasteAt`
+with the groups this fab knows.
+
+## Part 8: tests (written before the code)
+
+`web/tests/editorsmart.test.mjs`, in Node on `editor-core.js`:
+- **SM1** a route takes the shortest way over free floor, around pieces and track, one way from start to end, and
+  joins a start piece by giving it the way out; where nothing is free it says why; the old floor is unchanged.
+- **SM2** a cut's gaps are the pieces that led into it and the pieces it led to; healing routes the first to the
+  second around the cut tiles.
+- **SM3** a free spot not beside the track snaps to the nearest free spot beside it within 3 tiles; a spot already
+  beside it stays; with none near, nothing.
+- **SM4** what the entry reaches and what reaches an exit, following the track's directions.
+- **SM5** the same for every machine group, or every group of one kind, copies breakdowns and recovery.
+- **SM6** a pasted machine whose group this fab does not know takes an unplaced group of its kind, or is left out with
+  the reason.
+
+In headless Chrome with a helper:
+- **SR1** the Route tool lays the track `route` gives between two clicks; one undo takes it all away.
+- **SR2** erasing a piece in the middle of a run offers the reconnect button, and it reconnects as `heal` says.
+- **SR3** storage pointed one tile off the track is placed beside it; with Alt, where pointed.
+- **SR4** a machine moved off the track gets a Fix that puts it beside the track and clears the check; quality holds
+  with no rework get a Fix that sets rework and clears the warning.
+- **SR5** "Same for every machine group" gives every group the selected group's breakdowns.
+- **SR6** a selection saved as a blueprint shows in the palette, is kept after a reload, and a click on it then on the
+  floor places its pieces.
+
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not
   stop those changes (the budget limits them), so the palette marks the levers' kinds and locks nothing.
