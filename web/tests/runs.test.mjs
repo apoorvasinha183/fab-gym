@@ -4,7 +4,7 @@
 //
 //     node --test web/tests/runs.test.mjs   (needs Google Chrome, the .venv and a release build)
 
-import { test } from "node:test";
+import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, mkdtempSync, statSync, rmSync as rmProfile } from "node:fs";
 import { spawn } from "node:child_process";
@@ -66,10 +66,12 @@ const FOUR = "fabgym-scenario 1\nquestion\tPrototypes doubled: which rule for th
 
 // one helper for the file, in smoke mode, keeping its runs in a folder of its own
 let HP = 0, HELPER = null;
+after(() => { if (HELPER) HELPER.kill(); }); // stopped when the file's tests end
 async function helperUp() {
   if (HELPER) return HP;
   HP = 8800 + Math.floor(Math.random() * 600);
   HELPER = spawn(PY, ["-m", "agent.helper", "--port", String(HP), "--quick", "--threads", "1", "--runs", RUNS], { cwd: ROOT, stdio: "ignore" });
+  HELPER.unref(); // the shared helper must not keep the test file from ending
   process.on("exit", () => HELPER.kill());
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${HP}/runs.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   return HP;

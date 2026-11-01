@@ -274,6 +274,18 @@
   },
   "Setup change": {
    "reused": "cast/cmp/setup.webp"
+  },
+  "Car (vehicle)": {
+   "reused": "cast/lots/ride.webp"
+  },
+  "Load port": {
+   "reused": "cast/cmp/full.webp"
+  },
+  "Storage (stocker)": {
+   "reused": "cast/lots/bench.webp"
+  },
+  "Demand (release rate)": {
+   "reused": "cast/lots/line.webp"
   }
  }
 }

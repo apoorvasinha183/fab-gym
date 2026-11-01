@@ -163,6 +163,58 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .insp .sub{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;font-size:12px;color:var(--muted)}
 .insp .ttl{display:flex;align-items:center;gap:8px;font:600 15px var(--display)}
 .insp .ttl svg{width:22px;height:22px;flex:none}
+/* part 5: find a control, your changes, glossary links and card, the dots (docs/BUILD-CONTROLS.md) */
+.ctl-find{position:relative;margin-bottom:8px}
+.ctl-find input{width:100%;box-sizing:border-box;font:13px var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+#ctl-found{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:2px;font-size:12.5px}
+#ctl-found[hidden]{display:none}
+#ctl-found button{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:4px 6px;border-radius:4px}
+#ctl-found button:hover,#ctl-found button:focus{background:var(--ok-soft)}
+#ctl-found small{color:var(--muted);font-family:var(--mono)}
+#ctl-found .none{color:var(--muted);padding:4px 6px}
+.changes{margin:8px 0;font-size:12.5px}
+.changes summary{cursor:pointer;color:var(--muted)}
+.changes ul{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.changes li{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.changes li .btn{padding:2px 8px;font-size:11.5px}
+.gl-q{all:unset;cursor:pointer;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);color:var(--muted);font:600 10.5px var(--mono);margin:0 auto 0 4px;flex:none}
+.gl-q:hover,.gl-q:focus{color:var(--ink);border-color:var(--ink)}
+td .gl-q{margin-left:6px}
+.ctlrow.moved::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none;order:-1;margin-right:-2px}
+tr.ctlrow.moved td:first-child::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-right:6px;vertical-align:middle}
+.glcard{position:fixed;z-index:60;width:320px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;box-sizing:border-box;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);font-size:13px;line-height:1.45}
+.glcard[hidden]{display:none}
+.glcard .gl-x{position:absolute;top:6px;right:6px;padding:2px 7px}
+.glcard .gl-lead{display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center;padding-right:22px}
+.glcard img{width:72px;height:72px;object-fit:contain}
+.glcard h4{margin:0 0 2px;font:600 14px var(--display)}
+.glcard .gl-plain{margin:0}
+/* the glossary's figures, as the Floor draws them (web/floor-ui.css) */
+.gl-fig { margin: 8px 0; padding: 12px 12px 8px; border: 1px solid #23434B; border-radius: 12px; background: #0B1418; max-width: 640px; }
+.gl-fig svg { display: block; width: 100%; height: auto; font-family: inherit; }
+.gl-fig figcaption { margin-top: 6px; font-size: 13px; color: #A9C4C0; }
+.gl-fig .node rect { fill: #13262B; stroke: #3A6B73; stroke-width: 1.2; }
+.gl-fig .node text { fill: #E8F2F0; }
+.gl-fig .node.start rect { stroke: #7EE8D8; }
+.gl-fig .node.end rect { fill: rgba(79, 227, 163, 0.12); stroke: #4FE3A3; }
+.gl-fig .node.ask rect { fill: rgba(255, 200, 87, 0.10); stroke: #FFC857; }
+.gl-fig .node.bad rect { fill: rgba(255, 107, 107, 0.12); stroke: #FF8A7A; }
+.gl-fig .node.hot rect { fill: rgba(232, 149, 90, 0.18); stroke: #E8955A; }
+.gl-fig .node.ghost rect { fill: none; stroke-dasharray: 4 3; }
+.gl-fig .node.ghost text { fill: #A9C4C0; }
+.gl-fig .edge { fill: none; stroke: #7FA6A2; stroke-width: 1.4; }
+.gl-fig .arrowhead { fill: #7FA6A2; }
+.gl-fig .elabel, .gl-fig .rlabel { fill: #A9C4C0; }
+.gl-fig .mark.bad { fill: #FF8A7A; }
+.gl-fig .bracket { fill: none; stroke: #7FA6A2; stroke-width: 1.2; }
+.gl-fig .zero { stroke: #5D7F84; stroke-dasharray: 3 3; }
+.gl-fig .ival line { stroke: #CFE3E0; stroke-width: 2; }
+.gl-fig .ival circle { fill: #CFE3E0; }
+.gl-fig .ival.better line, .gl-fig .ival.better circle { stroke: #4FE3A3; fill: #4FE3A3; }
+.gl-fig .ival.worse line, .gl-fig .ival.worse circle { stroke: #FF8A7A; fill: #FF8A7A; }
+.gl-fig .rlabel.better { fill: #4FE3A3; } .gl-fig .rlabel.worse { fill: #FF8A7A; }
+.gl-fig .edge.pair { stroke-dasharray: 3 3; }
+.glcard a{color:inherit;font-weight:600}
 .insp .sub-ttl{margin-top:6px;padding-top:8px;border-top:1px solid var(--line);font-size:13px}
 .insp,.insp>*,.side>*{min-width:0}
 .insp select{max-width:100%;min-width:0}
@@ -294,6 +346,7 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
         <button class="btn" id="undo" aria-label="Undo" title="Undo (⌘Z)" disabled>↶</button><button class="btn" id="redo" aria-label="Redo" title="Redo (⇧⌘Z)" disabled>↷</button>
         <button class="btn" id="sketch-go" title="Build a fab from a photo of a drawing on paper (Muse Spark reads it)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg> Build from a photo</button><input type="file" id="sketch-file" accept="image/png,image/jpeg" hidden>
         <button class="btn" id="jammap" aria-pressed="false" title="The jam map (J): only the waits show">Jams <kbd>J</kbd></button>
+        <button class="btn" id="gears" aria-pressed="false" title="Show what you can change on the map: hold G, or press here">⚙ Controls <kbd>G</kbd></button>
         <button class="btn go" id="again" hidden>Run again with my changes</button>
         <span class="note" id="tmpl" hidden><label for="template">Start from</label> <select id="template"><option value="teaching">The small fab</option><option value="smt2020">The full fab (SMT2020)</option></select></span>
       </div>
@@ -316,13 +369,17 @@ canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
       <div class="card ai" id="ai-panel" hidden aria-live="polite"><h4><span>The AI's turn</span><span class="ai-btns"><button class="btn" id="ai-stop">Stop</button><button class="btn" id="ai-close" aria-label="Close">✕</button></span></h4>
         <p class="ai-cost" id="ai-cost">Muse Wonder</p><p class="ai-status" id="ai-status"></p><p class="ai-stars" id="ai-stars"></p><ol class="ai-moves" id="ai-moves"></ol></div>
       <div class="card"><h4><span>Layout</span><span id="verdict"></span></h4><ul class="issues" id="issues"></ul></div>
-      <div class="card ctl-card"><div class="ctl-tabs" id="ctl-tabs" role="tablist" aria-label="Controls"><button role="tab" data-tab="sel" aria-selected="true">Selected</button><button role="tab" data-tab="fab" aria-selected="false">Whole fab</button><button role="tab" data-tab="all" aria-selected="false">All controls</button></div>
+      <div class="card ctl-card"><div class="ctl-find"><input type="search" id="ctl-find" placeholder="Find a control: cap, spare, polish…" aria-label="Find a control (/)" autocomplete="off"><ul id="ctl-found" hidden></ul></div><div class="ctl-tabs" id="ctl-tabs" role="tablist" aria-label="Controls"><button role="tab" data-tab="sel" aria-selected="true">Selected</button><button role="tab" data-tab="fab" aria-selected="false">Whole fab</button><button role="tab" data-tab="all" aria-selected="false">All controls</button></div>
+        <details class="changes" id="changes"><summary>Your changes: none yet</summary><ul></ul></details>
         <div class="insp" id="insp" role="tabpanel"></div><div class="insp" id="ctl-fab" role="tabpanel" hidden></div><div class="insp" id="ctl-all" role="tabpanel" hidden></div></div>
     </aside>
+    <div class="glcard" id="glcard" role="dialog" aria-label="What the word means" hidden></div>
   </section>
 </div>
 <script src="look.js"></script>
 <script src="editor-core.js"></script>
+<script src="glossary.js"></script>
+<script src="glossary-figs.js"></script>
 <script src="charts.js"></script>
 <script src="editor.js"></script>
 <script src="race.js"></script>

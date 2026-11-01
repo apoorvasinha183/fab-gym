@@ -24,7 +24,7 @@
   let chIdx = 0; // 0..3 a challenge, 4 free build
   // the run watched (docs/RANDOM-RUNS.md): run #1 is the challenge's own, which always gives the score and the stars
   let watch = 1;
-  let setupNow = null, base = E.TEACHING_SHOP, s = null, spend0 = 0, areaOfGroup = {};
+  let setupNow = null, base = E.TEACHING_SHOP, s = null, spend0 = 0, areaOfGroup = {}, start = null;
   let run = null, prev = null, stale = false, running = false;
   let mode = "run", playing = !matchMedia("(prefers-reduced-motion: reduce)").matches, speed = 20; // fab minutes a real second, the floor's steps (docs/EDITOR-SPEED.md)
   const MAX = -1; // the Max step: one fab hour each drawn frame, no cars
@@ -299,6 +299,7 @@
       poly(q); ctx.fillStyle = g.ok ? "rgba(126,232,216,.28)" : "rgba(255,107,87,.32)"; ctx.fill();
       ctx.setLineDash([5, 4]); ctx.strokeStyle = g.ok ? "rgba(126,232,216,.9)" : "rgba(255,107,87,.95)"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
     }
+    drawGears();
     if (stale || running) {
       ctx.font = '600 13px "Chakra Petch",sans-serif'; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillStyle = "#F2B33D";
       ctx.fillText(running ? "Updating the run with your changes…" : "Your changes run as soon as the checks pass.", 12, 10);
@@ -720,10 +721,14 @@
       const got = starsFor(sc, c, top);
       [1, 1.02, 1.05].forEach((m, i) => { const el = $("goalbar").querySelectorAll(".starmark")[i]; if (el) { el.hidden = i !== got; el.style.left = `calc(${(c.target.wafers * m / full) * 100}% - 6px)`; el.title = `${i + 1} star${i ? "s" : ""} at ${Math.ceil(c.target.wafers * m)} wafers a day`; } });
       $("goalbar").classList.toggle("met", ok && !blocked);
+      $("goaltext").title = "";
       $("goaltext").innerHTML = blocked ? `<b>${Math.round(w).toLocaleString()}</b> wafers a day before your changes. Fix the checks to run the new layout.` : ok ? `<b>Challenge met.</b> ${Math.round(w).toLocaleString()} wafers a day${c.target.budget ? `, ${money(top)} spent of ${money(c.target.budget)}` : ""}.` : `<b>${Math.round(w).toLocaleString()}</b> of ${c.target.wafers.toLocaleString()} wafers a day${c.target.budget != null && top > c.target.budget ? `, over budget by ${money(top - c.target.budget)}` : ""}`;
       if (experiment() && !blocked) {
-        const what = [s.inports ? `${s.inports} load port${s.inports > 1 ? "s" : ""} a machine` : "", E.flowWords(s.flow, base)].filter(Boolean).join(", ");
-        $("goaltext").innerHTML = `<b>An experiment:</b> ${Math.round(w).toLocaleString()} wafers a day with ${esc(what)}. This challenge is tuned with unlimited ports and today's settings, so this run earns no stars.`;
+        // kept short: the banner's column is narrow, and a long line pushes the map off the page (docs/BUILD-CONTROLS.md)
+        const parts = [s.inports ? `${s.inports} port${s.inports > 1 ? "s" : ""} a machine` : "", ...E.flowWords(s.flow, base).split(", ")].filter(Boolean);
+        const what = parts.length > 2 ? `${parts.slice(0, 2).join(", ")} and ${parts.length - 2} more` : parts.join(", ");
+        $("goaltext").innerHTML = `<b>An experiment</b> with ${esc(what)}: ${Math.round(w).toLocaleString()} wafers a day, no stars.`;
+        $("goaltext").title = "This challenge is tuned with unlimited load ports and today's settings, so a run with other settings earns no stars.";
       }
     } else {
       $("goalfill").style.width = "0"; $("goalbar").classList.remove("met");
@@ -756,6 +761,8 @@
     s = setupNow.state; base = setupNow.base;
     for (const l of base.split("\n")) if (l.startsWith("group\t")) { const g = l.split("\t")[1]; if (!areaOfGroup[g]) areaOfGroup[g] = E.AREA_OF[g.replace(/_T$/, "")]; }
     spend0 = E.spend(c ? c.setup().state : s);
+    start = c ? c.setup().state : JSON.parse(JSON.stringify(s)); // what Your changes counts from (part 5)
+    renderChanges();
     $("cheye").textContent = c ? `Challenge ${i + 1} · ${c.title}` : "Free build";
     $("chproblem").textContent = c ? c.problem : "Lay out your own fab. Place machines, lay track, then run it.";
     $("chgoal").textContent = c ? c.goal : "There is no target here. The scores show how your layout does.";
@@ -881,6 +888,7 @@
   }
   // after any change (an edit, an undo, a redo): check, then run again by itself, keeping the clock
   function changed() {
+    renderChanges();
     pendingEdits = true; // reruns are automatic; "Run again" shows only when the run is out of date
     clearTimeout(checkTimer);
     checkTimer = setTimeout(async () => {
@@ -948,6 +956,10 @@
     return [Math.floor(x), Math.floor(y)];
   }
   cv.addEventListener("pointerdown", (e) => {
+    if (gearsShown() && e.button === 0) {
+      const g = lastGears.find((z) => Math.hypot(e.clientX - z.x, e.clientY - z.y) <= z.r + 2);
+      if (g) { sel = g.kind === "group" ? { id: g.id } : { rail: g.rail }; ctlTab("sel"); inspector(); draw(); return; }
+    }
     if (pasting && clip && e.button === 0) {
       const [ax, ay] = floorCell(e), plan = E.pasteAt(s, clip, ax, ay, unplaced());
       if (!plan.ok) { $("status").textContent = plan.why; return; }
@@ -1135,7 +1147,11 @@
   };
   const num = (id, v, lab, unit) => `<label class="sub">${lab} <input type="number" min="1" step="1" id="${id}" value="${v}"> ${unit}</label>`;
   const why = (k) => `<span class="why">${WHY[k]}</span>`;
-  const row = (k, inner) => `<div class="row ctlrow" data-ctl="${k}">${inner}${why(k)}</div>`;
+  // each control's glossary entry (docs/BUILD-CONTROLS.md, part 5)
+  const TERM = { count: "Tool group", fail: "Breakdown", rec: "Repair time", dirs: "Track (overhead track)", rfail: "Breakdown", rrec: "Track (overhead track)",
+    cars: "Car (vehicle)", cap: "WIP cap", ports: "Load port", rule: "Dispatch rule", demand: "Demand (release rate)", urgent: "Hot lot", rework: "Rework", holds: "Defect hold" };
+  const glq = (k) => (TERM[k] ? `<button type="button" class="gl-q" data-term="${esc(TERM[k])}" aria-label="What is ${esc(TERM[k])}?" title="What is ${esc(TERM[k])}?">?</button>` : "");
+  const row = (k, inner) => `<div class="row ctlrow" data-ctl="${k}">${inner.replace(/(<\/label>|<\/span>)/, `$1${glq(k)}`)}${why(k)}</div>`;
   let ctlTabNow = "sel";
   function ctlTab(name) {
     ctlTabNow = name;
@@ -1143,6 +1159,7 @@
     $("insp").hidden = name !== "sel"; $("ctl-fab").hidden = name !== "fab"; $("ctl-all").hidden = name !== "all";
     if (name === "fab") wholeFab($("ctl-fab"));
     if (name === "all") allControls();
+    markMoved();
   }
   // the changes a control makes, shared by Selected and All controls
   // a group's breakdown settings are the group's, wherever its machines stand (docs/BUILD-CONTROLS.md, part 2)
@@ -1176,7 +1193,7 @@
     $(`${el.id}-ports`).onchange = (e) => { const n = Number(e.target.value); if (n) s.inports = n; else delete s.inports; refreshCtl(); renderScore(); edited(); };
     $(`${el.id}-cap`).onchange = (e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); if (n) s.cap = n; else delete s.cap; refreshCtl(); edited(); };
     // the Floor's settings (docs/BUILD-CONTROLS.md, part 4)
-    const o = E.flowOptions(base), f = s.flow || {}, NAMES = { rule: "Dispatch rule", demand: "Demand", urgent: "Urgent lots", rework: "Rework", holds: "Quality holds" };
+    const o = E.flowOptions(base), f = s.flow || {}, NAMES = FLOWNAMES;
     el.insertAdjacentHTML("beforeend", `<div class="ttl sub-ttl"><span>How the fab runs</span></div>` + Object.keys(NAMES).map((k) =>
       row(k, `<label for="${el.id}-${k}">${NAMES[k]}</label><select id="${el.id}-${k}">${o[k].map(([v, n]) => `<option value="${v}" ${String(f[k] == null ? "" : f[k]) === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`)).join(""));
     // the teaching fab's machines need no re-setup and a step takes the same time on every machine of its kind, so the
@@ -1192,9 +1209,9 @@
   function allControls() {
     const el = $("ctl-all"), groups = s.blocks.filter((b) => b.kind === "group"), broken = Object.keys(s.rail).filter((k) => s.rail[k].fail);
     let h = `<table class="allctl"><tbody>` + groups.map((b) => `<tr class="ctlrow" data-group="${esc(b.group)}" data-ctl="count:${esc(b.group)}"><td><b>${esc(AREA[b.area][0])}</b> <small>${esc(b.group)}</small>` +
-      `<span class="why">${WHY.count} ${money(E.PRICE[b.area] || 0)} a machine.</span></td><td><span class="count"><button class="btn" data-dn aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" data-up aria-label="One more">+</button></span>` +
+      `${glq("count")}<span class="why">${WHY.count} ${money(E.PRICE[b.area] || 0)} a machine.</span></td><td><span class="count"><button class="btn" data-dn aria-label="One fewer">−</button><b>${b.count}</b><button class="btn" data-up aria-label="One more">+</button></span>` +
       `${failSel(`af-${b.id}`, b.fail || {})}${recSel(`ar-${b.id}`, b.rec || {})}</td></tr>`).join("");
-    h += broken.map((k) => `<tr class="ctlrow" data-rail="${k}" data-ctl="rrec:${k}"><td><b>Track piece</b> <small>${k.replace(",", ", ")}</small>${why("rrec")}</td><td><select data-rr><option value="wait" ${(s.rail[k].rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(s.rail[k].rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select></td></tr>`).join("");
+    h += broken.map((k) => `<tr class="ctlrow" data-rail="${k}" data-ctl="rrec:${k}"><td><b>Track piece</b> <small>${k.replace(",", ", ")}</small>${glq("rrec")}${why("rrec")}</td><td><select data-rr><option value="wait" ${(s.rail[k].rec || {}).kind !== "route_around" ? "selected" : ""}>Cars wait for the repair</option><option value="route_around" ${(s.rail[k].rec || {}).kind === "route_around" ? "selected" : ""}>Cars go around it</option></select></td></tr>`).join("");
     el.innerHTML = h + `</tbody></table>`;
     el.querySelectorAll("tr[data-group]").forEach((tr) => {
       const b = s.blocks.find((z) => z.kind === "group" && z.group === tr.dataset.group);
@@ -1206,8 +1223,9 @@
     el.querySelectorAll("tr[data-rail] [data-rr]").forEach((sl) => (sl.onchange = (e) => { s.rail[sl.closest("tr").dataset.rail].rec = { kind: e.target.value }; edited(); }));
   }
   /** Redraw what the controls show after a change, keeping the open tab. */
-  function refreshCtl() { inspector(); if (ctlTabNow !== "sel") ctlTab(ctlTabNow); }
-  function inspector() {
+  function refreshCtl() { inspector(); if (ctlTabNow !== "sel") ctlTab(ctlTabNow); markMoved(); }
+  function inspector() { inspectorDraw(); markMoved(); }
+  function inspectorDraw() {
     const ins = $("insp");
     if (sel && sel.id) {
       const b = s.blocks.find((z) => z.id === sel.id);
@@ -1261,6 +1279,169 @@
       ins.insertAdjacentHTML("afterbegin", `<p class="note">Click a machine or a piece of track to change it, or pick a machine in the palette. All controls lists everything at once.</p>`);
     }
   }
+
+  // ---------- gears, find a control, your changes and the glossary (docs/BUILD-CONTROLS.md, part 5)
+  const FLOWNAMES = { rule: "Dispatch rule", demand: "Demand", urgent: "Urgent lots", rework: "Rework", holds: "Quality holds" };
+  const FABNAMES = { cars: "Cars on the track", cap: "Cap on lots inside", ports: "Load ports per machine", ...FLOWNAMES };
+  const GROUPNAMES = { count: "Machines", fail: "Breakdowns", rec: "When it breaks" };
+  const RAILNAMES = { dirs: "Directions out", rfail: "Breakdowns", rrec: "When it stops" };
+  const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
+  const same = (a, b) => JSON.stringify(a == null ? null : a) === JSON.stringify(b == null ? null : b);
+
+  // gears: hold G, or the Controls button
+  let gearsBtn = false, gHeld = false, lastGears = [];
+  const gearsShown = () => gearsBtn || gHeld;
+  function drawGears() {
+    lastGears = [];
+    if (!gearsShown() || !s) return;
+    const r = cv.getBoundingClientRect(), c = ch(), litGroup = c && c.spot && c.spot.group, litRail = !!(c && c.spot && c.spot.rail);
+    const rad = Math.max(9, Math.min(13, F.s * 0.32));
+    const one = (px, py, n, lit, g) => {
+      ctx.save();
+      ctx.fillStyle = lit ? "#F2B33D" : "#0F1D22"; ctx.strokeStyle = lit ? "#FFE3A3" : "#7EE8D8"; ctx.lineWidth = 1.6;
+      ctx.beginPath(); // a gear: eight teeth round a disc
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, rr = i % 2 ? rad : rad * 1.22; ctx.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.font = `700 ${Math.round(rad * 1.05)}px "Chakra Petch",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = lit ? "#14191D" : "#E8F2F0"; ctx.fillText(String(n), px, py + 0.5);
+      ctx.restore();
+      lastGears.push({ ...g, n, lit, x: r.left + px, y: r.top + py, r: rad * 1.22 });
+    };
+    for (const b of s.blocks) if (b.kind === "group") { const [px, py] = P(b.x + b.w - 0.32, b.y + 0.32); one(px, py, Object.keys(GROUPNAMES).length, b.group === litGroup, { kind: "group", id: b.id }); }
+    for (const k of Object.keys(s.rail)) if (s.rail[k].fail) { const [x, y] = k.split(",").map(Number), [px, py] = P(x + 0.5, y + 0.5, 0.06); one(px, py, Object.keys(RAILNAMES).length, litRail, { kind: "rail", rail: k }); }
+  }
+
+  // your changes, from the challenge's start (or Free build's)
+  const groupTotals = (st) => { const m = {}; for (const b of st.blocks) if (b.kind === "group") (m[b.group] = m[b.group] || { n: 0, b }).n += b.count; return m; };
+  const failWords = (f) => (!f ? "as the fab has them" : f.kind === "none" ? "never" : f.kind === "random" ? `about every ${Math.round(f.mttf_minutes / 60)} h, fixed in ${Math.round(f.mttr_minutes / 60)} h` : `after every ${f.every} wafers`);
+  const recWords = (r) => (!r || r.kind === "repair_in_place" ? "fix it in place" : r.kind === "swap_to_spare" ? `swap in a spare (${r.spares} kept)` : "fix it and hold its last lots");
+  const spares = (r) => (r && r.kind === "swap_to_spare" ? r.spares || 0 : 0);
+  function setGroup(g, key, v) { for (const b of s.blocks) if (b.kind === "group" && b.group === g) { if (v == null) delete b[key]; else b[key] = clone(v); } }
+  function undoCount(g) {
+    const was = start.blocks.filter((b) => b.kind === "group" && b.group === g), cur = s.blocks.filter((b) => b.kind === "group" && b.group === g);
+    const fail = cur[0] && cur[0].fail, rec = cur[0] && cur[0].rec;
+    s.blocks = s.blocks.filter((b) => !(b.kind === "group" && b.group === g && !was.some((z) => z.id === b.id)));
+    for (const z of was) { let b = s.blocks.find((y) => y.id === z.id); if (!b) { b = clone(z); s.blocks.push(b); } b.count = z.count; }
+    if (cur.length) { setGroup(g, "fail", fail); setGroup(g, "rec", rec); }
+  }
+  function changesOf() {
+    if (!start || !s) return [];
+    const out = [], t0 = groupTotals(start), t1 = groupTotals(s);
+    for (const g of new Set([...Object.keys(t0), ...Object.keys(t1)])) {
+      const a = (t0[g] || t1[g]).b.area, nm = AREA[a] ? AREA[a][0] : g, price = E.PRICE[a] || 0;
+      const d = (t1[g] ? t1[g].n : 0) - (t0[g] ? t0[g].n : 0);
+      if (d) out.push({ key: `count:${g}`, group: g, ctl: "count", text: `${d > 0 ? "+" : "−"}${Math.abs(d)} ${nm} machine${Math.abs(d) > 1 ? "s" : ""}`, cost: d * price, undo: () => undoCount(g) });
+      if (!t0[g] || !t1[g]) continue;
+      const f0 = t0[g].b.fail, f1 = t1[g].b.fail, r0 = t0[g].b.rec, r1 = t1[g].b.rec;
+      if (!same(f0, f1)) out.push({ key: `fail:${g}`, group: g, ctl: "fail", text: `${nm}: breakdowns ${failWords(f1)}`, cost: 0, undo: () => setGroup(g, "fail", f0) });
+      if (!same(r0, r1)) out.push({ key: `rec:${g}`, group: g, ctl: "rec", text: `${nm}: when it breaks, ${recWords(r1)}`, cost: (spares(r1) - spares(r0)) * price, undo: () => setGroup(g, "rec", r0) });
+    }
+    const k0 = Object.keys(start.rail), k1 = Object.keys(s.rail);
+    const added = k1.filter((k) => !start.rail[k]), gone = k0.filter((k) => !s.rail[k]), turned = k1.filter((k) => start.rail[k] && !same(start.rail[k].o, s.rail[k].o));
+    const pc = (n) => `${n} piece${n > 1 ? "s" : ""}`;
+    if (added.length || gone.length || turned.length) out.push({ key: "track", ctl: "dirs", rails: [...added, ...turned],
+      text: `Track: ${[added.length && `${pc(added.length)} added`, gone.length && `${pc(gone.length)} taken away`, turned.length && `${pc(turned.length)} with new directions`].filter(Boolean).join(", ")}`, cost: 0,
+      undo: () => { for (const k of added) delete s.rail[k]; for (const k of gone) s.rail[k] = clone(start.rail[k]); for (const k of turned) if (s.rail[k]) s.rail[k].o = [...start.rail[k].o]; } });
+    for (const k of k1) {
+      const a = start.rail[k] || {}, b = s.rail[k];
+      if (same(a.fail, b.fail) && (!b.fail || same(a.rec, b.rec))) continue;
+      out.push({ key: `rail:${k}`, rail: k, text: `Track piece ${k.replace(",", ", ")}: ${b.fail ? `stops now and then, ${(b.rec || {}).kind === "route_around" ? "cars go around it" : "cars wait for the repair"}` : "never stops"}`, cost: 0,
+        undo: () => { const v = s.rail[k]; if (!v) return; for (const f of ["fail", "rec"]) { if (a[f] == null) delete v[f]; else v[f] = clone(a[f]); } } });
+    }
+    for (const kind of ["stocker", "entry", "exit"]) {
+      const b0 = start.blocks.filter((b) => b.kind === kind), b1 = s.blocks.filter((b) => b.kind === kind);
+      const add = b1.filter((b) => !b0.some((z) => z.id === b.id)), rem = b0.filter((b) => !b1.some((z) => z.id === b.id));
+      if (add.length || rem.length) out.push({ key: `blocks:${kind}`, text: `${INFRA[kind][0]}: ${[add.length && `${add.length} added`, rem.length && `${rem.length} taken away`].filter(Boolean).join(", ")}`, cost: 0,
+        undo: () => { const ids = new Set(add.map((b) => b.id)); s.blocks = s.blocks.filter((b) => !ids.has(b.id)); for (const b of rem) s.blocks.push(clone(b)); } });
+    }
+    if ((s.vehicles || 12) !== (start.vehicles || 12)) out.push({ key: "cars", text: `Cars on the track: ${s.vehicles}`, cost: 0, undo: () => { s.vehicles = start.vehicles || 12; } });
+    if ((s.cap || 0) !== (start.cap || 0)) out.push({ key: "cap", text: `Cap on lots inside: ${s.cap ? `${s.cap.toLocaleString()} lots` : "none"}`, cost: 0, undo: () => { if (start.cap) s.cap = start.cap; else delete s.cap; } });
+    if ((s.inports || 0) !== (start.inports || 0)) out.push({ key: "ports", text: `Load ports per machine: ${s.inports || "unlimited"}`, cost: 0, undo: () => { if (start.inports) s.inports = start.inports; else delete s.inports; } });
+    const o = E.flowOptions(base), f0 = start.flow || {}, f1 = s.flow || {}, str = (v) => (v == null ? "" : String(v));
+    for (const k of Object.keys(FLOWNAMES)) {
+      if (str(f0[k]) === str(f1[k])) continue;
+      const lab = (o[k].find(([v]) => v === str(f1[k])) || [null, str(f1[k])])[1];
+      out.push({ key: k, text: `${FLOWNAMES[k]}: ${lab}`, cost: 0, undo: () => { const fl = { ...(s.flow || {}) }; if (f0[k] == null) delete fl[k]; else fl[k] = f0[k]; if (Object.keys(fl).length) s.flow = fl; else delete s.flow; } });
+    }
+    return out;
+  }
+  const costWords = (c) => (c > 0 ? money(c) : c < 0 ? `saves ${money(-c)}` : "");
+  function renderChanges() {
+    const box = $("changes");
+    if (!box || !s) return;
+    const list = changesOf(), total = list.reduce((a, x) => a + x.cost, 0);
+    box.querySelector("summary").innerHTML = list.length ? `Your changes: <b>${list.length}</b>${total ? ` · ${esc(costWords(total))}` : ""}` : "Your changes: none yet";
+    box.querySelector("ul").innerHTML = list.map((x, i) => `<li data-chg="${esc(x.key)}"><span>${esc(x.text)}${x.cost ? `, ${esc(costWords(x.cost))}` : ""}</span><button type="button" class="btn" data-undo="${i}" aria-label="Undo: ${esc(x.text)}">Undo</button></li>`).join("");
+    box.querySelectorAll("[data-undo]").forEach((bt) => (bt.onclick = () => { list[+bt.dataset.undo].undo(); buildPalette(); refreshCtl(); edited(); }));
+    markMoved();
+  }
+  /** A dot on every control that differs from the start. */
+  function markMoved() {
+    if (!s || !start) return;
+    const list = changesOf(), keys = new Set(list.map((x) => x.key));
+    const groupMoved = (g, c) => keys.has(`${c}:${g}`);
+    const fabRows = (panel) => panel.querySelectorAll(".ctlrow").forEach((r) => r.classList.toggle("moved", keys.has(r.dataset.ctl)));
+    fabRows($("ctl-fab"));
+    $("ctl-all").querySelectorAll(".ctlrow").forEach((r) => {
+      const [c, id] = (r.dataset.ctl || "").split(/:(.*)/s);
+      r.classList.toggle("moved", c === "count" ? ["count", "fail", "rec"].some((x) => groupMoved(id, x)) : keys.has(`rail:${id}`));
+    });
+    const b = sel && sel.id && s.blocks.find((z) => z.id === sel.id);
+    if (b && b.kind === "group") $("insp").querySelectorAll(".ctlrow").forEach((r) => r.classList.toggle("moved", groupMoved(b.group, r.dataset.ctl)));
+    else if (sel && sel.rail) {
+      const tr = list.find((x) => x.key === "track");
+      $("insp").querySelectorAll(".ctlrow").forEach((r) => r.classList.toggle("moved", r.dataset.ctl === "dirs" ? !!(tr && tr.rails.includes(sel.rail)) : keys.has(`rail:${sel.rail}`)));
+    } else fabRows($("insp"));
+  }
+
+  // find a control
+  function findIndex() {
+    const out = [];
+    const words = (k) => { const t = window.FabGlossary && FabGlossary.TERMS.find((x) => x.term === TERM[k]); return [WHY[k], TERM[k], ...((t && t.aliases) || [])].join(" "); };
+    for (const k of Object.keys(FABNAMES)) out.push({ label: FABNAMES[k], where: "Whole fab", words: words(k), go: () => { sel = null; ctlTab("fab"); return k; } });
+    const seen = new Set();
+    for (const b of s.blocks) {
+      if (b.kind !== "group" || seen.has(b.group)) continue;
+      seen.add(b.group);
+      for (const k of Object.keys(GROUPNAMES)) out.push({ label: `${AREA[b.area][0]}: ${GROUPNAMES[k]}`, where: b.group, words: `${SHORT[b.area]} ${AREA[b.area][2]} ${words(k)}`,
+        go: () => { const z = s.blocks.find((y) => y.kind === "group" && y.group === b.group); if (!z) return null; sel = { id: z.id }; ctlTab("sel"); inspector(); return k; } });
+    }
+    for (const k of Object.keys(s.rail)) if (s.rail[k].fail) for (const c of Object.keys(RAILNAMES))
+      out.push({ label: `Track piece ${k.replace(",", ", ")}: ${RAILNAMES[c]}`, where: "Track", words: words(c), go: () => { if (!s.rail[k]) return null; sel = { rail: k }; ctlTab("sel"); inspector(); return c; } });
+    return out;
+  }
+  let found = [];
+  function findNow() {
+    const q = $("ctl-find").value.trim().toLowerCase(), ul = $("ctl-found");
+    if (!q) { found = []; ul.hidden = true; ul.innerHTML = ""; return; }
+    const toks = q.split(/\s+/);
+    found = findIndex().map((x) => ({ ...x, hay: `${x.label} ${x.where} ${x.words}`.toLowerCase() })).filter((x) => toks.every((t) => x.hay.includes(t)))
+      .sort((a, b) => Number(!a.label.toLowerCase().includes(q)) - Number(!b.label.toLowerCase().includes(q))).slice(0, 8);
+    ul.hidden = false;
+    ul.innerHTML = found.length ? found.map((x, i) => `<li><button type="button" data-find="${i}">${esc(x.label)} <small>${esc(x.where)}</small></button></li>`).join("") : `<li class="none">No control matches “${esc(q)}”.</li>`;
+  }
+  function goFound(i) { const x = found[i]; if (!x) return; const k = x.go(); if (k) { draw(); light(k); } }
+
+  // the glossary card
+  function glCard(term, from) {
+    const t = window.FabGlossary && FabGlossary.TERMS.find((x) => x.term === term), c = $("glcard");
+    if (!t || !c) return;
+    const fig = t.figure && window.FabGlossaryFigs && FabGlossaryFigs.FIGS[t.figure];
+    c.innerHTML = `<button type="button" class="btn gl-x" aria-label="Close">✕</button><div class="gl-lead"><img src="${esc(t.picture)}" alt="" width="72" height="72"><div><h4>${esc(t.term)}</h4><p class="gl-plain">${esc(t.plain || t.meaning)}</p></div></div>` +
+      (fig ? `<figure class="gl-fig">${FabGlossaryFigs.draw(t.figure)}<figcaption>${esc(fig.caption)}</figcaption></figure>` : "") +
+      `<p class="note">${esc(t.here)}</p><a href="index.html?term=${encodeURIComponent(t.term)}" target="_blank" rel="noopener">The full entry on the Floor →</a>`;
+    c.hidden = false;
+    const r = from.getBoundingClientRect(), w = c.offsetWidth, h = c.offsetHeight;
+    c.style.left = `${Math.max(8, Math.min(r.right - w, innerWidth - w - 8))}px`;
+    c.style.top = `${Math.max(8, Math.min(r.bottom + 6, innerHeight - h - 8))}px`;
+    c.querySelector(".gl-x").onclick = () => (c.hidden = true);
+  }
+  document.addEventListener("click", (e) => {
+    const q = e.target.closest(".gl-q");
+    if (q) { e.preventDefault(); glCard(q.dataset.term, q); return; }
+    const c = $("glcard");
+    if (c && !c.hidden && !e.target.closest("#glcard")) c.hidden = true;
+  });
 
   // ---------- your levers (docs/BUILD-CONTROLS.md): what the challenge lets you change, each opening its control
   function leversOf(c) {
@@ -1329,11 +1510,19 @@
     if (wasMax && run) jumpTo(Math.min(clock, days() * 1440 - WINDOW)); // the cars' window is stale after Max
   };
   $("again").onclick = () => runNow();
+  $("gears").onclick = () => { gearsBtn = !gearsBtn; $("gears").setAttribute("aria-pressed", String(gearsBtn)); draw(); };
+  $("ctl-find").addEventListener("input", findNow);
+  $("ctl-find").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); goFound(0); }
+    if (e.key === "Escape") { $("ctl-find").value = ""; findNow(); $("ctl-find").blur(); }
+  });
+  $("ctl-found").addEventListener("click", (e) => { const bt = e.target.closest("[data-find]"); if (bt) goFound(+bt.dataset.find); });
   $("showfix").onclick = () => load(chIdx, true);
   $("template").onchange = () => load(E.CHALLENGES.length);
   $("slider").oninput = () => { if (!run) return; const t = run.frames[+$("slider").value].t; lastHour = -1; jumpTo(Math.min(t, days() * 1440 - WINDOW)); };
   document.addEventListener("keyup", (e) => {
     if (e.key.toLowerCase() === "h" && showLast) { showLast = false; $("lastrun").hidden = true; draw(); }
+    if (e.key.toLowerCase() === "g" && gHeld) { gHeld = false; draw(); }
     if (e.key === " " && spaceHeld) { spaceHeld = false; if (!spacePanned) $("play").click(); spacePanned = false; }
   });
   document.addEventListener("keydown", (e) => {
@@ -1374,6 +1563,8 @@
     if (k === "escape") { pasting = false; boxSel = null; ghostAt = null; $("win").hidden = true; }
     if (k === " ") { e.preventDefault(); if (!e.repeat) { spaceHeld = true; spacePanned = false; } return; }
     if (k === "j") { setJamMap(!jamMap); return; }
+    if (k === "g") { if (!e.repeat) { gHeld = true; draw(); } return; }
+    if (e.key === "/") { e.preventDefault(); $("ctl-find").focus(); return; }
     if (k === "h") { if (!e.repeat) { showLast = true; $("lastrun").textContent = prevRun ? "Dashed purple: the jams of your last run" : "No earlier run yet"; $("lastrun").hidden = false; draw(); } return; }
     if (k === "f") { V = null; draw(); return; }
     const step = 40, dirs = { w: [0, step], arrowup: [0, step], s: [0, -step], arrowdown: [0, -step], a: [step, 0], arrowleft: [step, 0], d: [-step, 0], arrowright: [-step, 0] };
@@ -1393,7 +1584,7 @@
   }
   requestAnimationFrame(loop);
   let rt;
-  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { V = null; room = null; draw(); }, 80); });
+  window.addEventListener("resize", () => { $("glcard").hidden = true; clearTimeout(rt); rt = setTimeout(() => { V = null; room = null; draw(); }, 80); });
   // the fonts change the banner's height, so the map measures its room again once they are in
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { room = null; if (s) draw(); });
   // for page tests: where a floor cell's centre is on screen, and the map's state (read only)
@@ -1420,6 +1611,10 @@
     experiment: () => experiment(),
     starsNow: () => (run && run.score && ch() ? starsFor(run.score, ch(), run.spendTop) : null),
     breaks: () => Object.keys(s.rail).filter((k) => s.rail[k].fail),
+    // part 5: gears, the selection, a track piece selected
+    gears: () => lastGears.map((g) => ({ ...g })),
+    selected: () => (sel ? { ...sel } : null),
+    selectRail: (k) => { sel = { rail: k }; ctlTab("sel"); inspector(); draw(); return true; },
     // the editor's basics (docs/EDITOR-BASICS.md)
     view: () => viewNow(),
     ghost: () => (ghostAt ? { ...ghostAt } : null),

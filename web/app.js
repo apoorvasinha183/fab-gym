@@ -2321,6 +2321,9 @@ async function chromeSetup() {
   outage();
   glossarySetup();
   journeySetup();
+  // a link from Build's controls opens the glossary at its term (docs/BUILD-CONTROLS.md, part 5)
+  const glTerm = new URLSearchParams(location.search).get("term");
+  if (glTerm && FabGlossary.TERMS.some(x => x.term === glTerm)) { if (location.hash !== "#floor") history.replaceState(null, "", `${location.pathname}${location.search}#floor`); markPage && markPage("floor"); openGlossary(glTerm); }
   // one button to follow a lot, and one for prototypes while there are some (docs/SITE-CUTS.md); Live is the floor
   $("follow-open").onclick = () => {
     if (UI.lens === "flows") { if (JOURNEY.on) journeyStop(); setView("day"); return; }

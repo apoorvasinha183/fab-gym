@@ -281,3 +281,20 @@ load ports, storage and demand have no glossary entry; every other control has o
   - rework 2%: 775 to 800; 5%: 737.5 to 775;
   - rework 5% with quality holds On: 500 to 600 wafers a day and 1.35 to 1.74 days a wafer; ×2: 250 to 387.5. Each
     check is one machine, so a hold stops every lot that needs it.
+- 1 Nov, part 5, while writing the code:
+  - BL3 first asked every part of a new entry to run past 10 characters, which a topic such as "The fab" does not;
+    it now asks for a topic the glossary already uses.
+  - Demand's entry reuses the lot holding a ticket (`cast/lots/line.webp`), since the fresh lot is the Lot entry's.
+  - A click on a gear selects what it sits on and opens Selected even when another tab is open.
+  - The "?" sits beside each control's name; in the five Floor settings it sits above the menu.
+  - With a setting changed in a challenge, part 4's experiment line ran to five lines in the banner's narrow column.
+    At 1,280 x 720 that left the map under its 300 px minimum, so the page scrolled 141 px (BL4). The line now names
+    at most two changes ("and 1 more" for the rest); why the run earns no stars moved to its tooltip.
+  - The glossary card closes when the window changes size, so it is never left off the screen.
+  - The card's figure drew as black boxes: its colours live in the Floor's stylesheet, so Build now carries the same
+    figure rules. The glossary still named the Floor's panel "Try a change" in six places; they now say Simulation
+    settings, and WIP cap's entry names Build's Whole fab too.
+  - The runs tests (`web/tests/runs.test.mjs`) passed but never ended: their shared helper kept the file alive, so a
+    run of the whole page suite waited on it. The helper is now stopped when the file's tests end.
+- 1 Nov, part 5, results: BG1 to BL4 pass; every page test file passes, run one at a time (the paused floor coach's
+  left out), and the simulator's suite is unchanged by this part. With part 5, every part of Build's redesign is built.

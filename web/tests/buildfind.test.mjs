@@ -258,7 +258,8 @@ test("BL3 the four new entries have every part and their cast pictures", () => {
   for (const [term, pic] of Object.entries(want)) {
     const t = G.TERMS.find((x) => x.term === term);
     assert.ok(t, `${term}: an entry`);
-    for (const k of ["topic", "meaning", "here", "example", "plain"]) assert.ok(typeof t[k] === "string" && t[k].length > 10, `${term}: ${k}`);
+    assert.ok(G.TERMS.some((x) => !(x.term in want) && x.topic === t.topic), `${term}: a topic the glossary already has (${t.topic})`);
+    for (const k of ["meaning", "here", "example", "plain"]) assert.ok(typeof t[k] === "string" && t[k].length > 10, `${term}: ${k}`);
     assert.ok(t.source && t.source.kind && t.source.text, `${term}: where it comes from`);
     assert.ok(Array.isArray(t.see) && t.see.length, `${term}: see also`);
     assert.equal(t.picture, pic);
