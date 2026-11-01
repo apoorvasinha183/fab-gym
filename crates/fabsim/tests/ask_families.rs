@@ -62,7 +62,8 @@ fn old_scenarios_are_unchanged() {
     let plain = Scenario::parse("fabgym-scenario 1\nquestion\tq\ncandidate\tfifo\trule\tfifo\n").unwrap();
     let r = score(&mixed, &plain, &Protocol { seeds: vec![0, 1], threads: 1, ..Default::default() }).unwrap();
     assert!(!r.families);
-    assert!(r.arms.is_empty(), "no arm shops for a one-family question");
+    // every setup keeps its fab file, a one-family question's too (docs/RUNS.md, part 2)
+    assert_eq!(r.arms.iter().map(|a| a.name.as_str()).collect::<Vec<_>>(), ["today", "fifo"]);
 }
 
 #[test]

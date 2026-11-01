@@ -232,7 +232,15 @@ pub fn score(shop: &Shop, sc: &Scenario, p: &Protocol) -> Result<Report, String>
         }
     };
     crate::progress::emit(|| serde_json::json!({"e": "end", "best": best}));
-    Ok(Report { families: false, arms: vec![], scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
+    // every setup's fab file as it ran, so the Floor can play the very run (docs/RUNS.md, part 2); scoring is unchanged
+    let w = Window { from: p.warmup_days * 1440.0, to: (p.warmup_days + p.window_days) * 1440.0 };
+    let mut arms = vec![];
+    for (name, cand) in std::iter::once(("today".to_string(), None)).chain(sc.candidates.iter().map(|c| (c.name.clone(), Some(c)))) {
+        let (d, pol) = sc.arm(cand, None);
+        let shop_text = file_text(&with_probes(&d.apply(shop)?, &w), pol);
+        arms.push(ArmOut { name, rule: pol, bfirst: false, extra_areas: vec![], shop_text });
+    }
+    Ok(Report { families: false, arms, scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
 }
 
 // ------------------------------------------------------------------ two families (docs/ASK-FAMILIES.md)
@@ -271,6 +279,16 @@ pub struct ArmOut {
     pub bfirst: bool,
     pub extra_areas: Vec<(String, String)>,
     pub shop_text: String,
+}
+
+/// A setup's fab file: the shop as it ran, its dispatch rule written in when it is not today's (docs/RUNS.md, part 2).
+fn file_text(shop: &Shop, rule: Policy) -> String {
+    if rule == Policy::Today {
+        return shop.to_text();
+    }
+    let mut s = shop.clone();
+    s.dispatch = Some(rule);
+    s.to_text()
 }
 
 fn laid_out(two: &Shop, ctx: &FamilyContext, picks: &[(String, usize)], wing: bool) -> Result<(Shop, usize, f64, &'static str), String> {
@@ -496,7 +514,7 @@ pub fn score_with(shop: &Shop, sc: &Scenario, p: &Protocol, fam: Option<&FamilyC
     };
     let arms = arms
         .into_iter()
-        .map(|(name, a)| ArmOut { name, rule: a.rule, bfirst: a.bfirst, extra_areas: a.extra_areas, shop_text: a.shop.to_text() })
+        .map(|(name, a)| ArmOut { name, rule: a.rule, bfirst: a.bfirst, extra_areas: a.extra_areas, shop_text: file_text(&a.shop, a.rule) })
         .collect();
     crate::progress::emit(|| serde_json::json!({"e": "end", "best": best}));
     Ok(Report { families: true, arms, scenario: sc.clone(), protocol: p.clone(), alpha_each: alpha, candidates, best, sweep })
@@ -640,7 +658,7 @@ impl Report {
             }
             o.push_str("]}");
         }
-        if self.families {
+        if !self.arms.is_empty() {
             o.push_str(",\"arms\":[");
             for (i, a) in self.arms.iter().enumerate() {
                 if i > 0 {

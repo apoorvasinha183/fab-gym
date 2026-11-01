@@ -71,6 +71,17 @@ a { color: var(--accent); }
 .cell { height: 24px; border-radius: 5px; background: #16303A; border: 1px solid var(--line); }
 .cell.filled { background: var(--base); }
 .cell.up { background: rgba(79, 227, 163, .55); } .cell.down { background: rgba(255, 138, 122, .55); }
+/* part 2 (docs/RUNS.md): a finished run's squares open on the Floor; each setup's floor from above */
+a.cell { display: block; cursor: pointer; }
+a.cell:hover, a.cell:focus-visible { outline: 2px solid #7EE8D8; outline-offset: 1px; }
+.floors { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 8px; }
+.floor { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #0E1B20; }
+.floor h4 { margin: 0 0 6px; font-size: 13.5px; }
+.floor svg { width: 100%; height: auto; display: block; background: #0B1418; border-radius: 6px; }
+.floor svg .copy { fill: #FF8AD8; stroke: #fff; stroke-width: .8; }
+.floor svg .moved { stroke: #F2B33D; stroke-width: 1.6; }
+.floor p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.floor a.watch { color: #7EE8D8; font-size: 12.5px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 svg.forest { width: 100%; height: auto; display: block; }
@@ -115,8 +126,11 @@ svg.forest text { font-family: var(--sans); }
       <div class="panel"><h3 id="rc-forest-title">Against today, 95% intervals</h3><svg class="forest" id="rc-forest" viewBox="0 0 560 200" role="img" aria-label="Each change against today, with its 95% interval"></svg>
         <p class="note" id="rc-forest-note"></p><p class="leader" id="rc-leader"></p></div>
     </div>
+    <div class="panel" id="rc-floors-panel" style="margin-top:16px" hidden><h3>Each setup's floor, and its runs on the Floor</h3>
+      <p class="note" id="rc-floors-note"></p><div class="floors" id="rc-floors"></div></div>
   </section>
 </div>
+<script src="look.js"></script>
 <script src="ask.js"></script>
 <script src="runs.js"></script>
 </body>

@@ -203,14 +203,16 @@ async function runDone(text) {
   return [id, await finished(id)];
 }
 const FABSIM = join(ROOT, "target", "release", "fabsim");
-/** The engine's receipt of a setup's file on a random run for the days shown: [jobs, finished lots]. */
+/** The engine's receipt of a setup's file on a random run for the days shown: [lot-steps, finished lots]. A receipt's
+ * job is one batch on one tool, so its lot-steps are the lots its job lines list, as the Floor's trace counts them. */
 async function receiptOf(shopUrl, seed, until) {
   const { writeFileSync } = await import("node:fs");
   const { execFileSync } = await import("node:child_process");
   const f = join(RUNS, `arm-${Date.now()}.fab.txt`);
   writeFileSync(f, await (await fetch(`http://127.0.0.1:${HP}${shopUrl}`)).text());
-  const end = execFileSync(FABSIM, ["receipt", f, "--seed", String(seed), "--until", String(until)], { maxBuffer: 1 << 30 }).toString().trim().split("\n").pop().split(" ");
-  return [+end[1], +end[5]];
+  const lines = execFileSync(FABSIM, ["receipt", f, "--seed", String(seed), "--until", String(until)], { maxBuffer: 1 << 30 }).toString().trim().split("\n");
+  const steps = lines.filter((l) => l.startsWith("J ")).reduce((a, l) => a + +l.split(" ")[4], 0);
+  return [steps, +lines[lines.length - 1].split(" ")[5]];
 }
 
 test("RN11 a two-family run's card draws each setup's floor, a mark for each placed group, the copies marked", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
@@ -259,7 +261,7 @@ test("RN13 the Floor opened from a link plays that run as scored, for two famili
       assert.equal(await p.ev(`FabFloorPage.runNumber()`), seed, "the random run");
       const until = await p.ev(`FabFloorPage.end()`);
       const [jobs, fin] = await receiptOf(arm.shop_url, seed, until);
-      assert.equal(await p.ev(`FabFloorPage.jobs()`), jobs, `${id} ${arm.name}: the Floor's jobs are the engine's`);
+      assert.equal(await p.ev(`FabFloorPage.jobs()`), jobs, `${id} ${arm.name}: the Floor's lot-steps are the engine's`);
       assert.equal(await p.ev(`FabFloorPage.finished()`), fin, `${id} ${arm.name}: and its finished lots`);
     } finally { p.close(); }
   }

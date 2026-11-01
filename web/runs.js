@@ -129,6 +129,7 @@
     drawLog();
     drawGrid(runs);
     drawForest(runs, j);
+    drawFloors(j);
   }
 
   const STAGES = [["Read the question", "what is asked"], ["Check the setup", "what can run"], ["Lay out floors", "where tools stand"],
@@ -186,11 +187,59 @@
         const e = val(a, s), t = val("today", s);
         let cls = "cell";
         if (e) cls += " filled" + (a === "today" ? "" : t && e.value != null && t.value != null ? (e.value >= t.value ? " up" : " down") : "");
-        html += `<span class="${cls}" title="${esc(RUN.names[a] || a)}, random run ${s + 1}${e && e.value != null ? `: ${RUN.measure} ${Math.round(e.value).toLocaleString("en-US")}` : ""}"></span>`;
+        const tip = `${esc(RUN.names[a] || a)}, random run ${s + 1}${e && e.value != null ? `: ${RUN.measure} ${Math.round(e.value).toLocaleString("en-US")}` : ""}`;
+        // once the run is done, each square opens that setup's random run on the Floor (docs/RUNS.md, part 2)
+        const k = armIndex(a);
+        html += k >= 0 ? `<a class="${cls}" href="${floorLink(k, s)}" title="${tip}. Open it on the Floor"></a>` : `<span class="${cls}" title="${tip}"></span>`;
       }
     }
     g.innerHTML = html;
   }
+  // ---------- part 2 (docs/RUNS.md): each setup's floor, and links that open any run on the Floor
+  const doneArms = () => (RUN.job && RUN.job.stage === "done" && RUN.job.report && RUN.job.report.arms ? RUN.job.report.arms : null);
+  const armIndex = (name) => { const arms = doneArms(); return arms ? arms.findIndex((x) => x.name === name) : -1; };
+  const floorLink = (k, s) => `index.html?q=${encodeURIComponent(RUN.id)}&arm=${k}&run=${s}#floor`;
+  let AREA_OF_GROUP = null;
+  fetch("data/areas.tsv").then((r) => (r.ok ? r.text() : "")).then((t) => {
+    AREA_OF_GROUP = {};
+    for (const l of t.split("\n")) { const [g, a] = l.split("\t"); if (g) AREA_OF_GROUP[g] = a; }
+    if (RUN && RUN.job) drawFloors(RUN.job);
+  }).catch(() => { AREA_OF_GROUP = {}; });
+  /** A setup's floor from above: each phase's spine, each group on its side at its place along the spine and depth. */
+  function floorSvg(plan, extra) {
+    const L = plan.phases.length ? plan.phases : [Math.max(...plan.groups.map((g) => g.x)) + 10], BR = 60, D = 62, SP = 8;
+    const off = L.map((_, i) => L.slice(0, i).reduce((a, b) => a + b, 0) + i * BR), W = off[L.length - 1] + L[L.length - 1], H = 2 * D + SP;
+    const copies = new Set(plan.copies), moved = new Set(plan.moved);
+    let s = `<svg viewBox="-4 -4 ${W + 8} ${H + 8}" role="img" aria-label="The floor from above: ${plan.groups.length} groups">`;
+    L.forEach((len, i) => { s += `<rect x="${off[i]}" y="0" width="${len}" height="${H}" rx="3" fill="#10232A"/><rect x="${off[i]}" y="${D}" width="${len}" height="${SP}" fill="#2F6470"/>`; });
+    for (let i = 0; i + 1 < L.length; i++) s += `<rect x="${off[i] + L[i]}" y="${D}" width="${BR}" height="${SP}" fill="#285059"/>`;
+    for (const g of plan.groups) {
+      const base = g.g.replace(/@B$/, ""), area = (extra[g.g]) || (AREA_OF_GROUP || {})[base] || "", key = window.FabLook ? FabLook.areaOf(area) : null;
+      const col = copies.has(g.g) ? "#FF8AD8" : (key && FabLook.FAM[key]) || "#8FB3AE";
+      const sz = Math.min(12, 4 + Math.sqrt(g.tools) * 1.6), x = off[g.phase] + g.x - sz / 2, y = (g.side === 0 ? D - g.y : D + SP + g.y) - sz / 2;
+      s += `<rect data-g="${esc(g.g)}" class="${copies.has(g.g) ? "copy" : ""}${moved.has(g.g) ? " moved" : ""}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${sz.toFixed(1)}" height="${sz.toFixed(1)}" rx="1.5" fill="${col}"><title>${esc(g.g)}${area ? ` (${esc(area)})` : ""}: ${g.tools} tool${g.tools === 1 ? "" : "s"}${copies.has(g.g) ? ", a copy for prototypes" : moved.has(g.g) ? ", stands elsewhere than today" : ""}</title></rect>`;
+    }
+    return s + "</svg>";
+  }
+  function drawFloors(j) {
+    const arms = doneArms(), box = $("rc-floors"), panel = $("rc-floors-panel");
+    if (!arms || !arms.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const first = RUN.seeds.length ? RUN.seeds[0] : (j.report.seeds || [0])[0];
+    const watch = (k) => `<a class="watch" href="${floorLink(k, first)}">Watch random run ${first + 1} on the Floor →</a>`;
+    const planned = arms.some((a) => a.plan);
+    $("rc-floors-note").textContent = planned
+      ? "Drawn from above from each setup's own fab file: halls along their spines, each group on its side, coloured by area. Copies for prototypes are pink; groups standing elsewhere than in today's floor are ringed. Every square in the grid opens that run on the Floor."
+      : "Every setup here uses today's floor; the changes are in the rules. Every square in the grid opens that run on the Floor.";
+    box.innerHTML = arms.map((a, k) => {
+      const nm = RUN.names[a.name] || a.name, extra = Object.fromEntries(a.extra_areas || []);
+      if (!a.plan) return `<div class="floor"><h4>${esc(nm)}</h4>${watch(k)}</div>`;
+      const c = a.plan.copies.length, m = a.plan.moved.length;
+      const line = a.name === "today" ? "Today's floor." : !c && !m ? "The same floor as today." : [c && `${c} cop${c === 1 ? "y" : "ies"} for prototypes`, m && `${m} group${m === 1 ? "" : "s"} standing elsewhere than today`].filter(Boolean).join("; ") + ".";
+      return `<div class="floor"><h4>${esc(nm)}</h4>${floorSvg(a.plan, extra)}<p>${esc(line)}</p>${watch(k)}</div>`;
+    }).join("");
+  }
+
   function drawForest(runs, j) {
     const svg = $("rc-forest"), cands = RUN.arms.filter((a) => a !== "today"), m = RUN.measure;
     $("rc-forest-title").textContent = m === "profit" ? "Profit a day against today, 95% intervals" : "Reward against today, 95% intervals";

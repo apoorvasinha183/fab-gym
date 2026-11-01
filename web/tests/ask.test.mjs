@@ -93,11 +93,13 @@ test("a wing hall appears only when an arm has one", () => {
 });
 
 test("an arm's rule maps to the page's simulator", () => {
-  assert.deepEqual(A.ruleCode({ rule: "today", bfirst: true }), { code: 3, exact: true });
-  assert.deepEqual(A.ruleCode({ rule: "fifo", bfirst: false }), { code: 1, exact: true });
-  assert.deepEqual(A.ruleCode({ rule: "spt", bfirst: false }), { code: 2, exact: true });
-  assert.deepEqual(A.ruleCode({ rule: "today", bfirst: false }), { code: 0, exact: true });
-  assert.deepEqual(A.ruleCode({ rule: "cr", bfirst: false }), { code: 0, exact: false });
+  assert.deepEqual(A.ruleCode({ rule: "today", bfirst: true }), { code: 3, exact: true, show: 0 });
+  assert.deepEqual(A.ruleCode({ rule: "fifo", bfirst: false }), { code: 1, exact: true, show: 1 });
+  assert.deepEqual(A.ruleCode({ rule: "spt", bfirst: false }), { code: 2, exact: true, show: 2 });
+  assert.deepEqual(A.ruleCode({ rule: "today", bfirst: false }), { code: 0, exact: true, show: 0 });
+  assert.deepEqual(A.ruleCode({ rule: "cr", bfirst: false }), { code: 0, exact: false, show: 0 });
+  // a setup whose file carries its rule runs exactly with no rule handed in (docs/RUNS.md, part 2)
+  assert.deepEqual(A.ruleCode({ rule: "cr", bfirst: false, rule_in_file: true }), { code: 0, exact: true, show: 0 });
 });
 
 // Answers in dollars (docs/MONEY-PL.md, deliverable 4): a report with operating profit shows it first, in dollars,

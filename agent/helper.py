@@ -41,6 +41,37 @@ SPEND_CAP = 20.0  # dollars, the helper's total for every model (raised 1 Nov by
 QUICK = ["--seeds", "0..2", "--warmup", "1", "--window", "2", "--layout-iters", "300"]
 
 
+def plan_of(text, today=""):
+    """A setup's floor from its fab file (docs/RUNS.md, part 2): the phases' lengths, every placed group's phase, side,
+    bay, place along the spine, depth and tools, and, against today's file, the copies and the groups that stand
+    elsewhere. None when the file places no groups (a question with one family keeps today's floor)."""
+    def places(t):
+        out = {}
+        for line in t.splitlines():
+            f = line.split("\t")
+            if f[0] == "place" and len(f) == 7:
+                out[f[1]] = (int(f[2]), int(f[3]), int(f[4]), float(f[5]), float(f[6]))
+        return out
+    here = places(text)
+    if not here:
+        return None
+    tools, phases = {}, []
+    for line in text.splitlines():
+        f = line.split("\t")
+        if f[0] == "group" and len(f) > 2:
+            tools[f[1]] = int(f[2])
+        elif f[0] == "ohtphase" and len(f) > 1:
+            phases.append(float(f[1]))
+    was = places(today) if today else {}
+    groups = [{"g": g, "phase": p[0], "side": p[1], "bay": p[2], "x": p[3], "y": p[4], "tools": tools.get(g, 1)} for g, p in here.items()]
+    return {
+        "phases": phases,
+        "groups": groups,
+        "copies": [g for g in here if g.endswith("@B")],
+        "moved": [g for g, p in here.items() if g in was and was[g][:3] != p[:3]],
+    }
+
+
 class Helper:
     def __init__(self, web=ROOT / "web", fabsim=ROOT / "target" / "release" / "fabsim", smt2020=ROOT / "data" / "smt2020" / "hvlm",
                  key_file=None, jobs=ROOT / "data" / "ask" / "jobs", quick=False, base_url=None, model=None, threads=4,
@@ -286,8 +317,14 @@ class Helper:
         rep = j.get("report")
         if rep is not None:
             rep = dict(rep)
-            rep["arms"] = [{k: v for k, v in a.items() if k != "shop"} | {"shop_url": f"/api/job/{jid}/arm/{i}"}
-                           for i, a in enumerate(rep.get("arms", []))]
+            arms = rep.get("arms", [])
+            # each setup's floor as a plan, worked out once (docs/RUNS.md, part 2)
+            if "_plans" not in j:
+                today = arms[0]["shop"] if arms else ""
+                j["_plans"] = [plan_of(a.get("shop", ""), today) for a in arms]
+            rep["arms"] = [{k: v for k, v in a.items() if k != "shop"} | {"shop_url": f"/api/job/{jid}/arm/{i}", "plan": j["_plans"][i],
+                                                                         "rule_in_file": "\ndispatch\t" in a.get("shop", "")}
+                           for i, a in enumerate(arms)]
         out["report"] = rep
         return out
 

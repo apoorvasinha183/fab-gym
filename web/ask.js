@@ -91,10 +91,13 @@
     return areas.includes("P3 wing") ? [["Wing (P3)", ["P3 wing"]]] : [];
   }
 
+  // the page's simulator runs prototypes first, first come first served and quickest first itself; any other rule runs
+  // exactly only when the setup's file carries it as a dispatch record (docs/RUNS.md, part 2; the helper says so in
+  // rule_in_file). `show` is the rule menu's choice for it.
   function ruleCode(arm) {
-    if (arm.bfirst) return { code: 3, exact: true };
+    if (arm.bfirst) return { code: 3, exact: true, show: 0 };
     const k = { today: 0, fifo: 1, spt: 2 }[arm.rule];
-    return k === undefined ? { code: 0, exact: false } : { code: k, exact: true };
+    return k === undefined ? { code: 0, exact: !!arm.rule_in_file, show: 0 } : { code: k, exact: true, show: k };
   }
 
   const api = { scenarioLines, resultRows, summaryLine, familyB, extraHalls, ruleCode };

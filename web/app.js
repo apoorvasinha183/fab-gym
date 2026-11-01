@@ -1794,6 +1794,9 @@ async function main() {
   // the first hours first (docs/FLOOR-SPEED.md): the same run's first 6 hours draw and play at once, while a worker
   // runs the full 3 days; the simulator is exact, so those hours are the start of the full run
   startRun(runFromAddress(), false);
+  // a run from the Runs page (docs/RUNS.md, part 2): ?q=Q-0002&arm=3&run=4 plays that setup's random run as scored
+  { const a = new URLSearchParams(location.search), q = a.get("q"), k = a.get("arm");
+    if (q && /^[A-Z]-\d{4,}$/.test(q) && k !== null && /^\d{1,3}$/.test(k)) watchRun(q, +k, RUN); }
   await loadLong();
   fit();
   askSetup();
@@ -1803,6 +1806,7 @@ async function main() {
 // the run on the Floor (docs/RANDOM-RUNS.md): a random history numbered 1 to 9,999, in the address so it replays;
 // run 0 is the one the Floor used to play
 let RUN = 0;
+let WATCH = null; // a question's run being watched (docs/RUNS.md, part 2)
 function runFromAddress() {
   const v = new URLSearchParams(location.search).get("run");
   if (v !== null && /^\d{1,5}$/.test(v)) return +v;
@@ -1816,6 +1820,7 @@ function randomRun(not) {
 /** Play run n: its first hours at once, the full three days from the worker behind them. */
 function startRun(n, keepView) {
   RUN = n;
+  if (WATCH) { WATCH = null; $("watchbar").hidden = true; }
   const q = new URLSearchParams(location.search); q.set("run", String(n));
   history.replaceState(null, "", `${location.pathname}?${q}${location.hash}`);
   $("run-no").textContent = `Run #${n}`;
@@ -1885,6 +1890,10 @@ window.FabFloorPage = {
   time: () => t,
   end: () => (P ? P.j.until : 0),
   moves: () => (P && !P.quick ? P.j.moves : null),
+  // docs/RUNS.md, part 2: a question's run on the Floor, its jobs and finished lots
+  watching: () => (WATCH ? { ...WATCH } : null),
+  jobs: () => (P && !P.quick ? P.trace.length / 6 : null),
+  finished: () => (P && !P.quick ? P.j.finished : null),
   groups: () => (P ? P.nG : 0),
   mood: g => moodNow(g),
   health: () => (P ? health() : null),
@@ -2100,7 +2109,7 @@ async function showArm(j, k) {
     for (const [g, a] of arm.extra_areas) { sim.area[g] = a; ASK.extra.push(g); }
     await loadShopText(text);
     const rc = FabAsk.ruleCode(arm);
-    $("rule").value = rc.code < 3 ? String(rc.code) : "0";
+    $("rule").value = String(rc.show);
     const run = simulate({ seed: RUN, days: 3, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 });
     setFloor(run);
     fit();
@@ -2109,6 +2118,42 @@ async function showArm(j, k) {
     $("back-today").onclick = backToToday;
   } catch (err) {
     $("runnote").textContent = "Could not show it: " + err.message;
+  }
+}
+
+// a question's run on the Floor (docs/RUNS.md, part 2): that setup's file, that random run, from its start
+async function watchRun(q, k, seed) {
+  fullSeq++; if (fullWorker) { fullWorker.terminate(); fullWorker = null; } // the base run in the background is not wanted
+  $("runnote").textContent = `Loading ${q} onto the floor…`;
+  try {
+    const j = await fetch(`/api/job/${q}`).then(r => (r.ok ? r.json() : Promise.reject(new Error("the helper has no such run"))));
+    const rep = j.report, arm = rep && rep.arms && rep.arms[k];
+    if (!arm) throw new Error(rep ? "that run kept no such setup" : "that run has not finished");
+    const text = await fetch(arm.shop_url).then(r => (r.ok ? r.text() : Promise.reject(new Error("the helper has no such setup"))));
+    for (const g of ASK.extra) delete sim.area[g];
+    ASK.extra = [];
+    for (const [g, a] of arm.extra_areas || []) { sim.area[g] = a; ASK.extra.push(g); }
+    await loadShopText(text);
+    const total = rep.warmup_days + rep.window_days, days = total <= 14 ? total : 3;
+    const rc = FabAsk.ruleCode(arm);
+    $("rule").value = String(rc.show);
+    RUN = seed; $("run-no").textContent = `Run #${seed}`; $("seed").value = String(seed);
+    const run = simulate({ seed, days, rule: rc.code, downGroup: -1, downAt: 0, downHours: 0 });
+    setFloor(run);
+    fit();
+    WATCH = { q, k, seed, days, total, name: arm.name };
+    ASK.onFloor = arm.name;
+    // in view: which run this is, and the way back (the run's own number on its card is the random run's)
+    $("run-no").textContent = `${q} · run ${seed + 1}`;
+    $("watchbar").innerHTML = `Watching <b>${esc(q)}</b> · ${esc(arm.name)} · random run ${seed + 1} · ${days === total ? `all ${total} days` : `first ${days} of ${total} days`}, as scored · <a href="runs.html#run=${esc(q)}">the run</a> · <button type="button" class="link" id="watch-off">today's fab</button>`;
+    $("watchbar").hidden = false;
+    $("watch-off").onclick = () => { WATCH = null; $("watchbar").hidden = true; backToToday(); };
+    $("runnote").innerHTML = `On the floor: <b>${esc(q)}</b>, setup <b>${esc(arm.name)}</b>, its random run ${seed + 1}: ` +
+      `${days === total ? `all ${total} days it ran` : `the first ${days} of its ${total} days`}, as scored (the same engine on the same setup and random run). ` +
+      `<a href="runs.html#run=${esc(q)}">Back to the run</a> · <button type="button" class="link" id="back-today">Back to today's fab</button>`;
+    $("back-today").onclick = () => { WATCH = null; $("watchbar").hidden = true; backToToday(); };
+  } catch (err) {
+    $("runnote").textContent = `Could not show ${q}: ${err.message}`;
   }
 }
 

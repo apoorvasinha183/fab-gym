@@ -125,3 +125,17 @@ the `dispatch` record (Build, part 4).
   - RN6 first watched a run that ended in about a second, before the card opened. The helper gains `--threads`; the
     test helper uses one core and four changes, and opens the Runs page before starting the run, so the card is seen
     while it works. RN8 waits for RN7's run to end before asking.
+- 1 Nov, part 2, while writing the code: RN13 first compared the Floor's lot-steps with the receipt's jobs, but a
+  receipt's job is one batch on one tool, holding several lots; it now compares them with the lots the receipt's job
+  lines list. The page's simulator (`web/fabweb.wasm`) is rebuilt from today's engine.
+  `crates/fabsim/tests/ask_families.rs` once asserted that a one-family question keeps no setup files; it now asserts
+  today's and the candidate's. The page hands in the three rules it runs itself (prototypes first, first come first
+  served, quickest first) as before, and runs any other rule exactly only when the setup's file carries it: reports
+  saved before this part do not, and the helper says which with `rule_in_file`; `web/tests/ask.test.mjs` checks both.
+  On the Floor, the note naming the run sat inside the settings panel, out of sight, and the run's label read "Run #4"
+  where the card says random run 5: a watched run now shows a banner in the row under the top bar (the run, the setup,
+  the random run, the days shown, links back to the run and to today's fab), and the label reads "Q-0002 · run 5".
+- 1 Nov, part 2, results: RN9 to RN13 pass; the simulator's whole suite, the helper's tests and every page test pass,
+  run one file at a time (the paused floor coach's left out), with the two tests changed above. On the Floor, a
+  two-family setup (copies in the halls) and a one-family setup with its own rule (first come, first served) play
+  their scored runs exactly: the same lot-steps and finished lots as the engine's receipt.
