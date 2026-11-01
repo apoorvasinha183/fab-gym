@@ -479,3 +479,8 @@ In headless Chrome with a helper:
     headless Chrome one from 9300 to 9699, and both drew 9349. The helpers now take 8800 to 9199 in every page test.
 - 1 Nov, part 8, results: SM1 to SM7 and SR1 to SR7 pass, with every other Build page test (G8 and P1 as changed) and
   the helper's Build tests.
+
+- Fixed 1 November 2026 (test "Wrong sign", BP7 in `web/tests/buildplace.test.mjs`; code "Right sign"): with every group
+  of a kind placed, a machine in hand used to show a red ghost saying "Every group of this kind is placed", while a click
+  still added one more machine to a group already on the floor (BP6). The ghost now shows where it goes, and the status
+  line names the group it joins. Only a kind with no group in the fab at all is refused.

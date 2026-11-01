@@ -1176,7 +1176,12 @@
       ghostAt = { kind: pk, x, y, w: gw, h: gh, ok: f.ok, why: f.why };
       // the spot it will snap to (part 8)
       if (f.ok && !e.altKey && inb && !E.beside(s, { x, y, w: gw, h: gh }).length) { const sp = E.snapBeside(s, x, y, gw, gh); if (sp) ghostAt = { ...ghostAt, x: sp[0], y: sp[1], snapped: true }; }
-      if (ghostAt.ok && pk === "group" && !nextGroup(tool)) ghostAt = { ...ghostAt, ok: false, why: "Every group of this kind is placed. Add machines with + under Selected." };
+      // every group of this kind placed: a click adds one more machine to a group already on the floor (placeMachine), in
+      // a new spot; only a kind with no group in this fab at all refuses
+      if (ghostAt.ok && pk === "group" && !nextGroup(tool)) {
+        const join = (s.blocks.find((z) => z.kind === "group" && z.area === tool) || {}).group;
+        ghostAt = join ? { ...ghostAt, joins: join } : { ...ghostAt, ok: false, why: `This fab has no ${AREA[tool][0].toLowerCase()} group.` };
+      }
     } else ghostAt = null;
     if (drag && inb) {
       const k = E.key(x, y);
@@ -1250,6 +1255,7 @@
     if (b && b.kind === "group") { const n = groupNow(b); $("status").textContent = `(${x}, ${y})  ${b.group}: ${b.count} tool${b.count > 1 ? "s" : ""}, ${AREA[b.area][0]}${n ? `, ${n.queue} lot${n.queue === 1 ? "" : "s"} waiting, ${MOOD[n.mood || "work"][0].toLowerCase()}` : ""}`; }
     else if (b) $("status").textContent = `(${x}, ${y})  ${INFRA[b.kind][0].toLowerCase()}`;
     else if (s.rail[k]) { const o = s.rail[k].o.map((z, i) => (z ? DLONG[i] : null)).filter(Boolean); $("status").textContent = `(${x}, ${y})  rail, out ${o.join(" and ") || "nowhere"}${o.length > 1 ? " (a split)" : ""}${s.rail[k].fail ? ", breaks now and then" : ""}`; }
+    else if (ghostAt && ghostAt.ok && ghostAt.joins) $("status").textContent = `(${x}, ${y})  floor, click to add one more machine to ${ghostAt.joins} here; its machines in both spots count as one group`;
     else $("status").textContent = `(${x}, ${y})  floor${mode === "build" && tool !== "select" && tool !== "erase" ? ", click to place" : ""}`;
   }
 
