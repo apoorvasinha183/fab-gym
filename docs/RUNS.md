@@ -113,6 +113,52 @@ the `dispatch` record (Build, part 4).
   engine's receipt of that setup's file on that random run for the days shown; for a one-family setup with its own rule
   too.
 
+## Part 3: Simulation settings, Build and Floor runs in the same list (written 1 November 2026, before its tests and code)
+
+The founder: "Attack them in that order", Runs part 3 first. Found before: a comparison in the Floor's Simulation
+settings lives only in that page's session list; Build's runs and the Floor's own runs are kept nowhere; the Runs list
+shows questions only; and some page tests start a helper with no runs folder of its own, so their runs would land in
+the real `data/ask/runs/`.
+
+1. **Every kind of run is numbered and kept.** A comparison in Simulation settings is S-0001 and on, a Build run B-0001,
+   a run of today's fab on the Floor F-0001, beside the questions' Q-0001. Each keeps its folder (`run.json`, its log,
+   what it needs to be opened again). A run is the same every time it is played, so playing the same thing again
+   (the same layout, settings and random run) is the same run and keeps its number; anything else gets the next one.
+2. **Simulation settings.** When a comparison ends, the page sends it to the helper: the change in plain words, the
+   settings, each of the 10 random runs for today and for the change with its four measures, and the four measures'
+   intervals and verdicts. Its card shows the change, the table of measures (today, the change, 95% interval,
+   verdict), the grid of the 10 random runs coloured by wafers out against today, and a link to open the Floor.
+3. **Build.** Each scored run Build asks for is kept with its fab file, its breakdown settings and Build's own layout,
+   its challenge or Free build, its random run and its score. Its card draws the layout from the fab file (each
+   machine block and storage, the track), shows wafers a day, days a wafer and the extra spend, and "Open in Build"
+   opens that layout again (`editor.html?run=B-0003`), as Free build, to change from there.
+4. **The Floor.** When the Floor finishes playing today's fab on a random run, the run is kept with its days and
+   numbers (lots finished, wafers out, moves). Its card links back to it (`index.html?run=4721#floor`). A question's
+   run being watched on the Floor is that question's, and is not kept again.
+5. **One list.** The Runs list names each run's kind (Question, Simulation settings, Build, Floor) and title, newest
+   first, with chips to show one kind.
+6. **Tests keep their runs to themselves.** Every page test that starts a helper gives it a runs folder of its own.
+
+## Part 3: tests (written before the code)
+
+`agent/tests/test_runs.py`:
+- **RN14** a Simulation settings run sent to the helper is S-0001 and the next S-0002; a Floor run sent twice with the
+  same key keeps one number; after a restart the numbers go on; the list names each run's kind and title, with the
+  questions' Q- numbers unchanged.
+- **RN15** a Build run asked for with `record` is B-0001 and keeps its fab file and Build's layout; the same layout on
+  the same random run keeps B-0001; another random run is B-0002; the run serves its fab file, layout and score.
+
+`web/tests/runs.test.mjs`:
+- **RN16** a comparison in the Floor's Simulation settings is kept as an S run: the Runs list labels it Simulation
+  settings, and its card shows the change, the four measures with the same intervals and verdicts as the Floor's
+  panel, and a square for each of today's and the change's 10 random runs.
+- **RN17** a run in Build is kept as a B run: its card draws a block for each machine group and storage in the fab file
+  and a line for each track link, shows Build's wafers a day, and "Open in Build" opens a Build whose fab file is the
+  run's.
+- **RN18** today's fab played on the Floor is kept as an F run that links back to it; the list's chips show one kind
+  at a time.
+- Every page test that starts a helper passes it `--runs` with a folder of its own.
+
 ## Changes
 - 1 Nov, while writing the code:
   - The engine's report goes to a file rather than a pipe, since a large report (3 MB) would fill the pipe and stop the

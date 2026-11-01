@@ -1,4 +1,4 @@
-// Runs you can watch and find again (docs/RUNS.md, part 1: RN5 to RN8; part 2: RN11 to RN13). Written before the code. A helper in smoke mode
+// Runs you can watch and find again (docs/RUNS.md, part 1: RN5 to RN8; part 2: RN11 to RN13; part 3: RN16 to RN18). Written before the code. A helper in smoke mode
 // keeps its runs in a folder of its own; nothing is spent. On a teaching fab of our own and the SMT2020 testbed; not a
 // real fab.
 //
@@ -265,4 +265,95 @@ test("RN13 the Floor opened from a link plays that run as scored, for two famili
       assert.equal(await p.ev(`FabFloorPage.finished()`), fin, `${id} ${arm.name}: and its finished lots`);
     } finally { p.close(); }
   }
+});
+
+// ---------------------------------------------------------------- part 3 (docs/RUNS.md): Simulation settings, Build and Floor runs
+
+const listOf = async () => (await api("/api/runs")).runs;
+async function waitRun(kind, ms = 240000) {
+  for (let t = 0; t < ms; t += 500) { const r = (await listOf()).find((x) => x.kind === kind); if (r) return r; await sleep(500); }
+  return null;
+}
+
+test("RN16 a Simulation settings comparison is kept as an S run with the Floor's measures and its random runs", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  await helperUp();
+  const p = await page("index.html?run=5#floor");
+  try {
+    for (let i = 0; i < 240 && !(await p.ev(`!!(window.FabFloorPage && FabFloorPage.moves() !== null)`)); i++) await p.sleep(250);
+    await p.ev(`document.getElementById("change-open").click(), 1`); await p.sleep(300);
+    await p.ev(`(() => { const d = document.getElementById("d-breakdowns"); d.value = "2"; d.dispatchEvent(new Event("input")); const y = document.getElementById("days"); y.value = "1"; y.dispatchEvent(new Event("input")); return 1; })()`);
+    await p.ev(`document.getElementById("run").click(), 1`);
+    const r = await waitRun("settings");
+    assert.ok(r, "an S run is kept");
+    assert.match(r.id, /^S-\d{4}$/);
+    const panel = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#cmp-rows .metric")].map(m => ({ name: m.querySelector(".name").textContent, pill: m.querySelector(".pill").textContent, iv: (m.querySelector(".iv") || {}).textContent || "" })))`));
+    p.close();
+    const c = await page(`runs.html`);
+    try {
+      await c.sleep(600);
+      assert.match(await c.ev(`document.querySelector('#runs-list tr[data-run="${r.id}"]').innerText`), /Simulation settings/, "the list names its kind");
+      await c.ev(`location.hash = "#run=${r.id}", 1`); await c.sleep(1200);
+      const card = JSON.parse(await c.ev(`JSON.stringify({ text: document.getElementById("run-card").innerText, rows: [...document.querySelectorAll("#rc-measures tbody tr")].map(tr => [...tr.cells].map(td => td.textContent)), cells: document.querySelectorAll("#rc-grid .cell").length })`));
+      assert.match(card.text, /breakdowns ×2/i, "the change in words");
+      assert.equal(card.rows.length, panel.length, "the four measures");
+      panel.forEach((m, i) => {
+        assert.equal(card.rows[i][0], m.name);
+        assert.equal(card.rows[i][4], m.pill, `${m.name}: the same verdict as the Floor's panel`);
+        assert.ok(m.iv.includes(card.rows[i][3]), `${m.name}: the same interval (${card.rows[i][3]} in ${m.iv})`);
+      });
+      assert.equal(card.cells, 20, "today's and the change's 10 random runs");
+    } finally { c.close(); }
+  } finally { try { p.close(); } catch { /* closed */ } }
+});
+
+test("RN17 a run in Build is kept as a B run: its layout drawn, its score, and Open in Build opens it again", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  await helperUp();
+  const p = await page("editor.html?ch=1");
+  let id;
+  try {
+    const r = await waitRun("build", 60000);
+    assert.ok(r, "a B run is kept");
+    id = r.id;
+  } finally { p.close(); }
+  const j = await api(`/api/job/${id}`);
+  const fab = await (await fetch(`http://127.0.0.1:${HP}${j.record.fab_url}`)).text();
+  const stations = fab.split("\n").filter((l) => /^(station|stocker)\t/.test(l)).length, links = fab.split("\n").filter((l) => l.startsWith("link\t")).length;
+  const c = await page(`runs.html#run=${id}`);
+  try {
+    await c.sleep(1200);
+    const card = JSON.parse(await c.ev(`JSON.stringify({ blocks: document.querySelectorAll("#rc-layout [data-block]").length, links: document.querySelectorAll("#rc-layout [data-link]").length, text: document.getElementById("run-card").innerText, open: (document.querySelector('#run-card a[href^="editor.html?run="]') || {}).getAttribute ? document.querySelector('#run-card a[href^="editor.html?run="]').getAttribute("href") : null })`));
+    assert.equal(card.blocks, stations, "a block for each machine group and storage");
+    assert.equal(card.links, links, "a line for each track link");
+    assert.match(card.text, new RegExp(Math.round(j.record.score.wafers_per_day).toLocaleString("en-US")), "Build's wafers a day");
+    assert.equal(card.open, `editor.html?run=${id}`);
+  } finally { c.close(); }
+  const b = await page(`editor.html?run=${id}`);
+  try {
+    for (let i = 0; i < 200 && !(await b.ev(`!!(window.FabEditorPage && FabEditorPage.runs && FabEditorPage.runs() >= 1)`)); i++) await b.sleep(100);
+    assert.equal(await b.ev(`FabEditorPage.fab()`), fab, "Build opens the run's layout");
+  } finally { b.close(); }
+});
+
+test("RN18 today's fab played on the Floor is kept as an F run linking back to it; the chips show one kind at a time", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  await helperUp();
+  const p = await page("index.html?run=77#floor");
+  try {
+    let r = null;
+    for (let t = 0; t < 240000 && !r; t += 500) { r = (await listOf()).find((x) => x.kind === "floor" && /77/.test(x.title || "")); if (!r) await sleep(500); }
+    assert.ok(r, "an F run is kept for run 77");
+    const j = await api(`/api/job/${r.id}`);
+    assert.equal(j.record.link, "index.html?run=77#floor");
+  } finally { p.close(); }
+  const c = await page("runs.html");
+  try {
+    await c.sleep(800);
+    const kinds = async () => JSON.parse(await c.ev(`JSON.stringify([...document.querySelectorAll("#runs-list tbody tr")].filter(tr => !tr.hidden && tr.offsetParent).map(tr => tr.dataset.kind))`));
+    const all = await kinds();
+    assert.ok(all.includes("floor") && all.length > 1, `all kinds at first: ${all}`);
+    await c.ev(`document.querySelector('#runs-chips [data-kind="floor"]').click(), 1`); await c.sleep(200);
+    const only = await kinds();
+    assert.ok(only.length >= 1 && only.every((k) => k === "floor"), `only Floor runs: ${only}`);
+    await c.ev(`document.querySelector('#runs-chips [data-kind=""]').click(), 1`); await c.sleep(200);
+    assert.equal((await kinds()).length, all.length, "All shows them all again");
+  } finally { c.close(); }
 });

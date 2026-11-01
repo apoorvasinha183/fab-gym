@@ -155,5 +155,67 @@ class Runs(unittest.TestCase):
         self.assertIn("dispatch\tfifo", self.raw(arms2[1]["shop_url"]).splitlines())
 
 
+    # ------------------------------------------------------------------ part 3 (docs/RUNS.md): every kind of run
+
+    def record(self, body, port=None):
+        code, j = self.call("/api/runs/record", body, port)
+        self.assertEqual(code, 200, j)
+        return j["id"]
+
+    def test_rn14_settings_and_floor_runs_are_numbered_and_listed(self):
+        rows = [{"arm": a, "seed": s, "values": {"wafers_out": v, "moves": 10 * v}} for a, s, v in
+                (("today", 100, 900), ("change", 100, 860), ("today", 101, 910), ("change", 101, 850))]
+        S = {"kind": "settings", "title": "Simulation settings: breakdowns ×2", "settings": [["Change", "breakdowns ×2"]],
+             "seeds": [100, 101], "arms": ["today", "change"], "measure": "wafers_out", "runs": rows,
+             "summary": {"columns": ["Measure", "Today's fab", "Change", "95% interval", "Verdict"], "rows": [["Wafers out", "905", "−50", "−90 to −10", "worse"]]},
+             "link": "index.html#floor"}
+        F = {"kind": "floor", "key": "floor|shop|7|3", "title": "Today's fab, run #7", "link": "index.html?run=7#floor",
+             "summary": {"rows": [["Lots finished", "40"]]}}
+        self.assertEqual(self.record(S), "S-0001")
+        self.assertEqual(self.record(S), "S-0002", "a comparison with no key is a new run")
+        self.assertEqual(self.record(F), "F-0001")
+        self.assertEqual(self.record(F), "F-0001", "the same run sent again keeps its number")
+        port2 = self.start()
+        self.assertEqual(self.record(S, port2), "S-0003", "numbers go on after a restart")
+        q, _ = self.run_text(ONE, port2)
+        self.assertEqual(q, "Q-0001", "the questions' numbers are their own")
+        _, lst = self.call("/api/runs", port=port2)
+        kinds = {r["id"]: r["kind"] for r in lst["runs"]}
+        self.assertEqual(kinds, {"S-0001": "settings", "S-0002": "settings", "S-0003": "settings", "F-0001": "floor", "Q-0001": "question"})
+        titles = {r["id"]: r["title"] for r in lst["runs"]}
+        self.assertEqual(titles["F-0001"], "Today's fab, run #7")
+        _, j = self.call("/api/job/S-0001", port=port2)
+        self.assertEqual((j["kind"], j["stage"]), ("settings", "done"))
+        self.assertEqual(j["record"]["settings"], S["settings"])
+        runs = [e for e in j["events"] if e["e"] == "run"]
+        self.assertEqual([(e["arm"], e["seed"], e["value"]) for e in runs], [(r["arm"], r["seed"], r["values"]["wafers_out"]) for r in rows])
+        self.assertEqual(j["events"][0]["e"], "start")
+
+    def test_rn15_build_runs_keep_their_layout(self):
+        import subprocess
+        made = subprocess.run(["node", "-e", 'const E=require("./web/editor-core.js"); const st={...E.template("teaching"),inports:2};'
+                               'process.stdout.write(JSON.stringify({fab: E.fabText(E.TEACHING_SHOP, st, {vehicles: st.vehicles}), state: st}))'],
+                              cwd=ROOT, capture_output=True, text=True, check=True)
+        got = json.loads(made.stdout)
+        body = {"fab": got["fab"], "seed": 1, "days": 1, "every": 60, "record": {"title": "Free build", "state": got["state"], "template": "teaching", "challenge": None}}
+        code, r = self.call("/api/fab/run", body)
+        self.assertEqual(code, 200, r)
+        self.assertEqual(r["run"], "B-0001")
+        d = self.tmp / "runs" / "B-0001"
+        self.assertEqual((d / "fab.txt").read_text(), got["fab"])
+        self.assertEqual(json.loads((d / "state.json").read_text()), got["state"])
+        _, again = self.call("/api/fab/run", body)
+        self.assertEqual(again["run"], "B-0001", "the same layout on the same random run is the same run")
+        _, other = self.call("/api/fab/run", {**body, "seed": 2})
+        self.assertEqual(other["run"], "B-0002")
+        _, j = self.call("/api/job/B-0001")
+        self.assertEqual(j["kind"], "build")
+        self.assertEqual(j["record"]["score"]["wafers_per_day"], r["moods"]["score"]["wafers_per_day"])
+        self.assertEqual(j["record"]["state"], got["state"])
+        self.assertEqual(self.raw(j["record"]["fab_url"]), got["fab"])
+        _, plain = self.call("/api/fab/run", {k: v for k, v in body.items() if k != "record"})
+        self.assertNotIn("run", plain, "a run asked for without record is not kept")
+
+
 if __name__ == "__main__":
     unittest.main()
