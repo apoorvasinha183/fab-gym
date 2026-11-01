@@ -61,6 +61,41 @@ The work comes in three parts, each with its own tests written first:
 - **GP8** the newcomer-line drafter sends only the glossary's own text, returns one line per term, and counts its tokens
   on the glossary meter.
 
+## Part 2: live numbers from the run, and Show me (written 1 November 2026, before its tests and code)
+
+The founder, by quiz: "Live wire" and "Show and tell". Found before: an article says what a word means in general and
+in this fab, but never what it is doing in the run on screen; the Floor already lights machines by their state, lights
+the groups with lots waiting, and flies to a group, from its status panel.
+
+1. **Right now.** On the Floor, an article whose word the run can count opens with a "Right now" line under the plain
+   line: the number from the run on screen at the fab time shown, kept up to date while the article is open. Each
+   number is the Floor's own (its status panel's, or counted the same way):
+   - Breakdown and Repair time: machines broken down now; Setup change: machines changing setup now;
+   - Tool: machines working, idle, in maintenance, broken down and changing setup now;
+   - WIP and Lot: lots in the fab now, and how many wait for a machine; Wafer: wafers out so far;
+   - Cycle time: days a wafer has taken, over the lots finished so far;
+   - Tool group: the longest line now, and how many lots are in it;
+   - Lithography, Etch, Polishing (CMP), Checks (metrology): that area's machines, and how many are working now;
+   - Hot lot: urgent lots waiting for a machine now;
+   - Track (overhead track): lots on the move now;
+   - Seed: the run number; Simulator: the days this page simulated and how long it took.
+   A word the run cannot count has no such line.
+2. **Show me.** Where there is something to point at, the line carries a Show me button. It closes the glossary and
+   lights it on the floor, as the status panel's rows do: the machines broken down or changing setup, the machines in
+   that area, the groups with lots waiting, the groups with urgent lots waiting, or it flies to the longest line. A note
+   says what is lit; Esc or a click on the note turns it off.
+
+## Part 2: tests (written before the code)
+
+`web/tests/glossarylive.test.mjs` (headless Chrome, the Floor from a static server, paused):
+- **GL1** Breakdown, Setup change, WIP and Lithography each open with a Right now line whose number is the Floor's own
+  at that moment (machines broken down, changing setup, lots in the fab, the area's machines working).
+- **GL2** Show me on Breakdown closes the glossary and lights exactly the machines broken down now; on Lithography it
+  lights that area's machines and no other; on Hot lot it lights the groups where urgent lots wait.
+- **GL3** a word the run cannot count (Bonferroni) has no Right now line.
+- **GL4** the number follows the clock: played on and paused again, the line matches the Floor again.
+- **GL5** Esc turns the light off.
+
 ## Changes
 - 1 Nov, while writing the code: GP8's test gave the model no key file, and the model reads its key when it is made; the
   test now writes a stand-in key. The figures' first layout put yes and no labels on their arrows and cut off the hot
