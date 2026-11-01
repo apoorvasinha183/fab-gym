@@ -33,10 +33,14 @@ function serve() {
   return new Promise((r) => server.listen(0, "127.0.0.1", () => r(server)));
 }
 
+const BROWSERS = new Set();
+process.on("exit", () => { for (const c of BROWSERS) { try { c.kill(); } catch { /* gone */ } } });
+after(() => { for (const c of BROWSERS) { try { c.kill(); } catch { /* gone */ } } });
 async function chrome() {
   const port = 9400 + Math.floor(Math.random() * 400);
   const prof = profileDir("runs-");
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${port}`, "--window-size=1440,1000", "--hide-scrollbars", `--user-data-dir=${prof}`, "about:blank"], { stdio: "ignore" });
+  BROWSERS.add(ch); ch.on("exit", () => BROWSERS.delete(ch)); // a test that fails partway must not leave a browser running
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let ws = null;
   for (let i = 0; i < 60 && !ws; i++) {
@@ -109,7 +113,8 @@ test("RN5 every page has a Runs tab; the list shows the runs; a run's address op
   const p = await page("runs.html");
   try {
     for (let i = 0; i < 40 && !(await p.ev(`document.querySelectorAll("#runs-list [data-run]").length >= 2`)); i++) await p.sleep(250);
-    const rows = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#runs-list [data-run]")].map(r => [r.dataset.run, r.innerText]))`));
+    // the questions' rows (opening Build above keeps a Build run too, docs/RUNS.md part 3)
+    const rows = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll('#runs-list [data-run][data-kind="question"]')].map(r => [r.dataset.run, r.innerText]))`));
     assert.deepEqual(rows.map((r) => r[0]), [two, one], "newest first");
     assert.ok(rows[0][1].includes("Prototypes doubled: first in line?"));
     await p.ev(`location.hash = "#run=${two}", 1`); await p.sleep(1200);

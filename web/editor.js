@@ -404,7 +404,10 @@
   async function runNow(keepClock) {
     const seq = ++runSeq;
     running = true; pendingEdits = false; $("again").disabled = true; $("again").textContent = "Running…"; if (!keepClock) { stale = true; $("goaltext").textContent = "Running the simulator…"; } draw();
-    const req = { fab: fab(), days: days(), every: 60, overrides: E.overridesFor(s) };
+    const c0 = ch();
+    // each scored run is kept as a B run with its layout (docs/RUNS.md, part 3)
+    const record = { title: c0 ? `Challenge ${chIdx + 1}: ${c0.title}` : "Free build", state: snap(), template: c0 ? "teaching" : $("template").value, challenge: c0 ? c0.id : null };
+    const req = { fab: fab(), days: days(), every: 60, overrides: E.overridesFor(s), record };
     const r = await postWait("/api/fab/run", { ...req, seed: watch });
     if (seq !== runSeq) return;
     // watching another run: run #1 is run too, and gives the score, so stars stay fair (docs/RANDOM-RUNS.md)
@@ -753,7 +756,7 @@
     $("chtabs").innerHTML = names.map((n, i) => `<button class="tab" data-ch="${i}" aria-pressed="${i === chIdx}">${esc(n)}${starsOf(i)}</button>`).join("");
     $("chtabs").querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => load(+b.dataset.ch)));
   }
-  async function load(i, fixed) {
+  async function load(i, fixed, saved) {
     chIdx = i; sel = null; run = null; prev = null; win = null; checks = null; prevRun = null; flashes = []; lastEditAt = null;
     watch = 1; $("run-no").textContent = "Run #1"; $("watching").hidden = true; // a challenge starts on its own run
     const c = ch();
@@ -766,6 +769,8 @@
         setupNow = { state: E.template("smt2020", d), base: d.shop, overrides: null };
         for (const l of d.areas.split("\n")) { const [g, a] = l.split("\t"); if (g) areaOfGroup[g] = E.AREA_OF[a]; }
       } else setupNow = { state: { ...E.template("teaching"), inports: 2 }, base: E.TEACHING_SHOP, overrides: null }; // real storage (part 3)
+      // a kept Build run opened again (docs/RUNS.md, part 3): its own layout, as Free build
+      if (saved && saved.state) setupNow.state = JSON.parse(JSON.stringify(saved.state));
     }
     s = setupNow.state; base = setupNow.base;
     for (const l of base.split("\n")) if (l.startsWith("group\t")) { const g = l.split("\t")[1]; if (!areaOfGroup[g]) areaOfGroup[g] = E.AREA_OF[g.replace(/_T$/, "")]; }
@@ -1913,5 +1918,16 @@
     },
   };
   // a challenge from the address: editor.html?ch=N, N from 1 (docs/HOME-REVIEW.md)
-  { const q = Number(new URLSearchParams(location.search).get("ch")); load(Number.isInteger(q) && q >= 1 && q <= E.CHALLENGES.length ? q - 1 : 0); }
+  {
+    const a = new URLSearchParams(location.search), q = Number(a.get("ch")), rid = a.get("run");
+    if (rid && /^B-\d{4,}$/.test(rid)) {
+      // a kept Build run (docs/RUNS.md, part 3): its layout opens as Free build
+      fetch(`/api/job/${rid}`).then((r) => (r.ok ? r.json() : null)).then((j) => {
+        const rec = j && j.record;
+        if (!rec || !rec.state) { load(0); return; }
+        $("template").value = rec.template === "smt2020" ? "smt2020" : "teaching";
+        load(E.CHALLENGES.length, false, rec).then(() => { $("status").textContent = `Opened ${rid}: ${rec.title || "a Build run"}, as Free build.`; });
+      }).catch(() => load(0));
+    } else load(Number.isInteger(q) && q >= 1 && q <= E.CHALLENGES.length ? q - 1 : 0);
+  }
 })();

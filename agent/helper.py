@@ -115,6 +115,7 @@ class Helper:
         self.groups = ask.load_groups(self.web / "data" / "areas.tsv")
         self.jobs = {}
         self.lock = threading.Lock()
+        self.keep_lock = threading.Lock()  # numbering the runs the pages send (docs/RUNS.md, part 3)
         self.fab_lock = threading.Lock()
 
     def __repr__(self):
@@ -168,7 +169,7 @@ class Helper:
         return self.runs_dir / jid if re.fullmatch(r"[A-Z]-\d{4,}", jid or "") else self.jobs_dir / jid
 
     META = ("id", "kind", "question", "answer_source", "model", "answer", "checks", "scenario", "stage", "started", "started_at",
-            "seconds", "error", "runs_done", "runs_total", "leader", "model_usd")
+            "seconds", "error", "runs_done", "runs_total", "leader", "model_usd", "title", "key", "record")
 
     def _save(self, jid):
         """The run's card on disk (run.json): what was asked, where its setup came from, how far it got."""
@@ -349,6 +350,7 @@ class Helper:
                 stage = j.get("stage")
                 status = "done" if stage == "done" else "failed" if stage == "failed" else "running" if live else "stopped"
                 rows.append({"id": d.name, "kind": j.get("kind") or self.KIND.get(d.name[0], "question"), "question": j.get("question"),
+                             "title": j.get("title") or j.get("question"),
                              "started": j.get("started_at"), "started_ts": j.get("started") or 0, "status": status,
                              "runs_done": j.get("runs_done") or 0, "runs_total": j.get("runs_total"), "leader": j.get("leader"),
                              "seconds": j.get("seconds"), "answer_source": j.get("answer_source")})
@@ -448,11 +450,72 @@ class Helper:
         finally:
             self.fab_lock.release()
 
-    def fab_run(self, text, seed=1, days=2.0, every=60.0, overrides=None):
-        """The checks, then, with no errors, a run's moods (`fabsim moods`), niced, one at a time."""
+    # ------------------------------------------------------------------ every kind of run (docs/RUNS.md, part 3)
+
+    def _keyed(self, prefix, key):
+        """A kept run of this kind with this key: the same run played again keeps its number."""
+        if not key or not self.runs_dir.is_dir():
+            return None
+        for d in sorted(self.runs_dir.glob(prefix + "-*")):
+            try:
+                if json.loads((d / "run.json").read_text()).get("key") == key:
+                    return d.name
+            except (OSError, ValueError):
+                continue
+        return None
+
+    def _keep(self, prefix, kind, title, key, record, events=(), files=None):
+        """Number and keep a finished run of the page's (Simulation settings, the Floor) or Build's. `record` may be a
+        function of the new number."""
+        with self.keep_lock:
+            jid = self._keyed(prefix, key)
+            if jid:
+                return jid
+            jid = self._next_id(prefix)
+            d = self.runs_dir / jid
+            for name, text in (files or {}).items():
+                (d / name).write_text(text)
+            now = time.time()
+            j = {"id": jid, "kind": kind, "question": None, "title": title, "key": key, "record": record(jid) if callable(record) else record, "stage": "done",
+                 "started": now, "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(now)), "seconds": 0,
+                 "runs_done": sum(1 for e in events if e.get("e") == "run"), "runs_total": sum(1 for e in events if e.get("e") == "run")}
+            (d / "log.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+            (d / "run.json").write_text(json.dumps({k: j.get(k) for k in self.META}, indent=1))
+            return jid
+
+    def record_run(self, body):
+        """A Simulation settings comparison or a Floor run the page sends when it ends: {"id"}."""
+        kind = body.get("kind")
+        prefix = {"settings": "S", "floor": "F"}.get(kind)
+        if not prefix:
+            return {"error": "kind is settings or floor"}
+        measure, seeds, arms = body.get("measure"), body.get("seeds") or [], body.get("arms") or []
+        events = []
+        if body.get("runs"):
+            events.append({"e": "start", "arms": arms, "seeds": seeds, "measure": measure, "runs": len(body["runs"]),
+                           "warmup_days": 0, "window_days": body.get("days") or 0, "threads": 0, "t": 0})
+            for r in body["runs"]:
+                events.append({"e": "run", "arm": r.get("arm"), "seed": r.get("seed"), "measure": measure,
+                               "value": (r.get("values") or {}).get(measure), "values": r.get("values"), "point": None, "t": 0})
+            events.append({"e": "end", "best": None, "t": 0})
+        record = {k: body.get(k) for k in ("settings", "summary", "link", "days", "seeds")}
+        return {"id": self._keep(prefix, kind, str(body.get("title") or kind), body.get("key"), record, events)}
+
+    def fab_run(self, text, seed=1, days=2.0, every=60.0, overrides=None, record=None):
+        """The checks, then, with no errors, a run's moods (`fabsim moods`), niced, one at a time. With `record` (Build's
+        title, layout, template and challenge), the run is kept as a B run (docs/RUNS.md, part 3)."""
         r, err = self._fab_cmd(text, overrides, ["moods", str(seed), "--until", str(days * 1440.0), "--every", str(every)])
         if err:
             return err
+        if record:
+            key = hashlib.sha256(json.dumps([text, overrides, seed, days], sort_keys=True).encode()).hexdigest()
+            score = r[0].get("score")
+            files = {"fab.txt": text, "state.json": json.dumps(record.get("state")), "overrides.json": json.dumps(overrides)}
+            rec = lambda jid: {"title": record.get("title"), "template": record.get("template"), "challenge": record.get("challenge"),
+                               "state": record.get("state"), "seed": seed, "days": days, "score": score, "overrides": overrides,
+                               "fab_url": f"/api/job/{jid}/fab"}
+            jid = self._keep("B", "build", str(record.get("title") or "Build"), key, rec, files=files)
+            return {"moods": r[0], "checks": r[1], "seconds": r[2], "run": jid}
         return {"moods": r[0], "checks": r[1], "seconds": r[2]}
 
     def fab_replay(self, text, seed=1, start=0.0, minutes=30.0, overrides=None):
@@ -592,6 +655,9 @@ def serve(h, port=8766):
                 return self._send(200, h.fab_base(name))
             if path.startswith("/api/job/"):
                 parts = path.split("/")
+                if len(parts) == 5 and parts[4] == "fab" and re.fullmatch(r"B-\d{4,}", parts[3]):
+                    f = h.runs_dir / parts[3] / "fab.txt"
+                    return self._send(200, f.read_text(), "text/plain") if f.is_file() else self._send(404, {"error": "no such run"})
                 if len(parts) == 6 and parts[4] == "arm" and parts[5].isdigit():
                     t = h.arm_shop(parts[3], int(parts[5]))
                     return self._send(200, t, "text/plain") if t else self._send(404, {"error": "no such arm"})
@@ -623,7 +689,9 @@ def serve(h, port=8766):
                 r = h.fab_check(body.get("fab") or "")
             elif self.path == "/api/fab/run":
                 r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
-                              every=float(body.get("every", 60)), overrides=body.get("overrides"))
+                              every=float(body.get("every", 60)), overrides=body.get("overrides"), record=body.get("record"))
+            elif self.path == "/api/runs/record":
+                r = h.record_run(body)
             elif self.path == "/api/sketch":
                 r = h.sketch_read(body)
             elif self.path == "/api/poster":

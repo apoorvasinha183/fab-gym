@@ -54,13 +54,22 @@
     let rows = [];
     try { rows = (await api("/api/runs")).runs || []; } catch { /* no helper: the empty note says so */ }
     const tb = $("runs-list").querySelector("tbody");
-    tb.innerHTML = rows.map((r) => `<tr data-run="${esc(r.id)}"><td class="id"><a href="#run=${esc(r.id)}">${esc(r.id)}</a></td>` +
-      `<td>${esc(r.question || "A hand-written setup")}</td><td class="note">${esc(when(r.started))}</td>` +
+    tb.innerHTML = rows.map((r) => `<tr data-run="${esc(r.id)}" data-kind="${esc(r.kind || "question")}"><td class="id"><a href="#run=${esc(r.id)}">${esc(r.id)}</a></td>` +
+      `<td class="kind">${esc(KINDS[r.kind] || "Question")}</td><td>${esc(r.title || r.question || "A hand-written setup")}</td><td class="note">${esc(when(r.started))}</td>` +
       `<td><span class="pill ${esc(r.status)}">${esc(STATUS(r))}</span>${r.seconds ? ` <span class="note">${esc(dur(r.seconds))}</span>` : ""}</td></tr>`).join("");
     $("runs-empty").hidden = rows.length > 0;
+    filterList();
     tb.querySelectorAll("tr[data-run]").forEach((tr) => (tr.onclick = (e) => { if (!e.target.closest("a")) location.hash = `#run=${tr.dataset.run}`; }));
     if (rows.some((r) => r.status === "running")) POLL.list = setTimeout(() => { if (!location.hash) showList(); }, 2000);
   }
+  // every kind of run in one list, with chips to show one (docs/RUNS.md, part 3)
+  const KINDS = { question: "Question", settings: "Simulation settings", build: "Build", floor: "Floor" };
+  let KIND_SHOWN = "";
+  function filterList() {
+    document.querySelectorAll("#runs-chips [data-kind]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kind === KIND_SHOWN)));
+    document.querySelectorAll("#runs-list tbody tr").forEach((tr) => (tr.hidden = !!KIND_SHOWN && tr.dataset.kind !== KIND_SHOWN));
+  }
+  document.querySelectorAll("#runs-chips [data-kind]").forEach((b) => (b.onclick = () => { KIND_SHOWN = b.dataset.kind; filterList(); }));
   const when = (s) => { if (!s) return ""; const d = new Date(s.replace(/(\+\d{2})(\d{2})$/, "$1:$2")); return isNaN(d) ? s : d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
 
   // ---------------------------------------------------------------- a run's card
@@ -99,6 +108,10 @@
   }
 
   function draw() {
+    const kept = RUN.job && RUN.job.kind && RUN.job.kind !== "question";
+    $("rc-kept").hidden = !kept; $("rc-live").hidden = !!kept; $("rc-forest-panel").hidden = !!kept;
+    $("rc-two").hidden = !!kept && RUN.job.kind !== "settings";
+    if (kept) return drawKept(RUN.job);
     const r = RUN, j = r.job, { sc, names } = setupNames(j);
     r.names = names;
     const card = $("run-card");
@@ -195,6 +208,61 @@
     }
     g.innerHTML = html;
   }
+  // ---------- part 3 (docs/RUNS.md): the cards of Simulation settings, Build and Floor runs
+  const table = (cols, rows, id) => `<table${id ? ` id="${id}"` : ""}><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  const facts = (pairs) => pairs.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  let LAYOUT = { id: null, svg: "" };
+  function drawKept(j) {
+    const rec = j.record || {}, kind = j.kind, card = $("run-card");
+    card.dataset.stage = j.stage; card.dataset.done = String(j.runs_done || 0); card.dataset.total = String(j.runs_total || 0);
+    $("rc-status").className = "pill done"; $("rc-status").textContent = "done";
+    $("rc-question").textContent = j.title || KINDS[kind];
+    $("rc-floors-panel").hidden = true;
+    if (kind === "settings") {
+      $("rc-facts").innerHTML = facts(rec.settings || []);
+      const s = rec.summary || { columns: [], rows: [] };
+      $("rc-kept").innerHTML = `<h3>Against today on the same random runs</h3>${table(s.columns, s.rows, "rc-measures")}` +
+        `<p class="note">Paired over ${(rec.seeds || []).length} random runs in the browser, each a 95% interval of the change minus today. The squares below are each random run's wafers out against today.</p>` +
+        (rec.link ? `<a class="open" href="${esc(rec.link)}">Open the Floor on this run →</a>` : "");
+      const st = RUN.events.find((e) => e.e === "start");
+      if (st) { RUN.start = st; RUN.arms = st.arms; RUN.seeds = st.seeds; RUN.measure = "wafers out"; }
+      RUN.names = { today: "Today's fab", change: (j.title || "").replace(/^Simulation settings: /, "") || "The change" };
+      drawGrid(RUN.events.filter((e) => e.e === "run"));
+      return;
+    }
+    if (kind === "floor") {
+      $("rc-facts").innerHTML = facts([["Fab", "Today's fab, built from the SMT2020 testbed"], ["Where", "the simulator in the browser"]]);
+      const s = rec.summary || { columns: [], rows: [] };
+      $("rc-kept").innerHTML = table(s.columns, s.rows) + (rec.link ? `<a class="open" href="${esc(rec.link)}">Open it on the Floor →</a>` : "");
+      return;
+    }
+    // a Build run: its layout drawn from its own fab file, its score, and the way back into Build
+    const sc = rec.score || {};
+    $("rc-facts").innerHTML = facts([["From", rec.challenge ? rec.title : `${rec.title || "Free build"} (${rec.template === "smt2020" ? "the full fab" : "the small fab"})`],
+      ["Random run", `#${rec.seed}`], ["Days", String(rec.days)]]);
+    const nums = [["Wafers out a day", sc.wafers_per_day != null ? Math.round(sc.wafers_per_day).toLocaleString("en-US") : "—"],
+      ["Days a wafer takes", sc.cycle_days != null ? sc.cycle_days.toFixed(2) : "—"], ["Jams", sc.jams != null ? String(sc.jams) : "—"]];
+    $("rc-kept").innerHTML = `<div class="layout" id="rc-layout">${LAYOUT.id === j.id ? LAYOUT.svg : "<p class=\"note\">Drawing the layout…</p>"}</div>${table(["Measure", "Value"], nums)}` +
+      `<a class="open" href="editor.html?run=${esc(j.id)}">Open in Build →</a>`;
+    if (LAYOUT.id !== j.id && rec.fab_url) fetch(rec.fab_url).then((r) => r.text()).then((txt) => { LAYOUT = { id: j.id, svg: layoutSvg(txt) }; if (RUN && RUN.id === j.id) $("rc-layout").innerHTML = LAYOUT.svg; });
+  }
+  /** A Build layout from its fab file: the track's links, each machine group's station and each storage, from above. */
+  function layoutSvg(txt) {
+    const L = txt.split("\n").map((l) => l.split("\t")), node = {};
+    for (const f of L) if (f[0] === "node") node[f[1]] = [+f[2], +f[3]];
+    const pts = [...Object.values(node), ...L.filter((f) => f[0] === "station").flatMap((f) => [[+f[2], +f[3]], [+f[2] + +f[4], +f[3] + +f[5]]])];
+    if (!pts.length) return "<p class=\"note\">This layout has no plan to draw.</p>";
+    const x0 = Math.min(...pts.map((p) => p[0])) - 4, y0 = Math.min(...pts.map((p) => p[1])) - 4, x1 = Math.max(...pts.map((p) => p[0])) + 4, y1 = Math.max(...pts.map((p) => p[1])) + 4;
+    let s = `<svg viewBox="${x0} ${y0} ${x1 - x0} ${y1 - y0}" role="img" aria-label="The layout from above">`;
+    for (const f of L) if (f[0] === "link" && node[f[1]] && node[f[2]]) s += `<line data-link x1="${node[f[1]][0]}" y1="${node[f[1]][1]}" x2="${node[f[2]][0]}" y2="${node[f[2]][1]}" stroke="#2F6470" stroke-width="1.4" stroke-linecap="round"/>`;
+    for (const f of L) if (f[0] === "station") {
+      const a = (window.FabLook && FabLook.AREA_OF) ? FabLook.areaOf(f[1].replace(/_T$/, "")) || FabLook.areaOf(f[1].split("_")[0]) : null;
+      s += `<rect data-block="${esc(f[1])}" x="${+f[2] + 0.4}" y="${+f[3] + 0.4}" width="${+f[4] - 0.8}" height="${+f[5] - 0.8}" rx="0.8" fill="${(a && FabLook.FAM[a]) || "#8FB3AE"}"><title>${esc(f[1])}</title></rect>`;
+    }
+    for (const f of L) if (f[0] === "stocker" && node[f[1]]) s += `<rect data-block="storage" x="${node[f[1]][0] - 2}" y="${node[f[1]][1] - 2}" width="4" height="4" rx="0.6" fill="#8A6A2C"><title>Storage</title></rect>`;
+    return s + "</svg>";
+  }
+
   // ---------- part 2 (docs/RUNS.md): each setup's floor, and links that open any run on the Floor
   const doneArms = () => (RUN.job && RUN.job.stage === "done" && RUN.job.report && RUN.job.report.arms ? RUN.job.report.arms : null);
   const armIndex = (name) => { const arms = doneArms(); return arms ? arms.findIndex((x) => x.name === name) : -1; };

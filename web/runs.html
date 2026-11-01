@@ -73,6 +73,16 @@ a { color: var(--accent); }
 .cell.up { background: rgba(79, 227, 163, .55); } .cell.down { background: rgba(255, 138, 122, .55); }
 /* part 2 (docs/RUNS.md): a finished run's squares open on the Floor; each setup's floor from above */
 a.cell { display: block; cursor: pointer; }
+/* part 3 (docs/RUNS.md): every kind of run in one list */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chips button { font: inherit; font-size: 12.5px; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chips button[aria-pressed="true"] { color: #062026; background: #7EE8D8; border-color: transparent; }
+.kind { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+#rc-kept table { border-collapse: collapse; font-size: 13.5px; margin: 6px 0 10px; }
+#rc-kept th, #rc-kept td { text-align: left; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--line); }
+#rc-kept .layout { max-width: 640px; }
+#rc-kept svg { width: 100%; height: auto; background: #0B1418; border-radius: 8px; }
+#rc-kept a.open { color: #7EE8D8; font-weight: 600; }
 a.cell:hover, a.cell:focus-visible { outline: 2px solid #7EE8D8; outline-offset: 1px; }
 .floors { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 8px; }
 .floor { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #0E1B20; }
@@ -103,8 +113,9 @@ svg.forest text { font-family: var(--sans); }
     <h1>Runs</h1>
     <p class="note">Every simulation you start gets a number that stays. Open one to see what was asked, how far it got and what it found. On a teaching fab built from the SMT2020 testbed; not a real fab.</p>
     <div class="panel" style="margin-top:12px; overflow-x:auto">
-      <table class="list" id="runs-list"><thead><tr><th>Run</th><th>Question</th><th>Started</th><th>Status</th></tr></thead><tbody></tbody></table>
-      <p class="empty" id="runs-empty" hidden>No runs yet. Ask the fab a question on the Floor, and its run shows here.</p>
+      <div class="chips" id="runs-chips" role="group" aria-label="Show one kind"><button type="button" data-kind="" aria-pressed="true">All</button><button type="button" data-kind="question" aria-pressed="false">Questions</button><button type="button" data-kind="settings" aria-pressed="false">Simulation settings</button><button type="button" data-kind="build" aria-pressed="false">Build</button><button type="button" data-kind="floor" aria-pressed="false">Floor</button></div>
+      <table class="list" id="runs-list"><thead><tr><th>Run</th><th>Kind</th><th>What</th><th>Started</th><th>Status</th></tr></thead><tbody></tbody></table>
+      <p class="empty" id="runs-empty" hidden>No runs yet. Ask the fab a question, compare a change in Simulation settings, play a run on the Floor or run a layout in Build, and it shows here.</p>
     </div>
   </section>
 
@@ -115,15 +126,16 @@ svg.forest text { font-family: var(--sans); }
       <h2 id="rc-question" style="margin-top:8px"></h2>
       <dl class="facts" id="rc-facts"></dl>
     </div>
-    <div class="panel" style="margin-top:16px">
+    <div class="panel" id="rc-kept" style="margin-top:16px" hidden></div>
+    <div class="panel" id="rc-live" style="margin-top:16px">
       <div class="rail" id="rc-rail"></div>
       <p class="progress" id="rc-progress"></p>
       <div class="log" id="rc-log"></div>
     </div>
-    <div class="two" style="margin-top:16px">
+    <div class="two" id="rc-two" style="margin-top:16px">
       <div class="panel"><h3>Each setup on each random run</h3><div class="grid" id="rc-grid"></div>
         <div class="legend"><span><span class="sw" style="background:rgba(79,227,163,.55)"></span>better than today on that run</span><span><span class="sw" style="background:rgba(255,138,122,.55)"></span>worse</span><span><span class="sw" style="background:var(--base)"></span>today, done</span><span><span class="sw" style="background:#16303A;border:1px solid var(--line)"></span>waiting</span></div></div>
-      <div class="panel"><h3 id="rc-forest-title">Against today, 95% intervals</h3><svg class="forest" id="rc-forest" viewBox="0 0 560 200" role="img" aria-label="Each change against today, with its 95% interval"></svg>
+      <div class="panel" id="rc-forest-panel"><h3 id="rc-forest-title">Against today, 95% intervals</h3><svg class="forest" id="rc-forest" viewBox="0 0 560 200" role="img" aria-label="Each change against today, with its 95% interval"></svg>
         <p class="note" id="rc-forest-note"></p><p class="leader" id="rc-leader"></p></div>
     </div>
     <div class="panel" id="rc-floors-panel" style="margin-top:16px" hidden><h3>Each setup's floor, and its runs on the Floor</h3>

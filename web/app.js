@@ -1851,6 +1851,7 @@ function fullRun(opts) {
     if (seq !== fullSeq) return;
     BOOT.full = run;
     if (P && P.quick) swapIn(run);
+    keepFloorRun(run, opts);
   };
   if (typeof Worker === "undefined") { done(simulate(opts)); document.body.dataset.moods = "in"; return; }
   const w = new Worker("floorworker.js");
@@ -3180,6 +3181,19 @@ function drawCapital(d, share) {
 // ------------------------------------------------------------------ the Results tab: a log of every run
 const RESULTS = { saved: null, page: [], askLogged: new Set() };
 
+// runs kept by the helper beside the questions (docs/RUNS.md, part 3); with no helper (a static copy) nothing is kept
+function keepRun(body) {
+  fetch("/api/runs/record", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+}
+function keepFloorRun(run, opts) {
+  if (WATCH || !run || !run.j || new URLSearchParams(location.search).get("q")) return;
+  const d = opts.dials || DEFAULT_DIALS, moved = DIAL_KEYS.some(k => d[k] !== DEFAULT_DIALS[k]);
+  if (moved || opts.rule || opts.downGroup >= 0) return; // today's fab only; a change on screen is a comparison's
+  keepRun({ kind: "floor", key: `floor|${sim.baseUrl}|${opts.seed}|${opts.days}`, title: `Today's fab, run #${opts.seed}`, days: opts.days,
+    link: `index.html?run=${opts.seed}#floor`,
+    summary: { columns: ["Measure", "Value"], rows: [["Days played", String(opts.days)], ["Lots finished", run.j.finished.toLocaleString("en-US")], ["Moves", run.j.moves.toLocaleString("en-US")]] } });
+}
+
 function logCompare(o, base, chg) {
   const seeds = COMPARE_SEEDS.filter(s => base.has(s) && chg.has(s));
   const rows = METRICS.map(m => {
@@ -3206,6 +3220,11 @@ function logCompare(o, base, chg) {
     headline: head ? `${head[0]}: ${head[2]} (${head[3]}), ${head[4]}.` : "No clear effect on any measure.",
   }));
   if (!$("results").hidden) drawResults();
+  // kept by the helper as an S run (docs/RUNS.md, part 3): the change, its settings, every random run's measures
+  const pick = q => Object.fromEntries(METRICS.map(m => [m.key, q[m.key]]));
+  keepRun({ kind: "settings", title: `Simulation settings: ${describe(o)}`, settings, days: o.days, seeds, arms: ["today", "change"], measure: "wafers_out",
+    runs: seeds.flatMap(s => [{ arm: "today", seed: s, values: pick(base.get(s)) }, { arm: "change", seed: s, values: pick(chg.get(s)) }]),
+    summary: { columns: ["Measure", "Today's fab", "Change", "95% interval", "Verdict"], rows }, link: `index.html?run=${RUN}#floor` });
 }
 
 function logAsk(j) {

@@ -191,3 +191,10 @@ the real `data/ask/runs/`.
   question outside the examples would have spent. Now a helper started with `--no-model`, or under
   `FABGYM_NO_MODEL=1`, looks for keys nowhere; every page test's helper passes `--no-model`, the Python tests set the
   variable, and `agent/tests/test_no_model.py` checks all of it ("Air gap", tests; "Unplugged", code).
+- 1 Nov, part 3, while writing the code: RN5 visits Build to check its Runs tab, and Build now keeps a run, so RN5
+  reads the questions' rows only (the list also gained a Kind column). A runs test that failed partway left its headless
+  browser playing the Floor for half an hour, slowing everything after it; the runs tests now stop every browser they
+  started when the file ends.
+- 1 Nov, part 3, results: RN14 to RN18 pass, with the helper's tests and every page test, run one file at a time (the
+  paused floor coach's left out). `web/tests/speed.test.mjs` S2 (the floor drawn within one second from a cold link)
+  passes and fails by turns at this Mac's load (about 6), with this part's code and without it alike, as noted before.
