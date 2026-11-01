@@ -70,7 +70,7 @@ after(() => { if (HELPER) HELPER.kill(); }); // stopped when the file's tests en
 async function helperUp() {
   if (HELPER) return HP;
   HP = 8800 + Math.floor(Math.random() * 400);
-  HELPER = spawn(PY, ["-m", "agent.helper", "--port", String(HP), "--quick", "--threads", "1", "--runs", RUNS], { cwd: ROOT, stdio: "ignore" });
+  HELPER = spawn(PY, ["-m", "agent.helper", "--no-model", "--port", String(HP), "--quick", "--threads", "1", "--runs", RUNS], { cwd: ROOT, stdio: "ignore" });
   HELPER.unref(); // the shared helper must not keep the test file from ending
   process.on("exit", () => HELPER.kill());
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${HP}/runs.html`)).ok) break; } catch { /* not up */ } await sleep(100); }

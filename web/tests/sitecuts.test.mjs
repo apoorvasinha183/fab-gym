@@ -85,7 +85,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function open(path) {
   const hp = 8800 + Math.floor(Math.random() * 400);
-  const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--runs", mkdtempSync(join(tmpdir(), "fg-runs-")), "--quick"], { cwd: ROOT, stdio: "ignore" });
+  const helper = spawn(PY, ["-m", "agent.helper", "--no-model", "--port", String(hp), "--runs", mkdtempSync(join(tmpdir(), "fg-runs-")), "--quick"], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/index.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,900", "--hide-scrollbars", `--user-data-dir=${profileDir("cuts-")}`, "about:blank"], { stdio: "ignore" });

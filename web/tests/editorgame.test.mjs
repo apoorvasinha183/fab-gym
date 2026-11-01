@@ -86,7 +86,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function openEditor() {
   const hp = 8800 + Math.floor(Math.random() * 400);
-  const helper = spawn(PY, ["-m", "agent.helper", "--runs", mkdtempSync(join(tmpdir(), "test-runs-")), "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
+  const helper = spawn(PY, ["-m", "agent.helper", "--no-model", "--runs", mkdtempSync(join(tmpdir(), "test-runs-")), "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/editor.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
   const ch = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${cp}`, "--window-size=1440,1000", "--hide-scrollbars", `--user-data-dir=${profileDir("game-")}`, "about:blank"], { stdio: "ignore" });

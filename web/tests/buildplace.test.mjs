@@ -36,7 +36,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function helper() {
   const port = 8800 + Math.floor(Math.random() * 400);
-  const p = spawn(PY, ["-m", "agent.helper", "--runs", mkdtempSync(join(tmpdir(), "test-runs-")), "--port", String(port)], { cwd: ROOT, stdio: "ignore" });
+  const p = spawn(PY, ["-m", "agent.helper", "--no-model", "--runs", mkdtempSync(join(tmpdir(), "test-runs-")), "--port", String(port)], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) {
     try { if ((await fetch(`http://127.0.0.1:${port}/editor.html`)).ok) return { port, close: () => p.kill() }; } catch { /* not up yet */ }
     await sleep(100);
