@@ -71,6 +71,48 @@ The work comes in three parts, each with its tests written first:
   screen: the Runs tab is one more.
 - `web/tests/frontdoor.test.mjs` lists the Runs tab in the top bar on both pages.
 
+## Part 2: each setup's floor on the card, and any run on the Floor (written 1 November 2026, before its tests and code)
+
+The founder: "Runs part 2 go". Found before: a two-family question keeps each setup's fab file in its report (the
+Floor's "On the floor" loads it), but a question with one family keeps none, so its setups cannot be opened anywhere; the
+card names each setup's floor without drawing it; the grid's squares are not links; and the Floor plays its own random
+run, never the one a question measured. The Floor's simulator in the page is the build of 31 October and does not read
+the `dispatch` record (Build, part 4).
+
+1. **Every setup keeps its fab file.** The scorer writes each setup's file into the report for every question, today
+   first and then the candidates, as it ran them: the shocks and the candidate's changes applied, and its dispatch rule
+   as a `dispatch` record when it is not today's ("prototypes first" stays a rule the page names). Scoring is unchanged.
+   The page's simulator is rebuilt from today's engine, so it reads the record.
+2. **The floor drawn on the card.** For a setup whose file places groups in the halls, the card draws its floor from
+   above: each phase's spine, and each group as a mark on its side of the spine at its distance along it and its depth,
+   coloured by area; copies are drawn in prototype pink, groups that stand somewhere else than in today's floor are
+   ringed, and a line says how many of each. A question whose setups keep today's floor says so. The helper sends each
+   setup's plan with the run (`plan`: the phases' lengths, every group's place and tools, the moved and the copies).
+3. **Any run on the Floor.** Once a run is done, each square of the grid is a link, and each setup has one, that opens the
+   Floor at `index.html?q=Q-0002&arm=3&run=4#floor`: the Floor loads that setup's file and plays that random run from
+   its start, the whole run when it is 14 days or less, else its first 3 days. Its note names the run, the setup, the
+   random run and the days shown, links back to the card, and says it is the run as scored: the same engine on the same
+   file and random run.
+
+## Part 2: tests (written before the code)
+
+`crates/fabsim/tests/arms.rs`:
+- **RN9** a one-family question's report carries one fab file per setup, today first; a setup with a rule carries its
+  `dispatch` record and the others none; each file, run with no rule handed in, gives the same jobs, event for event, as
+  the scorer's own setup run with its rule.
+
+`agent/tests/test_runs.py`:
+- **RN10** a two-family run's setups each carry a plan: every placed group with its phase, side, bay, place along the
+  spine, depth and tools, and, against today, the copies and the moved groups; a one-family run's setups carry a file
+  and no plan.
+
+`web/tests/runs.test.mjs`:
+- **RN11** a two-family run's card draws a floor for each setup, a mark for each placed group, the copies marked.
+- **RN12** once the run is done every square of the grid links to the Floor with the run, the setup and the random run.
+- **RN13** the Floor opened from such a link names the run and the setup, and its jobs and finished lots equal the
+  engine's receipt of that setup's file on that random run for the days shown; for a one-family setup with its own rule
+  too.
+
 ## Changes
 - 1 Nov, while writing the code:
   - The engine's report goes to a file rather than a pipe, since a large report (3 MB) would fill the pipe and stop the

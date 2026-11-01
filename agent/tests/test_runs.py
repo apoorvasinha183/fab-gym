@@ -19,6 +19,7 @@ SMT = ROOT / "data" / "smt2020" / "hvlm"
 FABSIM = ROOT / "target" / "release" / "fabsim"
 ONE = "fabgym-scenario 1\nquestion\tIs first come, first served better today?\ncandidate\tfifo\trule\tfifo\n"
 TWO = "fabgym-scenario 1\nquestion\tPrototypes doubled: first in line?\nfamily\tshare\t2\tsaid\ncandidate\tfirst\tpolicy\tbfirst\n"
+COPIES = "fabgym-scenario 1\nquestion\tPrototypes doubled: copies in the halls?\nfamily\tshare\t2\tsaid\ncandidate\tcopies\tfloor\tcopies\n"
 
 
 @unittest.skipUnless(SMT.exists() and FABSIM.exists(), "needs the SMT2020 files and a release build")
@@ -51,6 +52,10 @@ class Runs(unittest.TestCase):
                 return r.status, json.loads(r.read().decode())
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read().decode() or "{}")
+
+    def raw(self, path, port=None):
+        with urllib.request.urlopen(f"http://127.0.0.1:{port or self.port}{path}", timeout=30) as r:
+            return r.read().decode()
 
     def run_text(self, text, port=None):
         code, j = self.call("/api/run", {"scenario": text}, port)
@@ -118,6 +123,36 @@ class Runs(unittest.TestCase):
         _, j = self.call(f"/api/job/{a}", port=port2)
         self.assertEqual(j["stage"], "done", "a finished run opens after a restart")
         self.assertIsNotNone(j["report"])
+
+
+    def test_rn10_setups_carry_their_plan_and_file(self):
+        """docs/RUNS.md, part 2: each setup's floor as a plan, and every setup's fab file, for one family too."""
+        rid, j = self.run_text(COPIES)
+        arms = j["report"]["arms"]
+        self.assertEqual([a["name"] for a in arms], ["today", "copies"])
+        for a in arms:
+            plan = a["plan"]
+            self.assertTrue(plan["phases"], f"{a['name']}: the phases' lengths")
+            self.assertTrue(plan["groups"], f"{a['name']}: the placed groups")
+            for g in plan["groups"]:
+                for k in ("g", "phase", "side", "bay", "x", "y", "tools"):
+                    self.assertIn(k, g)
+            places = {l.split("\t")[1] for l in self.raw(a["shop_url"]).splitlines() if l.startswith("place\t") and len(l.split("\t")) == 7}
+            self.assertEqual({g["g"] for g in plan["groups"]}, places, f"{a['name']}: the plan is the file's places")
+        today, cp = arms[0]["plan"], arms[1]["plan"]
+        self.assertEqual((today["copies"], today["moved"]), ([], []), "today is today")
+        self.assertTrue(cp["copies"] and all(c.endswith("@B") for c in cp["copies"]), cp["copies"])
+        self.assertTrue(set(cp["copies"]) <= {g["g"] for g in cp["groups"]})
+        was = {g["g"]: (g["phase"], g["side"], g["bay"]) for g in today["groups"]}
+        moved = sorted(g["g"] for g in cp["groups"] if g["g"] in was and was[g["g"]] != (g["phase"], g["side"], g["bay"]))
+        self.assertEqual(sorted(cp["moved"]), moved, "moved: the groups standing elsewhere than in today's floor")
+        # one family: a file for every setup, its rule in it, and no plan
+        rid2, j2 = self.run_text(ONE)
+        arms2 = j2["report"]["arms"]
+        self.assertEqual([a["name"] for a in arms2], ["today", "fifo"])
+        for a in arms2:
+            self.assertIsNone(a["plan"])
+        self.assertIn("dispatch\tfifo", self.raw(arms2[1]["shop_url"]).splitlines())
 
 
 if __name__ == "__main__":

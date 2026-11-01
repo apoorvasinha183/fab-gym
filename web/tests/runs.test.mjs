@@ -1,4 +1,4 @@
-// Runs you can watch and find again (docs/RUNS.md, part 1: RN5 to RN8). Written before the code. A helper in smoke mode
+// Runs you can watch and find again (docs/RUNS.md, part 1: RN5 to RN8; part 2: RN11 to RN13). Written before the code. A helper in smoke mode
 // keeps its runs in a folder of its own; nothing is spent. On a teaching fab of our own and the SMT2020 testbed; not a
 // real fab.
 //
@@ -191,4 +191,76 @@ test("RN8 the Muse Spark line shows only when a model answered", { skip: !ready 
     c = JSON.parse(await p.ev(cardState));
     assert.ok(/Muse Spark/.test(c.text), "a model's card names Muse Spark");
   } finally { p.close(); }
+});
+
+// ---------------------------------------------------------------- part 2 (docs/RUNS.md): each setup's floor, and any run on the Floor
+
+const COPIES = "fabgym-scenario 1\nquestion\tPrototypes doubled: copies in the halls?\nfamily\tshare\t2\tsaid\ncandidate\tcopies\tfloor\tcopies\n";
+async function runDone(text) {
+  await helperUp();
+  for (let i = 0; i < 1200 && (await api("/api/status")).busy; i++) await sleep(250);
+  const id = (await api("/api/run", { scenario: text })).job;
+  return [id, await finished(id)];
+}
+const FABSIM = join(ROOT, "target", "release", "fabsim");
+/** The engine's receipt of a setup's file on a random run for the days shown: [jobs, finished lots]. */
+async function receiptOf(shopUrl, seed, until) {
+  const { writeFileSync } = await import("node:fs");
+  const { execFileSync } = await import("node:child_process");
+  const f = join(RUNS, `arm-${Date.now()}.fab.txt`);
+  writeFileSync(f, await (await fetch(`http://127.0.0.1:${HP}${shopUrl}`)).text());
+  const end = execFileSync(FABSIM, ["receipt", f, "--seed", String(seed), "--until", String(until)], { maxBuffer: 1 << 30 }).toString().trim().split("\n").pop().split(" ");
+  return [+end[1], +end[5]];
+}
+
+test("RN11 a two-family run's card draws each setup's floor, a mark for each placed group, the copies marked", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  const [id, j] = await runDone(COPIES);
+  const arms = j.report.arms;
+  const p = await page(`runs.html#run=${id}`);
+  try {
+    await p.sleep(800);
+    const floors = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#rc-floors svg")].map(s => ({ marks: s.querySelectorAll("[data-g]").length, copies: s.querySelectorAll("[data-g].copy").length, moved: s.querySelectorAll("[data-g].moved").length })))`));
+    assert.equal(floors.length, arms.length, "a floor for each setup");
+    arms.forEach((a, k) => {
+      assert.equal(floors[k].marks, a.plan.groups.length, `${a.name}: a mark for each group`);
+      assert.equal(floors[k].copies, a.plan.copies.length, `${a.name}: the copies marked`);
+      assert.equal(floors[k].moved, a.plan.moved.length, `${a.name}: the moved groups ringed`);
+    });
+    assert.ok(arms[1].plan.copies.length > 0, "the copies setup has copies");
+    assert.match(await p.ev(`document.getElementById("rc-floors").innerText`), new RegExp(`${arms[1].plan.copies.length} cop`), "a line says how many copies");
+  } finally { p.close(); }
+});
+
+test("RN12 once done, every square of the grid links to the Floor with the run, the setup and the random run", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  const [id, j] = await runDone(COPIES);
+  const p = await page(`runs.html#run=${id}`);
+  try {
+    await p.sleep(800);
+    const links = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#rc-grid a.cell")].map(a => a.getAttribute("href")))`));
+    const seeds = j.report.seeds, arms = j.report.arms;
+    assert.equal(links.length, arms.length * seeds.length, "every square is a link");
+    for (let k = 0; k < arms.length; k++) for (const s of seeds)
+      assert.ok(links.includes(`index.html?q=${id}&arm=${k}&run=${s}#floor`), `${arms[k].name}, random run ${s}`);
+  } finally { p.close(); }
+});
+
+test("RN13 the Floor opened from a link plays that run as scored, for two families and for one family's own rule", { skip: !ready && "needs Chrome, the .venv and a release build" }, async () => {
+  for (const [text, k, seed] of [[COPIES, 1, 1], [ONE, 1, 2]]) {
+    const [id, j] = await runDone(text);
+    const arm = j.report.arms[k];
+    const p = await page(`index.html?q=${id}&arm=${k}&run=${seed}#floor`);
+    try {
+      let ok = false;
+      for (let i = 0; i < 240 && !ok; i++) { await p.sleep(250); ok = await p.ev(`!!(window.FabFloorPage && FabFloorPage.watching && FabFloorPage.watching() && FabFloorPage.jobs() > 0)`); }
+      assert.ok(ok, `${id}: the Floor plays the run`);
+      const note = await p.ev(`document.getElementById("runnote").innerText`);
+      assert.match(note, new RegExp(id), "the note names the run");
+      assert.match(note, new RegExp(arm.name), "and the setup");
+      assert.equal(await p.ev(`FabFloorPage.runNumber()`), seed, "the random run");
+      const until = await p.ev(`FabFloorPage.end()`);
+      const [jobs, fin] = await receiptOf(arm.shop_url, seed, until);
+      assert.equal(await p.ev(`FabFloorPage.jobs()`), jobs, `${id} ${arm.name}: the Floor's jobs are the engine's`);
+      assert.equal(await p.ev(`FabFloorPage.finished()`), fin, `${id} ${arm.name}: and its finished lots`);
+    } finally { p.close(); }
+  }
 });
