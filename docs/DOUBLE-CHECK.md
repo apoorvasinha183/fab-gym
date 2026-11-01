@@ -93,14 +93,44 @@ highest priority, then no setup change, then oldest; 10 runs of 180 days; about 
 | Processing a lot gets, products 3 and 4 | theoretical cycle time 24.75 and 14.54 days [Tassel 2023, appendix Table 2(a), p. 10] | 24.68 and 14.49 days, exact (part 1) | 0.3% under. All ten high-mix products are within 0.6% of the same table's Table 2(b), every one under or equal. |
 | Raw processing time measured in an empty fab | 28.7 and 17.1 days [WSC 2019, p. 2425] | not measured | It includes waits for maintenance and sampling. In our engine a lone lot at a batch step waits until enough lots come, so an empty fab cannot be timed the same way. |
 | Flow factor at full load, regular lots | median 2.63, 90% between 2.39 and 2.91 [WSC 2019, p. 2426] | median 2.41, 90% between 2.07 and 2.83 (69,123 lots) | Not like for like: their model is an earlier revision with lithography designed as the constraint, first come first served, in AutoSched AP. Ours counts lots released and finished within 180 days, which leaves out the slowest. |
-| Regular lots' cycle time over 6 months, products 3 and 4 | 93.61 (sd 0.71) and 51.52 (sd 0.5) days, hierarchical FIFO, 100 seeds [Tassel 2023, appendix Table 2(a), p. 10] | 60.24 (95%: 59.66 to 60.83) and 34.98 (34.48 to 35.48) days | Far apart, and not explained here. Their start holds 3,635 lots in progress [Tassel 2023, p. 2] against our 2,223; their rule puts lots under a queue-time limit first; which lots their average counts is not stated. |
+| Regular lots' cycle time over 6 months, products 3 and 4 | 93.61 (sd 0.71) and 51.52 (sd 0.5) days, hierarchical FIFO, 100 seeds [Tassel 2023, appendix Table 2(a), p. 10] | 60.24 (95%: 59.66 to 60.83) and 34.98 (34.48 to 35.48) days | Mostly how full the fab is when measured: see below. |
 | Hot lots, products 3 and 4; super-hot, product 3 | 34.02, 19.80; 33.99 days [as above] | 30.98, 17.86; 30.91 days | |
 | What binds | lithography, by design [WSC 2019, p. 2425] | polishing: Planar_FE_77 passes at most 1,302 wafers a day against 1,430 released | In our engine the fab does not keep up at the release rate: lots inside grow from 2,223 to 3,155 on average over the 180 days (part 3). |
 
 What this supports: the routes, steps and times of our files are the published ones, to within 0.6% on every product of
-both testbeds. What it does not: cycle times. Ours are shorter than the one published run of the same files, for reasons
-not settled here, and the fab cannot keep up at its own release rate. A cycle time from this gym should be quoted as
-the gym's, on these files, never as the published testbed's.
+both testbeds. What it does not: a single cycle time. At its own release rate the fab cannot keep up, so its cycle time
+has no steady value: it grows with how full the fab is when the measuring starts, and keeps growing while it is
+measured. A cycle time from this gym should be quoted as the gym's, with its start and horizon, never as the published
+testbed's.
+
+### Why the cycle times differ (1 November 2026, at the founder's request)
+
+- **Same files.** Tassel 2023's code (github.com/ingambe/RL4SemiconductorFabSched) holds the SMT2020 files it ran. Every
+  one of the 12 high-volume files has the same git hash as ours, the starting work list (`WIP.txt`, 2,255 lots) included;
+  the high-mix work list (2,156 lots) is identical too. Only the repository's file list was read; no file was fetched.
+- **A fuller fab at the start.** Tassel 2023 (p. 2) reports 3,635 lots in progress at the start of its high-volume
+  horizon and 2,700 for the high-mix one, 1.6 and 1.25 times what the identical files list. How their simulator comes
+  to those counts (a warm-up, or a different reading of the list) is not stated in the paper and was not read in their
+  code.
+- **Our engine, made as full** (10 runs of 6 months, today's rule; `crates/fabsim/examples/gap_probe.rs`,
+  `warm_probe.rs`):
+
+  | Start | Regular lots, product 3 | Product 4 | Hot lots, 3 and 4 |
+  |---|---|---|---|
+  | the files' own work (2,223 lots inside) | 60.2 days | 35.0 | 31.0, 17.9 |
+  | copies of those lots, to 3,635 inside | 84.2 | 49.8 | 31.1, 17.9 |
+  | as above, lots under a queue-time limit first (their rule's first stage) | 84.8 | 47.9 | 31.8, 18.2 |
+  | after running the files about 240 days, to 3,450 to 3,640 inside | 98.8 | 58.5 | 31.0, 17.9 |
+  | **published** [Tassel 2023, appendix Table 2(a), p. 10] | **93.6** | **51.5** | **34.0, 19.8** |
+
+  With as many lots inside at the start as theirs, our regular lots take 84 to 99 and 48 to 59 days, around the published
+  94 and 52. Which starting fill matches theirs exactly cannot be said without their simulator's start. Their rule's
+  queue-time stage moves cycle times by under 2 days (today's rule written as a chooser reproduced the engine's own
+  exactly, as a control).
+- **Hot lots** do not depend on how full the fab is in any of these: ours take 31.0 and 17.9 days against Tassel 2023's
+  34.0 and 19.8. The testbed's own paper puts hot lots near a flow factor of 1.0 even at full load [WSC 2019, Figure 1,
+  p. 2426], about 29 days for product 3 by its 28.7-day raw processing time. Ours lie between the two published figures;
+  this is not settled.
 
 Tests: **DC9** every published figure names its source and page; our raw processing times are the exact chain's and
 within 1% of the published theoretical cycle times, for both products of the high-volume testbed and all ten of the
