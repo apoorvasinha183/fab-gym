@@ -1460,7 +1460,7 @@ fn main() {
         // every lot finishes its route, worked out with no simulator (docs/DOUBLE-CHECK.md, part 1); a directory reads
         // the SMT2020 files
         Some("routes") => {
-            let path = args.get(1).expect("fabsim routes FILE|SMT2020DIR [--json]");
+            let path = args.get(1).expect("fabsim routes FILE|SMT2020DIR [--json] [--load]");
             let p = std::path::Path::new(path);
             let shop = if p.is_dir() {
                 fabsim::smt2020::load(p).unwrap_or_else(|e| {
@@ -1475,6 +1475,15 @@ fn main() {
             };
             let issues = fabsim::routes::issues(&shop);
             let chains = fabsim::routes::analyse(&shop);
+            // each group's work at the release rates (docs/DOUBLE-CHECK.md, part 3)
+            if args.iter().any(|a| a == "--load") {
+                let mut ld = fabsim::routes::loads(&shop);
+                ld.sort_by(|a, b| b.share.total_cmp(&a.share));
+                for g in &ld {
+                    println!("{}\t{} machines\t{:.0} tool minutes a day\tbusy {:.1}% of the time{}", g.name, g.tools, g.minutes_per_day, 100.0 * g.share, if g.exact { "" } else { " (batches: at least)" });
+                }
+                std::process::exit(0);
+            }
             if args.iter().any(|a| a == "--json") {
                 let v: Vec<serde_json::Value> = chains
                     .iter()

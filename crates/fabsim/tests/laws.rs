@@ -36,14 +36,22 @@ fn dc7_littles_law_holds_on_the_runs_record() {
 #[test]
 fn dc8_busy_shares_follow_the_work_sent() {
     let Some(dir) = common::smt2020_dir() else { return };
-    let shop = fabsim::smt2020::load(&dir).unwrap();
+    let mut shop = fabsim::smt2020::load(&dir).unwrap();
+    // the law holds for a fab that keeps up, in steady state. At the testbed's own release rate the polishers cannot
+    // keep up (the releases ask 1,430 wafers a day; the busiest polishing group passes at most 1,302), and the lots in
+    // progress at the start are those of that rate. So: an empty start, four fifths of the release rate, and days 60
+    // to 90, more than a lot's cycle time after the start
+    shop.lots.clear();
+    for r in &mut shop.releases {
+        r.every *= 1.25;
+    }
     let mut ld = loads(&shop);
     // groups with no batch step, where a lot's work is exact; the five busiest
     ld.retain(|g| g.exact);
     ld.sort_by(|a, b| b.share.total_cmp(&a.share));
     ld.truncate(5);
     assert_eq!(ld.len(), 5);
-    let (from, to) = (10.0 * DAY, 40.0 * DAY);
+    let (from, to) = (60.0 * DAY, 90.0 * DAY);
     let mut shares: Vec<Vec<f64>> = vec![vec![]; ld.len()];
     for seed in 0..10u64 {
         let res = run(&shop, &RunOptions { seed, until: Some(to), record: true }, None);

@@ -212,3 +212,64 @@ fn issues_of(r: &Route) -> Vec<Issue> {
 pub fn issues(shop: &Shop) -> Vec<Issue> {
     shop.routes.iter().flat_map(issues_of).collect()
 }
+
+/// A group's work at the release rates (docs/DOUBLE-CHECK.md, part 3): tool minutes a day, its machines, and the share
+/// of their time that work needs. `exact` when no step at the group batches; at a batch step the lots a job takes are
+/// not known before the run, so the share counts the largest batch, a floor.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GroupLoad {
+    pub name: String,
+    pub tools: usize,
+    pub minutes_per_day: f64,
+    pub share: f64,
+    pub exact: bool,
+}
+
+/// Minutes one job at step k takes for `pieces` wafers, as the engine times it (the spread's mean).
+fn job_minutes(shop: &Shop, r: &Route, k: usize, pieces: f64) -> f64 {
+    let st = &r.steps[k];
+    let extra = shop.groups.iter().find(|g| g.name == st.group).map(|g| g.load + g.unload).unwrap_or(0.0);
+    (if st.per == Per::Piece {
+        match st.interval {
+            Some(iv) if iv != 0.0 => st.time + (pieces - 1.0) * iv,
+            _ => st.time * pieces,
+        }
+    } else {
+        st.time
+    }) + extra
+}
+
+/// Each group's work a day from the releases (each release a lot every `every` minutes, its count taken as unending),
+/// with each step's expected visits from the route's chain.
+pub fn loads(shop: &Shop) -> Vec<GroupLoad> {
+    let chains = analyse(shop);
+    let mut work = vec![0.0; shop.groups.len()];
+    let mut exact = vec![true; shop.groups.len()];
+    let gi = |name: &str| shop.groups.iter().position(|g| g.name == name);
+    for (r, c) in shop.routes.iter().zip(&chains) {
+        if !c.expected_steps.is_finite() {
+            continue;
+        }
+        for rel in shop.releases.iter().filter(|x| x.route == r.name && x.every > 0.0) {
+            let per_day = 1440.0 / rel.every;
+            let size = rel.size as f64;
+            for (k, st) in r.steps.iter().enumerate() {
+                let Some(g) = gi(&st.group) else { continue };
+                let per_lot = match st.batch {
+                    Some((_, hi)) if hi > 0.0 => {
+                        exact[g] = false;
+                        let pieces = hi.max(size);
+                        job_minutes(shop, r, k, pieces) * size / pieces
+                    }
+                    _ => job_minutes(shop, r, k, size),
+                };
+                work[g] += per_day * c.visits[k] * per_lot;
+            }
+        }
+    }
+    shop.groups
+        .iter()
+        .enumerate()
+        .map(|(g, x)| GroupLoad { name: x.name.clone(), tools: x.count, minutes_per_day: work[g], share: if x.count > 0 { work[g] / (x.count as f64 * 1440.0) } else { f64::INFINITY }, exact: exact[g] })
+        .collect()
+}

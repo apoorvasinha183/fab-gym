@@ -74,7 +74,8 @@ Tests (`crates/fabsim/tests/jam.rs`):
 
 Tests (`crates/fabsim/tests/laws.rs`): **DC7** Little's law to rounding on three runs of the high-volume testbed (days
 5 to 15), with the lots finished and the lots inside at the window's end; **DC8** the utilisation law on the five
-busiest groups with no batch step, over days 10 to 40 of 10 runs.
+busiest groups with no batch step, over days 60 to 90 of 10 runs from an empty fab at four fifths of the release rate
+(why, in the Changes).
 
 ## Part 4: the published testbed
 
@@ -119,3 +120,20 @@ Tests: **DC9** our raw processing times, recomputed from the files, are the ones
 - A second fix in the first tests: on a plain ring the loop's number is all the room on the track, so the only
   placement with that many cars is the full ring, and nothing leads into it. Reaching a jam is tested on a ring with a
   siding instead.
+- Part 3 built 1 November 2026 (tests "Little's law", code "Big deal"). DC7 and DC8 pass. Little's law holds to
+  rounding on three runs: the lot-minutes the run counts (which the scorer's cycle time divides) equal each lot's time
+  inside the window, and the lots finished and inside match the lots' own records. `fabsim routes DIR --load` gives
+  each group's work at the release rates with no simulator; the two polishing groups Planar_FE_77 and Planar_FE_79 are
+  the busiest, at 89.6% and 88.8% of their machines' time.
+- A finding: at the testbed's own release rate the fab cannot keep up. The releases ask 1,430 wafers a day; the
+  capacity ceiling (`bound.rs`, with maintenance by wafer count, which takes the polishers down for about a fifth more
+  time than their work) is 1,302, at Planar_FE_77. So its line grows without end, and over days 10 to 40 it is busy
+  80.1% of the time (95%: 78.0% to 82.1%) against the 89.6% the releases send it. This fits the 1,246 wafers a day
+  today's rule gets out over days 130 to 190 (docs/LONG-RESCORE.md). It holds for our files as the engine reads them
+  (a later revision than the published paper's, with fewer tools and steps); part 4 compares with what was published.
+- DC8's setup changed before it passed, never its claim. On days 10 to 40 at the full rate, the bottleneck is busy less
+  than its work (above). At lower rates with the given lots in progress, groups were busier than their work by the same
+  amount at four fifths and two thirds of the rate: those lots, set for the full rate, were still being worked off. From
+  an empty fab at four fifths of the rate, days 60 to 90, the five busiest groups without batches match within their
+  95% intervals (Planar_FE_77 71.8% busy against 71.7% of work). The eighth busiest, Litho_REG_BE_63, a back-end group
+  lots reach late, was 2.1 points under (95% half-width 1.8), likely still warming up.
