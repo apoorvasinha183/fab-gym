@@ -56,3 +56,15 @@ In headless Chrome, the Floor from a helper started with `--no-model` (a recorde
   and its change reads; anything else is none; with no model it calls nothing and says so.
 
 ## Changes
+- Built 1 November 2026 (tests first, "Front desk"; code "Concierge"). All seven pass, with the Floor's other suites
+  (cleanup, glossary, floor, Simulation settings, runs, stages, evidence) and the helper's tests.
+- "How…" questions go to the glossary only as "how do/does/did…" ("How does a batch work?"); "how is the fab feeling"
+  was read as a words question before, and the spec's list never had "how".
+- A slider moves in steps (urgent lots, rework and quality holds by 0.5, breakdowns and repair by 0.25, the cap by 100),
+  so a value between two steps is rounded to the nearer and the card says so ("×0.8 becomes ×1").
+- Apply presses the Floor's own Run: the floor plays the change, then compares it with today. The panel names the
+  change at once ("breakdowns ×2: simulating…").
+- The model's pick spends from the glossary's budget (`spend-glossary.json`), under the helper's total. A go or a change
+  it picks is rephrased into the bar's words and read again by the same rules on the page, so the rules decide what
+  happens; the helper drops a pick whose words no rule could read (`agent/bar_route.py`).
+- Settings you had already moved stay, and the card names them.

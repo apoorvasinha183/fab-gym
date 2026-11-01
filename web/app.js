@@ -1023,8 +1023,10 @@ function spotRow(el) {
 }
 
 // fly the map to a group and outline its tools for a few seconds
+let FLOWN = -1; // the group the map last flew to (docs/ONE-BAR.md tests)
 function flyToGroup(g) {
   if (!G) return;
+  FLOWN = g;
   const pad = floorPad();
   const w = innerWidth - pad.l - pad.r, h = innerHeight - pad.t - pad.b;
   updateTilt();
@@ -1907,6 +1909,8 @@ window.FabFloorPage = {
   moves: () => (P && !P.quick ? P.j.moves : null),
   // docs/RUNS.md, part 2: a question's run on the Floor, its jobs and finished lots
   watching: () => (WATCH ? { ...WATCH } : null),
+  // docs/ONE-BAR.md
+  flownTo: () => FLOWN,
   // docs/GLOSSARY-PLUS.md, part 2
   tools: () => (P ? P.nT : 0),
   toolGroup: k => P.toolGroup[k],
@@ -2309,17 +2313,158 @@ function closeOpening() {
   fit();
 }
 
-// a question from the opening, the command bar or an example
+// a question from the opening, the command bar or an example: one bar for anything (docs/ONE-BAR.md). Plain rules
+// read it first; only a question none of them reads goes to the model, which picks a tool and writes no answer.
 function askFrom(q) {
   q = (q || "").trim();
   if (!q) return;
   closeOpening();
-  // a question about what something means goes to the glossary (docs/GLOSSARY-PLUS.md, part 3)
-  if (FabAsk.wordQuestion(q)) { openGlossary(); askGlossary(q); return; }
+  barClose();
+  barDo(FabAsk.route(q), q, null);
+}
+
+function askSimulator(q) {
   openDock("ask");
   if (location.hash !== "#ask") { history.replaceState(null, "", "#ask"); markPage("ask"); }
   if (ASK.helper) ask(q);
   else stage("To ask a question, start the helper on this Mac. In the fab-gym folder, run python3 -m agent.helper.");
+}
+
+// `by`: who read the question, when the model did ({model, cost_usd})
+function barDo(r, q, by) {
+  if (r.kind === "go") return barGo(r.to, by);
+  if (r.kind === "change") return barChange(r.change, by);
+  if (r.kind === "now") return barNow(r.term, by);
+  if (r.kind === "words") { openGlossary(); askGlossary(q); return; }
+  if (r.kind === "whatif") return askSimulator(q);
+  barUnsure(q);
+}
+
+let BAR_ACTS = {};
+function barCard(html, acts) {
+  const c = $("bar-card");
+  c.innerHTML = html + (acts.length ? `<div class="bar-acts">${acts.map(([a, label, main]) => `<button type="button" data-act="${a}"${main ? ' class="primary"' : ""}>${esc(label)}</button>`).join("")}</div>` : "");
+  c.hidden = false;
+  c.querySelectorAll("[data-act]").forEach(b => (b.onclick = () => { const f = BAR_ACTS[b.dataset.act]; if (f) f(); }));
+}
+function barClose() { const c = $("bar-card"); if (c) { c.hidden = true; c.innerHTML = ""; } BAR_ACTS = {}; }
+function barBy(by) {
+  if (!by) return "";
+  return by.model === "stand-in" ? " A recorded pick (the tests' stand-in) read your question; $0."
+    : ` Muse Spark read your question and picked this, $${Number(by.cost_usd || 0).toFixed(4)}.`;
+}
+const barFrom = () => `From the live floor at ${clock(t)}, run #${RUN}.`;
+
+function barNow(term, by) {
+  const l = liveFor(term);
+  if (!l) {
+    BAR_ACTS = { define: () => { barClose(); openGlossary(term); }, close: barClose };
+    return barCard(`<p class="bar-ans">The run on screen has no count for that yet.</p><p class="bar-from">The glossary says what "${esc(term)}" means.${barBy(by)}</p>`,
+      [["define", `What "${term}" means`, true], ["close", "Close"]]);
+  }
+  BAR_ACTS = { show: () => { barClose(); showMe(term); }, define: () => { barClose(); openGlossary(term); }, close: barClose };
+  barCard(`<p class="bar-ans">${esc(l.text)}</p><p class="bar-from">${barFrom()}${barBy(by)}</p>`,
+    [...(l.show ? [["show", "Show me", true]] : []), ["define", `What "${term}" means`, !l.show], ["close", "Close"]]);
+}
+
+function barGo(to, by) {
+  if (to.run) { location.href = `runs.html#run=${to.run}`; return; }
+  if (to.page === "build") { location.href = `editor.html${to.ch ? `?ch=${to.ch}` : ""}`; return; }
+  if (to.page === "runs") { location.href = "runs.html"; return; }
+  if (to.tab === "change") { openDock("change"); return; }
+  if (to.tab === "glossary") { openGlossary(); return; }
+  if (to.tab === "evidence") { location.hash = "#evidence"; return; }
+  if (to.show) {
+    const l = liveFor(to.show);
+    if (!l || !l.show) return barNow(to.show, by);
+    showMe(to.show);
+    BAR_ACTS = { close: () => { barClose(); clearSpot(); } };
+    return barCard(`<p class="bar-ans">${esc(l.text)}</p><p class="bar-from">Lit on the map: ${esc(l.lit)}. ${barFrom()}${barBy(by)}</p>`, [["close", "Turn it off"]]);
+  }
+  if (to.group) {
+    const g = P ? P.j.groups.findIndex(x => x[0].toLowerCase() === to.group.toLowerCase()) : -1;
+    BAR_ACTS = { close: barClose };
+    if (g < 0) return barCard(`<p class="bar-ans">This fab has no group called ${esc(to.group)}.</p><p class="bar-from">Group names look like Planar_FE_79.${barBy(by)}</p>`, [["close", "Close"]]);
+    flyToGroup(g);
+    return barCard(`<p class="bar-ans">${esc(P.plain[g])}: ${Number(cur.queue[g]).toLocaleString("en-US")} lots in line.</p><p class="bar-from">Outlined on the map. ${barFrom()}${barBy(by)}</p>`, [["close", "Close"]]);
+  }
+  barUnsure("");
+}
+
+// a change is a proposal (docs/ONE-BAR.md): nothing moves until Apply, which presses Run against today's fab
+function barChange(ch, by) {
+  const R = FabAsk.RANGE, name = { breakdowns: "Breakdowns", repair: "Repair time", demand: "Demand", hot: "Urgent lots", rework: "Rework", defects: "Quality holds" };
+  const notes = ch.over.map(k => k === "cap" ? `A cap can go from ${R.cap[0].toLocaleString("en-US")} to ${R.cap[1].toLocaleString("en-US")} lots here, so that one is left out.`
+    : k === "outage" ? "An outage can last 1 to 72 hours and start by hour 72, so that one is left out."
+    : `${name[k]} can go from ×${R[k][0]} to ×${R[k][1]} here, so that one is left out.`);
+  // a slider moves in steps: say so when a value falls between two
+  const dials = {};
+  for (const [k, v] of Object.entries(ch.dials)) {
+    if (k === "cap") { dials.cap = v; continue; }
+    const el = $("d-" + k), step = +el.step, min = +el.min;
+    const snap = Math.round((min + Math.round((v - min) / step) * step) * 1000) / 1000;
+    dials[k] = snap;
+    if (snap !== v) notes.push(`${name[k]} moves in steps of ${step}, so ×${v} becomes ×${snap}.`);
+  }
+  let outage = null;
+  if (ch.outage) {
+    const g = P ? P.j.groups.findIndex(x => x[0].toLowerCase() === ch.outage.group.toLowerCase()) : -1;
+    if (g < 0 || ![...$("down-group").options].some(o => +o.value === g)) notes.push(`This fab has no group called ${ch.outage.group} to take down.`);
+    else outage = { g, at: ch.outage.at, hours: ch.outage.hours };
+  }
+  const parts = [];
+  for (const k of Object.keys(name)) if (dials[k] !== undefined)
+    parts.push(k === "defects" ? (dials[k] ? `Quality holds on${dials[k] !== 1 ? ` ×${dials[k]}` : ""}` : "Quality holds off") : dials[k] === 0 ? `No ${name[k].toLowerCase()}` : `${name[k]} ×${dials[k]}`);
+  if (dials.cap !== undefined) parts.push(dials.cap ? `A cap of ${dials.cap.toLocaleString("en-US")} lots in the fab` : "No cap on lots");
+  if (ch.rule !== undefined) parts.push(["Today's rule", "First come, first served", "Quickest job first"][ch.rule]);
+  if (outage) parts.push(`${P.plain[outage.g]} down for ${outage.hours} h from hour ${outage.at}`);
+  const now = readOpts(), others = isToday(now) ? "" : ` Your other settings stay as they are: ${esc(describe(now))}.`;
+  const noteHtml = notes.length ? `<p class="bar-from">${notes.map(esc).join(" ")}</p>` : "";
+  if (!parts.length) {
+    BAR_ACTS = { settings: () => { barClose(); openDock("change"); }, close: barClose };
+    return barCard(`<p class="bar-ans">That change can't be set here.</p>${noteHtml}<p class="bar-from">${barBy(by).trim()}</p>`, [["settings", "Open Simulation settings", true], ["close", "Close"]]);
+  }
+  BAR_ACTS = {
+    apply: () => {
+      for (const [k, v] of Object.entries(dials)) $("d-" + k).value = k === "cap" ? (v || CAP_NONE) : v;
+      if (ch.rule !== undefined) $("rule").value = ch.rule;
+      if (outage) { $("down-group").value = outage.g; $("down-group").dispatchEvent(new Event("change")); $("down-at").value = outage.at; $("down-hours").value = outage.hours; }
+      showDials();
+      barClose();
+      const o = readOpts();
+      openDock("change");
+      $("cmp-what").textContent = `${describe(o)}: simulating…`;
+      $("run").click();
+    },
+    cancel: barClose,
+  };
+  barCard(`<p class="bar-ans">Change: ${esc(parts.join(", "))}</p>${noteHtml}<p class="bar-from">Nothing changes until you press Apply. Apply plays it on the floor and compares it with today's fab on the same ${COMPARE_SEEDS.length} random days.${others}${barBy(by)}</p>`,
+    [["apply", "Apply", true], ["cancel", "Cancel"]]);
+}
+
+const BAR_TRY = ["How many machines are broken right now?", "What's a WIP cap?", "Double the breakdowns", "Open challenge 2"];
+function barTry(lead) {
+  BAR_ACTS = { close: barClose };
+  BAR_TRY.forEach((x, i) => (BAR_ACTS["try" + i] = () => { barClose(); $("cmd-q").value = x; $("cmd-q").focus(); }));
+  barCard(`<p class="bar-ans">${lead}</p><p class="bar-from">The bar can answer what the floor is doing now, say what a word means, try a change, open a page, or run a what-if. Try:</p>` +
+    `<div class="bar-try">${BAR_TRY.map((x, i) => `<button type="button" data-act="try${i}">${esc(x)}</button>`).join("")}</div>`, [["close", "Close"]]);
+}
+
+// a question no rule reads: the model picks a tool, and the rules read its words again
+async function barUnsure(q) {
+  if (!q) return barTry("I couldn't tell what you'd like.");
+  barCard(`<p class="bar-from">Reading your question…</p>`, []);
+  let r;
+  try { r = await fetch("/api/bar/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) }).then(x => x.json()); }
+  catch { r = { pick: { kind: "none" }, no_model: true }; }
+  const p = r.pick || { kind: "none" }, by = r.model ? r : null;
+  if (p.kind === "now") return barNow(p.term, by);
+  if (p.kind === "words") { barClose(); openGlossary(); askGlossary(p.question || q); return; }
+  if (p.kind === "whatif") { barClose(); return askSimulator(p.question || q); }
+  if (p.kind === "go") { const g = FabAsk.route(p.to); if (g.kind === "go") return barGo(g.to, by); }
+  if (p.kind === "change") { const c = FabAsk.parseChange(p.change); if (c) return barChange(c, by); }
+  barTry(r.no_model ? "I couldn't tell what you'd like. No model is connected, so only the bar's own rules read questions."
+    : r.error ? `I couldn't tell what you'd like. ${esc(r.error)}` : "I couldn't tell what you'd like.");
 }
 
 async function chromeSetup() {
@@ -2349,6 +2494,7 @@ async function chromeSetup() {
       if (document.body.classList.contains("opening-on")) { location.hash = "#floor"; setTimeout(() => $("cmd-q").focus(), 150); }
       else $("cmd-q").focus();
     } else if (e.key === "Escape") {
+      if (!$("bar-card").hidden) { barClose(); return; }
       if (SPOT && SPOT.note) { clearSpot(); return; }
       if (document.activeElement === $("cmd-q")) { $("cmd-examples").hidden = true; $("cmd-q").blur(); }
       else if (!$("dock").hidden) (DOCK.tab === "evidence" ? (location.hash = "#floor") : closeDock());

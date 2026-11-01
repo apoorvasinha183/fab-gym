@@ -21,7 +21,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from agent import ask, glossary_ask, spend
+from agent import ask, bar_route, glossary_ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
 from agent import poster, race, sketch
 
@@ -637,6 +637,32 @@ class Helper:
             model, cost = glossary_ask.MODEL, round(self.glossary_meter.usd - before, 6)
         return {**base, **r, "model": model, "cost_usd": cost, "spent_usd": round(self.glossary_meter.usd, 6)}
 
+    def bar_route(self, body):
+        """One bar for anything (docs/ONE-BAR.md): a question the page's rules could not read. Muse Spark picks a tool,
+        kept only when it reads; with no model, nothing is asked and the pick is none. Spends from the glossary's budget."""
+        q = " ".join(str(body.get("question") or "").split())
+        base = {"cap_usd": self.glossary_meter.cap_usd}
+        none = {"kind": "none"}
+        if not 2 <= len(q) <= 300:
+            return {"pick": none, "error": "Ask in a few words, at most 300 letters.", **base}
+        names = [t["term"] for t in self._glossary_terms()]
+        if self.stand_in:
+            path = self.stand_in / "bar-route.json"
+            recorded = json.loads(path.read_text()).get("pick") if path.is_file() else None
+            return {"pick": bar_route.check(recorded, names), "model": "stand-in", "cost_usd": 0, **base}
+        if not self.meta_key_file.is_file():
+            return {"pick": none, "no_model": True, **base}
+        if self.glossary_meter.usd >= self.glossary_meter.cap_usd or self.spent_total() >= self.total_cap:
+            return {"pick": none, "error": "The model's budget is used up. Raise its cap to ask more.", **base}
+        m = HttpModel(self.meta_base_url, bar_route.MODEL, key_file=self.meta_key_file, max_tokens=200, reasoning_effort="low",
+                      temperature=0, meter=self.glossary_meter, timeout=60)
+        before = self.glossary_meter.usd
+        try:
+            p = bar_route.pick(q, m.complete, names)
+        except Exception as e:  # noqa: BLE001 - the page shows the reason
+            return {"pick": none, "error": f"Muse Spark did not answer: {str(e)[:200]}", **base}
+        return {"pick": p, "model": bar_route.MODEL, "cost_usd": round(self.glossary_meter.usd - before, 6), **base}
+
     def sketch_read(self, body):
         """Sketch to fab (docs/SKETCH.md): a photo in, Muse Spark's reading out, snapped to the editor's grid."""
         img = body.get("image")
@@ -729,6 +755,8 @@ def serve(h, port=8766):
                               every=float(body.get("every", 60)), overrides=body.get("overrides"), record=body.get("record"))
             elif self.path == "/api/glossary/ask":
                 r = h.glossary_ask(body)
+            elif self.path == "/api/bar/route":
+                r = h.bar_route(body)
             elif self.path == "/api/runs/record":
                 r = h.record_run(body)
             elif self.path == "/api/sketch":

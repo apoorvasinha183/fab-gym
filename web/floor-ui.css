@@ -610,6 +610,19 @@ body.opening-on .topbar, body.opening-on .maptools, body.evidence-on .topbar, bo
 .cmd-examples { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 7; display: grid; gap: 6px; padding: 8px;
   background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45); }
 .cmd-examples[hidden] { display: none; }
+/* one bar for anything (docs/ONE-BAR.md): the answer, where it came from, one button */
+.bar-card { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 7; padding: 14px 16px 12px; border-radius: 14px;
+  background: #0E1B1F; border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.45); font: 14px/1.45 var(--sans); color: var(--text); }
+.bar-card[hidden] { display: none; }
+.bar-card p { margin: 0 0 6px; }
+.bar-card .bar-ans { font-size: 15px; font-weight: 600; }
+.bar-card .bar-from { color: var(--muted); font-size: 13px; }
+.bar-card .bar-try { display: grid; gap: 6px; margin: 8px 0 4px; }
+.bar-card .bar-try button { text-align: left; padding: 8px 10px; font-weight: 500; font-size: 13.5px; }
+.bar-card .bar-try button::before { content: "→ "; color: var(--accent); font-weight: 700; }
+.bar-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.bar-acts button { padding: 7px 12px; font-size: 13.5px; }
+.bar-acts button.primary { background: var(--accent); color: #0B1418; border-color: var(--accent); }
 .cmd-examples button { text-align: left; padding: 10px 12px; border-radius: 10px; font-weight: 500; font-size: 13.5px; line-height: 1.35; background: rgba(14, 27, 31, 0.9); }
 .cmd-examples button::before { content: "→ "; color: var(--accent); font-weight: 700; }
 .cmd-examples button:hover, .cmd-examples button:focus-visible { border-color: var(--accent); background: #12262D; }
