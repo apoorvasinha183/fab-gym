@@ -98,6 +98,21 @@ const fileOf = async (b, g) => {
     stops: lines.filter((f) => f[0] === "stop" && f[1] === g).map((f) => +f[2]).sort((a, c) => a - c) };
 };
 
+test("BP7 with every group of a kind placed, the hand still shows where one more goes and names its group", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
+  // the loose end after part 8: the ghost said "Every group of this kind is placed" while a click added one anyway (BP6)
+  const { b, close } = await openEditor();
+  try {
+    const [x, y] = await spot(b);
+    await b.ev(`document.querySelector('#pal [data-kind="cmp"]').click(), 1`); await sleep(100);
+    const [sx, sy] = await page(b, `F.screenOf(${x}, ${y})`);
+    await b.mouse("mouseMoved", sx, sy); await sleep(150);
+    const g = await page(b, "F.ghost()");
+    assert.ok(g && g.ok, `the ghost is fine: ${JSON.stringify(g)}`);
+    assert.match(await b.ev(`document.getElementById("status").textContent`), /Planar_T/, "the status names the group it joins");
+    assert.doesNotMatch(await b.ev(`document.getElementById("status").textContent`), /is placed/);
+  } finally { close(); }
+});
+
 test("BP1 a machine from the palette is in hand and its controls open; Esc puts it down", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
   const { b, close } = await openEditor();
   try {
