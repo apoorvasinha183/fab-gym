@@ -328,7 +328,10 @@ selection can be copied but not kept.
 
 1. **Route.** A Route tool (T) lays track by itself: click where it starts (a track piece or empty floor), point where
    it should go, and the shortest way over free floor shows as a ghost; a click lays it, running from the start to the
-   end, joined to the track at both ends. Where no way is free, it says so. One undo step.
+   end, joined to the track at both ends. Where no way is free, it says so. One undo step. (Added 1 Nov at the
+   founder's word, "make route grow the floor too": the way may run up to 4 tiles past the floor's edges, and may
+   start or end there; the floor grows to take it, as it does for Track, everything moving over when it grows left
+   or up, up to the floor's limit of 120 tiles a side.)
 2. **Reconnect a cut.** Erasing track that a run passed through (with Erase, or deleting a selection) shows a button,
    "Reconnect the track around the cut": the pieces that led into the cut are routed around it to the pieces it led
    to, avoiding the cut tiles. It is offered and never done by itself, since a cut may be meant.
@@ -377,6 +380,10 @@ In headless Chrome with a helper:
 - **SR5** "Same for every machine group" gives every group the selected group's breakdowns.
 - **SR6** a selection saved as a blueprint shows in the palette, is kept after a reload, and a click on it then on the
   floor places its pieces.
+- **SM7** (added with the growing floor) where the way inside is blocked, a route runs past the floor's edge and the
+  floor grows to take it; a route starting left of the floor moves everything over; past the limit it says so.
+- **SR7** on Free build, whose layout fills its floor's width, a route from past the left edge to the track grows the
+  floor and lays the track `route` gives; one undo puts the floor and the track back.
 
 ## Changes
 - 1 Nov, before the tests: the ideas page sketched locks on the machines outside a challenge's levers. Build does not

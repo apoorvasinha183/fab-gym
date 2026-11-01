@@ -222,6 +222,51 @@ const SKIP = !ready && "needs Google Chrome and the .venv";
 const freeCell = (st, x, y) => x >= 0 && y >= 0 && x < st.W && y < st.H && !st.rail[k(x, y)] && !st.blocks.some((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h);
 const checksHave = (b, code) => b.ev(`!!(FabEditorPage.checks() && FabEditorPage.checks().issues && FabEditorPage.checks().issues.some(i => i.code === ${JSON.stringify(code)}))`);
 
+test("SM7 a route runs past the floor's edge and the floor grows to take it, up to its limit", () => {
+  // a floor one row high with a machine across it: the only way round is past the edge
+  const st = blank(6, 1);
+  st.blocks.push({ id: 1, kind: "stocker", x: 2, y: 0, w: 1, h: 1 });
+  const r = E.route(st, k(0, 0), k(5, 0));
+  assert.equal(r.ok, true, r.why);
+  assert.equal(r.path.length, 8, "round the machine in one row past the edge");
+  assert.equal(r.state.H, 2, "the floor grew a row");
+  for (const c of r.path) { const [x, y] = c.split(",").map(Number); assert.ok(x >= 0 && y >= 0 && x < r.state.W && y < r.state.H, `${c} is on the grown floor`); }
+  followsPath(r.state, r.path);
+  const m = r.state.blocks.find((z) => z.id === 1);
+  assert.deepEqual([m.x - r.shift[0], m.y - r.shift[1]], [2, 0], "the machine stays where it was, moved over with everything");
+  assert.equal(st.H, 1, "the old floor is unchanged");
+  // starting left of the floor moves everything over
+  const s2 = E.route(blank(6, 1), k(-2, 0), k(5, 0));
+  assert.equal(s2.ok, true, s2.why);
+  assert.deepEqual(s2.shift, [2, 0]); assert.equal(s2.state.W, 8); assert.equal(s2.path[0], k(0, 0));
+  assert.equal(s2.path[s2.path.length - 1], k(7, 0));
+  // past the limit
+  const s3 = E.route(blank(E.ROOM_MAX, 1), k(-1, 0), k(5, 0));
+  assert.equal(s3.ok, false); assert.match(s3.why, /as far as the floor goes/i);
+});
+
+test("SR7 on Free build a route from past the left edge grows the floor; one undo puts it back", { skip: SKIP }, async () => {
+  const { b, close } = await openEditor();
+  try {
+    await toTab(b, 4);
+    const st = await snap(b);
+    const target = Object.keys(st.rail).map((r) => r.split(",").map(Number)).sort((p, q) => p[0] - q[0] || p[1] - q[1])[0];
+    const start = [-2, target[1]], want = E.route(st, k(...start), k(...target));
+    assert.equal(want.ok, true, want.why);
+    assert.ok(want.shift[0] > 0, "the floor grows to the left");
+    await press(b, "t", "KeyT");
+    await click(b, await cellPt(b, ...start));
+    await b.mouse("mouseMoved", ...(await cellPt(b, ...target))); await sleep(150);
+    await click(b, await cellPt(b, ...target));
+    const now = await snap(b);
+    assert.equal(now.W, want.state.W, "the floor grew");
+    assert.deepEqual(now.rail, want.state.rail, "the track route gives, everything moved over");
+    await press(b, "z", "KeyZ", MOD.meta);
+    const back = await snap(b);
+    assert.equal(back.W, st.W); assert.deepEqual(back.rail, st.rail, "one undo puts it all back");
+  } finally { close(); }
+});
+
 test("SR1 the Route tool lays the track route gives between two clicks; one undo takes it away", { skip: SKIP }, async () => {
   const { b, close } = await openEditor();
   try {
