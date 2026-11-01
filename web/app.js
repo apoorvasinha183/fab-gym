@@ -2320,7 +2320,13 @@ function askFrom(q) {
   if (!q) return;
   closeOpening();
   barClose();
-  barDo(FabAsk.route(q), q, null);
+  const r = FabAsk.route(q);
+  // measure first (docs/ONE-BAR.md, part 2): the rules' reading, one line in the helper's local log
+  if (r.kind !== "unsure") {
+    const detail = r.term || (r.change && r.change.words) || (r.to && Object.values(r.to).filter(v => v != null).join(" ")) || "";
+    fetch("/api/bar/log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q, by: "rules", kind: r.kind, detail }) }).catch(() => {});
+  }
+  barDo(r, q, null);
 }
 
 function askSimulator(q) {

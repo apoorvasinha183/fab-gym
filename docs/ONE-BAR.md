@@ -87,3 +87,6 @@ Tests (written before the code), `agent/tests/test_bar.py`:
   cost; `/api/bar/log` writes the rules' reading; a malformed reading is refused and writes nothing.
 - **OB9** the report counts questions, the rules' share and kinds, misses and the model's picks and cost, and lists
   the misses newest first.
+- Part 2 built 1 November 2026 (tests "Clipboard", code "Head count"); OB8 and OB9 pass with OB1 to OB7. The log sits
+  beside the runs folder (`data/ask/bar-log.jsonl` by default). Page tests start their helpers with their own runs
+  folder, so their questions land in a temporary folder and never reach the founder's log.

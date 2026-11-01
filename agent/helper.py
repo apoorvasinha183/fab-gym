@@ -637,7 +637,35 @@ class Helper:
             model, cost = glossary_ask.MODEL, round(self.glossary_meter.usd - before, 6)
         return {**base, **r, "model": model, "cost_usd": cost, "spent_usd": round(self.glossary_meter.usd, 6)}
 
+    def bar_log(self, body):
+        """The page's own reading of a bar question (docs/ONE-BAR.md, part 2): one line in bar-log.jsonl."""
+        line = bar_route.log_line(body.get("question"), body.get("by"), body.get("kind"), body.get("detail"))
+        if not line:
+            return {"error": "a question, who read it (rules) and a kind"}
+        self._bar_write(line)
+        return {"ok": True}
+
+    def _bar_write(self, line):
+        # beside the runs folder: data/ask/ by default, a test's own temporary folder in tests
+        path = self.runs_dir.parent / "bar-log.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with self.keep_lock:
+            with open(path, "a") as f:
+                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+
     def bar_route(self, body):
+        """One bar for anything (docs/ONE-BAR.md): a question the page's rules could not read. Muse Spark picks a tool,
+        kept only when it reads; with no model, nothing is asked and the pick is none. Spends from the glossary's budget.
+        Each question is one line in bar-log.jsonl (part 2)."""
+        r = self._bar_route(body)
+        p = r.get("pick") or {"kind": "none"}
+        by = r.get("model") and ("stand-in" if r["model"] == "stand-in" else "model") or "none"
+        line = bar_route.log_line(body.get("question"), by, p.get("kind", "none"), bar_route.detail_of(p), r.get("cost_usd", 0))
+        if line:
+            self._bar_write(line)
+        return r
+
+    def _bar_route(self, body):
         """One bar for anything (docs/ONE-BAR.md): a question the page's rules could not read. Muse Spark picks a tool,
         kept only when it reads; with no model, nothing is asked and the pick is none. Spends from the glossary's budget."""
         q = " ".join(str(body.get("question") or "").split())
@@ -757,6 +785,8 @@ def serve(h, port=8766):
                 r = h.glossary_ask(body)
             elif self.path == "/api/bar/route":
                 r = h.bar_route(body)
+            elif self.path == "/api/bar/log":
+                r = h.bar_log(body)
             elif self.path == "/api/runs/record":
                 r = h.record_run(body)
             elif self.path == "/api/sketch":

@@ -5,6 +5,9 @@ else is none, and the bar says what it can do. On the SMT2020 testbed; not a rea
 
 import json
 import re
+import sys
+from collections import Counter
+from pathlib import Path
 
 from agent.glossary_pictures import TEXT_MODEL
 
@@ -81,3 +84,75 @@ def pick(question, complete, glossary_terms=()):
     """Ask `complete` (messages in, text out) for a tool, and keep it only if it reads."""
     text = complete([{"role": "user", "content": PROMPT.format(question=question, terms=", ".join(NOW_TERMS))}])
     return check(parse(text), glossary_terms)
+
+
+# ---------------------------------------------------------------- part 2, measure first (docs/ONE-BAR.md)
+
+BY = ("rules", "model", "stand-in", "none")
+ROUTE_KINDS = ("go", "change", "now", "words", "whatif", "unsure", "none")
+
+
+def log_line(question, by, kind, detail="", cost_usd=0):
+    """One question's line, or None when it is malformed."""
+    q = " ".join(str(question or "").split())[:300]
+    if len(q) < 2 or by not in BY or kind not in ROUTE_KINDS:
+        return None
+    import time
+    return {"t": time.strftime("%Y-%m-%dT%H:%M:%S"), "question": q, "by": by, "kind": kind,
+            "detail": " ".join(str(detail or "").split())[:200], "cost_usd": round(float(cost_usd or 0), 6)}
+
+
+def detail_of(pick):
+    return pick.get("term") or pick.get("to") or pick.get("change") or pick.get("question") or ""
+
+
+def report(rows):
+    """How often the rules read a question, by kind; the misses, what the model picked for them and what it cost."""
+    rules = [r for r in rows if r.get("by") == "rules"]
+    missed = [r for r in rows if r.get("by") != "rules"]
+    return {
+        "questions": len(rows),
+        "by_rules": len(rules),
+        "rules_kinds": dict(Counter(r["kind"] for r in rules)),
+        "misses": len(missed),
+        "model_picks": dict(Counter(r["kind"] for r in missed)),
+        "cost_usd": round(sum(float(r.get("cost_usd") or 0) for r in rows), 6),
+        "missed": sorted(missed, key=lambda r: r.get("t", ""), reverse=True),
+    }
+
+
+def report_text(r):
+    n = r["questions"]
+    if not n:
+        return "No questions logged yet."
+    share = lambda k: f"{k} of {n} ({100 * k / n:.0f}%)"
+    kinds = ", ".join(f"{k} {v}" for k, v in sorted(r["rules_kinds"].items(), key=lambda x: -x[1])) or "none"
+    picks = ", ".join(f"{k} {v}" for k, v in sorted(r["model_picks"].items(), key=lambda x: -x[1])) or "none"
+    out = [f"Questions: {n}",
+           f"Read by the rules: {share(r['by_rules'])}; by kind: {kinds}",
+           f"Missed by the rules: {share(r['misses'])}; picked then: {picks}",
+           f"Model cost: ${r['cost_usd']:.4f}"]
+    if r["missed"]:
+        out.append("Missed, newest first:")
+        out += [f"  {m['t']}  [{m['by']}: {m['kind']}{' ' + m['detail'] if m.get('detail') else ''}]  {m['question']}" for m in r["missed"]]
+    return "\n".join(out)
+
+
+def read_log(path):
+    p = Path(path)
+    if not p.is_file():
+        return []
+    rows = []
+    for line in p.read_text().splitlines():
+        try:
+            rows.append(json.loads(line))
+        except ValueError:
+            continue
+    return rows
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1] != "report":
+        sys.exit("usage: python -m agent.bar_route report [bar-log.jsonl]")
+    path = sys.argv[2] if len(sys.argv) > 2 else Path(__file__).resolve().parents[1] / "data" / "ask" / "bar-log.jsonl"
+    print(report_text(report(read_log(path))))
