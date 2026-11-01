@@ -828,12 +828,12 @@
     const pb = (t, n, k, col) => (allowed(t) ? `<button data-t="${t}" aria-pressed="${tool === t}" title="${esc(n)}${k ? ` (key ${k})` : ""}">${svg(t, col)}<span>${esc(n)}</span>${k ? `<kbd>${k}</kbd>` : ""}</button>` : "");
     const sec = (name, keys) => (keys ? `<h4>${name}</h4><div class="keys">${keys}</div>` : "");
     let h = sec("Tools", pb("select", "Select", "V") + pb("rail", "Track", "B") + pb("erase", "Erase", "E"));
-    // every machine (docs/BUILD-CONTROLS.md): its picture, how many are on the floor, its price; a click opens its controls
+    // every machine as its map tile, in even rows; its cartoon on hover (docs/BUILD-CONTROLS.md, parts 1 and 6)
     const lever = new Set(leversOf(ch()).map((l) => l.kind).filter(Boolean));
-    h += `<h4>Machines</h4><div class="keys mks">` + E.AREAS.map((a, i) => {
-      const n = s.blocks.filter((b) => b.kind === "group" && b.area === a).reduce((x, b) => x + b.count, 0);
-      return `<button class="mk${lever.has(a) ? " lever" : ""}" data-kind="${a}" title="${esc(AREA[a][0])}: ${esc(AREA[a][2])}${lever.has(a) ? " One of this challenge's levers." : ""}">` +
-        `<img src="cast/base/${String(i + 1).padStart(2, "0")}-${a}.webp" alt="" width="34" height="34"><span class="nm">${esc(AREA[a][0])}</span><span class="n">${n} on the floor</span><span class="pr">${money(E.PRICE[a])}</span></button>`;
+    h += `<h4>Machines</h4><div class="keys mks">` + E.AREAS.map((a) => {
+      const n = onFloor(a);
+      return `<button class="mk${lever.has(a) ? " lever" : ""}" data-kind="${a}" style="--fam:${FAM[a]}" aria-label="${esc(AREA[a][0])}: ${n} on the floor, ${money(E.PRICE[a])} a machine${lever.has(a) ? ", one of this challenge's levers" : ""}">` +
+        `${svg(a, E.engrave(FAM[a]).cut)}<span class="n">${n}</span></button>`;
     }).join("") + `</div>`;
     const fresh = E.AREAS.filter((a) => nextGroup(a)).map((a) => pb(a, AREA[a][0], "", FAM[a])).join("");
     if (fresh) h += sec("New groups", fresh);
@@ -856,6 +856,20 @@
       kb.textContent = String(i + 1);
       btn.title = `${btn.title.replace(/ \(key \w+\)$/, "")} (key ${i + 1})`;
     });
+  }
+  const onFloor = (a) => s.blocks.filter((b) => b.kind === "group" && b.area === a).reduce((x, b) => x + b.count, 0);
+  /** The cartoon card beside the palette, for the machine key pointed at or focused (part 6). */
+  function palCard(bt) {
+    const c = $("palcard");
+    if (!bt) { c.hidden = true; return; }
+    const a = bt.dataset.kind, i = E.AREAS.indexOf(a), n = onFloor(a);
+    c.innerHTML = `<div class="tcard" style="--fam:${FAM[a]}"><div class="hd"><span class="nm">${esc(AREA[a][0])}</span><span class="fm">${n} on the floor</span></div>` +
+      `<div class="art" style="background:${FAM[a]}33"><img src="cast/base/${String(i + 1).padStart(2, "0")}-${a}.webp" alt="" width="224" height="224"></div>` +
+      `<div class="kv"><span>Price of one</span><span>${money(E.PRICE[a])}</span></div><div class="ex">${esc(AREA[a][2])}${bt.classList.contains("lever") ? " One of this challenge's levers." : ""} Click to take one in hand.</div></div>`;
+    c.hidden = false;
+    const r = bt.getBoundingClientRect(), hh = c.offsetHeight;
+    c.style.left = `${Math.round($("pal").getBoundingClientRect().right + 10)}px`; // beside the palette, clear of its keys
+    c.style.top = `${Math.round(Math.max(8, Math.min(r.top - 8, innerHeight - hh - 8)))}px`;
   }
   function syncPal() { $("pal").querySelectorAll("button[data-t]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === tool))); renderHint(); }
   // machines are never locked: the budget is what limits them (docs/BUILD-CONTROLS.md)
@@ -1117,13 +1131,13 @@
     }
     if (!html) return (hov.hidden = true);
     if (hov.dataset.k !== key) { hov.innerHTML = html(); hov.dataset.k = key; }
-    const r = $("mapbox").getBoundingClientRect();
-    let lx = e.clientX - r.left + 16, ly = e.clientY - r.top + 12;
-    if (lx + 230 > r.width) lx = e.clientX - r.left - 236;
+    // drawn over the page and kept inside the window, so nothing around the map cuts it (docs/BUILD-CONTROLS.md, part 6)
     hov.hidden = false;
-    const hh = hov.offsetHeight || 320;
-    if (ly + hh > r.height) ly = Math.max(4, r.height - hh - 4);
-    hov.style.left = Math.max(4, lx) + "px"; hov.style.top = ly + "px";
+    const hw = hov.offsetWidth || 230, hh = hov.offsetHeight || 320;
+    let lx = e.clientX + 16, ly = e.clientY + 12;
+    if (lx + hw > innerWidth - 8) lx = e.clientX - hw - 16;
+    if (ly + hh > innerHeight - 8) ly = Math.max(8, innerHeight - hh - 8);
+    hov.style.left = Math.max(8, lx) + "px"; hov.style.top = ly + "px";
   }
 
   // ---------- the controls panel (docs/BUILD-CONTROLS.md): Selected, Whole fab, All controls; every control says what it does
@@ -1510,6 +1524,11 @@
     if (wasMax && run) jumpTo(Math.min(clock, days() * 1440 - WINDOW)); // the cars' window is stale after Max
   };
   $("again").onclick = () => runNow();
+  document.body.appendChild($("hover")); // out of the map's box, which would cut it (part 6)
+  $("pal").addEventListener("pointerover", (e) => { const bt = e.target.closest("[data-kind]"); if (bt) palCard(bt); });
+  $("pal").addEventListener("pointerout", (e) => { const bt = e.target.closest("[data-kind]"); if (bt && !bt.contains(e.relatedTarget)) palCard(null); });
+  $("pal").addEventListener("focusin", (e) => { const bt = e.target.closest("[data-kind]"); if (bt) palCard(bt); });
+  $("pal").addEventListener("focusout", () => palCard(null));
   $("gears").onclick = () => { gearsBtn = !gearsBtn; $("gears").setAttribute("aria-pressed", String(gearsBtn)); draw(); };
   $("ctl-find").addEventListener("input", findNow);
   $("ctl-find").addEventListener("keydown", (e) => {

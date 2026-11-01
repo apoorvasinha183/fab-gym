@@ -326,3 +326,10 @@ bottom of the map, or on a short map, the card is taller than the room left and 
     run of the whole page suite waited on it. The helper is now stopped when the file's tests end.
 - 1 Nov, part 5, results: BG1 to BL4 pass; every page test file passes, run one at a time (the paused floor coach's
   left out), and the simulator's suite is unchanged by this part. With part 5, every part of Build's redesign is built.
+- 1 Nov, part 6, while writing the code: the key's card first sat beside the key and covered the palette's other keys;
+  it now sits beside the whole palette. Its badge showed "N on the floor" in capitals, as the map's card styles that
+  badge; the palette's card keeps the words as written. The map's card is moved out of the map's box onto the page
+  (fixed to the window), so no box around the map can cut it.
+- 1 Nov, part 6, results: BC1, BC8 and BC9 pass, with the rest of the palette and hover tests (controls, placing, game,
+  top-down, find, room). Before the change, BC9 failed at 1,280 x 720 with the map's box cutting the card, as the
+  founder saw.
