@@ -1,0 +1,4 @@
+{
+ "_about": "A recorded reply for Ask the glossary (docs/GLOSSARY-PLUS.md, part 3): the tests' stand-in, so no model is called. Its last citation is made up on purpose; the helper must drop it.",
+ "answer": "Lots wait at the polishers because there are only a few of those machines and every lot visits them more than once [[Polishing (CMP)]]. A lot that arrives while they are all busy joins the line [[Lot]]. A cap on how many lots are inside keeps the line shorter [[WIP cap]] [[Polisher queue law]]."
+}

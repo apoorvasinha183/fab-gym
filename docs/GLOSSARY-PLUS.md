@@ -96,6 +96,41 @@ the groups with lots waiting, and flies to a group, from its status panel.
 - **GL4** the number follows the clock: played on and paused again, the line matches the Floor again.
 - **GL5** Esc turns the light off.
 
+## Part 3: Ask the glossary (written 1 November 2026, before its tests and code)
+
+The founder, by quiz: "Explain like I'm five" and "Cited"; and the same day, "No LLM in the testing path". Found
+before: the glossary is searched by a word's name only; a newcomer's question in their own words ("why do lots wait at
+the polisher?") finds nothing.
+
+1. **A question box** at the top of the Floor's glossary: "Ask the glossary", in your own words.
+2. **Only the glossary's own entries.** The helper picks the entries that share the most words with the question (the
+   term and its other names count most, then its plain line and meaning), at most six, and sends only those to Muse
+   Spark (muse-spark-1.3-contributor, at low effort) with the question. The answer is two to four short sentences in
+   plain words, and names after each claim the entry it rests on, as `[[Term]]`.
+3. **Cited, or it says so.** A cited name that is not among the entries sent is dropped (its words stay, without a
+   link); an answer citing none says the glossary does not cover the question, and lists the closest entries. Each
+   cited entry is a link that opens its article.
+4. **What it costs.** Each answer counts on the glossary meter ($5 in all) and shows its cost; at the cap the box says
+   so and asks nothing. With no model connected, the box lists the closest entries and calls nothing.
+5. **No model in the tests.** The tests run the helper with `--no-model` and a recorded reply (`--stand-in`), as Race
+   the AI's do.
+
+## Part 3: tests (written before the code)
+
+`agent/tests/test_glossary_ask.py` (no network):
+- **GE1** the entries picked for a question share its words, the term's names first; a question sharing none picks none.
+- **GE2** an answer keeps only the citations of entries that were sent; an unknown citation loses its brackets and is
+  not cited; an answer citing none is marked not covered.
+- **GE3** the helper with a recorded reply answers with its citations and costs nothing.
+- **GE4** the helper with no model and no recorded reply lists the closest entries, says no model is connected, and the
+  meter does not move.
+- **GE5** at the glossary meter's cap the helper refuses before calling anything.
+
+`web/tests/glossaryask.test.mjs` (headless Chrome; the helper with `--no-model`):
+- **GE6** with a recorded reply, an answer appears with a link for each cited entry, each among the entries sent, the
+  made-up citation without one; a link opens its article; the line says it is a recorded reply that cost nothing.
+- **GE7** with no model connected, the box lists the closest entries as links and says so.
+
 ## Changes
 - 1 Nov, while writing the code: GP8's test gave the model no key file, and the model reads its key when it is made; the
   test now writes a stand-in key. The figures' first layout put yes and no labels on their arrows and cut off the hot
