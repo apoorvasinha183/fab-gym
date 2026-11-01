@@ -472,7 +472,10 @@ In headless Chrome with a helper:
     helper names a layout's file by its contents, and a run and a check of the same layout wrote the same file at
     once, so one could read half of it. The helper now writes the file whole under another name and renames it into
     place.
-  - Route lays track only on free floor inside the floor: on Free build's starting fab, which fills its floor's width,
-    it can run along the free rows only. The Track tool grows the floor; Route does not yet.
-- 1 Nov, part 8, results: SM1 to SM6 and SR1 to SR6 pass, with every other Build page test (G8 and P1 as changed) and
+  - Route first laid track only inside the floor: on Free build's starting fab, which fills its floor's width, it could
+    run along the free rows only. At the founder's word ("make route grow the floor too") it now runs up to 4 tiles
+    past the edges and the floor grows to take it (SM7, SR7); reconnecting a cut stays on the floor.
+  - Running part 8's tests once hung for ten minutes: the page tests' helper took a port from 8800 to 9399 and their
+    headless Chrome one from 9300 to 9699, and both drew 9349. The helpers now take 8800 to 9199 in every page test.
+- 1 Nov, part 8, results: SM1 to SM7 and SR1 to SR7 pass, with every other Build page test (G8 and P1 as changed) and
   the helper's Build tests.

@@ -645,10 +645,13 @@
   const cellsOf = (kk) => kk.split(",").map(Number);
   const covered = (st, x, y) => st.blocks.some((z) => x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h);
   /** The shortest way over free floor from `from` (a key or keys: track or free floor) to `to` (a key or keys), laid
-   * as one-way track from start to end and joined to the track at both ends; `avoid` keys are never crossed. */
-  function route(st, from, to, avoid) {
-    const starts = [].concat(from), bad = new Set(avoid || []);
-    const inside = (x, y) => x >= 0 && y >= 0 && x < st.W && y < st.H;
+   * as one-way track from start to end and joined to the track at both ends; `avoid` keys are never crossed. The way
+   * may run up to 4 tiles past the floor's edges, and the floor grows to take it (`shift` says how far everything moved);
+   * with `opts.grow` false it stays on the floor. */
+  const ROUTE_MARGIN = 4;
+  function route(st, from, to, avoid, opts) {
+    const starts = [].concat(from), bad = new Set(avoid || []), m = opts && opts.grow === false ? 0 : ROUTE_MARGIN;
+    const inside = (x, y) => x >= -m && y >= -m && x < st.W + m && y < st.H + m;
     const open = (kk) => { const [x, y] = cellsOf(kk); return inside(x, y) && !st.rail[kk] && !bad.has(kk) && !covered(st, x, y); };
     const goals = new Set([].concat(to).filter((kk) => st.rail[kk] || open(kk)));
     const prev = new Map(), q = [];
@@ -665,9 +668,18 @@
       }
     }
     if (!end) return { ok: false, why: "There is no free way between them: machines or track block every way." };
-    const path = [];
+    let path = [];
     for (let c = end; c != null; c = prev.get(c)) path.unshift(c);
     const out = cloneSt(st);
+    // past the edge: the floor grows to take the way, everything moving over when it grows left or up
+    const pxs = path.map((c) => cellsOf(c)[0]), pys = path.map((c) => cellsOf(c)[1]);
+    const x0 = Math.min(...pxs), y0 = Math.min(...pys), x1 = Math.max(...pxs), y1 = Math.max(...pys);
+    let shift = [0, 0];
+    if (x0 < 0 || y0 < 0 || x1 >= st.W || y1 >= st.H) {
+      shift = grow(out, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+      if (!shift) return { ok: false, why: "That is as far as the floor goes." };
+      path = path.map((c) => { const [x, y] = cellsOf(c); return key(x + shift[0], y + shift[1]); });
+    }
     for (let i = 0; i < path.length; i++) {
       out.rail[path[i]] = out.rail[path[i]] || { o: [0, 0, 0, 0] };
       if (i + 1 < path.length) {
@@ -675,7 +687,7 @@
         out.rail[path[i]].o[D.findIndex(([dx, dy]) => x + dx === nx && y + dy === ny)] = 1;
       }
     }
-    return { ok: true, why: "", state: out, path };
+    return { ok: true, why: "", state: out, path, shift };
   }
   /** A cut of track (keys) out of `st`: the cut tiles, the pieces left that led into it, and the pieces it led to. */
   function cutGaps(st, cells) {
@@ -702,7 +714,7 @@
       cur.rail[p].o = cur.rail[p].o.map((on, d) => (on && cut.has(key(x + D[d][0], y + D[d][1])) ? 0 : on));
       const targets = gaps.succs.filter((s2) => cur.rail[s2]);
       if (!targets.length) return { ok: false, why: "Nothing is left after the cut to reconnect to." };
-      const r = route(cur, p, targets, gaps.cells);
+      const r = route(cur, p, targets, gaps.cells, { grow: false }); // on the floor, so the cut's tiles keep their names
       if (!r.ok) return { ok: false, why: r.why };
       cur = r.state; paths.push(r.path);
     }

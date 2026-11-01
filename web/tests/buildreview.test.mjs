@@ -24,7 +24,7 @@ const ready = existsSync(CHROME) && existsSync(PY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const skip = !ready && "needs Google Chrome and the .venv";
 async function openEditor(path = "editor.html?ch=1", w = 1440, h = 1000, stars = null) {
-  const hp = 8800 + Math.floor(Math.random() * 600);
+  const hp = 8800 + Math.floor(Math.random() * 400);
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/editor.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);

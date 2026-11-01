@@ -962,6 +962,11 @@
   function selStatus() {
     $("status").textContent = boxSel ? `${boxSel.blocks.length} piece${boxSel.blocks.length === 1 ? "" : "s"} and ${boxSel.rails.length} track piece${boxSel.rails.length === 1 ? "" : "s"} selected. Drag to move, R to turn, Delete to remove.` : "";
   }
+  /** A route's floor, which may have grown: the view keeps still where everything moved over (as growFor does). */
+  function applyRoute(r) {
+    useState(r.state);
+    if (r.shift && (r.shift[0] || r.shift[1])) { const v = viewNow(); V = { s: v.s, ox: v.ox - r.shift[0] * v.s, oy: v.oy - r.shift[1] * v.s }; boxSel = null; }
+  }
   /** Swap in a new floor (a move, turn or delete of a selection); the caller records the edit. */
   function useState(st) { s = st; if (setupNow) setupNow.state = s; }
   /** Act on the selection with a turn, mirror or move result: apply it, or say why not. */
@@ -1085,19 +1090,21 @@
       if (!d) return;
       x += d[0]; y += d[1];
     }
+    // Route (part 8): the first click sets the start, the second lays the shortest way to it; either may be past the
+    // floor's edge, which grows to take the way
+    if (tool === "route") {
+      const k0 = E.key(x, y);
+      if (!routeFrom) {
+        if (blockAt(x, y)) { $("status").textContent = "A route starts on track or on empty floor."; return; }
+        routeFrom = k0; $("status").textContent = "Point where the track should go, then click. Esc starts again."; draw(); return;
+      }
+      const r = E.route(s, routeFrom, k0);
+      if (!r.ok) { $("status").textContent = r.why; return; }
+      applyRoute(r); routeFrom = null; routePlan = null; sel = { rail: r.path[r.path.length - 1] }; inspector(); edited();
+      $("status").textContent = `Laid ${r.path.length} track pieces${r.shift[0] || r.shift[1] || r.state.W !== s.W ? "; the floor grew to take them" : ""}.`; return;
+    }
     if (x < 0 || y < 0 || x >= s.W || y >= s.H) return;
     const k = E.key(x, y), b = blockAt(x, y);
-    // Route (part 8): the first click sets the start, the second lays the shortest way to it
-    if (tool === "route") {
-      if (!routeFrom) {
-        if (b) { $("status").textContent = "A route starts on track or on empty floor."; return; }
-        routeFrom = k; $("status").textContent = "Point where the track should go, then click. Esc starts again."; draw(); return;
-      }
-      const r = E.route(s, routeFrom, k);
-      if (!r.ok) { $("status").textContent = r.why; return; }
-      useState(r.state); routeFrom = null; routePlan = null; sel = { rail: k }; inspector(); edited();
-      $("status").textContent = `Laid ${r.path.length} track pieces.`; return;
-    }
     if (tool === "select") {
       boxSel = null; // a click on one piece selects just that piece
       sel = b ? { id: b.id } : s.rail[k] ? { rail: k } : null;
@@ -1155,7 +1162,7 @@
       pastePlan = E.pasteAt(s, clip, ax, ay, unplaced(), knownGroups());
       ghostAt = { kind: "paste", x: ax, y: ay, w: clip.w, h: clip.h, ok: pastePlan.ok, why: pastePlan.why };
       $("status").textContent = pastePlan.ok ? `Click to paste${pastePlan.skipped.length ? ". " + pastePlan.skipped.join(" ") : ""}` : pastePlan.why;
-    } else if (tool === "route" && routeFrom && inb) {
+    } else if (tool === "route" && routeFrom) {
       routePlan = E.route(s, routeFrom, E.key(x, y));
       $("status").textContent = routePlan.ok ? `${routePlan.path.length} track pieces: click to lay them.` : routePlan.why;
       ghostAt = null;
@@ -1679,7 +1686,7 @@
   // one-click fixes for what the checks find (docs/BUILD-CONTROLS.md, part 8); run() changes the floor, or says why not
   function fixFor(i) {
     const nodeKey = (n) => { const c = E.cellOfNode(n); return c ? E.key(c[0], c[1]) : null; };
-    const viaRoute = (from, to) => { const r = E.route(s, from, to); if (!r.ok) return r.why; useState(r.state); return ""; };
+    const viaRoute = (from, to) => { const r = E.route(s, from, to); if (!r.ok) return r.why; applyRoute(r); return ""; };
     if (i.code === "missing_stops") return { label: "Move it beside the track", run: () => {
       const bs = s.blocks.filter((b) => b.kind === "group" && b.group === i.at[0] && !E.beside(s, b).length);
       for (const b of bs) {

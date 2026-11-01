@@ -69,7 +69,7 @@ let HP = 0, HELPER = null;
 after(() => { if (HELPER) HELPER.kill(); }); // stopped when the file's tests end
 async function helperUp() {
   if (HELPER) return HP;
-  HP = 8800 + Math.floor(Math.random() * 600);
+  HP = 8800 + Math.floor(Math.random() * 400);
   HELPER = spawn(PY, ["-m", "agent.helper", "--port", String(HP), "--quick", "--threads", "1", "--runs", RUNS], { cwd: ROOT, stdio: "ignore" });
   HELPER.unref(); // the shared helper must not keep the test file from ending
   process.on("exit", () => HELPER.kill());

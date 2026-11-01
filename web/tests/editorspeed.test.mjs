@@ -34,7 +34,7 @@ const ready = existsSync(CHROME) && existsSync(PY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function openEditor() {
-  const hp = 8800 + Math.floor(Math.random() * 600);
+  const hp = 8800 + Math.floor(Math.random() * 400);
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp)], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/editor.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
@@ -185,7 +185,7 @@ test("V10 back from Max to 1× the cars come back within 1.5 s", { skip: !ready 
 });
 
 test("V11 the floor has Max too: its clock moves 10 fab hours or more in half a second, or reaches the end", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
-  const hp = 8800 + Math.floor(Math.random() * 600);
+  const hp = 8800 + Math.floor(Math.random() * 400);
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--quick"], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/index.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);

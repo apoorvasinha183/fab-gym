@@ -24,7 +24,7 @@ const ready = existsSync(CHROME) && existsSync(PY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 test("the demo path, clicked end to end", { skip: !ready && "needs Google Chrome and the .venv" }, async () => {
-  const hp = 8800 + Math.floor(Math.random() * 600);
+  const hp = 8800 + Math.floor(Math.random() * 400);
   const helper = spawn(PY, ["-m", "agent.helper", "--port", String(hp), "--runs", mkdtempSync(join(tmpdir(), "fg-runs-")), "--quick"], { cwd: ROOT, stdio: "ignore" });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${hp}/index.html`)).ok) break; } catch { /* not up */ } await sleep(100); }
   const cp = 9300 + Math.floor(Math.random() * 400);
