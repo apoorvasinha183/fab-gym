@@ -30,11 +30,11 @@ func setup(d: Dictionary, who: Node3D) -> void:
 		var l := Label3D.new()
 		l.text = str(NAMES.get(name, name)).to_upper()
 		l.font = FONT
-		l.font_size = 72
-		l.pixel_size = 0.06
-		l.outline_size = 18
+		l.font_size = 96
+		l.pixel_size = 0.1
+		l.outline_size = 24
 		l.outline_modulate = Color(0.07, 0.1, 0.33)
-		l.modulate = Color(1, 0.85, 0.3, 0)
+		l.modulate = Color(1, 0.9, 0.35, 0)
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		l.no_depth_test = true
 		l.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

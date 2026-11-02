@@ -44,6 +44,14 @@ var paused := false           # set while the drone flies: no cells are loaded
 var full_ids: Array = []
 
 
+static func inside(n: Node) -> void:
+	# everything inside the fabs on render layer 2, which the sun does not light (see main.gd)
+	if n is VisualInstance3D and not (n is Light3D):
+		n.layers = 2
+	for c in n.get_children():
+		inside(c)
+
+
 static func w(x: float, y: float, z: float) -> Vector3:
 	# plan (east, north, up) to Godot (x, up, -north)
 	return Vector3(x, z, -y)
@@ -232,6 +240,7 @@ func _decorate() -> void:
 			line.material_override = lm
 			line.position = w((float(f[0]) + float(f[1])) / 2.0, side, z + 0.01)
 			deco.add_child(line)
+	inside(deco)
 
 
 func _learn_surfaces() -> void:
@@ -351,6 +360,7 @@ func _load(cid: String, level: int) -> void:
 		inst.transform = Transform3D(Basis(Vector3.UP, PI / 2 if long_x else 0.0),
 				w((float(st[0]) + float(st[1])) / 2.0, (float(st[2]) + float(st[3])) / 2.0, float(heights["clean_z"])))
 		node.add_child(inst)
+		inside(inst)
 
 
 func tool_transform(t: Array) -> Transform3D:
@@ -370,7 +380,9 @@ func tool_transform(t: Array) -> Transform3D:
 		yaw = PI / 2 if bx >= cx else -PI / 2
 	else:
 		yaw = PI if by >= cy else 0.0
-	return Transform3D(Basis(Vector3.UP, yaw), w(cx, cy, float(heights["clean_z"])))
+	# 2% smaller across the floor: a tool's footprint ends exactly on the bay's partitions, and two faces in one plane
+	# fight for the same pixels (the flickering patches seen from the corridors)
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(0.98, 1.0, 0.98)), w(cx, cy, float(heights["clean_z"])))
 
 
 func _bay_of(x: float, y: float) -> Array:
@@ -389,6 +401,7 @@ func _build_tool(cid: String, i: int) -> void:
 	inst.transform = tool_transform(t)
 	inst.set_meta("tool", i)
 	loaded[cid]["node"].add_child(inst)
+	inside(inst)
 	loaded[cid]["tools"].append(i)
 	tool_nodes[i] = inst
 	var mi := _mesh_of(inst)
@@ -421,6 +434,7 @@ func _build_boxes(node: Node3D, cell: Dictionary) -> void:
 	mmi.multimesh = mm
 	mmi.material_override = box_mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mmi.layers = 2
 	node.add_child(mmi)
 
 
@@ -473,6 +487,7 @@ func _build_rail(node: Node3D, cell: Dictionary) -> void:
 			mmi.visibility_range_end = 30.0
 			mmi.visibility_range_end_margin = 6.0
 			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		mmi.layers = 2
 		node.add_child(mmi)
 
 
@@ -554,6 +569,7 @@ func _move_carriers() -> void:
 		if not carriers.has(v):
 			var n: Node3D = carrier_scenes["copper" if copper else "standard"].instantiate()
 			add_child(n)
+			inside(n)
 			var belts := MeshInstance3D.new()
 			var bb := BoxMesh.new()
 			bb.size = Vector3(0.16, 1.0, 0.01)

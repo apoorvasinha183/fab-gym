@@ -283,10 +283,10 @@ def exterior(permit):
                 if all(not (u["box"][0] - 2 < x < u["box"][3] + 2 and u["box"][1] - 2 < y < u["box"][4] + 2) for u in units):
                     stacks.append([round(x, 2), y, 0.9, 7.0])
     # the heading picture's FabGYM logo (docs/img/fabgym-hero.jpg) on the walls
-    signs = [{"kind": "logo", "at": [-6.2, -20.0, 12.5], "facing": "west", "width": 18.0},
+    # the heading picture's FabGYM logo (docs/img/fabgym-hero.jpg): across the front, over the visitors' entrance,
+    # and on the south side; the phases are named by the drone's labels
+    signs = [{"kind": "logo", "at": [-6.2, 31.3, 11.5], "facing": "west", "width": 24.0},
              {"kind": "logo", "at": [128.0, -70.2, 12.5], "facing": "south", "width": 26.0},
-             {"kind": "text", "text": "PHASE 1", "at": [50.0, -70.2, 13.5], "facing": "south", "size": 7.0, "pixel": True},
-             {"kind": "text", "text": "PHASE 1", "at": [-6.2, 20.0, 13.5], "facing": "west", "size": 5.0, "pixel": True},
              {"kind": "text", "text": "PHASE 2", "at": [407.0, -70.2, 13.5], "facing": "south", "size": 7.0, "pixel": True}]
     # the bridge: the permit set gives only its outline; the deck at the clean floor, the roof and the doorways are ours
     out = next(e for e in permit.values() if e["key"] == "campus/B1")

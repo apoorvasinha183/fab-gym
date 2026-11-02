@@ -107,9 +107,24 @@ if len(args) > 2:
                 v.co = inv @ q
                 moved += 1
     print("slab edges moved in:", moved)
+# the outer walls' clad faces become their own pieces, so the outside and the inside can be lit differently
+if len(args) > 2:
+    for o in list(meshes):
+        if o.data.materials and len(o.data.materials) > 1 and any(m is not None and m.name == "bim_wall_outer" for m in o.data.materials):
+            bpy.ops.object.select_all(action="DESELECT")
+            o.select_set(True)
+            bpy.context.view_layer.objects.active = o
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.mesh.separate(type="MATERIAL")
+            bpy.ops.object.mode_set(mode="OBJECT")
+    meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 by_mat = {}
 for o in meshes:
-    m = o.data.materials[0].name if o.data.materials else "none"
+    if not o.data.polygons:
+        continue
+    used = o.data.polygons[0].material_index
+    m = o.data.materials[used].name if o.data.materials and o.data.materials[used] is not None else "none"
     by_mat.setdefault(m, []).append(o)
 for m, obs in by_mat.items():
     bpy.ops.object.select_all(action="DESELECT")

@@ -132,8 +132,13 @@ func _process(dt: float) -> void:
 			_tr_at = global_position
 	var mdl := _model()
 	if mdl and mode != "bonk":
-		var lean := 0.42 if _ducking and _in_shower() else 0.0
+		# ducking is a cartoon squash (2.3 m down to 2.1 m, under the shower's 2.2 m ceiling) with a slight lean, so his
+		# head stays inside the booth; a full lean from the feet swung it out through the side
+		var in_booth := _ducking and _in_shower()
+		var lean := 0.14 if in_booth else 0.0
+		var squash := 0.9 if in_booth else 1.0
 		mdl.rotation.x = lerpf(mdl.rotation.x, lean, clampf(dt * 6.0, 0.0, 1.0))
+		mdl.scale = mdl.scale.lerp(Vector3(1.04 if in_booth else 1.0, squash, 1.04 if in_booth else 1.0), clampf(dt * 6.0, 0.0, 1.0))
 		if _ducking and not _in_shower() and global_position.x > shower_box[3] + 0.3:
 			_ducking = false
 	if mode == "walk" and i < stops.size():

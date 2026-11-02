@@ -220,3 +220,9 @@ After the founder's play-through, 3 Nov:
 - Outside: the heading picture's FabGYM logo on white panels, PHASE 1 and PHASE 2 in the pixel font. The drone looks
   down at the cinema when Lou mentions it.
 - The polished models (16) replaced ours after a check against the brief; ours are kept outside git.
+- 3 Nov, later: tools are drawn 2% smaller across the floor, because a footprint ending on a bay's partition put two
+  faces in one plane (the flickering patch seen walking from the air shower to the bay; corridor shimmer score 2.53 to
+  0.71). Inside walls and columns plain; inside surfaces on render layer 2, which the sun does not light. Lou ducks
+  through the air shower by squashing (2.3 m to 2.1 m) with a slight lean, so his head stays in the booth. The FabGYM
+  logo is over the visitors' entrance; the phases are named by the drone's labels, now larger. `--corridor` is a fixed
+  6 s camera move down that strip, for comparing shimmer.

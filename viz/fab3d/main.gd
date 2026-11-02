@@ -36,6 +36,7 @@ var _t := 0.0
 var _frame_ms: PackedFloat32Array = PackedFloat32Array()
 var _drawn0 := 0
 var _shot_at := [6.0, 14.0, 24.0, 34.0, 46.0]
+var corridor := false          # a fixed 6 s walk down the strip from the air shower to the bay, for comparing shimmer
 var sweep := false             # a fixed 12 s camera move (outside wall, then the spine) for comparing shimmer
 var soft_facade := false
 var stop_shots := false        # stills taken at the stops instead of at fixed times
@@ -56,6 +57,9 @@ func _ready() -> void:
 	near_vehicle = "--near-vehicle" in args
 	no_intro = "--no-intro" in args or near_vehicle
 	sweep = "--sweep" in args
+	corridor = "--corridor" in args
+	if "--no-ssao" in args:
+		$environment.environment.ssao_enabled = false
 	if "--taa" in args:
 		get_viewport().use_taa = true
 	soft_facade = "--soft-facade" in args
@@ -119,8 +123,9 @@ func _dress_building() -> void:
 	var looks := {
 		"flooring": C.panel_mat(Color(0.8, 0.82, 0.84), Color(0.74, 0.76, 0.79), Vector3(0.6, 0.6, 0.6), 0.02, 0, 0.0, 0.45),
 		"ceiling": C.panel_mat(Color(0.97, 0.98, 1.0), Color(0.88, 0.9, 0.92), Vector3(1.2, 1.2, 1.2), 0.03, 0, 0.45, 0.6),
-		"wall": C.panel_mat(Color(0.93, 0.94, 0.95), Color(0.74, 0.77, 0.8), Vector3(1.2, 2.75, 1.2), 0.012, 0, 0.0, 0.5),
-		"column": C.panel_mat(Color(0.9, 0.91, 0.93), Color(0.78, 0.8, 0.83), Vector3(1.0, 2.75, 1.0), 0.01, 0, 0.0, 0.5),
+		# inside walls and columns plain: panel seams finer than a pixel crawled as the camera moved
+		"wall": _plain(Color(0.93, 0.94, 0.95), 0.5),
+		"column": _plain(Color(0.9, 0.91, 0.93), 0.5),
 	}
 	# outside: ribbed metal cladding on the fabs' outer walls, gravel ballast on the flat roofs, concrete underneath
 	# (CC0 texture sets; sizes assumed)
@@ -145,6 +150,13 @@ func _dress_building() -> void:
 	for mi in building.find_children("*wall*", "MeshInstance3D", true, false):
 		mi.material_override = null
 	Looks.dress(building, {"bim_wall": looks["wall"], "bim_wall_outer": outside["wall_outer"]})
+	# inside the fabs the sun does nothing (the roof is over it) except self-shadow the walls in fine crawling stripes:
+	# inside surfaces go on render layer 2, which the sun does not light (main.tscn: the sun's cull mask)
+	for mi in building.find_children("*", "MeshInstance3D", true, false):
+		var nm := str(mi.name)
+		if (nm.contains("wall") and not nm.contains("outer")) or nm.contains("flooring") or nm.contains("ceiling") \
+				or nm.contains("column") or nm.contains("slab_floor"):
+			mi.layers = 2
 	$ground.material_override = Looks.pbr("leafy_grass", 3.5, Color(0.42, 0.62, 0.3), -1.0, "grey", true)
 
 
@@ -189,6 +201,8 @@ func _process(dt: float) -> void:
 	_t += dt
 	if sweep:
 		_sweep()
+	if corridor:
+		_corridor()
 	if near_vehicle and live.run_id != "":
 		_watch_vehicle()
 	if shots_dir != "" and not _shot_at.is_empty() and _t >= _shot_at[0]:
@@ -249,6 +263,17 @@ func _sweep() -> void:
 var _swept_in := false
 
 
+func _corridor() -> void:
+	player.roaming = false
+	player.follow = null
+	if _t < 6.0:
+		player.global_position = Vector3(1.2, 9.1, -lerpf(19.0, 4.0, _t / 6.0))
+		player.yaw = 0.15
+		player.pitch = -0.05
+	else:
+		get_tree().quit()
+
+
 func _watch_vehicle() -> void:
 	var cs: Dictionary = campus.carriers
 	if not cs.has(_watched) or not cs[_watched]["node"].visible:
@@ -298,6 +323,7 @@ func _place_staff() -> void:
 		var tool: Node3D = campus.tool_nodes[i]
 		var w: Node3D = staff_scene.instantiate()
 		add_child(w)
+		campus.inside(w)
 		var front := tool.global_transform.basis.z.normalized()
 		var t: Array = campus.data["tools"][i]
 		var reach := maxf(float(t[5]) - float(t[4]), float(t[7]) - float(t[6])) / 2.0
@@ -628,3 +654,11 @@ func _check() -> void:
 	f.store_string(JSON.stringify(report, " "))
 	f.close()
 	get_tree().quit()
+
+
+func _plain(c: Color, rough: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.roughness = rough
+	return m
+
