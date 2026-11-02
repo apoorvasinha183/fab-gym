@@ -1432,9 +1432,9 @@ fn main() {
             let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(to), record: true }, None, &ov);
             let stays: Vec<serde_json::Value> = fabsim::moods::replay(&shop, &r, from, to)
                 .iter()
-                .map(|x| serde_json::json!([x.vehicle, x.from, x.to, (x.t_in * 1000.0).round() / 1000.0, if x.t_out.is_finite() { serde_json::json!((x.t_out * 1000.0).round() / 1000.0) } else { serde_json::Value::Null }, x.loaded, x.hot]))
+                .map(|x| serde_json::json!([x.vehicle, x.from, x.to, (x.t_in * 1000.0).round() / 1000.0, if x.t_out.is_finite() { serde_json::json!((x.t_out * 1000.0).round() / 1000.0) } else { serde_json::Value::Null }, x.loaded, x.hot, x.next_group]))
                 .collect();
-            println!("{}", serde_json::json!({"from": from, "to": to, "vehicles": shop.fleet.as_ref().map(|f| f.vehicles).unwrap_or(0), "fields": ["vehicle", "from", "to", "t_in", "t_out", "loaded", "hot"], "stays": stays}));
+            println!("{}", serde_json::json!({"from": from, "to": to, "vehicles": shop.fleet.as_ref().map(|f| f.vehicles).unwrap_or(0), "fields": ["vehicle", "from", "to", "t_in", "t_out", "loaded", "hot", "next_group"], "stays": stays}));
         }
         // moods from a run (docs/RUN-MOODS.md): a frame every --every minutes, as JSON
         Some("moods") => {

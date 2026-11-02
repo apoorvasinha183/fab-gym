@@ -1,0 +1,81 @@
+extends Node3D
+## The visitor (docs/FAB-3D.md): walk with W A S D on the fab's clean floor or the ground outside, hold Shift to hurry,
+## F to fly (E up, Q down), the right mouse button held to look. While the guide leads, the camera follows it instead.
+## From the SMT2020 testbed; not a real fab.
+
+var yaw := 0.0
+var pitch := -0.15
+var fly := false
+var roaming := true
+var follow: Node3D = null
+var fabs: Array = []
+var clean_z := 7.5
+@onready var camera: Camera3D = $camera
+
+
+func setup(campus_data: Dictionary) -> void:
+	fabs = campus_data["fabs"]
+	clean_z = float(campus_data["heights"]["clean_z"])
+
+
+func floor_at(x: float, y: float) -> float:
+	# plan point to the floor height: the clean floor inside a fab building, the ground outside
+	for f in fabs:
+		if x >= float(f[0]) and x <= float(f[1]) and y >= float(f[2]) and y <= float(f[3]):
+			return clean_z
+	return 0.1
+
+
+func place(plan_x: float, plan_y: float, facing: float = 0.0) -> void:
+	global_position = Vector3(plan_x, floor_at(plan_x, plan_y) + 1.65, -plan_y)
+	yaw = facing
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if e.pressed else Input.MOUSE_MODE_VISIBLE
+	elif e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		yaw -= e.relative.x * 0.0025
+		pitch = clampf(pitch - e.relative.y * 0.0025, -1.45, 1.45)
+	elif e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F and roaming:
+		fly = not fly
+
+
+func _process(dt: float) -> void:
+	if follow and not roaming:
+		# behind and above the guide, looking past it
+		var back := follow.global_transform.basis.z.normalized()
+		var want := follow.global_position + back * -4.5 + Vector3(0, 2.6, 0)
+		var g := follow.global_position
+		if floor_at(g.x, -g.z) > 1.0:
+			# inside a fab: stand on the spine's middle line, a few metres back along it, above the tools
+			want = Vector3(g.x - 7.0, g.y + 3.4, 0.0)
+		global_position = global_position.lerp(want, clampf(dt * 2.0, 0.0, 1.0))
+		var look := follow.global_position + Vector3(0, 1.6, 0) - back * -6.0
+		var d := look - global_position
+		yaw = lerp_angle(yaw, atan2(-d.x, -d.z), clampf(dt * 3.0, 0.0, 1.0))
+		pitch = lerpf(pitch, atan2(d.y, Vector2(d.x, d.z).length()), clampf(dt * 3.0, 0.0, 1.0))
+	elif roaming:
+		var dir := Vector3.ZERO
+		var bz := Basis(Vector3.UP, yaw)
+		if Input.is_key_pressed(KEY_W):
+			dir -= bz.z
+		if Input.is_key_pressed(KEY_S):
+			dir += bz.z
+		if Input.is_key_pressed(KEY_A):
+			dir -= bz.x
+		if Input.is_key_pressed(KEY_D):
+			dir += bz.x
+		var speed := 10.0 if Input.is_key_pressed(KEY_SHIFT) else 4.0
+		if fly:
+			speed *= 3.0
+			if Input.is_key_pressed(KEY_E):
+				dir.y += 1.0
+			if Input.is_key_pressed(KEY_Q):
+				dir.y -= 1.0
+		if dir.length() > 0:
+			global_position += dir.normalized() * speed * dt
+		if not fly:
+			global_position.y = floor_at(global_position.x, -global_position.z) + 1.65
+	rotation = Vector3(0, yaw, 0)
+	camera.rotation = Vector3(pitch, 0, 0)

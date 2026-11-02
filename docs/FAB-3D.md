@@ -95,4 +95,23 @@ group; "what if" asks the helper for a run with the change and shows before and 
 
 ## Changes
 
-(none yet)
+Made while building, 2 Nov:
+
+- The cells are cut by `agent/fab3d.py` (one function for the helper and `viz/fab3d/prep.py`).
+- `fabsim replay` gives each loaded stay its lot's next group (its next job, else the route's next step), for the
+  copper rule; `/api/fab3d/state` takes `span` and returns every stay over [t, t + span] with its times, so carriers
+  glide between asks. The 3D runs call the simulator directly on our built shop (`shop-real.txt` has no floor plan for
+  the editor's checks).
+- Questions: the Floor's rules live in the page's JavaScript, so the scene answers "show me", "why is this queue
+  long" and "what is" with its own rules from the live run, and passes anything else to the helper's glossary (Meta's
+  model). "What if" is not built yet.
+- The film is converted by Blender's own FFmpeg (Homebrew's ffmpeg has no Theora encoder).
+- The characters come from turnarounds Meta's Muse Image drew from the founder's coat-CEO picture and the gym's hero
+  picture (design A), modelled on the CC0 skeleton with its CC0 clips. Godot's importer drops "_Loop" from clip names.
+- The building's glTF (1,004 meshes) is merged into one mesh per material in Blender (6 meshes).
+- Workers appear only where they matter: kneeling at tools that are down nearby, and a few operators.
+- The microphone needs audio input on, so macOS asks for permission when the scene opens; timed and still runs use
+  Godot's dummy audio driver.
+- F8 on this laptop (Apple M1): median and 99th-percentile frame 16.67 ms over 3,600 frames, 99.97% drawn. The run is
+  held to the display's 60 Hz, so the headroom under the bar is not measured.
+- Not yet: the browser export, the recorded tour, "what if" inside the 3D fab.

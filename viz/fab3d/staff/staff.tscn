@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/staff.glb" id="1_m"]
+[ext_resource type="Script" path="res://staff/staff.gd" id="2_s"]
+
+[node name="Staff" type="Node3D"]
+script = ExtResource("2_s")
+
+[node name="model" parent="." instance=ExtResource("1_m")]

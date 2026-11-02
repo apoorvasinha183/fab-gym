@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/cinema.glb" id="1_m"]
+[ext_resource type="Script" path="res://cinema/cinema.gd" id="2_s"]
+
+[node name="Cinema" type="Node3D"]
+script = ExtResource("2_s")
+
+[node name="model" parent="." instance=ExtResource("1_m")]
+
+[node name="marquee" type="Label3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 58, 4.15, 93.85)
+font_size = 160
+outline_size = 0
+modulate = Color(0.2, 0.12, 0.05, 1)
+text = "CINEMA · From sand to chip"

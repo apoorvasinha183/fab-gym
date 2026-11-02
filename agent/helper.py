@@ -21,7 +21,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from agent import ask, bar_route, glossary_ask, spend
+from agent import ask, bar_route, fab3d, glossary_ask, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
 from agent import poster, race, sketch
 
@@ -117,6 +117,10 @@ class Helper:
         self.lock = threading.Lock()
         self.keep_lock = threading.Lock()  # numbering the runs the pages send (docs/RUNS.md, part 3)
         self.fab_lock = threading.Lock()
+        # the 3D fab (docs/FAB-3D.md): whole-fab runs held in memory, the campus's cells, spoken questions
+        self.fab3d_runs = {}
+        self._fab3d_cells = None
+        self.voice_meter = spend.Meter({}, cap_usd=2.0, path=self.jobs_dir.parent / "spend-voice.json")
 
     def __repr__(self):
         return f"Helper(web={str(self.web)!r}, model={self.model_name!r}, key_file={str(self.key_file)!r})"
@@ -525,6 +529,93 @@ class Helper:
             return err
         return {**r[0], "seconds": r[2]}
 
+    # ---------------------------------------------------------------- the 3D fab and its guide (docs/FAB-3D.md)
+    def _fab3d_building(self):
+        if self._fab3d_cells is None:
+            b = json.loads((self.web / "data" / "building.json").read_text())
+            self._fab3d_cells = (b, fab3d.cells(b))
+        return self._fab3d_cells
+
+    def _fab3d_cmd(self, shop, overrides, args, wait=False):
+        """`fabsim ARGS...` on one of our own built shops (no editor checks: it has no floor plan to check), niced, one
+        at a time: (result, checks, seconds) or (None, error dict)."""
+        if not self.fab_lock.acquire(blocking=wait, timeout=30 if wait else -1):
+            return None, {"error": "A run is going; wait for it.", "busy": True}
+        try:
+            cmd = ["nice", "-n", "10", str(self.fabsim), args[0], str(shop), *args[1:]]
+            ov = self._ov_file(overrides)
+            if ov:
+                cmd += ["--overrides", str(ov)]
+            t = time.time()
+            p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            if p.returncode != 0:
+                return None, {"error": (p.stderr.strip().splitlines() or ["the simulator stopped"])[-1]}
+            return (json.loads(p.stdout), None, round(time.time() - t, 2)), None
+        finally:
+            self.fab_lock.release()
+
+    def fab3d_run(self, body):
+        """A whole-fab run of today's US building, kept in memory: its moods every 10 minutes, and its carriers fetched
+        30 minutes at a time when the scene asks for them."""
+        seed = int(body.get("seed", 1))
+        days = min(max(float(body.get("days", 1.0)), 0.05), 30.0)
+        overrides = body.get("overrides")
+        shop = self.web / "data" / "shop-real.txt"
+        r, err = self._fab3d_cmd(shop, overrides, ["moods", str(seed), "--until", str(days * 1440.0), "--every", str(fab3d.EVERY)])
+        if err:
+            return err
+        building, cell_map = self._fab3d_building()
+
+        def replay(a, b):
+            rr, e = self._fab3d_cmd(shop, overrides, ["replay", str(seed), "--from", str(a), "--to", str(b)], wait=True)
+            return rr[0] if rr else e
+
+        run = fab3d.Run(r[0], building, cell_map, replay, minutes=days * 1440.0)
+        rid = hashlib.sha256(json.dumps([seed, days, overrides], sort_keys=True).encode()).hexdigest()[:12]
+        self.fab3d_runs[rid] = run
+        return {"run": rid, "minutes": run.minutes, "frames": len(run.frames), "score": r[0].get("score"), "seconds": r[2],
+                "cells": len(cell_map["cells"]), "cell_size": cell_map["size"]}
+
+    def fab3d_state(self, body):
+        run = self.fab3d_runs.get(str(body.get("run")))
+        if run is None:
+            return {"error": "No such run: start one with /api/fab3d/run."}
+        cells = body.get("cells") or []
+        if isinstance(cells, str):
+            cells = [c for c in cells.split(";") if c]
+        try:
+            t = float(body.get("t", 0.0))
+        except (TypeError, ValueError):
+            return {"error": "t is a minute of the run."}
+        try:
+            span = min(max(float(body.get("span", 0.0)), 0.0), 10.0)
+        except (TypeError, ValueError):
+            span = 0.0
+        return run.state(t, [str(c) for c in cells], span)
+
+    def voice(self, body):
+        """A spoken question to words: Meta's speech model, or the recorded stand-in (docs/FAB-3D.md, F4)."""
+        import base64
+        try:
+            audio = base64.b64decode(body.get("audio") or "", validate=False)
+        except (ValueError, TypeError):
+            return {"error": "The recording did not arrive whole; try again."}
+        if len(audio) > 20 * 1024 * 1024:
+            return {"error": "The recording is over 20 MB; keep a question under 30 seconds."}
+        if not audio:
+            return {"error": "Nothing was recorded; hold the button while you speak."}
+        if self.stand_in and (self.stand_in / "voice.json").is_file():
+            return {"text": json.loads((self.stand_in / "voice.json").read_text()).get("text", ""), "model": "stand-in", "cost_usd": 0}
+        if self.no_model or not self.meta_key_file.is_file():
+            return {"error": "No speech model in this run; type the question instead."}
+        if self.voice_meter.usd >= self.voice_meter.cap_usd or self.spent_total() >= self.total_cap:
+            return {"error": "The speech budget is used; type the question instead."}
+        try:
+            text = fab3d.transcribe(self.meta_base_url, self.meta_key_file, audio, body.get("mime") or "audio/webm")
+        except Exception as e:  # the model's own message, never the key
+            return {"error": f"The speech model did not answer ({type(e).__name__}); type the question instead."}
+        return {"text": text, "model": fab3d.VOICE_MODEL}
+
     def arm_shop(self, jid, k):
         j = self.jobs.get(jid) or self._load(jid)
         arms = (j or {}).get("report", {}) or {}
@@ -534,7 +625,7 @@ class Helper:
 
     # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
     def spent_total(self):
-        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd + self.glossary_meter.usd
+        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd + self.glossary_meter.usd + self.voice_meter.usd
 
     def race_step(self, body):
         """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
@@ -795,6 +886,12 @@ def serve(h, port=8766):
                 r = h.poster_make(body)
             elif self.path == "/api/race/step":
                 r = h.race_step(body)
+            elif self.path == "/api/fab3d/run":
+                r = h.fab3d_run(body)
+            elif self.path == "/api/fab3d/state":
+                r = h.fab3d_state(body)
+            elif self.path == "/api/voice":
+                r = h.voice(body)
             elif self.path == "/api/fab/replay":
                 r = h.fab_replay(body.get("fab") or "", seed=int(body.get("seed", 1)), start=float(body.get("start", 0)),
                                  minutes=float(body.get("minutes", 30)), overrides=body.get("overrides"))

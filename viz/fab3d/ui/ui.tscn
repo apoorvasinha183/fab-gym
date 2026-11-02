@@ -1,0 +1,124 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/ui.gd" id="1_u"]
+
+[node name="UI" type="CanvasLayer"]
+script = ExtResource("1_u")
+
+[node name="title" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 1100.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 26
+text = "Fab Gym · the SMT2020 testbed in 3D · a gigafab-style layout of our own design, not a real fab"
+
+[node name="clock" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 56.0
+offset_right = 900.0
+offset_bottom = 90.0
+theme_override_colors/font_color = Color(0.85, 0.95, 1, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 20
+text = "Starting the run…"
+
+[node name="talk" type="PanelContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -250.0
+offset_right = 1080.0
+offset_bottom = -110.0
+
+[node name="line" type="RichTextLabel" parent="talk"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 22
+bbcode_enabled = true
+text = "The CEO will meet you inside."
+
+[node name="ask" type="HBoxContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -96.0
+offset_right = 1080.0
+offset_bottom = -44.0
+
+[node name="box" type="LineEdit" parent="ask"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+placeholder_text = "Ask the CEO: why is this queue long? what is lithography? show me the polishers"
+
+[node name="mic" type="Button" parent="ask"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "🎤 Ask aloud"
+
+[node name="hint" type="Label" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -40.0
+offset_right = 1400.0
+offset_bottom = -12.0
+theme_override_colors/font_color = Color(0.9, 0.92, 0.95, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 16
+text = "W A S D walk · Shift hurry · F fly (E up, Q down) · hold the right mouse button to look · click a tool for its card"
+
+[node name="speed" type="HBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -420.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = 60.0
+
+[node name="slow" type="Button" parent="speed"]
+layout_mode = 2
+text = "Slower"
+
+[node name="normal" type="Button" parent="speed"]
+layout_mode = 2
+text = "1 minute a second"
+
+[node name="fast" type="Button" parent="speed"]
+layout_mode = 2
+text = "Faster"
+
+[node name="free" type="Button" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -420.0
+offset_top = 68.0
+offset_right = -24.0
+offset_bottom = 108.0
+text = "Walk on my own"
+
+[node name="card" type="PanelContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -560.0
+offset_top = 130.0
+offset_right = -24.0
+offset_bottom = 520.0
+
+[node name="text" type="RichTextLabel" parent="card"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+fit_content = true
+text = ""

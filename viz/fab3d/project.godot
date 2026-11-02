@@ -1,0 +1,25 @@
+; Fab Gym 3D: the fab on the SMT2020 testbed, a gigafab-style layout of our own design; not a real fab.
+config_version=5
+
+[application]
+
+config/name="Fab Gym 3D"
+config/description="A walkable 3D fab on the SMT2020 testbed: a gigafab-style layout of our own design, not a real fab. A robot CEO guides the tour; the simulator runs live."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[audio]
+
+driver/enable_input=true
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/vsync/vsync_mode=1
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+lights_and_shadows/directional_shadow/size=4096
+textures/vram_compression/import_etc2_astc=true

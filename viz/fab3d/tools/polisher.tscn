@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/polisher.glb" id="1_m"]
+
+[node name="polisher" type="Node3D"]
+
+[node name="model" parent="." instance=ExtResource("1_m")]

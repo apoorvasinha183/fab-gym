@@ -344,6 +344,8 @@ pub struct Stay {
     pub t_out: f64,
     pub loaded: bool,
     pub hot: bool,
+    /// the group the carried lot's next job is at (docs/FAB-3D.md: the copper rule); None when empty or unknown
+    pub next_group: Option<String>,
 }
 
 /// Every vehicle's stays on rail stretches that overlap `[from, to]`, by vehicle and time; empty without a fleet.
@@ -374,6 +376,26 @@ pub fn replay(shop: &Shop, run: &RunResult, from: f64, to: f64) -> Vec<Stay> {
         }
         lot
     };
+    // per lot, its jobs' start times and tools in time order (from the recorded trace), for the next group aboard
+    // and, when its next job is past the run's end, the route's next step after its last job
+    let mut jobs: HashMap<u32, Vec<(f64, u32, u32)>> = HashMap::new();
+    for x in &run.trace {
+        jobs.entry(x.lot).or_default().push((x.start, x.tool, x.step));
+    }
+    for v in jobs.values_mut() {
+        v.sort_by(|a, b| a.0.total_cmp(&b.0));
+    }
+    let next_group = |lot: u32, t: f64| -> Option<String> {
+        let js = jobs.get(&lot)?;
+        if let Some(&(_, tool, _)) = js.iter().find(|j| j.0 >= t) {
+            let name = &run.tools.get(tool as usize)?.name;
+            return Some(name.split('#').next().unwrap_or(name).to_string());
+        }
+        let &(_, _, step) = js.iter().rev().find(|j| j.0 < t)?;
+        let route = &run.lots.get(lot as usize)?.route;
+        let r = s.routes.iter().find(|r| &r.name == route)?;
+        r.steps.get(step as usize + 1).map(|st| st.group.clone())
+    };
     let mut out: Vec<Stay> = f
         .entries
         .iter()
@@ -381,7 +403,8 @@ pub fn replay(shop: &Shop, run: &RunResult, from: f64, to: f64) -> Vec<Stay> {
         .map(|e| {
             let ed = &track.edges()[e.edge];
             let hot = e.loaded && aboard(e.vehicle, e.t_in).is_some_and(|l| run.lots.get(l as usize).is_some_and(|x| x.priority >= crate::dials::HOT_PRIORITY));
-            Stay { vehicle: e.vehicle, edge: e.edge, from: track.name(ed.from), to: track.name(ed.to), t_in: e.t_in, t_out: e.t_out, loaded: e.loaded, hot }
+            let next_group = if e.loaded { aboard(e.vehicle, e.t_in).and_then(|l| next_group(l, e.t_in)) } else { None };
+            Stay { vehicle: e.vehicle, edge: e.edge, from: track.name(ed.from), to: track.name(ed.to), t_in: e.t_in, t_out: e.t_out, loaded: e.loaded, hot, next_group }
         })
         .collect();
     out.sort_by(|a, b| a.vehicle.cmp(&b.vehicle).then(a.t_in.total_cmp(&b.t_in)));

@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/ceo.glb" id="1_m"]
+[ext_resource type="Script" path="res://guide/guide.gd" id="2_s"]
+
+[node name="CEO" type="Node3D"]
+script = ExtResource("2_s")
+
+[node name="model" parent="." instance=ExtResource("1_m")]
+
+[node name="bubble" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+billboard = 1
+no_depth_test = true
+font_size = 26
+pixel_size = 0.006
+outline_size = 10
+modulate = Color(1, 1, 1, 1)
+outline_modulate = Color(0.05, 0.08, 0.15, 1)
+width = 900.0
+autowrap_mode = 3
+text = ""

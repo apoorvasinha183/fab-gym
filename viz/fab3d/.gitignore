@@ -1,0 +1,4 @@
+data/
+.godot/
+*.import
+export/
