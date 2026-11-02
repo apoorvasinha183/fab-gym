@@ -23,6 +23,7 @@ var tool_nodes := {}          # tool index -> Node3D
 var moods := {}               # tool index -> mood
 var queues := {}              # group -> lots waiting
 var stays: Array = []         # carrier stays from the helper
+var plan := {}                # vehicle -> its stays in order: [t_in, arrive, a, b, ride, at a port, copper]
 var carriers := {}            # vehicle -> {"node": Node3D, "copper": bool}
 var node_pos: Array = []      # track node -> Vector3 at rail height
 var bays: Array = []
@@ -35,6 +36,9 @@ var area_mats := {}
 var box_mesh := BoxMesh.new()
 var box_mat := StandardMaterial3D.new()
 var rail_mat := StandardMaterial3D.new()
+var hanger_mat := StandardMaterial3D.new()
+const VEHICLE_M_PER_MIN := 150.0   # the shop's vehicle speed (web/data/shop-real.txt, the simulator's 150 m a minute)
+const CEIL := 13.0            # underside of the filter ceiling (the blueprint's cleanroom top), metres
 var _since := 0.0
 var full_ids: Array = []
 
@@ -42,6 +46,39 @@ var full_ids: Array = []
 static func w(x: float, y: float, z: float) -> Vector3:
 	# plan (east, north, up) to Godot (x, up, -north)
 	return Vector3(x, z, -y)
+
+
+static func panel_mat(base: Color, line: Color, cell: Vector3, frac := 0.03, dots := 0, emit := 0.0, rough := 0.5) -> StandardMaterial3D:
+	# a panelled surface mapped by world position: one panel a texture tile, its seams as lines, perforations as dots
+	var n := 128
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(base)
+	var lw := maxi(1, int(n * frac))
+	for i in n:
+		for j in lw:
+			img.set_pixel(i, j, line)
+			img.set_pixel(j, i, line)
+	if dots > 0:
+		var step := n / dots
+		for a in dots:
+			for b in dots:
+				for dx in 3:
+					for dy in 3:
+						img.set_pixel(clampi(a * step + step / 2 + dx - 1, 0, n - 1), clampi(b * step + step / 2 + dy - 1, 0, n - 1), base.lerp(line, 0.7))
+	img.generate_mipmaps()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = ImageTexture.create_from_image(img)
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3(1.0 / cell.x, 1.0 / cell.y, 1.0 / cell.z)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	m.roughness = rough
+	if emit > 0.0:
+		m.emission_enabled = true
+		m.emission_texture = m.albedo_texture
+		m.emission = Color(1, 1, 1)
+		m.emission_energy_multiplier = emit
+	return m
 
 
 func _ready() -> void:
@@ -60,9 +97,12 @@ func _ready() -> void:
 		node_pos.append(w(float(n[0]), float(n[1]), float(heights["rail_z"])))
 	box_mat.vertex_color_use_as_albedo = true
 	box_mat.roughness = 0.7
-	rail_mat.albedo_color = Color(0.55, 0.57, 0.6)
-	rail_mat.metallic = 0.8
+	rail_mat.albedo_color = Color(0.86, 0.86, 0.84)
+	rail_mat.metallic = 0.1
 	rail_mat.roughness = 0.35
+	hanger_mat.albedo_color = Color(0.62, 0.64, 0.67)
+	hanger_mat.metallic = 0.2
+	hanger_mat.roughness = 0.4
 	for c in ["green", "amber", "red"]:
 		var col: Color = {"green": Color(0.15, 1.0, 0.35), "amber": Color(1.0, 0.65, 0.1), "red": Color(1.0, 0.12, 0.1)}[c]
 		var on := StandardMaterial3D.new()
@@ -80,7 +120,117 @@ func _ready() -> void:
 		m.roughness = 0.35
 		area_mats[a] = m
 	_learn_surfaces()
+	_decorate()
 	ready_to_go.emit()
+
+
+func _decorate() -> void:
+	# static detail, built once: a stripe of the area's colour at each bay's mouth, the area's name on a small sign
+	# hung from the filter ceiling, yellow filter light over lithography (real fabs filter out the blue light that would
+	# expose the resist), yellow safety lines down the spine
+	var z := float(heights["clean_z"]) + 0.012
+	var stripes := MultiMesh.new()
+	stripes.transform_format = MultiMesh.TRANSFORM_3D
+	stripes.use_colors = true
+	stripes.mesh = box_mesh
+	stripes.instance_count = bays.size()
+	var deco := Node3D.new()
+	deco.name = "decor"
+	add_child(deco)
+	var yellow := StandardMaterial3D.new()
+	yellow.albedo_color = Color(1.0, 0.86, 0.45)
+	yellow.emission_enabled = true
+	yellow.emission = Color(1.0, 0.8, 0.35)
+	yellow.emission_energy_multiplier = 1.4
+	var rods := []
+	for k in bays.size():
+		var b: Array = bays[k]
+		var area := str(b[4])
+		var col := Color(str(data["areas"][area]["colour"])) if data["areas"].has(area) else Color(0.8, 0.8, 0.8)
+		var x0 := float(b[0])
+		var x1 := float(b[1])
+		var y0 := minf(float(b[2]), float(b[3]))
+		var y1 := maxf(float(b[2]), float(b[3]))
+		var mouth := y0 if absf(y0) < absf(y1) else y1          # the bay's open end, on the spine
+		var inward := 1.0 if mouth == y0 else -1.0
+		stripes.set_instance_transform(k, Transform3D(Basis.from_scale(Vector3(x1 - x0 - 0.4, 0.02, 0.25)),
+				w((x0 + x1) / 2.0, mouth + inward * 0.3, z + 0.005)))
+		stripes.set_instance_color(k, col)
+		var sign := Label3D.new()
+		sign.text = area_name(area)
+		sign.font_size = 40
+		sign.pixel_size = 0.0075
+		sign.outline_size = 0
+		sign.modulate = Color(1, 1, 1)
+		sign.render_priority = 2
+		var sz := float(heights["clean_z"]) + 3.3
+		sign.position = w((x0 + x1) / 2.0, mouth + inward * 0.25, sz)
+		sign.rotation.y = 0.0 if inward > 0 else PI
+		var plate := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		var pw := minf(x1 - x0 - 0.6, 0.17 * sign.text.length() + 0.7)
+		bm.size = Vector3(pw, 0.46, 0.05)
+		plate.mesh = bm
+		var pm := StandardMaterial3D.new()
+		pm.albedo_color = col.darkened(0.2)
+		pm.emission_enabled = true
+		pm.emission = col
+		pm.emission_energy_multiplier = 0.25
+		plate.material_override = pm
+		plate.position = Vector3(0, 0, -0.04)
+		sign.add_child(plate)
+		deco.add_child(sign)
+		for e in [-0.42, 0.42]:
+			var at := sign.position + Basis(Vector3.UP, sign.rotation.y) * Vector3(pw * e, 0, -0.04)
+			rods.append(Transform3D(Basis.from_scale(Vector3(0.02, CEIL - sz - 0.23, 0.02)), Vector3(at.x, (CEIL + sz + 0.23) / 2.0, at.z)))
+		if area == "Litho":
+			var q := MeshInstance3D.new()
+			var qb := BoxMesh.new()
+			qb.size = Vector3(x1 - x0 - 0.1, 0.02, y1 - y0 - 0.1)
+			q.mesh = qb
+			q.material_override = yellow
+			q.position = w((x0 + x1) / 2.0, (y0 + y1) / 2.0, CEIL - 0.015)
+			q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			deco.add_child(q)
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.82, 0.4)
+			l.light_energy = 1.4
+			l.omni_range = maxf(x1 - x0, y1 - y0) * 0.75
+			l.shadow_enabled = false
+			l.position = w((x0 + x1) / 2.0, (y0 + y1) / 2.0, float(heights["clean_z"]) + 4.0)
+			deco.add_child(l)
+	var fm := MultiMeshInstance3D.new()
+	fm.multimesh = stripes
+	var fmat := StandardMaterial3D.new()
+	fmat.vertex_color_use_as_albedo = true
+	fmat.roughness = 0.5
+	fm.material_override = fmat
+	fm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	deco.add_child(fm)
+	var rm := MultiMesh.new()
+	rm.transform_format = MultiMesh.TRANSFORM_3D
+	rm.mesh = box_mesh
+	rm.instance_count = rods.size()
+	for k in rods.size():
+		rm.set_instance_transform(k, rods[k])
+	var rmi := MultiMeshInstance3D.new()
+	rmi.multimesh = rm
+	rmi.material_override = hanger_mat
+	deco.add_child(rmi)
+	# yellow safety lines down each side of the spine, in each fab
+	for f in data["fabs"]:
+		if str(f[5]) != "fab":
+			continue
+		for side in [-3.6, 3.6]:
+			var line := MeshInstance3D.new()
+			var lb := BoxMesh.new()
+			lb.size = Vector3(float(f[1]) - float(f[0]) - 2.0, 0.02, 0.12)
+			line.mesh = lb
+			var lm := StandardMaterial3D.new()
+			lm.albedo_color = Color(1.0, 0.82, 0.1)
+			line.material_override = lm
+			line.position = w((float(f[0]) + float(f[1])) / 2.0, side, z + 0.01)
+			deco.add_child(line)
 
 
 func _learn_surfaces() -> void:
@@ -266,27 +416,46 @@ func _build_boxes(node: Node3D, cell: Dictionary) -> void:
 
 
 func _build_rail(node: Node3D, cell: Dictionary) -> void:
+	# the overhead track: an aluminium channel (two side flanges under a cap, the vehicle's wheels run inside), hung
+	# from the filter ceiling by a rod every 3 m. Sizes assumed.
 	var st: Array = cell["stretches"]
 	if st.is_empty():
 		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = box_mesh
-	mm.instance_count = st.size()
+	var rz := float(heights["rail_z"])
+	var parts: Array = []      # [Transform3D]
+	var rods: Array = []
 	for k in st.size():
 		var ab: PackedStringArray = str(st[k]).replace("n", "").split(">")
 		var a: Vector3 = node_pos[int(ab[0])]
 		var b: Vector3 = node_pos[int(ab[1])]
-		var mid := (a + b) / 2.0
 		var d := b - a
-		var L := maxf(d.length(), 0.01)
-		var rb := Basis(Vector3.UP, atan2(d.x, d.z)).scaled(Vector3(0.14, 0.1, L))
-		mm.set_instance_transform(k, Transform3D(rb, mid))
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = rail_mat
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.add_child(mmi)
+		var L := d.length()
+		if L < 0.02:
+			continue
+		var turn := Basis(Vector3.UP, atan2(d.x, d.z))
+		var mid := (a + b) / 2.0
+		parts.append(Transform3D(turn * Basis.from_scale(Vector3(0.24, 0.04, L + 0.02)), mid + Vector3(0, 0.1, 0)))
+		for side in [-0.1, 0.1]:
+			parts.append(Transform3D(turn * Basis.from_scale(Vector3(0.03, 0.16, L + 0.02)), mid + turn * Vector3(side, 0, 0)))
+		var n := int(L / 3.0)
+		for q in n + 1:
+			var p := a.lerp(b, (q + 0.5) / float(n + 1))
+			rods.append(Transform3D(Basis.from_scale(Vector3(0.035, CEIL - rz - 0.12, 0.035)), p + Vector3(0, (CEIL - rz + 0.12) / 2.0, 0)))
+	for pack in [[parts, rail_mat], [rods, hanger_mat]]:
+		var list: Array = pack[0]
+		if list.is_empty():
+			continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = box_mesh
+		mm.instance_count = list.size()
+		for k in list.size():
+			mm.set_instance_transform(k, list[k])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = pack[1]
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		node.add_child(mmi)
 
 
 # ------------------------------------------------------------------ the live run's answers
@@ -298,11 +467,24 @@ func apply_state(d: Dictionary) -> void:
 	for g in d.get("queues", {}).keys():
 		queues[g] = d["queues"][g]
 	stays = d.get("carriers", [])
-	var live := {}
+	# each vehicle's stays, in order, worked out once per answer so a frame only looks up where the clock is
+	plan = {}
 	for s in stays:
-		live[int(s["vehicle"])] = true
+		var v := int(s["vehicle"])
+		var ab: PackedStringArray = str(s["stretch"]).replace("n", "").split(">")
+		var a: Vector3 = node_pos[int(ab[0])]
+		var b: Vector3 = node_pos[int(ab[1])]
+		var t_in := float(s["t_in"])
+		var ride: float = a.distance_to(b) / VEHICLE_M_PER_MIN
+		var arrive: float = float(s["t_out"]) if s["t_out"] != null else t_in + ride
+		var port: bool = str(data["track"]["nodes"][int(ab[1])][2]) in ["port", "stocker"]
+		if not plan.has(v):
+			plan[v] = []
+		plan[v].append([t_in, arrive, a, b, ride, port, bool(s["copper"])])
+	for v in plan.keys():
+		plan[v].sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	for v in carriers.keys():
-		if not live.has(v):
+		if not plan.has(v):
 			carriers[v]["node"].queue_free()
 			carriers.erase(v)
 
@@ -323,37 +505,67 @@ func _paint(i: int) -> void:
 
 
 func _move_carriers() -> void:
-	var at := {}
-	for s in stays:
-		var t_in := float(s["t_in"])
-		var t_out := float(s["t_out"]) if s["t_out"] != null else 1e12
-		if clock >= t_in and clock < t_out:
-			at[int(s["vehicle"])] = s
-	for v in at.keys():
-		var s: Dictionary = at[v]
-		var copper := bool(s["copper"])
+	# each vehicle on its latest stay begun by the clock. On a stretch it moves at the simulator's speed and reaches
+	# the far end exactly when the simulator says it leaves it, so time spent queued behind another vehicle is spent
+	# waiting at the near end. A stay the helper sends open-ended (still running when its 30-minute window closed) is
+	# driven at speed and then stands. A vehicle standing over a tool's port or a stocker's lowers its pod on the
+	# hoist belts and lifts it before its next stay (that gap in the simulator's stays is the transfer).
+	var drop_full := float(heights["rail_z"]) - 0.9 - float(heights["port_z"])
+	for v in plan.keys():
+		var L: Array = plan[v]
+		var k := -1
+		for q in L.size():
+			if float(L[q][0]) <= clock:
+				k = q
+			else:
+				break
+		if k < 0:
+			if carriers.has(v):
+				carriers[v]["node"].visible = false
+			continue
+		var s: Array = L[k]
+		var next_in: float = float(L[k + 1][0]) if k + 1 < L.size() else 1e12
+		var arrive: float = s[1]
+		var a: Vector3 = s[2]
+		var b: Vector3 = s[3]
+		var ride: float = s[4]
+		var copper: bool = s[6]
 		if carriers.has(v) and carriers[v]["copper"] != copper:
 			carriers[v]["node"].queue_free()
 			carriers.erase(v)
 		if not carriers.has(v):
 			var n: Node3D = carrier_scenes["copper" if copper else "standard"].instantiate()
 			add_child(n)
-			carriers[v] = {"node": n, "copper": copper}
-		var ab: PackedStringArray = str(s["stretch"]).replace("n", "").split(">")
-		var a: Vector3 = node_pos[int(ab[0])]
-		var b: Vector3 = node_pos[int(ab[1])]
-		var t_out2 := float(s["t_out"]) if s["t_out"] != null else float(s["t_in"]) + 1.0
-		var u := clampf((clock - float(s["t_in"])) / maxf(t_out2 - float(s["t_in"]), 1e-6), 0.0, 1.0)
-		var p := a.lerp(b, u) - Vector3(0, 0.9, 0)
-		var node: Node3D = carriers[v]["node"]
-		node.global_position = p
+			var belts := MeshInstance3D.new()
+			var bb := BoxMesh.new()
+			bb.size = Vector3(0.16, 1.0, 0.01)
+			belts.mesh = bb
+			belts.material_override = hanger_mat
+			belts.visible = false
+			n.add_child(belts)
+			carriers[v] = {"node": n, "copper": copper, "hoist": n.find_child("hoist", true, false), "belts": belts}
+		var p := b
+		var drop := 0.0
+		if clock < arrive:
+			var leave := maxf(float(s[0]), arrive - ride)
+			p = a.lerp(b, clampf((clock - leave) / maxf(ride, 1e-6), 0.0, 1.0))
+		elif s[5] and next_in - arrive >= 0.5:
+			# 12 simulated seconds down, held, 12 up before the next stay
+			drop = clampf(minf(clock - arrive, next_in - clock) / 0.2, 0.0, 1.0) * drop_full
+		var c: Dictionary = carriers[v]
+		var node: Node3D = c["node"]
+		node.position = p - Vector3(0, 0.9, 0)
 		var d := b - a
-		if d.length() > 0.01:
-			node.rotation.y = atan2(d.x, d.z)
+		if d.length_squared() > 0.0001:
+			node.rotation.y = atan2(-d.z, d.x)     # the vehicle's long side along the rail
+		if c["hoist"]:
+			c["hoist"].position.y = -drop
+		var belts: MeshInstance3D = c["belts"]
+		belts.visible = drop > 0.03
+		if belts.visible:
+			belts.scale = Vector3(1, drop, 1)
+			belts.position = Vector3(0, 0.39 - drop / 2.0, 0)
 		node.visible = true
-	for v in carriers.keys():
-		if not at.has(v):
-			carriers[v]["node"].visible = false
 
 
 # ------------------------------------------------------------------ what a visitor asks about

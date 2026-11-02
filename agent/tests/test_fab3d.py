@@ -61,6 +61,36 @@ class Live(unittest.TestCase):
                 self.assertIsInstance(c["copper"], bool)
                 self.assertIsInstance(c["loaded"], bool)
 
+    def test_f3_a_vehicle_standing_over_a_port_is_still_sent(self):
+        # between two stays a vehicle stands over a tool's port while its pod goes down and up; with a span the
+        # helper also sends each vehicle's stays that ended in the last few minutes, so the scene can hold it there
+        with tempfile.TemporaryDirectory() as d:
+            h = make(d)
+            r = h.fab3d_run({"seed": 1, "days": 0.5})
+            cells = fab3d.cells(json.loads(BUILDING.read_text()))
+            ids = sorted(cells["cells"])
+            t = 400.0
+            s = h.fab3d_state({"run": r["run"], "t": t, "cells": ids, "span": 2})
+            by = {}
+            for c in s["carriers"]:
+                by.setdefault(c["vehicle"], []).append(c)
+            standing = [v for v, cs in by.items() if all(c["t_out"] is not None and c["t_out"] <= t for c in cs)]
+            self.assertTrue(standing, "no vehicle between two stays at t")
+            for c in s["carriers"]:
+                self.assertGreater(c["t_out"] if c["t_out"] is not None else 1e12, t - fab3d.PARK)
+                self.assertLess(c["t_in"], t + 2)
+            # a vehicle that drove out of a cell is not left standing there: an ended stay comes only when it is the
+            # vehicle's latest move anywhere in the fab
+            last = {}
+            for c in s["carriers"]:
+                if c["t_in"] <= t:
+                    last[c["vehicle"]] = max(last.get(c["vehicle"], -1.0), c["t_in"])
+            for cid in ids[:40]:
+                one = h.fab3d_state({"run": r["run"], "t": t, "cells": [cid], "span": 2})
+                for c in one["carriers"]:
+                    if c["t_out"] is not None and c["t_out"] <= t:
+                        self.assertEqual(c["t_in"], last[c["vehicle"]], (cid, c))
+
     def test_f3_an_unknown_run_or_cell_says_so(self):
         with tempfile.TemporaryDirectory() as d:
             h = make(d)

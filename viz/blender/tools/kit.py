@@ -534,6 +534,21 @@ def build(name):
         ob.select_set(True)
     bpy.context.view_layer.objects.active = PARTS[0]
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    hoist = None
+    if name in ("carrier_standard", "carrier_copper"):
+        # the gripper, the pod and its handle are their own piece, named "hoist", so the scene can lower them to a port
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in PARTS[3:6]:
+            o.select_set(True)
+        bpy.context.view_layer.objects.active = PARTS[3]
+        bpy.ops.object.join()
+        hoist = bpy.context.active_object
+        hoist.name = "hoist"
+        hoist.data.name = "hoist"
+        bpy.ops.object.select_all(action="DESELECT")
+        for o in PARTS[:3]:
+            o.select_set(True)
+        bpy.context.view_layer.objects.active = PARTS[0]
     bpy.ops.object.join()
     ob = bpy.context.active_object
     ob.name = name

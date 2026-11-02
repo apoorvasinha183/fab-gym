@@ -49,7 +49,7 @@ func _process(dt: float) -> void:
 		var g := follow.global_position
 		if floor_at(g.x, -g.z) > 1.0:
 			# inside a fab: stand on the spine's middle line, a few metres back along it, above the tools
-			want = Vector3(g.x - 7.0, g.y + 3.4, 0.0)
+			want = Vector3(g.x - 7.0, g.y + 1.75, 0.0)
 		global_position = global_position.lerp(want, clampf(dt * 2.0, 0.0, 1.0))
 		var look := follow.global_position + Vector3(0, 1.6, 0) - back * -6.0
 		var d := look - global_position

@@ -14,6 +14,8 @@ var mode := "idle"            # idle, walk, talk
 var talk_left := 0.0
 var speed := 3.2              # metres a second: faster than life, so the tour keeps moving
 var line_of: Callable         # stop -> its line, built from the live run when the guide arrives
+var talk_scale := 1.0         # shorter pauses for the recorded tour
+var hold := 0.0               # extra seconds at the next stop (a question asked there)
 
 
 func _ready() -> void:
@@ -61,7 +63,8 @@ func say(text: String, title := "") -> void:
 	$bubble.text = title
 	said.emit(text)
 	mode = "talk"
-	talk_left = clampf(text.length() / 15.0, 5.0, 14.0)
+	talk_left = clampf(text.length() / 15.0, 5.0, 14.0) * talk_scale + hold
+	hold = 0.0
 	_play("Idle_Talking_Loop")
 
 

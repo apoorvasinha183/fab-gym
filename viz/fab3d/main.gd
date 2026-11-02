@@ -13,18 +13,23 @@ extends Node3D
 @onready var building: Node3D = $building
 
 var clock := 360.0            # simulated minutes since the run began: 06:00 on day 1
-var speed := 1.0              # simulated minutes a real second
+var speed := 1.0 / 60.0       # simulated minutes a real second: real time, so vehicles move at their own speed
 var _ask_every := 0.0
 var staff_scene: PackedScene = preload("res://staff/staff.tscn")
 var staff := {}               # tool index -> worker
 var check_out := ""
 var perf_out := ""
 var shots_dir := ""
+var film := false
+const FILM_AREAS := ["Litho", "Dry_Etch", "Implant", "Diffusion", "Planar", "Wet_Etch"]
+const FILM_AREAS_BE := ["TF", "Planar"]
 var touring := false
 var _t := 0.0
 var _frame_ms: PackedFloat32Array = PackedFloat32Array()
 var _drawn0 := 0
 var _shot_at := [6.0, 14.0, 24.0, 34.0, 46.0]
+var near_vehicle := false      # shots framed on one vehicle (one lowering its pod if there is one), to check the rail
+var _watched := -1
 
 
 func _ready() -> void:
@@ -33,8 +38,11 @@ func _ready() -> void:
 		check_out = args[args.find("--check") + 1]
 	if "--perf" in args:
 		perf_out = args[args.find("--perf") + 1]
+	if "--film" in args:
+		film = true
 	if "--shots" in args:
 		shots_dir = args[args.find("--shots") + 1]
+	near_vehicle = "--near-vehicle" in args
 	campus.viewer = player
 	cinema.viewer = player
 	player.setup(campus.data)
@@ -63,19 +71,25 @@ func _ready() -> void:
 
 
 func _dress_building() -> void:
-	var looks := {"flooring": [Color(0.58, 0.6, 0.62), 0.55], "slab_floor": [Color(0.5, 0.52, 0.55), 0.7],
-			"column": [Color(0.72, 0.73, 0.72), 0.6], "wall": [Color(0.8, 0.81, 0.8), 0.7],
-			"ceiling": [Color(0.86, 0.88, 0.9), 0.4], "roof": [Color(0.45, 0.47, 0.5), 0.8]}
+	# a cleanroom's surfaces: raised-floor tiles of 0.6 m with perforations (air goes down through them), a ceiling of
+	# 1.2 m filter units glowing white, white wall panels, white-clad columns. Sizes assumed.
+	var C := campus
+	var looks := {
+		"flooring": C.panel_mat(Color(0.8, 0.82, 0.84), Color(0.6, 0.63, 0.66), Vector3(0.6, 0.6, 0.6), 0.025, 5, 0.0, 0.45),
+		"ceiling": C.panel_mat(Color(0.97, 0.98, 1.0), Color(0.66, 0.7, 0.74), Vector3(1.2, 1.2, 1.2), 0.04, 0, 0.45, 0.6),
+		"wall": C.panel_mat(Color(0.93, 0.94, 0.95), Color(0.74, 0.77, 0.8), Vector3(1.2, 2.75, 1.2), 0.012, 0, 0.0, 0.5),
+		"column": C.panel_mat(Color(0.9, 0.91, 0.93), Color(0.78, 0.8, 0.83), Vector3(1.0, 2.75, 1.0), 0.01, 0, 0.0, 0.5),
+	}
+	var plain := {"slab_floor": [Color(0.5, 0.52, 0.55), 0.7], "roof": [Color(0.45, 0.47, 0.5), 0.8]}
 	for mi in building.find_children("*", "MeshInstance3D", true, false):
 		for k in looks.keys():
 			if str(mi.name).contains(k):
+				mi.material_override = looks[k]
+		for k in plain.keys():
+			if str(mi.name).contains(k):
 				var m := StandardMaterial3D.new()
-				m.albedo_color = looks[k][0]
-				m.roughness = looks[k][1]
-				if k == "ceiling":
-					m.emission_enabled = true
-					m.emission = Color(0.95, 0.97, 1.0)
-					m.emission_energy_multiplier = 0.35
+				m.albedo_color = plain[k][0]
+				m.roughness = plain[k][1]
 				mi.material_override = m
 
 
@@ -84,6 +98,9 @@ func _dress_building() -> void:
 func _on_run(info: Dictionary) -> void:
 	ui.show_line("The run is ready: %d tools, the simulator's day from 06:00. Follow me." % campus.data["tools"].size())
 	touring = true
+	if film:
+		guide.speed = 7.0
+		guide.talk_scale = 0.62
 	player.roaming = false
 	player.follow = guide
 	guide.start(_tour())
@@ -91,11 +108,17 @@ func _on_run(info: Dictionary) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if near_vehicle and live.run_id != "":
+		_watch_vehicle()
 	if shots_dir != "" and not _shot_at.is_empty() and _t >= _shot_at[0]:
 		_shot_at.pop_front()
 		var path := "%s/shot-%02d.png" % [shots_dir, int(_t)]
 		var err := get_viewport().get_texture().get_image().save_png(path)
-		print("shot ", path, " ", err, " cells ", campus.loaded.size(), " tools ", campus.tool_nodes.size(), " run ", live.run_id)
+		var shown := 0
+		for v in campus.carriers.keys():
+			if campus.carriers[v]["node"].visible:
+				shown += 1
+		print("shot ", path, " ", err, " cells ", campus.loaded.size(), " tools ", campus.tool_nodes.size(), " carriers ", shown, " of ", campus.stays.size(), " stays, run ", live.run_id)
 		if _shot_at.is_empty():
 			get_tree().quit()
 	if perf_out != "" and live.run_id != "":
@@ -116,6 +139,29 @@ func _process(dt: float) -> void:
 	var above := player.global_position.y > 17.0
 	for c in building.find_children("*roof*", "", true, false) + building.find_children("*ceiling*", "", true, false):
 		c.visible = not above
+
+
+func _watch_vehicle() -> void:
+	var cs: Dictionary = campus.carriers
+	if not cs.has(_watched) or not cs[_watched]["node"].visible:
+		_watched = -1
+		var best := 1e9
+		for v in cs.keys():
+			if not cs[v]["node"].visible:
+				continue
+			var dist: float = cs[v]["node"].global_position.distance_to(guide.global_position) - (50.0 if cs[v]["belts"].visible else 0.0)
+			if dist < best:
+				best = dist
+				_watched = v
+	if _watched < 0:
+		return
+	var at: Vector3 = cs[_watched]["node"].global_position
+	player.roaming = false
+	player.follow = null
+	player.global_position = at + Vector3(4.5, -1.2, 4.5)
+	var d := at + Vector3(0, -0.8, 0) - player.global_position
+	player.yaw = atan2(-d.x, -d.z)
+	player.pitch = atan2(d.y, Vector2(d.x, d.z).length())
 
 
 func _on_state(d: Dictionary) -> void:
@@ -167,6 +213,8 @@ func _tour() -> Array:
 			var in_p1 := x < 261.8
 			if (phase == 0) != in_p1 or seen.has([phase, str(l[3])]):
 				continue
+			if film and not (str(l[3]) in (FILM_AREAS if phase == 0 else FILM_AREAS_BE)):
+				continue
 			seen[[phase, str(l[3])]] = true
 			var side := 1.0 if float(l[2]) > 0 else -1.0
 			stops.append({"kind": "area", "area": str(l[3]), "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
@@ -179,6 +227,15 @@ func _tour() -> Array:
 
 
 func _on_arrived(s: Dictionary) -> void:
+	if film and s["kind"] == "area" and str(s["area"]) == "Planar" and s["plan"].x < 261.8:
+		# the film's one question, typed into the box and answered from the live run
+		guide.hold = 9.0
+		get_tree().create_timer(3.5).timeout.connect(func() -> void: ui.ask_box.text = "why is this queue long?")
+		get_tree().create_timer(5.0).timeout.connect(func() -> void:
+			ui.ask_box.text = ""
+			handle_question("why is this queue long?"))
+	if film and s["kind"] == "cinema":
+		get_tree().create_timer(14.0).timeout.connect(func() -> void: get_tree().quit())
 	if s.get("teleport", false):
 		player.global_position = s["at"] + Vector3(0, 2.6, -4.5)
 	if s["kind"] == "cinema":
@@ -354,7 +411,13 @@ func _write_perf() -> void:
 	var n := a.size()
 	var drawn := Engine.get_frames_drawn() - _drawn0
 	var size := get_viewport().get_visible_rect().size
-	var report := {"frames": n, "median_ms": a[n / 2], "p99_ms": a[int(n * 0.99)], "worst_ms": a[n - 1],
+	var slow := []          # [second into the timed run, ms] for each frame over a 60 Hz frame
+	var at := 0.0
+	for ms in _frame_ms:
+		at += ms / 1000.0
+		if ms > 17.5:
+			slow.append([snappedf(at, 0.01), snappedf(ms, 0.1)])
+	var report := {"frames": n, "median_ms": a[n / 2], "p99_ms": a[int(n * 0.99)], "worst_ms": a[n - 1], "slow": slow,
 			"drawn_share": float(drawn) / float(n), "width": int(size.x), "height": int(size.y),
 			"renderer": RenderingServer.get_current_rendering_method(), "device": RenderingServer.get_video_adapter_name(),
 			"about": "The guide's tour, timed on this machine. From the SMT2020 testbed; not a real fab."}

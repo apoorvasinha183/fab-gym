@@ -115,3 +115,26 @@ Made while building, 2 Nov:
 - F8 on this laptop (Apple M1): median and 99th-percentile frame 16.67 ms over 3,600 frames, 99.97% drawn. The run is
   held to the display's 60 Hz, so the headroom under the bar is not measured.
 - Not yet: the browser export, the recorded tour, "what if" inside the 3D fab.
+
+Made after the founder's review, 2 Nov ("it is not looking like a fab at all, you killed the rail details, also how
+can it be so fast?", then "now nothing is moving on the rail"):
+
+- The clock starts at real time (buttons: real time, 10×, 60×). At the old one simulated minute a second every vehicle
+  moved 60 times too fast. The run is still worked out whole by the helper in about 1.2 s and polled once a second for
+  the cells near the viewer; nothing is stepped live.
+- Vehicles move at the shop's speed (150 m a minute) and reach the far end of a stretch when the simulator says they
+  leave it, so time queued behind another vehicle is spent waiting at the near end (spreading a stay evenly had made
+  queued vehicles creep). A stay sent open-ended at a 30-minute window's edge is driven at speed and then stands.
+- `/api/fab3d/state` with a span also sends stays that ended up to 5 minutes before t (`PARK`), but only a vehicle's
+  latest move anywhere in the fab, so one standing over a port is held there and one that drove on elsewhere is not
+  left behind. Over a port or a stocker, a gap of at least half a minute before the next stay is the hoist transfer:
+  the pod goes down on belts to the load port and back up (the carrier models now export the gripper and pod as their
+  own piece, "hoist").
+- The rail is an aluminium channel (cap and two flanges) hung from the filter ceiling by a rod every 3 m (a scaling
+  bug had drawn it as wide beams). Cleanroom surfaces: perforated raised-floor tiles of 0.6 m, a ceiling of 1.2 m filter
+  units glowing white, yellow filter light over lithography, white wall panels and columns; bay floors no longer
+  tinted, a stripe of the area's colour at each bay's mouth and a small sign hung at its mouth. Sizes assumed.
+- The follow camera is at eye height (1.75 m) on the spine. That view cost GPU fill under 2× MSAA (99th-percentile
+  frame 18.8 to 19.4 ms); with SMAA instead, F8 is back at median and 99th percentile 16.67 ms, 99.97% drawn. The perf
+  report lists each slow frame with its time. `--near-vehicle` frames the stills on one vehicle, one lowering its pod
+  if there is one.

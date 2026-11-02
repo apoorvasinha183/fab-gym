@@ -87,15 +87,15 @@ offset_bottom = 60.0
 
 [node name="slow" type="Button" parent="speed"]
 layout_mode = 2
-text = "Slower"
+text = "Real time"
 
 [node name="normal" type="Button" parent="speed"]
 layout_mode = 2
-text = "1 minute a second"
+text = "10×"
 
 [node name="fast" type="Button" parent="speed"]
 layout_mode = 2
-text = "Faster"
+text = "60×"
 
 [node name="free" type="Button" parent="."]
 anchors_preset = 1

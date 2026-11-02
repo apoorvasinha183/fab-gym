@@ -32,9 +32,9 @@ func _ready() -> void:
 			asked.emit(t.strip_edges())
 			ask_box.text = "")
 	mic.pressed.connect(_toggle_mic)
-	$speed/slow.pressed.connect(func() -> void: speed_changed.emit(0.5))
-	$speed/normal.pressed.connect(func() -> void: speed_changed.emit(1.0))
-	$speed/fast.pressed.connect(func() -> void: speed_changed.emit(5.0))
+	$speed/slow.pressed.connect(func() -> void: speed_changed.emit(1.0 / 60.0))
+	$speed/normal.pressed.connect(func() -> void: speed_changed.emit(10.0 / 60.0))
+	$speed/fast.pressed.connect(func() -> void: speed_changed.emit(1.0))
 	$free.pressed.connect(func() -> void: free_walk.emit())
 	card.visible = false
 
@@ -51,7 +51,9 @@ func show_card(text: String) -> void:
 func set_clock(minutes: float, speed: float) -> void:
 	var day := int(minutes / 1440.0) + 1
 	var m := int(minutes) % 1440
-	clock_label.text = "Day %d, %02d:%02d   ·   %s" % [day, m / 60, m % 60, "%.1f simulated minutes a second" % speed]
+	var x := speed * 60.0
+	var pace := "real time" if absf(x - 1.0) < 0.01 else "%d× real time" % roundi(x)
+	clock_label.text = "Day %d, %02d:%02d:%02d   ·   %s" % [day, m / 60, m % 60, int(minutes * 60.0) % 60, pace]
 
 
 # ------------------------------------------------------------------ the microphone

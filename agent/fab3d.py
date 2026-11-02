@@ -7,6 +7,7 @@ import math
 SIZE = 24.0          # a cell's side, metres (assumed)
 EVERY = 10.0         # minutes between the run's frames (assumed)
 WINDOW = 30.0        # minutes of carrier moves fetched at a time
+PARK = 5.0           # minutes: with a span, stays that ended this long before t are sent too (a vehicle standing at a port)
 
 
 def cell_of(x, y, size=SIZE):
@@ -105,22 +106,25 @@ class Run:
                 if g in self.group_index:
                     queues[g] = f["queues"][self.group_index[g]]
             stretches.update(c["stretches"])
-        # carriers on these cells' stretches at t, or (with span) every stay overlapping [t, t + span] so the scene
-        # can glide them between asks; each with its times on the stretch
-        carriers, seen = [], set()
+        # carriers on these cells' stretches at t, or (with span) every stay overlapping [t - PARK, t + span] so the
+        # scene can glide them between asks and hold one standing at a port; each with its times on the stretch
+        carriers, seen, latest = [], set(), {}
         end = t + max(0.0, span)
-        for wk in range(math.floor(t / WINDOW), math.floor(end / WINDOW) + 1):
+        start = t - PARK if span > 0 else t
+        for wk in range(math.floor(max(0.0, start) / WINDOW), math.floor(end / WINDOW) + 1):
             w = self.window(wk * WINDOW)
             if not (isinstance(w, dict) and "stays" in w):
                 continue
             fields = w.get("fields", [])
             for row_ in w["stays"]:
                 row = dict(zip(fields, row_))
+                if row["t_in"] <= t:
+                    latest[row["vehicle"]] = max(latest.get(row["vehicle"], -math.inf), row["t_in"])
                 name = f"{row['from']}>{row['to']}"
                 if name not in stretches:
                     continue
                 t_in, t_out = row["t_in"], row["t_out"] if row["t_out"] is not None else math.inf
-                live = (t_in <= t < t_out) if span <= 0 else (t_in < end and t_out > t)
+                live = (t_in <= t < t_out) if span <= 0 else (t_in < end and t_out > start)
                 if not live or (row["vehicle"], name, t_in) in seen:
                     continue
                 seen.add((row["vehicle"], name, t_in))
@@ -130,6 +134,9 @@ class Run:
                                  "t_in": t_in, "t_out": t_out if math.isfinite(t_out) else None,
                                  "loaded": bool(row["loaded"]), "hot": bool(row["hot"]),
                                  "copper": bool(row["loaded"]) and is_copper(row.get("next_group"))})
+        # an ended stay stays only when it is that vehicle's latest move anywhere: one that drove on elsewhere is not
+        # left standing in these cells
+        carriers = [c for c in carriers if c["t_out"] is None or c["t_out"] > t or c["t_in"] >= latest.get(c["vehicle"], -math.inf)]
         return {"t": f["t"], "tools": tools, "queues": queues, "carriers": carriers}
 
 

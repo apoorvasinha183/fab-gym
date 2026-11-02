@@ -31,6 +31,9 @@ ssao_radius = 1.5
 glow_enabled = true
 glow_intensity = 0.3
 glow_bloom = 0.05
+adjustment_enabled = true
+adjustment_saturation = 1.2
+adjustment_contrast = 1.06
 
 [sub_resource type="PlaneMesh" id="ground"]
 size = Vector2(1400, 900)
