@@ -5,7 +5,8 @@
  "hash": "SHA-256 of the section's text as shown: whitespace collapsed, the reader's CDP and INSIGHTS labels removed, the characters = ? & % turned to spaces; chars is the length hashed",
  "sources": {
   "IBC 2024": "2024 International Building Code, International Code Council",
-  "IFC 2024": "2024 International Fire Code, International Code Council"
+  "IFC 2024": "2024 International Fire Code, International Code Council",
+  "ADA 2010": "2010 ADA Standards for Accessible Design, US Access Board (https://www.access-board.gov/ada/)"
  },
  "sections": {
   "IBC 307.7": {
@@ -533,8 +534,18 @@
    "sha256": "28a6cf717fd518f4066bae5216b0977e6dba5ad6d0ab6e565f166fead5f404ff",
    "facts": {
     "H5_one_exit_max_occupants": 10,
-    "H5_common_path_ft": 75
-   }
+    "H5_common_path_ft": 75,
+    "A_one_exit_max_occupants": 49,
+    "A_common_path_ft": 75
+   },
+   "also_read": [
+    {
+     "opened": "2026-11-03",
+     "chars": 550,
+     "sha256": "8382e817a8b2755741ec9005f46e44ef368b2185dd0aa74a1c1ad7b194318446",
+     "for": "A rows"
+    }
+   ]
   },
   "IBC T1006.3.3": {
    "code": "IBC 2024",
@@ -591,8 +602,18 @@
    "chars": 2032,
    "sha256": "21767ae13ec103efd873a74b28fbf64faaf6f6d0453133dc5f1113777afc96b9",
    "facts": {
-    "H5_sprinklered_ft": 200
-   }
+    "H5_sprinklered_ft": 200,
+    "A_unsprinklered_ft": 200,
+    "A_sprinklered_ft": 250
+   },
+   "also_read": [
+    {
+     "opened": "2026-11-03",
+     "chars": 398,
+     "sha256": "7c7f01ef36259debc829097e773eca1cbfc6b9ca76a5e011741b3bb3ba48a493",
+     "for": "A rows"
+    }
+   ]
   },
   "IBC 1017.3": {
    "code": "IBC 2024",
@@ -798,6 +819,269 @@
    "facts": {
     "what": "as IBC 415.11.11"
    }
+  },
+  "IBC 1004.6": {
+   "code": "IBC 2024",
+   "title": "Fixed seating",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 905,
+   "sha256": "78f2c7b2df33c09835782e2ec0166f5dfed378b832c41941cb34427402c5ee68",
+   "facts": {
+    "occupant_load": "number of fixed seats",
+    "wheelchair_space_occupants": 1,
+    "companion_seat_occupants": 1
+   }
+  },
+  "IBC 1030.6.1": {
+   "code": "IBC 2024",
+   "title": "Capacity of aisle for assembly, without smoke protection",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1361,
+   "sha256": "2b05d6a488dcc8b2674f2a360680af79852e7093e76be9e9dda04ec41c38eb10",
+   "facts": {
+    "stepped_in_per_occupant": 0.3,
+    "stepped_riser_max_in_for_base": 7,
+    "stepped_tread_min_in_for_base": 11,
+    "stepped_extra_in_per_occupant_per_0.1in_riser_above_7": 0.005,
+    "descent_no_handrail_within_in": 30,
+    "descent_no_handrail_extra_in_per_occupant": 0.075,
+    "level_ramp_le_1in12_in_per_occupant": 0.2,
+    "ramp_gt_1in12_in_per_occupant": 0.22
+   }
+  },
+  "IBC 1030.7": {
+   "code": "IBC 2024",
+   "title": "Assembly travel distance",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1266,
+   "sha256": "605f25a2ecb13c890bdd1392c82df3e5442b3ca848548bb2132459110cfab2df",
+   "facts": {
+    "rule": "Section 1017, measured along aisles and aisle accessways, not over seats"
+   }
+  },
+  "IBC 1030.8": {
+   "code": "IBC 2024",
+   "title": "Assembly common path of egress travel",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 528,
+   "sha256": "0ed9875875e0eed5b15c82c3ef7bda0eabb0615860b1787c5e729459a3c6c6e6",
+   "facts": {
+    "fixed_seating_common_path_ft": 30,
+    "under_50_occupants_common_path_ft": 75,
+    "smoke_protected_common_path_ft": 50
+   }
+  },
+  "IBC 1030.9.1": {
+   "code": "IBC 2024",
+   "title": "Minimum assembly aisle width",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1169,
+   "sha256": "419c6aa3ff5185729e51f784177638bfb50e832c89bb61782cb2a26ba88ce873",
+   "facts": {
+    "stepped_both_sides_in": 48,
+    "stepped_both_sides_under_50_seats_in": 36,
+    "stepped_one_side_in": 36,
+    "level_ramped_both_sides_in": 42,
+    "level_ramped_both_sides_under_50_seats_in": 36,
+    "level_ramped_under_15_seats_not_accessible_route_in": 30,
+    "level_ramped_one_side_in": 36
+   }
+  },
+  "IBC 1030.9.5": {
+   "code": "IBC 2024",
+   "title": "Dead-end aisles",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1274,
+   "sha256": "ea680cfb84163901c38c34e163f1d77f6593ea09e5370607e9c5ec1c5b4f288d",
+   "facts": {
+    "dead_end_max_ft": 20,
+    "beyond_20ft_max_seats_to_another_aisle": 24,
+    "under_50_seats_ok_if_1030.8": true
+   }
+  },
+  "IBC 1030.13.2": {
+   "code": "IBC 2024",
+   "title": "Clear width of aisle accessways between rows",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 952,
+   "sha256": "1a6ea4eb9352c81a7a9db8a008e8595fbe6c052e783e8d94b56a9606b2e7cb15",
+   "facts": {
+    "rows_14_or_fewer_seats_min_clear_in": 12,
+    "measured": "back of row ahead to nearest projection of row behind, self-rising seats up"
+   }
+  },
+  "IBC 1030.13.2.1": {
+   "code": "IBC 2024",
+   "title": "Dual access rows",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1298,
+   "sha256": "598ed048113711e8b7cc5d106d08ce634b34d0970d7715b2f437189f18194da1",
+   "facts": {
+    "max_seats_per_row": 100,
+    "base_clear_in": 12,
+    "add_in_per_seat_beyond_14_with_backrests": 0.3,
+    "clear_need_not_exceed_in": 22
+   }
+  },
+  "IBC 1030.13.2.2": {
+   "code": "IBC 2024",
+   "title": "Single access rows",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 621,
+   "sha256": "96641bedc870e898bd79374878ba799c883d145175cd2fe007c1ffdc939c1d91",
+   "facts": {
+    "base_clear_in": 12,
+    "add_in_per_seat_beyond_7_with_backrests": 0.6,
+    "clear_need_not_exceed_in": 22
+   }
+  },
+  "IBC 1030.14.2": {
+   "code": "IBC 2024",
+   "title": "Stepped aisles",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 272,
+   "sha256": "4222cd2cfab164680eabc6c0b179a4f099b6d857982297a1bd85423171409736",
+   "facts": {
+    "stepped_when_slope_steeper_than": "1 in 8 (12.5%)",
+    "risers_and_treads_across_full_aisle_width": true
+   }
+  },
+  "IBC 1030.14.2.1": {
+   "code": "IBC 2024",
+   "title": "Stepped aisle treads",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 199,
+   "sha256": "714dc929b01963258e632d771b86301057aba607324e66bd51bb929518a65f57",
+   "facts": {
+    "tread_min_in": 11,
+    "adjacent_tread_tolerance_in": 0.1875
+   }
+  },
+  "IBC 1030.14.2.2": {
+   "code": "IBC 2024",
+   "title": "Stepped aisle risers",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 1682,
+   "sha256": "69ad83e24aee80fba53b47233fe4d6fe04b46a24b849ad7b066cd260416f3c96",
+   "facts": {
+    "riser_min_in": 4,
+    "riser_max_in": 8,
+    "uniform_within_flight": true
+   }
+  },
+  "IBC 1030.16": {
+   "code": "IBC 2024",
+   "title": "Assembly handrails",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 999,
+   "sha256": "42e6b6695fea0961226111a746c5fc72f29b1cd4e69ce5a56ae9ffee11694854",
+   "facts": {
+    "stepped_aisles_need_handrails": true,
+    "ramped_steeper_than": "1 in 15",
+    "one_side_seating_74in_or_wider_two_handrails": true,
+    "second_handrail_within_in_of_tiered_side": 30,
+    "not_required_ramped_with_seating_both_sides": true
+   }
+  },
+  "IBC 1030.17.1": {
+   "code": "IBC 2024",
+   "title": "Perimeter guards",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 914,
+   "sha256": "d68bbfd453c78faf2ec057ef4d55c678ba64eb2b1d79913c266b8373c8bb4b4e",
+   "facts": {
+    "needed_above_in": 30,
+    "height_from_seatboard_in": 42
+   }
+  },
+  "IBC 1030.17.2": {
+   "code": "IBC 2024",
+   "title": "Cross aisle guards",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 532,
+   "sha256": "05255bd8a56e9b7694d5ee97177fc9bc98c87d95451542b1f405ee94ec9c53df",
+   "facts": {
+    "needed_above_in": 30,
+    "drop_30in_or_less_guard_in": 26,
+    "no_guard_if_seat_backs_project_in": 24
+   }
+  },
+  "IBC 1030.17.3": {
+   "code": "IBC 2024",
+   "title": "Sightline-constrained guard heights",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 463,
+   "sha256": "fa9b019942c4b5ad6c0aae7d68f8010c08bb24af61f65768a3c44d395bb7c182",
+   "facts": {
+    "min_height_in": 26,
+    "applies_above_in": 30
+   }
+  },
+  "IBC 1010.1.1": {
+   "code": "IBC 2024",
+   "title": "Size of doors",
+   "url": "https://codes.iccsafe.org/content/IBC2024V1.0/chapter-10-means-of-egress",
+   "opened": "2026-11-03",
+   "chars": 2388,
+   "sha256": "ec33b4fd6eedb150ea80dbe549ed38dcff79a07648d7babcff411a87211d912a",
+   "facts": {
+    "min_clear_in": 32
+   }
+  },
+  "ADA 221": {
+   "code": "ADA 2010",
+   "title": "Assembly areas",
+   "url": "https://www.access-board.gov/ada/",
+   "opened": "2026-11-03",
+   "facts": {
+    "wheelchair_spaces": {
+     "4-25": 1,
+     "26-50": 2,
+     "51-150": 4,
+     "151-300": 5,
+     "301-500": 6
+    },
+    "integration": "integral to the seating plan",
+    "dispersion": "horizontal and vertical (varying distances from the screen)",
+    "companion_seat_per_wheelchair_space": 1,
+    "designated_aisle_seats_share_of_aisle_seats": 0.05,
+    "designated_aisle_seats_where": "closest to accessible routes"
+   },
+   "note": "read through a page summary of the Access Board text; no hash"
+  },
+  "ADA 802": {
+   "code": "ADA 2010",
+   "title": "Wheelchair spaces, companion seats, designated aisle seats",
+   "url": "https://www.access-board.gov/ada/",
+   "opened": "2026-11-03",
+   "facts": {
+    "single_width_mm": 915,
+    "adjacent_pair_width_each_mm": 840,
+    "depth_front_or_rear_entry_mm": 1220,
+    "depth_side_entry_mm": 1525,
+    "adjoin_accessible_route": true,
+    "no_overlap_with_circulation": true,
+    "lines_of_sight": "over the heads (or between heads) of seated spectators, as others have",
+    "companion_shoulder_alignment": true,
+    "aisle_seat_folding_armrest": true
+   },
+   "note": "read through a page summary of the Access Board text; no hash"
   }
  },
  "not_read": [

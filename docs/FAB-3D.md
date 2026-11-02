@@ -120,6 +120,19 @@ group; "what if" asks the helper for a run with the change and shows before and 
   (`campus/B1`), kept unchanged; ours, assumed: a deck whose top is the clean floor (7.5 m), spanning the whole gap,
   a roof, and a doorway through each fab's end wall (`P1/wall/E`, `P2/wall/W`) that the tour walks through.
 
+- **F11** The cinema from rules (the founder, 3 Nov: "lets look at the cinema floor plans, we will build it by code";
+  by quiz: a rules-first generator, about 100 seats, sprinklered, stadium steps). `viz/cinema/plan.py` lays the
+  cinema out on the campus footprint (plan x 40 to 76, y -122 to -98) from a few choices and writes the plan as data:
+  rooms, seat rows, seats, aisles, cross aisles, wheelchair spaces with companion seats, doors, the screen, levels.
+  `check` marks each rule met, not met or cannot say, citing the section in `viz/permit/codes/us-2024.json`
+  (read 3 Nov: IBC 1004.6, T1006.2.1, 1007.1.1, 1010.1.1, 1005.3.2, T1017.2, 1030.6.1 to 1030.17.3; ADA 221, 802). A
+  rule resting on a text not read says cannot say. The tests: occupants 96 to 110 (seats, wheelchair spaces and
+  companion seats); the hall deeper than wide; two exits apart at least a third of the hall's diagonal; every seat
+  within the common path and travel limits measured along aisles; aisle and row clear widths, dead ends, riser and
+  tread sizes; 4 wheelchair spaces of 915 by 1220 mm on cross aisles, two at each of two levels, each with a
+  companion seat beside it and not in the way of circulation; no rule not met. Blender builds the cinema from the
+  plan file; the floor plan sheet is drawn from the same file.
+
 ## Changes
 
 Made while building, 2 Nov:
