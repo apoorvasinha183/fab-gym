@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/exterior.glb" id="1_model"]
+[ext_resource type="Script" path="res://exterior/exterior.gd" id="2_script"]
+
+[node name="exterior" type="Node3D"]
+script = ExtResource("2_script")
+
+[node name="model" parent="." instance=ExtResource("1_model")]

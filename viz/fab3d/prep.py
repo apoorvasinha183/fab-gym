@@ -21,6 +21,9 @@ BUILDING = ROOT / "web/data/building.json"
 SCENE = ROOT / "data/layout-real/scene-optimised.json"
 MODELS = ROOT / "data/fab3d/models"
 BIM = ROOT / "data/layout-real-dd/bim/fab-building.glb"
+PERMIT = ROOT / "data/layout-real-dd/permit-cd/us/boxes.json"
+SHOP = ROOT / "web/data/shop-real.txt"
+POLYHAVEN = Path.home() / "fab-gym-downloads/polyhaven"     # CC0 textures and sky, downloaded 2 Nov (SOURCES.md there)
 FILM = ROOT / "data/film/out/from-sand-to-chip-720p.mp4"
 
 
@@ -29,6 +32,28 @@ def stages():
     js = "const s=require(process.argv[1]);console.log(JSON.stringify(s.STAGES.map(x=>({key:x.key,name:x.name,areas:x.areas,color:x.color,what:x.what,why:x.why,note:x.note}))))"
     p = subprocess.run(["node", "-e", js, str(ROOT / "web/stages.js")], capture_output=True, text=True, check=True)
     return json.loads(p.stdout)
+
+
+def _texture_import(tex, normal):
+    """Godot's import settings for a texture: compressed on the GPU, mipmapped (no shimmer at a distance), and marked
+    as a normal map when it is one. Kept beside the copy so a fresh checkout imports it the same way."""
+    imp = tex.with_name(tex.name + ".import")
+    want = {"compress/mode": "2", "compress/normal_map": "1" if normal else "2", "mipmaps/generate": "true",
+            "detect_3d/compress_to": "0"}
+    if not imp.exists():
+        imp.write_text('[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\n'
+                       + "".join(f"{k}={v}\n" for k, v in want.items()))
+        return
+    lines, seen = [], set()
+    for line in imp.read_text().splitlines():
+        k = line.split("=", 1)[0]
+        if k in want:
+            line, _ = f"{k}={want[k]}", seen.add(k)
+        lines.append(line)
+    lines += [f"{k}={v}" for k, v in want.items() if k not in seen]
+    new = "\n".join(lines) + "\n"
+    if new != imp.read_text():
+        imp.write_text(new)
 
 
 def main():
@@ -53,6 +78,10 @@ def main():
         "cells": cells["cells"],
         "stages": stages(),
     }
+    permit = json.loads(PERMIT.read_text())
+    campus["entrance"] = fab3d.entrance(permit)
+    campus["exterior"] = fab3d.exterior(permit)
+    campus["drone"] = fab3d.drone(b, campus["exterior"], campus["entrance"], SHOP.read_text())
     (DATA / "campus.json").write_text(json.dumps(campus, separators=(",", ":")))
     (DATA / "models").mkdir(exist_ok=True)
     for f in sorted(MODELS.glob("*.glb")):
@@ -61,6 +90,29 @@ def main():
             shutil.copyfile(f, dst)
     if BIM.exists():
         shutil.copyfile(BIM, DATA / "fab-building.glb")
+    if POLYHAVEN.exists():
+        # the CC0 texture sets and the sky: copied, never committed (data/ is ignored)
+        for f in sorted(POLYHAVEN.glob("*/*")):
+            if f.suffix in (".jpg", ".png", ".hdr") and f.parent.name != "_catalogue":
+                dst = DATA / "textures" / f.parent.name / f.name
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if not dst.exists() or dst.stat().st_size != f.stat().st_size:
+                    shutil.copyfile(f, dst)
+                if f.suffix == ".jpg":
+                    _texture_import(dst, normal="_nor_" in f.name)
+    # greyed copies of three CC0 colour maps, which the scene tints: the grass scan is mostly brown leaves, the
+    # cladding is red, the roof gravel sandy
+    for asset, eq in (("leafy_grass", "contrast=1.15"), ("box_profile_metal_sheet", "brightness=0.32:contrast=0.6"),
+                      ("gravel_concrete", "contrast=1.05")):
+        src = DATA / f"textures/{asset}/{asset}_diff_1k.jpg"
+        grey = src.with_name(f"{asset}_grey_1k.jpg")
+        mark = grey.with_suffix(".eq")
+        if src.exists() and (not grey.exists() or not mark.exists() or mark.read_text() != eq):
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(src), "-vf", f"hue=s=0,eq={eq}",
+                            "-q:v", "2", str(grey)], check=True)
+            mark.write_text(eq)
+        if grey.exists():
+            _texture_import(grey, normal=False)
     film = DATA / "film" / "from-sand-to-chip.ogv"
     if FILM.exists() and not film.exists():
         film.parent.mkdir(exist_ok=True)

@@ -4,6 +4,7 @@ extends Node3D
 ## the live run by plain rules first; anything else goes to the helper (Meta's model, through the glossary). From the
 ## SMT2020 testbed; a gigafab-style layout of our own design; not a real fab.
 
+const Looks := preload("res://looks.gd")
 @onready var campus: Node3D = $campus
 @onready var live: Node = $live
 @onready var player: Node3D = $player
@@ -11,6 +12,9 @@ extends Node3D
 @onready var cinema: Node3D = $cinema
 @onready var ui: CanvasLayer = $ui
 @onready var building: Node3D = $building
+@onready var entrance: Node3D = $entrance
+@onready var exterior: Node3D = $exterior
+@onready var drone: Node3D = $drone
 
 var clock := 360.0            # simulated minutes since the run began: 06:00 on day 1
 var speed := 1.0 / 60.0       # simulated minutes a real second: real time, so vehicles move at their own speed
@@ -24,10 +28,17 @@ var film := false
 const FILM_AREAS := ["Litho", "Dry_Etch", "Implant", "Diffusion", "Planar", "Wet_Etch"]
 const FILM_AREAS_BE := ["TF", "Planar"]
 var touring := false
+var intro := false            # the drone is flying the opening
+var no_intro := false
+var _stop_n := 0
+var _stop_total := 0
 var _t := 0.0
 var _frame_ms: PackedFloat32Array = PackedFloat32Array()
 var _drawn0 := 0
 var _shot_at := [6.0, 14.0, 24.0, 34.0, 46.0]
+var sweep := false             # a fixed 12 s camera move (outside wall, then the spine) for comparing shimmer
+var soft_facade := false
+var stop_shots := false        # stills taken at the stops instead of at fixed times
 var near_vehicle := false      # shots framed on one vehicle (one lowering its pod if there is one), to check the rail
 var _watched := -1
 
@@ -43,6 +54,21 @@ func _ready() -> void:
 	if "--shots" in args:
 		shots_dir = args[args.find("--shots") + 1]
 	near_vehicle = "--near-vehicle" in args
+	no_intro = "--no-intro" in args or near_vehicle
+	sweep = "--sweep" in args
+	if "--taa" in args:
+		get_viewport().use_taa = true
+	soft_facade = "--soft-facade" in args
+	guide.trace = "--trace-walk" in args
+	if "--no-ui" in args:
+		ui.visible = false               # clean stills, for designing the screen over them
+	stop_shots = "--stop-shots" in args
+	if stop_shots:
+		_shot_at = [1e9]
+	if "--shot-times" in args:
+		_shot_at = []
+		for t in args[args.find("--shot-times") + 1].split(","):
+			_shot_at.append(float(t))
 	campus.viewer = player
 	cinema.viewer = player
 	player.setup(campus.data)
@@ -59,10 +85,26 @@ func _ready() -> void:
 	ui.recorded.connect(func(wav: PackedByteArray) -> void: live.voice(wav))
 	ui.speed_changed.connect(func(s: float) -> void: speed = s)
 	ui.free_walk.connect(_free_walk)
+	ui.advance.connect(func() -> void:
+		if intro:
+			drone.finish()
+		else:
+			guide.skip())
 	_dress_building()
-	player.place(6.0, 0.0, -PI / 2)
-	guide.global_position = Vector3(12.0, float(campus.heights["clean_z"]), 0.0)
-	guide.rotation.y = -PI / 2
+	exterior.setup(campus.data["exterior"])
+	drone.setup(campus.data["drone"], player)
+	drone.line.connect(func(t: String) -> void: ui.show_line(t))
+	drone.done.connect(_after_intro)
+	entrance.setup(campus.data["entrance"])
+	entrance.rider = guide
+	guide.viewer = player
+	guide.shower_box = campus.data["entrance"]["permit"]["air_shower"]["box"]
+	player.lift = campus.data["entrance"]["permit"]["lift"]["box"]
+	# the tour starts in the parking lot, the visitor a few steps behind the CEO
+	var lot: Array = campus.data["entrance"]["route"][0]["at"]
+	guide.global_position = _at(lot)
+	guide.rotation.y = PI / 2
+	player.place(float(lot[0]) - 5.0, float(lot[1]), -PI / 2)
 	print("fab3d: ready; shots=", shots_dir, " perf=", perf_out, " check=", check_out)
 	if check_out != "":
 		_check.call_deferred()
@@ -75,29 +117,66 @@ func _dress_building() -> void:
 	# 1.2 m filter units glowing white, white wall panels, white-clad columns. Sizes assumed.
 	var C := campus
 	var looks := {
-		"flooring": C.panel_mat(Color(0.8, 0.82, 0.84), Color(0.6, 0.63, 0.66), Vector3(0.6, 0.6, 0.6), 0.025, 5, 0.0, 0.45),
-		"ceiling": C.panel_mat(Color(0.97, 0.98, 1.0), Color(0.66, 0.7, 0.74), Vector3(1.2, 1.2, 1.2), 0.04, 0, 0.45, 0.6),
+		"flooring": C.panel_mat(Color(0.8, 0.82, 0.84), Color(0.74, 0.76, 0.79), Vector3(0.6, 0.6, 0.6), 0.02, 0, 0.0, 0.45),
+		"ceiling": C.panel_mat(Color(0.97, 0.98, 1.0), Color(0.88, 0.9, 0.92), Vector3(1.2, 1.2, 1.2), 0.03, 0, 0.45, 0.6),
 		"wall": C.panel_mat(Color(0.93, 0.94, 0.95), Color(0.74, 0.77, 0.8), Vector3(1.2, 2.75, 1.2), 0.012, 0, 0.0, 0.5),
 		"column": C.panel_mat(Color(0.9, 0.91, 0.93), Color(0.78, 0.8, 0.83), Vector3(1.0, 2.75, 1.0), 0.01, 0, 0.0, 0.5),
 	}
-	var plain := {"slab_floor": [Color(0.5, 0.52, 0.55), 0.7], "roof": [Color(0.45, 0.47, 0.5), 0.8]}
+	# outside: ribbed metal cladding on the fabs' outer walls, gravel ballast on the flat roofs, concrete underneath
+	# (CC0 texture sets; sizes assumed)
+	# the outside: large flat insulated panels with faint seams. Ribbed cladding (CC0 metal sheet) shimmered even softened
+	# and under temporal AA, its ribs finer than a pixel at a distance (measured 3 Nov), so the outside carries no rib
+	var clad: StandardMaterial3D = C.panel_mat(Color(0.9, 0.91, 0.92), Color(0.82, 0.84, 0.86), Vector3(3.0, 4.0, 3.0), 0.01, 0, 0.0, 0.55)
+	var outside := {"wall_outer": clad,
+			"slab_roof": Looks.pbr("gravel_concrete", 3.0, Color(0.78, 0.79, 0.8), -1.0, "grey", true),
+			"slab_floor": Looks.pbr("smooth_concrete_floor", 4.0)}
 	for mi in building.find_children("*", "MeshInstance3D", true, false):
+		var done := false
+		for k in outside.keys():
+			if str(mi.name).contains(k):
+				mi.material_override = outside[k]
+				done = true
+		if done:
+			continue
 		for k in looks.keys():
 			if str(mi.name).contains(k):
 				mi.material_override = looks[k]
-		for k in plain.keys():
-			if str(mi.name).contains(k):
-				var m := StandardMaterial3D.new()
-				m.albedo_color = plain[k][0]
-				m.roughness = plain[k][1]
-				mi.material_override = m
+	# the wall mesh holds two surfaces: the cleanroom's inside faces and the clad outside faces
+	for mi in building.find_children("*wall*", "MeshInstance3D", true, false):
+		mi.material_override = null
+	Looks.dress(building, {"bim_wall": looks["wall"], "bim_wall_outer": outside["wall_outer"]})
+	$ground.material_override = Looks.pbr("leafy_grass", 3.5, Color(0.42, 0.62, 0.3), -1.0, "grey", true)
 
 
 # ------------------------------------------------------------------ the run and the clock
 
 func _on_run(info: Dictionary) -> void:
+	if not no_intro and check_out == "":
+		# the opening flight over the campus first; the tour starts when it lands (or the visitor skips it)
+		intro = true
+		campus.paused = true
+		player.follow = null
+		player.roaming = false
+		ui.set_stop(0, 0, "Fab Gym from the air")
+		drone.start()
+		return
+	_start_tour()
+
+
+func _after_intro() -> void:
+	intro = false
+	campus.paused = false
+	_start_tour()
+
+
+func _start_tour() -> void:
 	ui.show_line("The run is ready: %d tools, the simulator's day from 06:00. Follow me." % campus.data["tools"].size())
 	touring = true
+	_stop_n = 0
+	_stop_total = 0
+	for st in _tour():
+		if not st.get("via", false) and not st.get("ride", false):
+			_stop_total += 1
 	if film:
 		guide.speed = 7.0
 		guide.talk_scale = 0.62
@@ -108,6 +187,8 @@ func _on_run(info: Dictionary) -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if sweep:
+		_sweep()
 	if near_vehicle and live.run_id != "":
 		_watch_vehicle()
 	if shots_dir != "" and not _shot_at.is_empty() and _t >= _shot_at[0]:
@@ -127,6 +208,7 @@ func _process(dt: float) -> void:
 		_frame_ms.append(dt * 1000.0)
 		if _frame_ms.size() >= 3600:
 			_write_perf()
+	ui.talking = intro or (touring and guide.mode == "talk")
 	if live.run_id != "":
 		clock += dt * speed
 		campus.clock = clock
@@ -136,9 +218,35 @@ func _process(dt: float) -> void:
 			_ask_every = 1.0
 			live.ask_state(clock, campus.full_ids, max(2.0, speed * 2.0))
 	# lift the roof and the filter ceiling away when the visitor flies above them
-	var above := player.global_position.y > 17.0
+	var above := player.global_position.y > 17.0 and not intro
 	for c in building.find_children("*roof*", "", true, false) + building.find_children("*ceiling*", "", true, false):
 		c.visible = not above
+
+
+func _sweep() -> void:
+	# 0 to 6 s: along the west wall outside, eye height, looking at it; 6 to 12 s: down the spine inside
+	player.roaming = false
+	player.follow = null
+	if _t < 6.0:
+		var y := lerpf(10.0, 40.0, _t / 6.0)
+		player.global_position = Vector3(-34.0, 1.75, -y)
+		player.yaw = -PI / 2.0 + 0.25
+		player.pitch = 0.12
+	elif _t < 12.0:
+		if not _swept_in:
+			_swept_in = true
+			player.global_position = Vector3(60.0, 9.25, 0.0)
+			campus.update_cells(true)
+		player.global_position = Vector3(lerpf(60.0, 78.0, (_t - 6.0) / 6.0), 9.25, 0.0)
+		player.yaw = -PI / 2.0
+		player.pitch = 0.0
+	elif _t < 15.0:
+		pass                            # 12 to 15 s: held still inside, for counting pixels that flicker
+	else:
+		get_tree().quit()
+
+
+var _swept_in := false
 
 
 func _watch_vehicle() -> void:
@@ -201,9 +309,27 @@ func _place_staff() -> void:
 
 # ------------------------------------------------------------------ the tour
 
+func _at(p: Array) -> Vector3:
+	# a route point (plan x, y, z) to the scene; ground points sit on the paving
+	var z := float(p[2])
+	return Vector3(float(p[0]), z if z > 1.0 else 0.1, -float(p[1]))
+
+
 func _tour() -> Array:
 	var z := float(campus.heights["clean_z"])
 	var stops: Array = []
+	# from the parking lot through gowning to the cleanroom (docs/FAB-3D.md, F9)
+	for r in campus.data["entrance"]["route"]:
+		var st := {"kind": str(r["kind"]), "at": _at(r["at"])}
+		if r.get("via", false):
+			st["via"] = true
+		else:
+			st["face_viewer"] = true       # on the way in, the CEO turns to talk to you
+		if r.get("ride", false):
+			st["ride"] = true
+		if r.get("bump", false):
+			st["bump"] = true
+		stops.append(st)
 	var seen := {}
 	var labels: Array = campus.data["labels"].duplicate()
 	labels.sort_custom(func(a, b) -> bool: return float(a[1]) < float(b[1]))
@@ -220,13 +346,29 @@ func _tour() -> Array:
 			stops.append({"kind": "area", "area": str(l[3]), "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
 					"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2]))})
 		if phase == 0:
-			stops.append({"kind": "bridge", "at": Vector3(285.0, z, 0.0), "face": -PI / 2})
+			# through the doorway in phase one's end wall, onto the bridge, and through phase two's
+			stops.append({"kind": "via", "via": true, "at": Vector3(255.0, z, 0.0)})
+			stops.append({"kind": "bridge", "at": Vector3(285.8, z, 0.0), "face": -PI / 2})
+			stops.append({"kind": "via", "via": true, "at": Vector3(316.0, z, 0.0)})
 	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 90.0), "face": PI, "teleport": true})
 	stops.append({"kind": "cinema", "at": Vector3(58.0, 0.1, 106.5), "face": 0.0})
 	return stops
 
 
 func _on_arrived(s: Dictionary) -> void:
+	if not s.get("via", false) and not s.get("ride", false):
+		_stop_n += 1
+		ui.set_stop(_stop_n, _stop_total, _stop_title(s))
+	if shots_dir != "" and stop_shots and s.get("face_viewer", false):
+		# a still a few seconds after each stop on the way in, so the stills follow the tour whatever the run's start;
+		# the cleanroom is the last
+		_shot_at.append(_t + 3.0)
+		if s["kind"] == "cleanroom":
+			_shot_at.erase(1e9)
+		_shot_at.sort()
+	if s["kind"] == "air_shower":
+		entrance.jets(true)
+		get_tree().create_timer(4.5).timeout.connect(func() -> void: entrance.jets(false))
 	if film and s["kind"] == "area" and str(s["area"]) == "Planar" and s["plan"].x < 261.8:
 		# the film's one question, typed into the box and answered from the live run
 		guide.hold = 9.0
@@ -244,7 +386,23 @@ func _on_arrived(s: Dictionary) -> void:
 		player.place(58.0, -110.0, PI)
 
 
+func _stop_title(s: Dictionary) -> String:
+	match str(s["kind"]):
+		"lot": return "The parking lot"
+		"pavilion": return "Visitors' entrance"
+		"lift": return "The lift"
+		"gowning": return "Gowning room"
+		"air_shower": return "Air shower"
+		"cleanroom": return "The cleanroom"
+		"area": return str(s.get("label", ""))
+		"bridge": return "The bridge"
+		"cinema_door": return "To the cinema"
+		"cinema": return "The cinema"
+	return ""
+
+
 func _free_walk() -> void:
+	ui.set_stop(0, 0, "Walking alone")
 	touring = false
 	player.follow = null
 	player.roaming = true
@@ -257,6 +415,18 @@ func _line_for(s: Dictionary) -> String:
 			return _area_line(str(s["area"]), s["plan"], str(s["label"]))
 		"bridge":
 			return "This bridge joins the front end to the copper back end. Copper must never reach the front-end tools, so lots bound for the back end ride copper carriers, the orange ones. Fabs do this in different ways; a separate building is the strict one."
+		"lot":
+			return "Welcome to the fab. I'm Lou Latency, the CEO. Sorry for the wait, I'm still loading. We park out here and walk in. Everything you'll see inside is the simulator's day as it runs, from six this morning."
+		"pavilion":
+			return "This is the visitors' entrance. The cleanroom is a floor up. The level under it, the sub-fab, holds the pumps, power and chemical lines that feed every tool above."
+		"lift":
+			return "We take the lift up to the clean floor. It's the only thing in this building that responds faster than me. Nobody walks into the cleanroom straight from outside: first we gown."
+		"gowning":
+			return "The gowning room. People shed skin flakes and hair all the time, so you cover up, usually top to bottom: hood, coverall, boots, then gloves. Your street clothes stay in the lockers."
+		"air_shower":
+			return "The air shower. Jets of filtered air blow loose dust off you, and the far door stays shut until the near one has closed. I don't gown: the suit holds in skin and hair, and I have neither, so I get wiped down."
+		"cleanroom":
+			return "And we're in. Air comes down through the filters in the ceiling and leaves through the holes in the floor, so dust is carried down and away from the wafers. Let's walk the line."
 		"cinema_door":
 			return "That's both phases. Before you explore on your own, come and see how a chip is made, from sand to a finished chip."
 		"cinema":
@@ -449,6 +619,10 @@ func _check() -> void:
 	var report := {"opened": true, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge",
 			"cells_loaded": campus.loaded.size(), "cells_full": campus.full_ids.size(), "tools_built": campus.tool_nodes.size(),
 			"farthest_loaded_m": far, "cells_total": campus.data["cells"].size(), "cinema_film": cinema.film_path(),
+			"drone": {"scene": ResourceLoader.exists("res://drone/drone.tscn"), "keys": drone.keys.size(),
+				"seconds": drone.length()},
+			"entrance": {"scene": entrance != null and ResourceLoader.exists("res://entrance/entrance.tscn"),
+				"lift_car": entrance.car != null}, "tour_first": str(_tour()[0]["kind"]),
 			"about": "From the SMT2020 testbed; a gigafab-style layout of our own design; not a real fab."}
 	var f := FileAccess.open(check_out, FileAccess.WRITE)
 	f.store_string(JSON.stringify(report, " "))

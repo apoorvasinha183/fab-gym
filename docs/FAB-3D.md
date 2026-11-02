@@ -92,6 +92,33 @@ group; "what if" asks the helper for a run with the change and shows before and 
 - **F7** Each Blender script exists and its glTF's footprint matches its kind's size within 5%.
 - **F8** The frame-rate bar: a timed run of the tour on this laptop reports a 99th-percentile frame of at most
   16.7 ms, with at least 99% of frames drawn; the report is kept in `data/fab3d/perf.json`.
+- **F9** From the parking lot to the cleanroom (the founder, 2 Nov: "I want the boss to take you from the parking lot
+  to the clean room"; by quiz: the full gowning route, the CEO wiped down and not gowned). `agent.fab3d.entrance`
+  reads the permit set (`data/layout-real-dd/permit-cd/us/boxes.json`): the passenger lift, gowning room P1-GW1, its
+  entry door and cleanroom door, the air shower, eight lockers, the bench and the garment rack, each with its permit
+  key and box unchanged. What the permit set lacks is ours and marked assumed: a parking lot west of phase 1, a
+  visitor pavilion, a ground door in the west wall into the lift, and the lift lobby's two walls. The route goes lot,
+  pavilion, lift (ground), lift (clean floor), gowning room, air shower, cleanroom, then the spine where the tour
+  goes on. Each leg stays on one level, except the ride, which stays inside the lift's footprint; no leg crosses a
+  permit wall, an assumed wall, a column or a tool at its level except through a door or opening. The openings the
+  building needs (the ground door, both gowning doors, the lift shaft through the waffle slab and raised floor) each
+  meet the wall or slab they open. The headless check reports the entrance scene and the lift car, and the tour's
+  first stop is the lot.
+- **F10** A drone opening (the founder, 2 Nov: "Start with a drone shot of the campus where you fly around the campus
+  and introduce fabgym"; by quiz: fly it and dress the outside first). `agent.fab3d.exterior` reads the permit set's
+  rooftop make-up air units with their curbs, chillers and transformers, each with its key and box unchanged (16, 16,
+  27, 18), and adds ours, marked assumed: roads, trees, exhaust stacks and signs; no road crosses a building, the lot
+  or the cinema; no tree stands on a road, a building or the lot; every stack stands on a roof clear of the air units.
+  `agent.fab3d.drone` gives the flight as timed keys (camera point, look point, an optional line from Lou and a
+  label): 25 to 35 s; it starts at least 60 m up and stays at least 25 m up until its last two keys; along the path
+  (Catmull-Rom through the keys, sampled every 0.1 s, the same curve the scene flies) it never enters a building
+  below its parapet plus 2 m; it passes within 110 m of the centres of both phases, the bridge, the cinema and the
+  utility yard; it ends at eye height within 0.5 m of where the tour's first stop puts the visitor. Its numbers
+  come from the data: the tools in the campus, the vehicles in the shop and the areas of each phase. Space skips it.
+  The headless check reports the drone scene and its key count, and the tour waits for the flight to end.
+  The bridge between the phases (the founder: "the bridge didn't render"): the permit set holds only its outline
+  (`campus/B1`), kept unchanged; ours, assumed: a deck whose top is the clean floor (7.5 m), spanning the whole gap,
+  a roof, and a doorway through each fab's end wall (`P1/wall/E`, `P2/wall/W`) that the tour walks through.
 
 ## Changes
 
@@ -138,3 +165,58 @@ can it be so fast?", then "now nothing is moving on the rail"):
   frame 18.8 to 19.4 ms); with SMAA instead, F8 is back at median and 99th percentile 16.67 ms, 99.97% drawn. The perf
   report lists each slow frame with its time. `--near-vehicle` frames the stills on one vehicle, one lowering its pod
   if there is one.
+
+Made for F9, 2 Nov:
+
+- The tour starts in the parking lot. The route, the permit set's pieces and our assumed ones are worked out once by
+  `agent.fab3d.entrance` and written into the campus data; Blender models the entrance from it
+  (`viz/blender/buildings/entrance.py`: the lot with 84 parked cars, the pavilion, the lift shaft and car, the lobby
+  walls, door frames, lockers, bench, garment rack with suits and boots, the air shower with its nozzles), and the
+  building merge cuts the openings (`merge_bim.py` with the campus file: seven cuts).
+- On the way in the CEO turns to talk to you and the camera holds still on its face; in the lift the camera rides in
+  the car's far corner; near the building and in the gowning rooms it follows close. The air shower's jets run for a
+  few seconds at that stop. A worker sits on the bench pulling on boots; another takes a suit from the rack.
+- `--stop-shots` takes a still three seconds after each stop on the way in.
+- Not yet: F8 on the new opening minute. One run held a 16.67 ms 99th percentile but drew 97.4% of frames; the next
+  was taken with the window hidden (13% drawn), so the bar is unmeasured until a run with the screen free.
+
+
+The screen and the walk, 2 Nov (by quiz from three looks drawn over the scene: a JRPG dialogue):
+
+- `ui/ui.tscn` with the theme `ui/jrpg.tres`: framed navy windows with white borders, the CC0 Kenney pixel font
+  (`ui/fonts/kenpixel.ttf`, licence beside it), a menu (ask the CEO, walk alone, speed: real time, 10x, 60x), a
+  status window (clock, stop n of 29 and its name, what this is), the CEO's portrait beside a text window whose line
+  types out and ends in a bobbing arrow; Space or a click finishes the line, then moves on. The text window closes
+  while nobody talks. The window scales with the screen (canvas items).
+- The CEO walks at 1.6 m/s with the walk clip at its own rate, eases in and out of stops, turns at a limited rate so
+  corners and doors become arcs, slows for sharp turns and turns on the spot when facing away, and turns smoothly to
+  the facing a stop asks for.
+- On the clean floor's first minute: the air shower's jets are CPU particles (the GPU ones compiled their shader on
+  first use, a hitch), and cells near the visitor stay boxes while the visitor is outside on the ground, building
+  their tools (12 a frame) on the ride up.
+
+Made for F10, 2 Nov:
+
+- The outside is modelled in Blender from the campus data (`viz/blender/buildings/exterior.py`, 13,080 faces): the
+  permit set's 16 make-up air units on their curbs, 27 chillers and 18 transformers (on a concrete pad of ours), and
+  ours: six roads with dashed centre lines (the west one runs between the lot and the visitors' entrance, so the
+  walkway crosses it), 102 trees, 24 exhaust stacks. The drawn building already holds the 16 stair towers. Signs
+  (FAB GYM twice, PHASE 2) hang in the screen's pixel font (`exterior/exterior.gd`).
+- The flight (`drone/drone.tscn`, `drone.gd`): 10 keys over 34.5 s, the camera on the Catmull-Rom curve the tests
+  check; Lou's five lines go to the text window and six labels pop up. While it flies the campus loads no cells (the
+  roofs stay on) and Space skips it. `--no-intro` (also implied by `--near-vehicle`) starts at the lot.
+
+After the founder's play-through, 3 Nov:
+
+- Flicker and shimmer, found by comparing frames on a fixed camera sweep: the slab, raised-floor, ceiling and roof
+  edges lay on the walls' outside faces (z-fighting bands), now 6 cm inside; the outer walls carry the outside finish on
+  their outward faces only; temporal AA on; the outside in flat panels (ribbed sheet shimmered at any setting), floor
+  dots gone, ceiling grid fainter. Shimmer score outside 5.31 to 2.25, inside 5.51 to 4.03; no added flicker with the
+  camera held; F8 holds.
+- The walk clip's rate follows Lou's speed every frame (it had kept its rate from the first, slowest step).
+- Lift: Lou stands at the car's far wall and the camera is fixed inside the car; steel doors slide open at the floor
+  the car stands at. Air shower: he is 2.3 m to his stack light against a 2.2 m ceiling, so BONK!, "Ow! Somebody log
+  that defect: one cracked CEO. There goes the yield." (by quiz) and he ducks through.
+- Outside: the heading picture's FabGYM logo on white panels, PHASE 1 and PHASE 2 in the pixel font. The drone looks
+  down at the cinema when Lou mentions it.
+- The polished models (16) replaced ours after a check against the brief; ours are kept outside git.

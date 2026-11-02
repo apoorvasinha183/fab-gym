@@ -10,6 +10,7 @@ var roaming := true
 var follow: Node3D = null
 var fabs: Array = []
 var clean_z := 7.5
+var lift: Array = []          # the lift's box [x0, y0, z0, x1, y1, z1] in plan metres; the camera rides inside it
 @onready var camera: Camera3D = $camera
 
 
@@ -44,10 +45,35 @@ func _unhandled_input(e: InputEvent) -> void:
 func _process(dt: float) -> void:
 	if follow and not roaming:
 		# behind and above the guide, looking past it
+		var g := follow.global_position
+		var st = follow.get("stops")
+		var k = follow.get("i")
+		if follow.get("mode") == "talk" and st is Array and int(k) < st.size() and st[int(k)].get("face_viewer", false):
+			# the guide has turned to talk to the visitor: hold still and look at its face
+			var dl := g + Vector3(0, 1.55, 0) - global_position
+			yaw = lerp_angle(yaw, atan2(-dl.x, -dl.z), clampf(dt * 3.0, 0.0, 1.0))
+			pitch = lerpf(pitch, atan2(dl.y, Vector2(dl.x, dl.z).length()), clampf(dt * 3.0, 0.0, 1.0))
+			rotation = Vector3(0, yaw, 0)
+			camera.rotation = Vector3(pitch, 0, 0)
+			return
 		var back := follow.global_transform.basis.z.normalized()
 		var want := follow.global_position + back * -4.5 + Vector3(0, 2.6, 0)
-		var g := follow.global_position
-		if floor_at(g.x, -g.z) > 1.0:
+		var in_lift := not lift.is_empty() and g.x > float(lift[0]) and g.x < float(lift[3]) and -g.z > float(lift[1]) and -g.z < float(lift[4])
+		var riding: bool = in_lift and ((st is Array and int(k) < st.size() and st[int(k)].get("ride", false)) or g.y > 1.0)
+		if riding:
+			# in the car with him: at the door side, eye height, fixed to the car (no lag, so it cannot drift into the
+			# shaft), looking at his face across the car
+			global_position = Vector3(float(lift[0]) + 0.3, g.y + 1.45, -(float(lift[1]) + float(lift[4])) / 2.0)
+			var dl := g + Vector3(0, 1.7, 0) - global_position
+			yaw = lerp_angle(yaw, atan2(-dl.x, -dl.z), clampf(dt * 5.0, 0.0, 1.0))
+			pitch = lerpf(pitch, atan2(dl.y, Vector2(dl.x, dl.z).length()), clampf(dt * 5.0, 0.0, 1.0))
+			rotation = Vector3(0, yaw, 0)
+			camera.rotation = Vector3(pitch, 0, 0)
+			return
+		if (g.y > 1.0 and g.x < 1.7) or (g.y < 1.0 and g.x > -20.0 and g.x < 0.0):
+			# the lift lobby, the gowning room, the air shower, the strip behind the first bay: close behind, eye height
+			want = follow.global_position + back * -2.2 + Vector3(0, 1.55, 0)
+		elif floor_at(g.x, -g.z) > 1.0:
 			# inside a fab: stand on the spine's middle line, a few metres back along it, above the tools
 			want = Vector3(g.x - 7.0, g.y + 1.75, 0.0)
 		global_position = global_position.lerp(want, clampf(dt * 2.0, 0.0, 1.0))

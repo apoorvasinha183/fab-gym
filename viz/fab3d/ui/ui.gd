@@ -1,22 +1,31 @@
 extends CanvasLayer
-## The panel (docs/FAB-3D.md): the clock and speed, the ask box with a microphone button, the guide's last line, and a
-## card for the tool you click. A spoken question is recorded here (at most 30 seconds), packed as WAV and sent to the
-## helper, which has Meta's speech model write it down. From the SMT2020 testbed; not a real fab.
+## The screen (docs/FAB-3D.md), in the look chosen 2 Nov (a JRPG dialogue): a menu window, a status window with the
+## clock and the stop, the CEO's portrait beside a text window whose line types out and ends with a bobbing arrow,
+## an ask window with a microphone button, and a card for the tool you click. Space or a click on the text window
+## finishes the line, then moves on. A spoken question is recorded here (at most 30 seconds), packed as WAV and sent
+## to the helper, which has Meta's speech model write it down. From the SMT2020 testbed; not a real fab.
 
 signal asked(text: String)
 signal recorded(wav: PackedByteArray)
 signal speed_changed(minutes_a_second: float)
 signal free_walk
+signal advance                      # the visitor wants the next line
 
 const MAX_SECONDS := 30.0
+const TYPE_RATE := 48.0             # characters a second as a line types out
+const SPEEDS := [[1.0 / 60.0, "REAL TIME"], [10.0 / 60.0, "10X"], [1.0, "60X"]]
 
-@onready var clock_label: Label = $clock
-@onready var line_label: RichTextLabel = $talk/line
-@onready var ask_box: LineEdit = $ask/box
-@onready var mic: Button = $ask/mic
-@onready var card: PanelContainer = $card
-@onready var card_text: RichTextLabel = $card/text
-@onready var hint: Label = $hint
+@onready var clock_label: Label = $root/status/list/clock
+@onready var stop_label: Label = $root/status/list/stop
+@onready var line_label: RichTextLabel = $root/talk/box/line
+@onready var next_mark: Polygon2D = $root/talk/next
+@onready var ask_panel: PanelContainer = $root/ask
+@onready var ask_box: LineEdit = $root/ask/row/box
+@onready var mic: Button = $root/ask/row/mic
+@onready var card: PanelContainer = $root/card
+@onready var card_text: RichTextLabel = $root/card/text
+@onready var hint: Label = $root/hint
+@onready var speed_button: Button = $root/menu/list/speed
 
 var recording := false
 var _bus := -1
@@ -24,23 +33,60 @@ var _capture: AudioEffectCapture
 var _player: AudioStreamPlayer
 var _frames := PackedVector2Array()
 var _seconds := 0.0
+var _typed := 0.0
+var _speed_i := 0
+var _bob := 0.0
+var talking := true                 # set by the scene: the CEO is speaking; when not, the text window closes
+var _done_for := 0.0                # seconds since the current line finished typing
 
 
 func _ready() -> void:
 	ask_box.text_submitted.connect(func(t: String) -> void:
 		if t.strip_edges() != "":
 			asked.emit(t.strip_edges())
-			ask_box.text = "")
+			ask_box.text = ""
+			ask_box.release_focus())
 	mic.pressed.connect(_toggle_mic)
-	$speed/slow.pressed.connect(func() -> void: speed_changed.emit(1.0 / 60.0))
-	$speed/normal.pressed.connect(func() -> void: speed_changed.emit(10.0 / 60.0))
-	$speed/fast.pressed.connect(func() -> void: speed_changed.emit(1.0))
-	$free.pressed.connect(func() -> void: free_walk.emit())
+	$root/menu/list/ask.pressed.connect(func() -> void:
+		ask_panel.visible = not ask_panel.visible
+		if ask_panel.visible:
+			ask_box.grab_focus())
+	$root/menu/list/free.pressed.connect(func() -> void: free_walk.emit())
+	speed_button.pressed.connect(func() -> void:
+		_speed_i = (_speed_i + 1) % SPEEDS.size()
+		speed_button.text = "SPEED  " + str(SPEEDS[_speed_i][1])
+		speed_changed.emit(float(SPEEDS[_speed_i][0])))
+	$root/talk.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			_next())
 	card.visible = false
+	next_mark.visible = false
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_SPACE:
+		_next()
+
+
+func _next() -> void:
+	# first finish typing the line, then ask for the next one
+	if line_label.visible_ratio < 1.0:
+		line_label.visible_ratio = 1.0
+		_typed = 1e9
+	else:
+		advance.emit()
 
 
 func show_line(text: String) -> void:
 	line_label.text = text
+	line_label.visible_characters = 0
+	_typed = 0.0
+	_done_for = 0.0
+	next_mark.visible = false
+
+
+func set_stop(n: int, total: int, title: String) -> void:
+	stop_label.text = ("STOP %d / %d  %s" % [n, total, title]).to_upper() if n > 0 else title.to_upper()
 
 
 func show_card(text: String) -> void:
@@ -51,9 +97,7 @@ func show_card(text: String) -> void:
 func set_clock(minutes: float, speed: float) -> void:
 	var day := int(minutes / 1440.0) + 1
 	var m := int(minutes) % 1440
-	var x := speed * 60.0
-	var pace := "real time" if absf(x - 1.0) < 0.01 else "%d× real time" % roundi(x)
-	clock_label.text = "Day %d, %02d:%02d:%02d   ·   %s" % [day, m / 60, m % 60, int(minutes * 60.0) % 60, pace]
+	clock_label.text = "DAY %d   %02d:%02d:%02d" % [day, m / 60, m % 60, int(minutes * 60.0) % 60]
 
 
 # ------------------------------------------------------------------ the microphone
@@ -82,19 +126,37 @@ func _start() -> void:
 	_capture.clear_buffer()
 	_player.play()
 	recording = true
-	mic.text = "■ Stop"
-	hint.text = "Listening… ask your question, then press Stop."
+	mic.text = "STOP"
+	hint.text = "LISTENING... ASK YOUR QUESTION, THEN PRESS STOP"
 
 
 func _stop() -> void:
 	recording = false
 	_player.stop()
-	mic.text = "🎤 Ask aloud"
-	hint.text = "Writing down what you said…"
+	mic.text = "SPEAK"
+	hint.text = "WRITING DOWN WHAT YOU SAID..."
 	recorded.emit(_wav(_frames, int(AudioServer.get_mix_rate())))
 
 
 func _process(dt: float) -> void:
+	var total := line_label.get_total_character_count()
+	if line_label.visible_characters >= 0 and line_label.visible_characters < total:
+		_typed += dt * TYPE_RATE
+		line_label.visible_characters = mini(int(_typed), total)
+		if line_label.visible_characters >= total:
+			line_label.visible_characters = -1
+	next_mark.visible = line_label.visible_characters < 0
+	if next_mark.visible:
+		_done_for += dt
+	# the text window and portrait stay while the CEO talks or a line was just written, then fade out
+	var show := talking or line_label.visible_characters >= 0 or _done_for < maxf(2.5, total / 20.0)
+	for w in [$root/talk, $root/face]:
+		w.modulate.a = move_toward(w.modulate.a, 1.0 if show else 0.0, dt * 4.0)
+		w.visible = w.modulate.a > 0.01
+	if next_mark.visible:
+		_bob += dt * 5.0
+		var box: Vector2 = next_mark.get_parent().size
+		next_mark.position = Vector2(box.x - 44.0, box.y - 40.0 + sin(_bob) * 4.0)
 	if recording:
 		_seconds += dt
 		var n := _capture.get_frames_available()

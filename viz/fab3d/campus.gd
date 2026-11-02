@@ -9,7 +9,7 @@ signal ready_to_go
 
 const NEAR := 48.0
 const FAR := 120.0
-const BUDGET := 24            # tool instances built a frame
+const BUDGET := 12            # tool instances built a frame
 const CHECK_EVERY := 0.25     # seconds between looks at which cells are wanted
 
 var data: Dictionary
@@ -40,6 +40,7 @@ var hanger_mat := StandardMaterial3D.new()
 const VEHICLE_M_PER_MIN := 150.0   # the shop's vehicle speed (web/data/shop-real.txt, the simulator's 150 m a minute)
 const CEIL := 13.0            # underside of the filter ceiling (the blueprint's cleanroom top), metres
 var _since := 0.0
+var paused := false           # set while the drone flies: no cells are loaded
 var full_ids: Array = []
 
 
@@ -283,8 +284,16 @@ func _process(dt: float) -> void:
 
 
 func update_cells(sync := false) -> void:
+	if paused:
+		# the drone is up: the roofs are on, so nothing inside is drawn or built
+		for cid in loaded.keys():
+			_unload(cid)
+		full_ids = []
+		return
 	var v := viewer_plan()
 	var want := {}
+	# outside on the ground the walls hide the tools: near cells stay as boxes until the visitor is up on the clean floor
+	var outside := viewer != null and viewer.global_position.y < 3.0
 	var r := int(ceil(FAR / size)) + 1
 	var ix0 := int(floor(v.x / size))
 	var iy0 := int(floor(v.y / size))
@@ -294,7 +303,7 @@ func update_cells(sync := false) -> void:
 			if not data["cells"].has(cid):
 				continue
 			var d := cell_centre(cid).distance_to(v)
-			if d <= NEAR:
+			if d <= NEAR and not outside:
 				want[cid] = 2
 			elif d <= FAR:
 				want[cid] = 1
@@ -434,13 +443,15 @@ func _build_rail(node: Node3D, cell: Dictionary) -> void:
 			continue
 		var turn := Basis(Vector3.UP, atan2(d.x, d.z))
 		var mid := (a + b) / 2.0
-		parts.append(Transform3D(turn * Basis.from_scale(Vector3(0.24, 0.04, L + 0.02)), mid + Vector3(0, 0.1, 0)))
-		for side in [-0.1, 0.1]:
-			parts.append(Transform3D(turn * Basis.from_scale(Vector3(0.03, 0.16, L + 0.02)), mid + turn * Vector3(side, 0, 0)))
+		# one solid bar: thin flanges were less than a pixel wide beyond about 20 m, and only sparkled
+		parts.append(Transform3D(turn * Basis.from_scale(Vector3(0.22, 0.2, L + 0.02)), mid + Vector3(0, 0.02, 0)))
 		var n := int(L / 3.0)
 		for q in n + 1:
 			var p := a.lerp(b, (q + 0.5) / float(n + 1))
-			rods.append(Transform3D(Basis.from_scale(Vector3(0.035, CEIL - rz - 0.12, 0.035)), p + Vector3(0, (CEIL - rz + 0.12) / 2.0, 0)))
+			rods.append(Transform3D(Basis.from_scale(Vector3(0.05, CEIL - rz - 0.12, 0.05)), p + Vector3(0, (CEIL - rz + 0.12) / 2.0, 0)))
+	# the cell's own centre: the multimeshes sit there, so a visibility range measures from the cell, not the origin
+	var b4: Array = cell["bounds"]
+	var centre := w((float(b4[0]) + float(b4[1])) / 2.0, (float(b4[2]) + float(b4[3])) / 2.0, rz)
 	for pack in [[parts, rail_mat], [rods, hanger_mat]]:
 		var list: Array = pack[0]
 		if list.is_empty():
@@ -450,11 +461,18 @@ func _build_rail(node: Node3D, cell: Dictionary) -> void:
 		mm.mesh = box_mesh
 		mm.instance_count = list.size()
 		for k in list.size():
-			mm.set_instance_transform(k, list[k])
+			var tr: Transform3D = list[k]
+			mm.set_instance_transform(k, Transform3D(tr.basis, tr.origin - centre))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
+		mmi.position = centre
 		mmi.material_override = pack[1]
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if pack[1] == hanger_mat:
+			# the rods are thinner than a pixel far off, where they only sparkle: gone past 30 m from their cell
+			mmi.visibility_range_end = 30.0
+			mmi.visibility_range_end_margin = 6.0
+			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 		node.add_child(mmi)
 
 

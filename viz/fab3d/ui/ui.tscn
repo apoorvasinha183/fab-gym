@@ -1,124 +1,217 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://ui/ui.gd" id="1_u"]
+[ext_resource type="Theme" path="res://ui/jrpg.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://ui/ceo_portrait.png" id="3_face"]
 
 [node name="UI" type="CanvasLayer"]
 script = ExtResource("1_u")
 
-[node name="title" type="Label" parent="."]
-offset_left = 24.0
-offset_top = 18.0
-offset_right = 1100.0
-offset_bottom = 60.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
-theme_override_constants/outline_size = 8
-theme_override_font_sizes/font_size = 26
-text = "Fab Gym · the SMT2020 testbed in 3D · a gigafab-style layout of our own design, not a real fab"
-
-[node name="clock" type="Label" parent="."]
-offset_left = 24.0
-offset_top = 56.0
-offset_right = 900.0
-offset_bottom = 90.0
-theme_override_colors/font_color = Color(0.85, 0.95, 1, 1)
-theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 20
-text = "Starting the run…"
-
-[node name="talk" type="PanelContainer" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
+[node name="root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -250.0
-offset_right = 1080.0
-offset_bottom = -110.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
 
-[node name="line" type="RichTextLabel" parent="talk"]
+[node name="menu" type="PanelContainer" parent="root"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 28.0
+offset_right = 330.0
+offset_bottom = 230.0
+
+[node name="list" type="VBoxContainer" parent="root/menu"]
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 22
-bbcode_enabled = true
-text = "The CEO will meet you inside."
+theme_override_constants/separation = 4
 
-[node name="ask" type="HBoxContainer" parent="."]
+[node name="head" type="Label" parent="root/menu/list"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+text = "MENU"
+
+[node name="ask" type="Button" parent="root/menu/list"]
+layout_mode = 2
+alignment = 0
+text = "ASK LOU"
+
+[node name="free" type="Button" parent="root/menu/list"]
+layout_mode = 2
+alignment = 0
+text = "WALK ALONE"
+
+[node name="speed" type="Button" parent="root/menu/list"]
+layout_mode = 2
+alignment = 0
+text = "SPEED  REAL TIME"
+
+[node name="status" type="PanelContainer" parent="root"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -470.0
+offset_top = 28.0
+offset_right = -28.0
+offset_bottom = 170.0
+grow_horizontal = 0
+
+[node name="list" type="VBoxContainer" parent="root/status"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="clock" type="Label" parent="root/status/list"]
+layout_mode = 2
+horizontal_alignment = 2
+text = "STARTING THE RUN"
+
+[node name="stop" type="Label" parent="root/status/list"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+horizontal_alignment = 2
+text = "THE PARKING LOT"
+
+[node name="about" type="Label" parent="root/status/list"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+autowrap_mode = 3
+text = "FAB GYM - the SMT2020 testbed in 3D - our own layout, not a real fab"
+
+[node name="face" type="PanelContainer" parent="root"]
+layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -96.0
-offset_right = 1080.0
-offset_bottom = -44.0
+offset_left = 28.0
+offset_top = -292.0
+offset_right = 268.0
+offset_bottom = -52.0
+grow_vertical = 0
 
-[node name="box" type="LineEdit" parent="ask"]
+[node name="box" type="VBoxContainer" parent="root/face"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="picture" type="TextureRect" parent="root/face/box"]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+texture = ExtResource("3_face")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="name" type="Label" parent="root/face/box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+text = "LOU LATENCY"
+
+[node name="talk" type="PanelContainer" parent="root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 288.0
+offset_top = -292.0
+offset_right = -28.0
+offset_bottom = -52.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="box" type="VBoxContainer" parent="root/talk"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="who" type="Label" parent="root/talk/box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "LOU LATENCY, CEO"
+
+[node name="line" type="RichTextLabel" parent="root/talk/box"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/normal_font_size = 26
+bbcode_enabled = true
+text = "Lou Latency, the CEO, meets you in the parking lot."
+scroll_active = false
+
+[node name="next" type="Polygon2D" parent="root/talk"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(0, 0, 22, 0, 11, 14)
+
+[node name="ask" type="PanelContainer" parent="root"]
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 288.0
+offset_top = -390.0
+offset_right = -28.0
+offset_bottom = -306.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="row" type="HBoxContainer" parent="root/ask"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="label" type="Label" parent="root/ask/row"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+text = "ASK"
+
+[node name="box" type="LineEdit" parent="root/ask/row"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
-placeholder_text = "Ask the CEO: why is this queue long? what is lithography? show me the polishers"
+placeholder_text = "why is this queue long?  what is lithography?  show me the polishers"
 
-[node name="mic" type="Button" parent="ask"]
+[node name="mic" type="Button" parent="root/ask/row"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "🎤 Ask aloud"
+text = "SPEAK"
 
-[node name="hint" type="Label" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -40.0
-offset_right = 1400.0
-offset_bottom = -12.0
-theme_override_colors/font_color = Color(0.9, 0.92, 0.95, 1)
-theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.12, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 16
-text = "W A S D walk · Shift hurry · F fly (E up, Q down) · hold the right mouse button to look · click a tool for its card"
-
-[node name="speed" type="HBoxContainer" parent="."]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -420.0
-offset_top = 18.0
-offset_right = -24.0
-offset_bottom = 60.0
-
-[node name="slow" type="Button" parent="speed"]
-layout_mode = 2
-text = "Real time"
-
-[node name="normal" type="Button" parent="speed"]
-layout_mode = 2
-text = "10×"
-
-[node name="fast" type="Button" parent="speed"]
-layout_mode = 2
-text = "60×"
-
-[node name="free" type="Button" parent="."]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -420.0
-offset_top = 68.0
-offset_right = -24.0
-offset_bottom = 108.0
-text = "Walk on my own"
-
-[node name="card" type="PanelContainer" parent="."]
+[node name="card" type="PanelContainer" parent="root"]
+visible = false
+layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -560.0
-offset_top = 130.0
-offset_right = -24.0
+offset_top = 196.0
+offset_right = -28.0
 offset_bottom = 520.0
+grow_horizontal = 0
 
-[node name="text" type="RichTextLabel" parent="card"]
+[node name="text" type="RichTextLabel" parent="root/card"]
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/normal_font_size = 20
 bbcode_enabled = true
 fit_content = true
 text = ""
+
+[node name="hint" type="Label" parent="root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = -42.0
+offset_right = -28.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+text = "SPACE NEXT    WASD WALK    SHIFT HURRY    F FLY    RIGHT MOUSE LOOK    CLICK A TOOL FOR ITS CARD"

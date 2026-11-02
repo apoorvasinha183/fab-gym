@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://data/models/entrance.glb" id="1_model"]
+[ext_resource type="Script" path="res://entrance/entrance.gd" id="2_script"]
+
+[sub_resource type="StandardMaterial3D" id="mist"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.92, 0.96, 1, 0.45)
+billboard_mode = 3
+billboard_keep_scale = true
+
+[sub_resource type="QuadMesh" id="speck"]
+material = SubResource("mist")
+size = Vector2(0.035, 0.035)
+
+[node name="entrance" type="Node3D"]
+script = ExtResource("2_script")
+
+[node name="model" parent="." instance=ExtResource("1_model")]
+
+[node name="jets_north" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 200
+lifetime = 0.5
+mesh = SubResource("speck")
+emission_shape = 3
+emission_box_extents = Vector3(0.5, 0.75, 0.02)
+direction = Vector3(0, 0, 1)
+spread = 18.0
+gravity = Vector3(0, -0.4, 0)
+initial_velocity_min = 2.5
+initial_velocity_max = 4.0
+damping_min = 2.0
+damping_max = 3.0
+
+[node name="jets_south" type="CPUParticles3D" parent="."]
+emitting = false
+amount = 200
+lifetime = 0.5
+mesh = SubResource("speck")
+emission_shape = 3
+emission_box_extents = Vector3(0.5, 0.75, 0.02)
+direction = Vector3(0, 0, 1)
+spread = 18.0
+gravity = Vector3(0, -0.4, 0)
+initial_velocity_min = 2.5
+initial_velocity_max = 4.0
+damping_min = 2.0
+damping_max = 3.0

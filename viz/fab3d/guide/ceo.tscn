@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://data/models/ceo.glb" id="1_m"]
 [ext_resource type="Script" path="res://guide/guide.gd" id="2_s"]
+[ext_resource type="FontFile" path="res://ui/fonts/kenpixel.ttf" id="3_f"]
 
 [node name="CEO" type="Node3D"]
 script = ExtResource("2_s")
@@ -20,3 +21,17 @@ outline_modulate = Color(0.05, 0.08, 0.15, 1)
 width = 900.0
 autowrap_mode = 3
 text = ""
+
+[node name="bonk" type="Label3D" parent="."]
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
+billboard = 1
+no_depth_test = true
+modulate = Color(1, 0.85, 0.3, 1)
+outline_modulate = Color(0.07, 0.1, 0.33, 1)
+outline_size = 14
+font = ExtResource("3_f")
+font_size = 64
+pixel_size = 0.006
+text = "BONK!"
+

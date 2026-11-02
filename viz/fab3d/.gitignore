@@ -2,3 +2,5 @@ data/
 .godot/
 *.import
 export/
+!exterior/art/*.import
+!ui/fonts/*.import
