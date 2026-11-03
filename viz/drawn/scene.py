@@ -86,6 +86,8 @@ def needed(sc, only):
         if shot["id"] in only:
             for lv in shot["levels"]:
                 names |= {x[0] for x in lv.get("cels", [])} | set(lv.get("cycle", []))
+            for ins in shot.get("insets", []):
+                names |= {x[0] for x in ins["cels"]}
     names = {x.split("~")[0] for x in names}
     grow = True
     while grow:
@@ -122,9 +124,11 @@ def draw(n, only=None):
         for k in range(int(p.get("variants", 0))):
             v = out / f"{name}~{k + 1}.png"
             if not v.exists() and f.exists():
+                step = p["variant"][k] if isinstance(p.get("variant"), list) else p.get("variant", "the light and flames "
+                                                                                                       "shift a little")
                 img = produce._try(c, ["The same painting as the attached picture, exactly the same place, framing, objects "
-                                       "and style, only a moment later: " + p.get("variant", "the light and flames shift "
-                                       "a little") + f". No characters, no text. (Variant {k + 1}.)"], [f.read_bytes()])
+                                       "and style, only a moment later: " + step + f". No characters, no text. "
+                                       f"(Variant {k + 1}.)"], [f.read_bytes()])
                 if img:
                     v.write_bytes(img)
         return prev
@@ -227,6 +231,42 @@ def title(dr, text, y, font, a):
         x += dr.textlength(s, font=f)
 
 
+def inset(fr, d, ins, f):
+    """A magnifying circle (a 'simplified view'): it opens over 6 frames, shows its pictures in turn, closes over 6, and
+    sits in screen space, so the camera does not move it. Its label says it is simplified."""
+    f0, f1 = int(ins["from"]), int(ins["to"])
+    if not f0 <= f < f1:
+        return
+    k, name = f - f0, None
+    for nm, n in ins["cels"]:
+        if k < n:
+            name = nm
+            break
+        k -= n
+    name = name or ins["cels"][-1][0]
+    if name not in d:
+        return
+    grow = min(1.0, (f - f0 + 1) / 6.0, (f1 - f) / 6.0)
+    r = max(2, int(int(ins.get("r", 240)) * (1 - (1 - grow) ** 3)))
+    x, y = (int(v) for v in ins["at"])
+    pic = d[name].convert("RGB")
+    side = min(pic.size)
+    pic = pic.crop(((pic.width - side) // 2, (pic.height - side) // 2, (pic.width + side) // 2, (pic.height + side) // 2))
+    pic = pic.resize((2 * r, 2 * r), Image.LANCZOS)
+    mask = Image.new("L", (2 * r, 2 * r), 0)
+    ImageDraw.Draw(mask).ellipse([0, 0, 2 * r - 1, 2 * r - 1], fill=255)
+    fr.paste(pic, (x - r, y - r), mask)
+    dr = ImageDraw.Draw(fr)
+    dr.ellipse([x - r, y - r, x + r, y + r], outline=(42, 33, 24), width=10)
+    dr.ellipse([x - r + 8, y - r + 8, x + r - 8, y + r - 8], outline=(245, 232, 200), width=3)
+    if grow >= 1 and ins.get("label", "simplified view"):
+        lf = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 30)
+        text = ins.get("label", "simplified view")
+        w = dr.textlength(text, font=lf)
+        dr.rounded_rectangle([x - w / 2 - 14, y + r + 8, x + w / 2 + 14, y + r + 52], 10, fill=(42, 33, 24))
+        dr.text((x - w / 2, y + r + 14), text, font=lf, fill=(245, 232, 200))
+
+
 def render(n, only=None):
     sc = load(n)
     out = ART / str(n)
@@ -240,6 +280,10 @@ def render(n, only=None):
             continue
         d, anchors = {"none": Image.new("RGBA", (4, 4), (0, 0, 0, 0))}, {}
         levels = []
+        for ins in shot.get("insets", []):
+            for nm, _ in ins["cels"]:
+                if nm not in d and (out / f"{nm}.png").exists():
+                    d[nm] = Image.open(out / f"{nm}.png").convert("RGBA")
         for lv in shot["levels"]:
             names = [x[0] for x in lv.get("cels", [])] + list(lv.get("cycle", []))
             for nm in names:
@@ -267,7 +311,8 @@ def render(n, only=None):
                 if lv.get("plate") and spec["cycle"][0] != "none":
                     # a painted variant that repaints the light or framing flickers; hold the first plate instead
                     base = np.asarray(d[spec["cycle"][0]].convert("RGB"), float)
-                    spec["cycle"] = [x if np.abs(np.asarray(d[x].convert("RGB"), float) - base).mean() <= FLICKER
+                    limit = float(LOOK.get("flicker", FLICKER))
+                    spec["cycle"] = [x if np.abs(np.asarray(d[x].convert("RGB"), float) - base).mean() <= limit
                                      else spec["cycle"][0] for x in spec["cycle"]]
             levels.append(spec)
         s = sh.load({"shot": shot["id"], "frames": int(shot["frames"]), "fps": FPS, "levels": levels,
@@ -284,10 +329,13 @@ def render(n, only=None):
             fr = Image.fromarray(r.frame(s, f))
             dr = ImageDraw.Draw(fr, "RGBA")
             t = float(shot["start"]) + f / FPS
+            for ins in shot.get("insets", []):
+                inset(fr, d, ins, f)
             for tt in shot.get("titles", []):
                 if tt["from"] <= f < tt["to"]:
                     a = min(1.0, (f - tt["from"]) / 12.0, (tt["to"] - f) / 12.0)
-                    title(dr, tt["text"], tt.get("y", H * 0.42), title_font, a)
+                    tf = title_font if "size" not in tt else title_font.font_variant(size=int(tt["size"]))
+                    title(dr, tt["text"], tt.get("y", H * 0.42), tf, a)
             for k, ln in enumerate([ln for ln in captions if float(ln["from"]) <= t < float(ln["to"])][:2]):
                 text = ({"grain": "GRAIN: ", "lou": "LOU: "}.get(ln["who"], "")) + ln["text"]
                 w = dr.textlength(text, font=font)

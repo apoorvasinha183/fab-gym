@@ -5,7 +5,7 @@
  "end": 34.0,
  "plates": {
   "furnace": {
-   "prompt": "(from the pilot)",
+   "prompt": "Inside a silicon furnace hall: a big round furnace of glowing melt in the middle distance, a chute pouring pale quartz gravel and black carbon lumps in from the left, broad simple walls, an empty floor in front for a character to stand on.",
    "variants": 2,
    "variant": "the glow in the furnace and the sparks flicker and shift"
   },
@@ -191,8 +191,8 @@
  "shots": [
   {
    "id": "2-1",
-   "start": 22.0,
-   "frames": 96,
+   "start": 25.5,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
@@ -232,7 +232,7 @@
        628
       ],
       [
-       95,
+       131,
        900,
        628
       ]
@@ -312,7 +312,7 @@
       ],
       [
        "Q_cling",
-       42
+       78
       ]
      ]
     },
@@ -355,7 +355,27 @@
       ],
       [
        "T_lurk",
-       12
+       8
+      ],
+      [
+       "lurk_b",
+       8
+      ],
+      [
+       "T_lurk",
+       8
+      ],
+      [
+       "lurk_b",
+       8
+      ],
+      [
+       "T_lurk",
+       8
+      ],
+      [
+       "lurk_b",
+       8
       ]
      ]
     }

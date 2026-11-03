@@ -20,7 +20,7 @@
    "variant": "the sparkles along the line where they meet have moved"
   },
   "hall": {
-   "prompt": "A tall clean factory hall with a tall silver crystal-pulling machine on the left, its chamber open, a temperature dial on the wall, and one small adult person in a white clean-room suit standing on the floor on the right, about a third of the picture's height, for scale."
+   "prompt": "A tall clean crystal-pulling hall: a tall puller machine on the left with its chamber door open and empty, a low metal cradle on the floor in the middle front, empty, and one adult person in a white clean-room suit standing on the floor just right of the cradle, about a third of the picture's height, for scale. No crystal anywhere."
   }
  },
  "drawings": {
@@ -50,7 +50,11 @@
   },
   "c_tall": {
    "sheet": "grain-05-crystal",
-   "pose": "standing tall and proud, hands on hips, chest out, big smile"
+   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright and proud, a soft smile, arms at its sides"
+  },
+  "c_wonder": {
+   "sheet": "grain-05-crystal",
+   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright, looking down at its own long body in soft wonder, mouth a small o"
   }
  },
  "shots": [
@@ -320,8 +324,8 @@
   },
   {
    "id": "4-4",
-   "start": 58.0,
-   "frames": 96,
+   "start": 72.0,
+   "frames": 120,
    "levels": [
     {
      "name": "plate",
@@ -330,23 +334,27 @@
      "cels": [
       [
        "hall",
-       96
+       120
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 175,
+     "height": 440,
      "cels": [
       [
+       "c_wonder",
+       50
+      ],
+      [
        "c_tall",
-       96
+       70
       ]
      ],
      "at": [
-      1470,
-      668
+      1000,
+      985
      ]
     }
    ],
@@ -354,13 +362,13 @@
     [
      0,
      {
-      "x": 300,
-      "y": -60,
-      "zoom": 1.5
+      "x": 0,
+      "y": 0,
+      "zoom": 1.06
      }
     ],
     [
-     95,
+     119,
      {
       "x": 0,
       "y": 0,
@@ -370,10 +378,11 @@
    ],
    "titles": [
     {
-     "text": "1414 °C",
-     "from": 30,
-     "to": 96,
-     "y": 110
+     "text": "INGOT",
+     "from": 52,
+     "to": 120,
+     "y": 70,
+     "size": 84
     }
    ]
   }

@@ -369,3 +369,6 @@ class Looks(unittest.TestCase):
                 for lv in shot["levels"]:
                     used = [x[0] for x in lv.get("cels", [])] + list(lv.get("cycle", []))
                     self.assertFalse(set(used) - known, f"{shot['id']} {lv['name']}: {sorted(set(used) - known)} not directed")
+                for ins in shot.get("insets", []):
+                    used = {x[0] for x in ins["cels"]}
+                    self.assertFalse(used - known, f"{shot['id']} inset: {sorted(used - known)} not directed")

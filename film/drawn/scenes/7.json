@@ -34,12 +34,20 @@
   },
   "done": {
    "prompt": "A calm round stage in warm settled light, behind it a tall finished stack of many glowing city-like floors, soft glow."
+  },
+  "xs": {
+   "prompt": "A simplified cross-section diagram for an animated film: the edge of a thick grey silicon slab seen from the side, filling the lower half, its flat top surface bare and clean, above it calm soft blue space, a few faint drifting particles, no labels.",
+   "variants": 2,
+   "variant": [
+    "a very thin, even golden-brown film has begun to cover the left half of the slab's top surface",
+    "the thin, even golden-brown film now covers the slab's whole top surface"
+   ]
   }
  },
  "drawings": {
   "f_up": {
    "sheet": "grain-06-wafer",
-   "pose": "standing, looking up at falling mist, curious"
+   "pose": "standing, looking up, curious, nothing else in the picture"
   },
   "f_up2": {
    "sheet": "grain-06-wafer",
@@ -101,8 +109,8 @@
  "shots": [
   {
    "id": "7-1",
-   "start": 84.0,
-   "frames": 96,
+   "start": 105.0,
+   "frames": 120,
    "levels": [
     {
      "name": "plate",
@@ -119,19 +127,19 @@
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 360,
+     "height": 330,
      "cels": [
       [
        "f_up",
-       40
+       44
       ],
       [
        "f_up2",
-       56
+       76
       ]
      ],
      "at": [
-      960,
+      700,
       930
      ]
     }
@@ -146,13 +154,48 @@
      }
     ],
     [
-     95,
+     119,
      {
-      "x": 40,
+      "x": 20,
       "y": 0,
-      "zoom": 1.06
+      "zoom": 1.04
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1450,
+      470
+     ],
+     "r": 250,
+     "from": 20,
+     "to": 120,
+     "cels": [
+      [
+       "xs",
+       28
+      ],
+      [
+       "xs~1",
+       24
+      ],
+      [
+       "xs~2",
+       48
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "DEPOSITION",
+     "from": 48,
+     "to": 120,
+     "y": 70,
+     "size": 84
+    }
    ]
   },
   {
