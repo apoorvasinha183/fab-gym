@@ -158,98 +158,179 @@ def _key_fifths(key):
     return MAJOR_FIFTHS.get(tonic, 0), "major"
 
 
-def musicxml(c):
-    """The cue as score-partwise MusicXML: one part per instrument, notes split at bar lines and tied (M4)."""
-    meter = c.get("meter", [4, 4])
+ORDER = ["Piccolo", "Flute", "Oboe", "Clarinet in B\u266d", "Bassoon", "Horn in F", "Trumpet in B\u266d", "Trombone", "Tuba",
+         "Timpani", "Glockenspiel", "Xylophone", "Celesta", "Harp", "Violin I", "Violin II", "Viola", "Violoncello",
+         "Contrabass"]
+
+
+def plan_cue(frm, to, hits, meter, lo=60, hi=160, prefer=100):
+    """A cue's tempo and bars (M6): its bars fill its place on the film within a frame and its hits land on beats
+    (else on half beats) within a frame, the tempo nearest `prefer` among those that do. Hits as (bar, beat), from 1."""
     bpb = beats_per_bar(meter)
-    fifths, mode = _key_fifths(c.get("key", "C major"))
-    flats = fifths < 0
-    root = ET.Element("score-partwise", version="4.0")
-    ET.SubElement(ET.SubElement(root, "work"), "work-title").text = str(c.get("title", c["cue"]))
+    length = float(to) - float(frm)
+    pick = None
+    for sub in (1.0, 0.5):
+        ok = []
+        for k in range(int(lo * 100), int(hi * 100) + 1):
+            t = k / 100.0
+            bars = round(length * t / 60.0 / bpb)
+            if bars < 1 or abs(bars * bpb * 60.0 / t - length) > FRAME:
+                continue
+            step = 60.0 / t * sub
+            if all(abs(round((h - frm) / step) * step - (h - frm)) <= FRAME for h in hits):
+                ok.append((abs(t - prefer), t, bars))
+        if ok:
+            _, t, bars = min(ok)
+            pick = (t, bars, sub)
+            break
+    if pick is None:                                   # nothing lands every hit: fill the place exactly, report the hits
+        bars = max(1, round(length * prefer / 60.0 / bpb))
+        pick = (bars * bpb * 60.0 / length, bars, 0.5)
+    t, bars, sub = pick
+    beat = 60.0 / t
+    out = []
+    for h in hits:
+        pos = round((h - frm) / (beat * sub)) * sub
+        out.append((int(pos // bpb) + 1, round(pos % bpb + 1, 3)))
+    return {"tempo": round(t, 2), "bars": int(bars), "half_beats": sub == 0.5, "hits": out}
+
+
+def _split(part, bpb):
+    """A part's notes cut at bar lines: a list of measures, each [(pitch, beats, tie_start, tie_stop)]."""
+    measures, cur, room = [], [], bpb
+    for p, d in _notes(part):
+        left, first = d, True
+        while left > 1e-6:
+            take = min(left, room)
+            cont = left - take > 1e-6
+            cur.append((p, take, cont and p != "r", (not first) and p != "r"))
+            left -= take
+            room -= take
+            first = False
+            if room <= 1e-6:
+                measures.append(cur)
+                cur, room = [], bpb
+    if cur:
+        measures.append(cur)
+    return measures
+
+
+def _written_key(inst, fifths):
+    chrom = TRANSPOSE.get(inst, (0, 0))[1]
+    pf = fifths + {-2: 2, -7: 1}.get(chrom, 0)
+    return pf - 12 if pf > 7 else pf
+
+
+def _measure(part_el, num, notes, inst, *, attrs=None, tempo=None, mark=None, flats=False):
+    m = ET.SubElement(part_el, "measure", number=str(num))
+    dia, chrom = TRANSPOSE.get(inst, (0, 0))
+    if attrs:
+        at = ET.SubElement(m, "attributes")
+        if attrs.get("divisions"):
+            ET.SubElement(at, "divisions").text = str(DIV)
+        k = ET.SubElement(at, "key")
+        ET.SubElement(k, "fifths").text = str(attrs["fifths"])
+        ET.SubElement(k, "mode").text = attrs["mode"]
+        t = ET.SubElement(at, "time")
+        ET.SubElement(t, "beats").text = str(attrs["meter"][0])
+        ET.SubElement(t, "beat-type").text = str(attrs["meter"][1])
+        if attrs.get("divisions"):
+            if chrom:
+                tr = ET.SubElement(at, "transpose")
+                if chrom % 12 == 0:
+                    ET.SubElement(tr, "diatonic").text = "0"
+                    ET.SubElement(tr, "chromatic").text = "0"
+                    ET.SubElement(tr, "octave-change").text = str(chrom // 12)
+                else:
+                    ET.SubElement(tr, "diatonic").text = str(dia)
+                    ET.SubElement(tr, "chromatic").text = str(chrom)
+            cl = ET.SubElement(at, "clef")
+            sign, line = CLEF.get(inst, ("G", 2))
+            ET.SubElement(cl, "sign").text = sign
+            ET.SubElement(cl, "line").text = str(line)
+    if mark:
+        d = ET.SubElement(m, "direction", placement="above")
+        ET.SubElement(ET.SubElement(d, "direction-type"), "rehearsal").text = mark
+    if tempo:
+        d = ET.SubElement(m, "direction", placement="above")
+        dt = ET.SubElement(ET.SubElement(d, "direction-type"), "metronome")
+        ET.SubElement(dt, "beat-unit").text = "quarter"
+        ET.SubElement(dt, "per-minute").text = f"{float(tempo):g}"
+        ET.SubElement(d, "sound", tempo=f"{float(tempo):g}")
+    for p, beats, tie_on, tie_off in notes:
+        pieces = _pieces(beats)
+        for j, (v, typ, dots) in enumerate(pieces):
+            starts = tie_on or j < len(pieces) - 1
+            stops = tie_off or j > 0
+            pitches = [None] if p == "r" else p.split("+")
+            for ci, q in enumerate(pitches):
+                n = ET.SubElement(m, "note")
+                if ci:
+                    ET.SubElement(n, "chord")
+                if q is None:
+                    ET.SubElement(n, "rest")
+                else:
+                    written = midi(q) - chrom
+                    nm = name(written, flats)
+                    pe = ET.SubElement(n, "pitch")
+                    ET.SubElement(pe, "step").text = nm[0]
+                    if len(nm) > 2 or nm[1] in "#b":
+                        ET.SubElement(pe, "alter").text = "1" if "#" in nm else "-1"
+                    ET.SubElement(pe, "octave").text = str(written // 12 - 1)
+                ET.SubElement(n, "duration").text = str(int(round(v * DIV)))
+                if q is not None and stops:
+                    ET.SubElement(n, "tie", type="stop")
+                if q is not None and starts:
+                    ET.SubElement(n, "tie", type="start")
+                ET.SubElement(n, "type").text = typ
+                for _ in range(dots):
+                    ET.SubElement(n, "dot")
+    return m
+
+
+def _xml(root):
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" '
+            '"http://www.musicxml.org/dtds/partwise.dtd">\n' + ET.tostring(root, encoding="unicode"))
+
+
+def _part_list(root, insts, title):
+    ET.SubElement(ET.SubElement(root, "work"), "work-title").text = title
     pl = ET.SubElement(root, "part-list")
-    insts = list(c["parts"].keys())
     for i, inst in enumerate(insts, 1):
         sp = ET.SubElement(pl, "score-part", id=f"P{i}")
         ET.SubElement(sp, "part-name").text = inst
         mi = ET.SubElement(sp, "midi-instrument", id=f"P{i}-I1")
-        ET.SubElement(mi, "midi-channel").text = str(10 if False else (i - 1) % 16 + 1 if (i - 1) % 16 != 9 else 11)
+        ch = (i - 1) % 15 + 1
+        ET.SubElement(mi, "midi-channel").text = str(ch if ch < 10 else ch + 1)
         ET.SubElement(mi, "midi-program").text = str(MIDI_PROGRAM.get(inst, 1))
-    for i, inst in enumerate(insts, 1):
-        part = ET.SubElement(root, "part", id=f"P{i}")
-        dia, chrom = TRANSPOSE.get(inst, (0, 0))
-        # split every note at bar lines: a list of measures, each a list of (pitch, beats, tie_start, tie_stop)
-        measures, cur, room = [], [], bpb
-        for p, d in _notes(c["parts"][inst]):
-            left, first = d, True
-            while left > 1e-6:
-                take = min(left, room)
-                cont = left - take > 1e-6
-                cur.append((p, take, cont and p != "r", (not first) and p != "r"))
-                left -= take
-                room -= take
-                first = False
-                if room <= 1e-6:
-                    measures.append(cur)
-                    cur, room = [], bpb
-        if cur:
-            measures.append(cur)
-        for mnum, notes in enumerate(measures, 1):
-            m = ET.SubElement(part, "measure", number=str(mnum))
-            if mnum == 1:
-                at = ET.SubElement(m, "attributes")
-                ET.SubElement(at, "divisions").text = str(DIV)
-                k = ET.SubElement(at, "key")
-                ET.SubElement(k, "fifths").text = str(fifths)
-                ET.SubElement(k, "mode").text = mode
-                t = ET.SubElement(at, "time")
-                ET.SubElement(t, "beats").text = str(meter[0])
-                ET.SubElement(t, "beat-type").text = str(meter[1])
-                if chrom:
-                    tr = ET.SubElement(at, "transpose")
-                    ET.SubElement(tr, "diatonic").text = str(dia % 7 if chrom % 12 else 0)
-                    ET.SubElement(tr, "chromatic").text = str(chrom % 12 if chrom % 12 else 0)
-                    if chrom % 12 == 0 and chrom:
-                        ET.SubElement(tr, "octave-change").text = str(chrom // 12)
-                    elif chrom < 0:
-                        tr.find("diatonic").text = str(dia)
-                        tr.find("chromatic").text = str(chrom)
-                cl = ET.SubElement(at, "clef")
-                sign, line = CLEF.get(inst, ("G", 2))
-                ET.SubElement(cl, "sign").text = sign
-                ET.SubElement(cl, "line").text = str(line)
-                d = ET.SubElement(m, "direction", placement="above")
-                dt = ET.SubElement(ET.SubElement(d, "direction-type"), "metronome")
-                ET.SubElement(dt, "beat-unit").text = "quarter"
-                ET.SubElement(dt, "per-minute").text = f"{float(c['tempo']):g}"
-                ET.SubElement(d, "sound", tempo=f"{float(c['tempo']):g}")
-            for p, beats, tie_on, tie_off in notes:
-                pieces = _pieces(beats)
-                for j, (v, typ, dots) in enumerate(pieces):
-                    starts = tie_on or j < len(pieces) - 1
-                    stops = tie_off or j > 0
-                    pitches = [None] if p == "r" else p.split("+")
-                    for ci, q in enumerate(pitches):
-                        n = ET.SubElement(m, "note")
-                        if ci:
-                            ET.SubElement(n, "chord")
-                        if q is None:
-                            ET.SubElement(n, "rest")
-                        else:
-                            written = midi(q) - chrom
-                            nm = name(written, flats)
-                            pe = ET.SubElement(n, "pitch")
-                            ET.SubElement(pe, "step").text = nm[0]
-                            if len(nm) > 2 or nm[1] in "#b":
-                                ET.SubElement(pe, "alter").text = "1" if "#" in nm else "-1"
-                            ET.SubElement(pe, "octave").text = str(written // 12 - 1)
-                        ET.SubElement(n, "duration").text = str(int(round(v * DIV)))
-                        if q is not None and stops:
-                            ET.SubElement(n, "tie", type="stop")
-                        if q is not None and starts:
-                            ET.SubElement(n, "tie", type="start")
-                        ET.SubElement(n, "type").text = typ
-                        for _ in range(dots):
-                            ET.SubElement(n, "dot")
-    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" '
-            '"http://www.musicxml.org/dtds/partwise.dtd">\n' + ET.tostring(root, encoding="unicode"))
+
+
+def musicxml(c):
+    """One cue as score-partwise MusicXML: one part per instrument, in the cue's order, notes split at bar lines (M4)."""
+    return film_musicxml([c], order=list(c["parts"].keys()), marks=False, title=str(c.get("title", c["cue"])))
+
+
+def film_musicxml(cues, order=None, marks=True, title="Sand to Chip"):
+    """The whole film as one score (M7): the cues in order, each from its own measure with its tempo, key and
+    rehearsal mark; every instrument in every measure, resting where a cue leaves it out."""
+    used = {i for c in cues for i in c["parts"]}
+    insts = order or [i for i in ORDER if i in used] + sorted(used - set(ORDER))
+    root = ET.Element("score-partwise", version="4.0")
+    _part_list(root, insts, title)
+    for pi, inst in enumerate(insts, 1):
+        part = ET.SubElement(root, "part", id=f"P{pi}")
+        num = 1
+        for ci, c in enumerate(cues):
+            meter = c.get("meter", [4, 4])
+            bpb = beats_per_bar(meter)
+            fifths, mode = _key_fifths(c.get("key", "C major"))
+            total = sum(float(x[1]) for x in next(iter(c["parts"].values())))
+            notes = c["parts"].get(inst) or [["r", bpb]] * int(round(total / bpb))
+            pf = _written_key(inst, fifths)
+            for mi, ms in enumerate(_split(notes, bpb)):
+                attrs = {"divisions": num == 1, "fifths": pf, "mode": mode, "meter": meter} if mi == 0 else None
+                _measure(part, num, ms, inst, attrs=attrs, tempo=c["tempo"] if mi == 0 else None, flats=pf < 0,
+                         mark=(str(c.get("title", c["cue"])) if (marks and pi == 1 and mi == 0) else None))
+                num += 1
+    return _xml(root)
