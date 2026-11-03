@@ -5,6 +5,7 @@ extends Node3D
 ## SMT2020 testbed; a gigafab-style layout of our own design; not a real fab.
 
 const Looks := preload("res://looks.gd")
+const Solid := preload("res://solid.gd")
 @onready var campus: Node3D = $campus
 @onready var live: Node = $live
 @onready var player: Node3D = $player
@@ -42,6 +43,8 @@ var soft_facade := false
 var stop_shots := false        # stills taken at the stops instead of at fixed times
 var near_vehicle := false      # shots framed on one vehicle (one lowering its pod if there is one), to check the rail
 var _watched := -1
+var _clear_out := ""           # --clearance FILE: the camera's lowest height over the cinema's floor
+var _clear_min := 1e9
 
 
 func _ready() -> void:
@@ -54,6 +57,8 @@ func _ready() -> void:
 		film = true
 	if "--shots" in args:
 		shots_dir = args[args.find("--shots") + 1]
+	if "--clearance" in args:
+		_clear_out = args[args.find("--clearance") + 1]
 	near_vehicle = "--near-vehicle" in args
 	no_intro = "--no-intro" in args or near_vehicle
 	sweep = "--sweep" in args
@@ -75,8 +80,14 @@ func _ready() -> void:
 			_shot_at.append(float(t))
 	campus.viewer = player
 	cinema.viewer = player
+	cinema.guide = guide
 	player.setup(campus.data)
+	cinema.setup(campus.data.get("cinema", {}))
+	cinema.autoplay = film
+	cinema.prompt.connect(func(t: String) -> void: ui.show_prompt(t))
 	guide.line_of = Callable(self, "_line_for")
+	guide.planner = Callable(self, "_plan_leg")
+	guide.snapper = Callable(self, "reach")
 	guide.said.connect(func(t: String) -> void: ui.show_line(t))
 	guide.arrived.connect(_on_arrived)
 	guide.tour_done.connect(_free_walk)
@@ -104,6 +115,7 @@ func _ready() -> void:
 	guide.viewer = player
 	guide.shower_box = campus.data["entrance"]["permit"]["air_shower"]["box"]
 	player.lift = campus.data["entrance"]["permit"]["lift"]["box"]
+	_solids()
 	# the tour starts in the parking lot, the visitor a few steps behind the CEO
 	var lot: Array = campus.data["entrance"]["route"][0]["at"]
 	guide.global_position = _at(lot)
@@ -114,6 +126,122 @@ func _ready() -> void:
 		_check.call_deferred()
 		return
 	live.start(1, 1.0)
+
+
+# ------------------------------------------------------------------ the guide's paths around what is solid
+
+var nav_ready := false
+signal nav_baked
+var _nav: NavigationRegion3D
+var _body := CapsuleShape3D.new()
+
+
+func _bake_nav() -> void:
+	# a walkable map of the campus from what is solid (its floors, walls, tools), baked once on a worker thread
+	for n in [building, entrance, exterior, cinema, get_node("solid_tools")]:
+		n.add_to_group("nav_source")
+	var nm := NavigationMesh.new()
+	nm.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+	nm.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+	nm.geometry_source_group_name = "nav_source"
+	nm.cell_size = 0.2
+	nm.cell_height = 0.1
+	nm.agent_radius = 0.4
+	nm.agent_height = 2.0
+	nm.agent_max_climb = 0.3
+	nm.agent_max_slope = 30.0
+	# only where the tour goes: the lot and entrance, both phases and the bridge, the cinema
+	nm.filter_baking_aabb = AABB(Vector3(-60.0, -1.0, -75.0), Vector3(580.0, 12.0, 205.0))
+	_nav = NavigationRegion3D.new()
+	_nav.navigation_mesh = nm
+	add_child(_nav)
+	var map := get_world_3d().navigation_map
+	NavigationServer3D.map_set_cell_size(map, 0.2)
+	NavigationServer3D.map_set_cell_height(map, 0.1)
+	_nav.bake_finished.connect(func() -> void:
+		# the map takes the new mesh at a later sync: wait until it answers
+		for k in 300:
+			await get_tree().physics_frame
+			if NavigationServer3D.map_get_closest_point(map, Vector3(3.5, 7.5, -1.0)) != Vector3.ZERO:
+				break
+		nav_ready = true
+		guide.planning = true
+		print("fab3d: walkable map baked, %d polygons, %.1f s after start" % [nm.get_polygon_count(), Time.get_ticks_msec() / 1000.0])
+		nav_baked.emit())
+	_nav.bake_navigation_mesh(true)
+
+
+func leg_hit(a: Vector3, b: Vector3) -> String:
+	# sweep the guide's body (0.25 m round, from knee to head) along a leg; "" if nothing solid is in the way
+	var q := PhysicsShapeQueryParameters3D.new()
+	_body.radius = 0.25
+	_body.height = 1.2
+	q.shape = _body
+	var space := get_world_3d().direct_space_state
+	var n := int(ceil(a.distance_to(b) / 0.5))
+	for j in n:
+		var p := a.lerp(b, float(j) / n)
+		var r := a.lerp(b, float(j + 1) / n)
+		# his feet: the floor under him in the cinema (exact there), else the route's own height
+		var feet: float = player.floor_at(p.x, -p.z) if player.in_cinema(p.x, -p.z) else p.y - 0.1
+		q.transform = Transform3D(Basis(), Vector3(p.x, feet + 0.5 + _body.height / 2.0, p.z))
+		q.motion = Vector3(r.x - p.x, 0.0, r.z - p.z)
+		if space.cast_motion(q)[0] < 1.0:
+			q.transform.origin += q.motion * space.cast_motion(q)[1]
+			var info := space.get_rest_info(q)
+			var obj = instance_from_id(int(info.get("collider_id", 0)))
+			var what := str(obj.get_parent().name) if obj and obj.get_parent() else "?"
+			return "at (%.1f, %.1f) touching %s" % [p.x, -p.z, what]
+	return ""
+
+
+func reach(a: Vector3, b: Vector3) -> Vector3:
+	# a corner of the route that cannot be reached from a (it stands inside something solid) moves to the nearest
+	# spot that can, within 4 m
+	if not nav_ready or leg_hit(a, b) == "":
+		return b
+	var p := NavigationServer3D.map_get_path(get_world_3d().navigation_map, a, b, true)
+	if p.size() < 2:
+		return b
+	var e: Vector3 = p[-1]
+	var d := Vector2(e.x - b.x, e.z - b.z).length()
+	return Vector3(e.x, b.y, e.z) if d > 0.3 and d < 4.0 else b
+
+
+func _plan_leg(a: Vector3, b: Vector3) -> Array:
+	# the corners of a path around whatever blocks the straight leg; none when it is clear or no path is known
+	if not nav_ready or leg_hit(a, b) == "":
+		return []
+	var map := get_world_3d().navigation_map
+	var p := NavigationServer3D.map_get_path(map, a, b, true)
+	if p.size() < 2 or Vector2(p[-1].x - b.x, p[-1].z - b.z).length() > 0.6:
+		return []
+	var out := []
+	for k in range(1, p.size() - 1):
+		var c: Vector3 = p[k]
+		out.append(Vector3(c.x, lerpf(a.y, b.y, float(k) / (p.size() - 1)), c.z))
+	return out
+
+
+func _solids() -> void:
+	# everything solid (solid.gd): the visitor slides along it, the camera stays in front of it, the guide's route clears it
+	Solid.meshes(building)
+	var moving := [entrance.car]
+	for dr in entrance.doors:
+		moving.append(dr[0])                 # the lift's sliding leaves
+	Solid.meshes(entrance, moving)
+	Solid.meshes(exterior)
+	var cz := float(campus.data["heights"]["clean_z"])
+	var list := []
+	for t in campus.data["tools"]:
+		var h := float(t[8])
+		list.append([Vector3((float(t[4]) + float(t[5])) / 2.0, cz + h / 2.0, -(float(t[6]) + float(t[7])) / 2.0),
+				Vector3((float(t[5]) - float(t[4])) * 0.98, h, (float(t[7]) - float(t[6])) * 0.98), 0.0])
+	for st in campus.data["stockers"]:
+		list.append([Vector3((float(st[0]) + float(st[1])) / 2.0, cz + 1.75, -(float(st[2]) + float(st[3])) / 2.0),
+				Vector3(float(st[1]) - float(st[0]), 3.5, float(st[3]) - float(st[2])), 0.0])
+	Solid.boxes(self, list, "solid_tools")
+	_bake_nav.call_deferred()
 
 
 func _dress_building() -> void:
@@ -205,6 +333,14 @@ func _start_tour() -> void:
 
 func _process(dt: float) -> void:
 	_t += dt
+	if _clear_out != "" and player.in_cinema(player.global_position.x, -player.global_position.z):
+		# the camera's lowest height over the floor under it, while in the cinema (it must never sink into a step)
+		var c: float = player.global_position.y - player.floor_at(player.global_position.x, -player.global_position.z)
+		if c < _clear_min:
+			_clear_min = c
+			var f := FileAccess.open(_clear_out, FileAccess.WRITE)
+			f.store_string(JSON.stringify({"lowest_m": c, "at": [player.global_position.x, -player.global_position.z], "t": _t}))
+			f.close()
 	if sweep:
 		_sweep()
 	if corridor:
@@ -384,10 +520,12 @@ func _tour() -> Array:
 			stops.append({"kind": "via", "via": true, "at": Vector3(316.0, z, 0.0)})
 	# the cinema (data/cinema/plan.json): in by the main entrance, across the lobby, up the ramp, onto the mid cross aisle
 	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 92.0), "face": PI, "teleport": true})
-	for p in [[58.0, -99.5, 0.1], [69.2, -104.5, 0.1], [69.2, -109.1, 0.1], [61.2, -109.1, 0.7], [59.7, -109.1, 0.7],
-			[52.5, -109.1, 1.3], [52.3, -109.1, 1.3]]:
+	# through the sliding doors, down the lobby clear of the benches and posters, up the ramp, through the ramp door,
+	# and out along the mid cross aisle; he stops beside it, turned to the visitor
+	for p in [[58.0, -99.5, 0.1], [58.0, -105.4, 0.1], [69.2, -105.4, 0.1], [69.2, -109.1, 0.1], [61.2, -109.1, 0.7],
+			[59.7, -109.1, 0.7], [52.5, -109.1, 1.3], [52.3, -109.1, 1.3], [52.3, -110.8, 1.3]]:
 		stops.append({"kind": "via", "via": true, "at": Vector3(p[0], p[2], -p[1])})
-	stops.append({"kind": "cinema", "at": Vector3(52.3, 1.3, 112.0), "face": PI / 2.0})
+	stops.append({"kind": "cinema", "at": Vector3(51.1, 1.3, 114.4), "face": 0.68})
 	return stops
 
 
@@ -417,12 +555,14 @@ func _on_arrived(s: Dictionary) -> void:
 	if s.get("teleport", false):
 		player.global_position = s["at"] + Vector3(0, 2.6, -4.5)
 	if s["kind"] == "cinema":
+		# the visitor walks to a seat of their own; the recorded film sits in row 5 and the film starts by itself
 		player.follow = null
-		player.roaming = true
-		# the view from a seat in row 5 (data/cinema/plan.json: floor 1.8 m, eyes 1.15 m above it), at the screen
-		player.global_position = Vector3(54.4, player.floor_at(54.4, -116.0) + 1.15, 116.0)
-		player.yaw = PI / 2.0
-		player.pitch = -0.04
+		if film:
+			player.roaming = true
+			cinema.sit("R5C4")
+		else:
+			# the camera walks on to the middle of the aisle and turns to the screen
+			player.glide(Vector3(52.4, player.floor_at(52.4, -116.0) + 1.65, 116.0), PI / 2.0, -0.05, 2.5)
 
 
 func _stop_title(s: Dictionary) -> String:
@@ -469,7 +609,7 @@ func _line_for(s: Dictionary) -> String:
 		"cinema_door":
 			return "That's both phases. Before you explore on your own, come and see how a chip is made, from sand to a finished chip."
 		"cinema":
-			return "Take a seat. The film starts when you're in the hall. Afterwards, walk anywhere: click a tool for its card, or ask me anything."
+			return "Pick any free seat: walk up to it and press E to sit. Once you're in, press Enter and the film fills the screen. Afterwards, walk anywhere: click a tool for its card, or ask me anything."
 	return ""
 
 
@@ -640,6 +780,68 @@ func _write_perf() -> void:
 
 func _check() -> void:
 	await get_tree().process_frame
+	# the cinema: a visitor in the hall does not start the film; floors follow the built model
+	player.place(51.7, -115.0, PI / 2.0)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var cin := {"seats": cinema.seats.size(), "people": cinema.people.size(), "posters": cinema.posters,
+			"film_started_by_walking_in": cinema.started, "floor_map": not player.cin_floor.is_empty(),
+			"floor_mid_aisle": player.floor_at(51.7, -115.0), "floor_row5": player.floor_at(54.55, -116.0),
+			"floor_stair_top": player.floor_at(59.5, -116.2), "floor_projection": player.floor_at(60.0, -113.0),
+			"floor_ramp_top": player.floor_at(51.5, -109.1)}
+	# every doorway is open (a ray across it at chest height hits nothing); walking south through the ramp door ends
+	# in the hall, and the same walk 2.8 m west is stopped by the wall
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var space := get_world_3d().direct_space_state
+	var shut := []
+	for dr in cinema.doors:
+		if dr[1] != "swing":
+			continue
+		var c: Vector3 = dr[2] + Vector3(0, 0.3, 0)
+		var across := Vector3(0, 0, 0.6) if str(dr[4]["along"]) == "x" else Vector3(0.6, 0, 0)
+		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(c - across, c + across)).is_empty():
+			shut.append(str(dr[4]["name"]))
+	if not nav_ready:
+		await nav_baked
+	var blocked := []
+	var planned := 0
+	var route := _tour()
+	var prev: Vector3 = route[0]["at"]
+	for k in range(1, route.size()):
+		var st: Dictionary = route[k]
+		var to: Vector3 = st["at"]
+		if st.get("via", false) and not (st.get("bump", false) or st.get("ride", false)):
+			to = reach(prev, to)
+		if not (st.get("teleport", false) or st.get("bump", false) or st.get("ride", false) or str(st["kind"]) == "air_shower"):
+			var pts := [prev] + _plan_leg(prev, to) + [to]
+			planned += 1 if pts.size() > 2 else 0
+			for m in range(1, pts.size()):
+				var hit := leg_hit(pts[m - 1], pts[m])
+				if hit != "":
+					blocked.append("%d %s: %s" % [k, str(st["kind"]), hit])
+					break
+		prev = to
+	cin["guide_legs_planned"] = planned
+	cin["guide_legs_blocked"] = blocked
+	cin["guide_legs"] = route.size() - 1
+	cin["doorways"] = cinema.doors.size()
+	cin["doorways_blocked"] = shut
+	for spot in [[52.31, "through_ramp_door"], [49.5, "walked_into_wall"]]:
+		player.place(float(spot[0]), -109.3, PI)
+		for k in 60:
+			player.move(Vector3(0, 0, 0.05))
+		cin[spot[1]] = cinema.in_hall(player.global_position)
+	cinema.sit("R5C4")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	cin["seated"] = player.seated
+	cin["seated_eye_over_floor"] = player.global_position.y - player.floor_at(player.global_position.x, -player.global_position.z)
+	cinema.play()
+	cinema.fullscreen(true)
+	cin["fullscreen"] = cinema.full.visible
+	cinema.fullscreen(false)
+	cinema.stand()
 	player.place(285.0, 0.0, -PI / 2)
 	campus.update_cells(true)
 	var v := Vector2(285.0, 0.0)
@@ -655,7 +857,7 @@ func _check() -> void:
 	for k in campus.kinds.keys():
 		if k != "stocker":
 			kinds.append(k)
-	var report := {"opened": true, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge",
+	var report := {"opened": true, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge", "cinema": cin,
 			"cells_loaded": campus.loaded.size(), "cells_full": campus.full_ids.size(), "tools_built": campus.tool_nodes.size(),
 			"farthest_loaded_m": far, "cells_total": campus.data["cells"].size(), "cinema_film": cinema.film_path(),
 			"drone": {"scene": ResourceLoader.exists("res://drone/drone.tscn"), "keys": drone.keys.size(),

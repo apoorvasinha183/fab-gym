@@ -244,3 +244,13 @@ After the founder's play-through, 3 Nov:
   wheelchair spaces). The tour enters by the main entrance, crosses the lobby, climbs the ramp to the mid cross aisle
   and leaves the visitor in a row 5 seat; the visitor's floor heights follow the cinema's steps, aisles and ramp
   (campus.json `cinema`, from the plan). `--cinema` starts the tour at the cinema door.
+- 3 Nov: everything solid. Walls, door frames, rails, benches, cars, trees, tools and stockers stop the visitor (who
+  slides along them), the camera stays on the near side of them, and the guide walks round them: a walkable map is baked
+  from the solid geometry at start (about 1 to 3 s) and any leg of the tour whose straight line meets something solid
+  is replaced by the map's path; a corner inside something solid moves to the nearest reachable spot. The headless
+  check sweeps the guide's body along all 48 legs and fails on any contact (the air shower's bump is the one planned
+  one). The cinema: doorways cut through its walls with leaves that swing open (out of the hall, the way people leave)
+  as someone comes near, sliding glass at the entrance, glass between the lobby and the ramp, the ramp's rail moved
+  off the hall's doorway, lit posters on plinths, stepped aisles with their half-steps, a floor map cast from the built
+  model so the camera never sinks into a step; the visitor walks to a free seat, presses E to sit, Enter to play the
+  film full screen (Esc back, Space pause); four people already seated (made up).

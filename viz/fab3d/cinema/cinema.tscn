@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://data/models/cinema.glb" id="1_m"]
 [ext_resource type="Script" path="res://cinema/cinema.gd" id="2_s"]
+[ext_resource type="Theme" path="res://ui/jrpg.tres" id="3_theme"]
 
 [node name="Cinema" type="Node3D"]
 script = ExtResource("2_s")
@@ -14,3 +15,84 @@ font_size = 160
 outline_size = 0
 modulate = Color(0.2, 0.12, 0.05, 1)
 text = "CINEMA · From sand to chip"
+
+[node name="vp" type="SubViewport" parent="."]
+size = Vector2i(1280, 720)
+render_target_update_mode = 4
+
+[node name="video" type="VideoStreamPlayer" parent="vp"]
+offset_right = 1280.0
+offset_bottom = 720.0
+expand = true
+
+[node name="card" type="Control" parent="vp"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource("3_theme")
+
+[node name="back" type="ColorRect" parent="vp/card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.05, 0.07, 0.2, 1)
+
+[node name="lines" type="VBoxContainer" parent="vp/card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+alignment = 1
+theme_override_constants/separation = 28
+
+[node name="now" type="Label" parent="vp/card/lines"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 40
+text = "NOW SHOWING"
+horizontal_alignment = 1
+
+[node name="title" type="Label" parent="vp/card/lines"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "FROM SAND TO CHIP"
+horizontal_alignment = 1
+
+[node name="how" type="Label" parent="vp/card/lines"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "TAKE A SEAT, THEN PRESS ENTER"
+horizontal_alignment = 1
+
+[node name="full" type="CanvasLayer" parent="."]
+layer = 20
+visible = false
+
+[node name="black" type="ColorRect" parent="full"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)
+
+[node name="picture" type="TextureRect" parent="full"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="hint" type="Label" parent="full"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -64.0
+offset_bottom = -28.0
+theme = ExtResource("3_theme")
+theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
+theme_override_font_sizes/font_size = 22
+text = "ESC  BACK TO THE HALL     SPACE  PAUSE"
+horizontal_alignment = 1

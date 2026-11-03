@@ -26,6 +26,8 @@ const SPEEDS := [[1.0 / 60.0, "REAL TIME"], [10.0 / 60.0, "10X"], [1.0, "60X"]]
 @onready var card_text: RichTextLabel = $root/card/text
 @onready var hint: Label = $root/hint
 @onready var speed_button: Button = $root/menu/list/speed
+@onready var prompt_panel: PanelContainer = $root/prompt
+@onready var prompt_label: Label = $root/prompt/text
 
 var recording := false
 var _bus := -1
@@ -83,6 +85,12 @@ func show_line(text: String) -> void:
 	_typed = 0.0
 	_done_for = 0.0
 	next_mark.visible = false
+
+
+func show_prompt(text: String) -> void:
+	# what the keys do here (the cinema's seats and film); empty hides it
+	prompt_label.text = text
+	prompt_panel.visible = text != ""
 
 
 func set_stop(n: int, total: int, title: String) -> void:

@@ -20,6 +20,9 @@ const CLIP_SPEED := 0.94      # metres a second the walk clip covers at its own 
                               # Blender (0.92 to 0.97 m/s), so the clip runs at speed / 0.94 and the feet do not slide
 const VIA_RADIUS := 0.7       # how close to a corner or door it gets before heading for the next point
 var line_of: Callable         # stop -> its line, built from the live run when the guide arrives
+var planning := false         # set once the walkable map is baked (main.gd)
+var planner: Callable         # (from, to) -> corners of a path around anything solid in the way (main.gd)
+var snapper: Callable         # (from, corner) -> the corner, or the nearest spot reachable from here if it is not (main.gd)
 var talk_scale := 1.0         # shorter pauses for the recorded tour
 var hold := 0.0               # extra seconds at the next stop (a question asked there)
 const LIFT_SPEED := 1.0       # metres a second, the lift's ride (assumed)
@@ -168,6 +171,18 @@ func _process(dt: float) -> void:
 			d = Vector3.ZERO
 		var dist := d.length()
 		var via: bool = s.get("via", false)
+		if _seg != i and planning and planner.is_valid() and not s.get("planned", false) and not s.get("bump", false) \
+				and str(s.get("kind", "")) != "air_shower":
+			# a new leg: if something solid stands on the straight line, walk round it by the walkable map's corners
+			s["planned"] = true
+			if s.get("via", false) and snapper.is_valid():
+				s["at"] = snapper.call(global_position, to)
+				to = s["at"]
+			var corners: Array = planner.call(global_position, to)
+			for k in range(corners.size() - 1, -1, -1):
+				stops.insert(i, {"kind": "via", "via": true, "at": corners[k], "planned": true})
+			if not corners.is_empty():
+				return
 		if _seg != i:
 			# a new leg: remember where it starts, so height follows the walk (up a ramp, down a step)
 			_seg = i

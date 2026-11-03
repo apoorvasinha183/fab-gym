@@ -109,6 +109,37 @@ class Headless(unittest.TestCase):
     def test_f6_the_cinema_holds_the_film(self):
         self.assertTrue(R["cinema_film"].endswith("from-sand-to-chip.ogv"), R["cinema_film"])
 
+    def test_f11_the_cinema_floor_follows_the_built_steps(self):
+        # the visitor's floor is read from the built model (data/cinema/built.json), so the camera never sinks
+        # into a tier, the ramp, the exit stair or the projection room
+        c = R["cinema"]
+        self.assertTrue(c["floor_map"])
+        self.assertAlmostEqual(c["floor_mid_aisle"], 1.24, delta=0.03)
+        self.assertAlmostEqual(c["floor_row5"], 1.84, delta=0.03)
+        self.assertAlmostEqual(c["floor_stair_top"], 2.44, delta=0.03)
+        self.assertAlmostEqual(c["floor_projection"], 3.2, delta=0.03)
+        self.assertAlmostEqual(c["floor_ramp_top"], 1.26, delta=0.03)
+
+    def test_f11_doorways_are_open_and_walls_are_solid(self):
+        c = R["cinema"]
+        self.assertGreaterEqual(c["doorways"], 5)          # four doors and the sliding entrance
+        self.assertEqual(c["doorways_blocked"], [])
+        self.assertEqual(c["guide_legs_blocked"], [])      # the guide's body never passes through anything solid
+        self.assertTrue(c["through_ramp_door"])
+        self.assertFalse(c["walked_into_wall"])
+
+    def test_f11_a_visitor_takes_a_seat_and_plays_the_film_full_screen(self):
+        c = R["cinema"]
+        self.assertEqual(c["seats"], 96)
+        self.assertFalse(c["film_started_by_walking_in"])
+        self.assertTrue(c["seated"])
+        self.assertAlmostEqual(c["seated_eye_over_floor"], 1.15, delta=0.03)
+        self.assertTrue(c["fullscreen"])
+
+    def test_f11_a_few_people_already_sit_in_the_hall_and_the_lobby_has_posters(self):
+        self.assertTrue(2 <= R["cinema"]["people"] <= 6, R["cinema"])
+        self.assertEqual(R["cinema"]["posters"], 4)
+
 
 def glb_footprint(path):
     """Footprint (x by z extent, metres) of a glTF binary: the union of its POSITION accessors' bounds."""

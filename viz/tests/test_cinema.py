@@ -113,3 +113,50 @@ class Cinema(unittest.TestCase):
             if r["status"] == "met":
                 for c in r["cite"]:
                     self.assertIn(c, reg, r)
+
+
+BUILT = ROOT / "data/cinema/built.json"
+
+
+@unittest.skipUnless(BUILT.exists(), "the cinema has not been built in Blender here")
+class Built(unittest.TestCase):
+    """What Blender built from the plan: the floor map the visitor walks on."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.p = json.loads((ROOT / "data/cinema/plan.json").read_text())
+        cls.f = json.loads(BUILT.read_text())["floor"]
+
+    def at(self, x, y):
+        f = self.f
+        i = round((x - f["origin"][0]) / f["step"])
+        j = round((y - f["origin"][1]) / f["step"])
+        return f["cm"][j * f["nx"] + i] / 100.0
+
+    def test_f11_every_seat_stands_on_its_tier(self):
+        for s in self.p["seats"]:
+            self.assertAlmostEqual(self.at(s["x"], s["y"]), 0.04 + s["level"], delta=0.02, msg=s["id"])
+
+    def test_f11_stepped_aisles_have_their_half_steps(self):
+        for a in self.p["aisles"]:
+            b = a["box"]
+            ym = (b[1] + b[3]) / 2
+            for r in self.p["rows"]:
+                if r["block"] != "centre" or not (b[0] - 1e-6 <= r["x0"] and r["x1"] <= b[2] + 1e-6):
+                    continue
+                front, back = r["x0"] + 0.2, r["x1"] - 0.2
+                self.assertAlmostEqual(self.at(front, ym), 0.04 + r["level"] - a["riser_m"], delta=0.02, msg=(a["name"], r["row"]))
+                self.assertAlmostEqual(self.at(back, ym), 0.04 + r["level"], delta=0.02, msg=(a["name"], r["row"]))
+
+    def test_f11_the_ramp_rises_without_holes(self):
+        # along the ramp's middle line the floor never drops more than a step's worth below its neighbours
+        rb = next(r for r in self.p["rooms"] if r["name"] == "ramp")["box"]
+        ym = (rb[1] + rb[3]) / 2
+        xs = [rb[0] + 0.1 * k for k in range(int((rb[2] - rb[0]) / 0.1))]
+        hs = [self.at(x, ym) for x in xs]
+        for k in range(1, len(hs) - 1):
+            self.assertGreater(hs[k], min(hs[k - 1], hs[k + 1]) - 0.06, (xs[k], hs[k - 1:k + 2]))
+
+    def test_f11_the_whole_footprint_has_a_floor(self):
+        self.assertNotIn(-1, self.f["cm"])
+

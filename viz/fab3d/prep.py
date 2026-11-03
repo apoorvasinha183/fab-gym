@@ -91,7 +91,13 @@ def main():
                             "floors": [[r["x0"], r["x1"], r["level"]] for r in pl["rows"] if r["block"] == "centre"]
                                       + [[a["box"][0], a["box"][2], a["level"]] for a in pl["cross_aisles"]],
                             "ramp": {"box": rooms["ramp"]["box"], "rise": rooms["ramp"]["rises_to"], "runs": rooms["ramp"]["runs"],
-                                     "run_m": rooms["ramp"]["run_m"], "landing_m": pl["choices"]["landing_m"]}}
+                                     "run_m": rooms["ramp"]["run_m"], "landing_m": pl["choices"]["landing_m"]},
+                            "seats": [[q["id"], q["x"], q["y"], q["level"]] for q in pl["seats"]],
+                            "screen": pl["screen"]}
+        # what Blender built from the plan (viz/blender/buildings/cinema.py): the floor map and the poster cases
+        bj = ROOT / "data/cinema/built.json"
+        if bj.exists():
+            shutil.copyfile(bj, DATA / "cinema-built.json")
     (DATA / "campus.json").write_text(json.dumps(campus, separators=(",", ":")))
     (DATA / "models").mkdir(exist_ok=True)
     for f in sorted(MODELS.glob("*.glb")):
