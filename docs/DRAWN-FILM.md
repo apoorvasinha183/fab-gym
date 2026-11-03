@@ -218,3 +218,9 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   universal step count); the film runs about 3 minutes and the score is re-timed to it; three test shots are shown
   again under the new action before the rest. The first cohesion test passed the furnace and the clean room by eye; the
   crystal hall copied the furnace, since the style picture attached to every background also carried its place.
+- 3 Nov, round 2 by quiz, after the founder sent the first storybook test back ("this looks like a kids thing ... I
+  need that level of cohesion and expressiveness"): the cast is
+  redesigned in a golden-age theatrical construction (brows, lids, an acting mouth, hands, a line of action), shown in
+  the probe in data/drawn/artdir/theatrical/; the rooms keep the storybook paint. Key moments are animated through on
+  twos; characters get contact shadows, the room's light and a colour grade per scene; mouths take a shape per sound.
+  The test shots are 2-1, 2-2 and 4-4.

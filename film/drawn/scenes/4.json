@@ -20,7 +20,12 @@
    "variant": "the sparkles along the line where they meet have moved"
   },
   "hall": {
-   "prompt": "A tall clean crystal-pulling hall: a tall puller machine on the left with its chamber door open and empty, a low metal cradle on the floor in the middle front, empty, and one adult person in a white clean-room suit standing on the floor just right of the cradle, about a third of the picture's height, for scale. No crystal anywhere."
+   "prompt": "A tall clean crystal-pulling hall, a tall puller machine on the left with its chamber door open and empty, a low metal cradle on the floor in the front middle, empty, and one adult person in a white clean-room suit standing on the floor just right of the cradle. No crystal anywhere.",
+   "stage": {
+    "where": "upright on the low cradle in the front middle",
+    "share": "a half",
+    "near": "the person beside the cradle is as tall as it, the cradle reaches its ankles"
+   }
   }
  },
  "drawings": {
@@ -54,7 +59,15 @@
   },
   "c_wonder": {
    "sheet": "grain-05-crystal",
-   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright, looking down at its own long body in soft wonder, mouth a small o"
+   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright, looking down at its own long body in soft wonder, mouth a small o",
+   "mouths": true
+  },
+  "cw_b": {
+   "kind": "between",
+   "between": [
+    "c_wonder",
+    "c_tall"
+   ]
   }
  },
  "shots": [
@@ -341,21 +354,29 @@
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 440,
+     "height": 330,
      "cels": [
       [
        "c_wonder",
        50
       ],
       [
+       "cw_b",
+       4
+      ],
+      [
        "c_tall",
-       70
+       66
       ]
      ],
      "at": [
-      1000,
-      985
-     ]
+      900,
+      975
+     ],
+     "talk": {
+      "key": "c_wonder",
+      "who": "grain"
+     }
     }
    ],
    "camera": [

@@ -77,3 +77,15 @@ forms.
 
 A grain filter or paint texture over the frame comes last, if at all, once the drawing, the light and the staging
 agree.
+
+## Round 2 and 3 (3 Nov): a theatrical cast, sized to its rooms
+
+The first storybook test was sent back as a kids' show. Rules added since:
+
+- **Construction.** Every character is built for acting, as in a golden-age theatrical short: brows, lids, a mouth that shapes words, four-fingered hands, a strong line of action, squash and stretch. Nothing is babyish or toy-like. The look `theatrical` in `film/drawn/looks.json` keeps the storybook rooms and redesigns the cast; `film/drawn/looks/theatrical-cel.jpg` is the example sheet.
+- **Scale.**
+  - Each background is painted at the character's scale. Its `stage` says where the character stands, how tall it is in the frame, and which nearby things are drawn to its size.
+  - The camera is low and close; the big room falls away behind.
+  - Each figure is then placed on the painted ground by eye, with a soft contact shadow and the scene's colour grade.
+- **No loops.** An expression is never swapped back and forth. Acting moves forward, a new drawing for each step: anticipation, the move, the settle, the next thought. A walk cycle is used only while a character crosses the frame, then the character leaves.
+- **Mouths.** A talking drawing has eight mouth shapes (`viz/drawn/lipsync.py`), timed to the line's letters over its time in `voice.json`, held on twos.

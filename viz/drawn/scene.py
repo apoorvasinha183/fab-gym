@@ -22,9 +22,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from . import compose, pilot, poses, produce, sheet as sh
+from . import compose, lipsync, pilot, poses, produce, sheet as sh
 
 ROOT = Path(__file__).resolve().parents[2]
 SCENES = ROOT / "film/drawn/scenes"
@@ -72,7 +72,13 @@ def plate_text(n, p):
     if LOOK["name"] == "comic":
         return pilot.PLATE + p["prompt"]
     light = LOOK.get("colour", {}).get(str(n), "")
-    return LOOK["plate"] + (f"The light: {light}. " if light else "") + p["prompt"]
+    # painted at the character's scale: where it stands, how tall it is in the frame, and the things next to it drawn to
+    # its size, so a small character does not look pasted onto a room built for people
+    stage = p.get("stage")
+    scale = (f" Paint it at the scale of the character who will stand {stage['where']}, about {stage['share']} of the "
+             f"picture's height: the camera is low and close at its eye level, and the things right around it are drawn to "
+             f"its size ({stage['near']}); the big room behind falls away soft and large.") if stage else ""
+    return LOOK["plate"] + (f"The light: {light}. " if light else "") + p["prompt"] + scale
 
 
 def load(n):
@@ -88,7 +94,10 @@ def needed(sc, only):
                 names |= {x[0] for x in lv.get("cels", [])} | set(lv.get("cycle", []))
             for ins in shot.get("insets", []):
                 names |= {x[0] for x in ins["cels"]}
-    names = {x.split("~")[0] for x in names}
+    names = {x.split("~")[0].split("@")[0] for x in names}
+    for shot in sc["shots"]:
+        if shot["id"] in only:
+            names |= {lv["talk"]["key"] for lv in shot["levels"] if lv.get("talk")}
     grow = True
     while grow:
         grow = False
@@ -178,6 +187,24 @@ def draw(n, only=None):
         img = produce._try(c, [text], refs)
         if img:
             f.write_bytes(img)
+    # mouths: each talking drawing edited into the eight mouth shapes, the rest of it unchanged
+    jobs = []
+    for name, dd in sc.get("drawings", {}).items():
+        src = out / f"{name}.png"
+        if dd.get("mouths") and src.exists():
+            for shape, words in lipsync.SHAPES.items():
+                if not (out / f"{name}@{shape}.png").exists():
+                    jobs.append((name, shape, words))
+
+    def mouth(job):
+        name, shape, words = job
+        img = produce._try(c, ["The same drawing as the attached picture: exactly the same character, pose, size, colours, "
+                               "line and background; only its mouth is changed, to this shape: " + words + "."],
+                           [(out / f"{name}.png").read_bytes()])
+        if img:
+            (out / f"{name}@{shape}.png").write_bytes(img)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(mouth, jobs))
     contact(n)
 
 
@@ -231,6 +258,32 @@ def title(dr, text, y, font, a):
         x += dr.textlength(s, font=f)
 
 
+def graded(cut, n):
+    """The scene's colour grade laid over a drawing, so the character takes the room's colour (looks.json 'grade')."""
+    tint = LOOK.get("grade", {}).get(str(n))
+    if not tint:
+        return cut
+    k = float(LOOK.get("grade_strength", 0.35))
+    a = np.asarray(cut, float)
+    a[..., :3] *= (1 - k) + k * np.array(tint, float)
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+
+
+def shadowed(cut, contact):
+    """A soft contact shadow on the floor under the feet, drawn under the character; the canvas grows below the feet
+    only, so the contact point stays where it was."""
+    w = cut.width
+    sw, sh_ = int(w * 0.62), max(6, int(w * 0.09))
+    pad = sh_ + 8
+    out = Image.new("RGBA", (w, cut.height + pad), (0, 0, 0, 0))
+    shade = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    cx, cy = contact
+    ImageDraw.Draw(shade).ellipse([cx - sw / 2, cy - sh_ / 2, cx + sw / 2, cy + sh_ / 2], fill=(30, 20, 15, 110))
+    out.alpha_composite(shade.filter(ImageFilter.GaussianBlur(max(2, sh_ / 3))))
+    out.alpha_composite(cut)
+    return out
+
+
 def inset(fr, d, ins, f):
     """A magnifying circle (a 'simplified view'): it opens over 6 frames, shows its pictures in turn, closes over 6, and
     sits in screen space, so the camera does not move it. Its label says it is simplified."""
@@ -280,6 +333,10 @@ def render(n, only=None):
             continue
         d, anchors = {"none": Image.new("RGBA", (4, 4), (0, 0, 0, 0))}, {}
         levels = []
+        mine = [ln for ln in captions if ln.get("shot") == shot["id"]]
+        shot = dict(shot, levels=[dict(lv, cels=lipsync.talk(lv["cels"], lv["talk"]["key"], mine, float(shot["start"]),
+                                                             lv["talk"]["who"])) if lv.get("talk") else lv
+                                  for lv in shot["levels"]])
         for ins in shot.get("insets", []):
             for nm, _ in ins["cels"]:
                 if nm not in d and (out / f"{nm}.png").exists():
@@ -296,10 +353,12 @@ def render(n, only=None):
                 if lv.get("plate"):
                     d[nm] = img.resize((PW, PH), Image.LANCZOS)
                 else:
-                    cut = poses.fit(pilot.key(img), float(lv["height"]))
-                    d[nm] = cut
+                    cut = graded(poses.fit(pilot.key(img), float(lv["height"])), n)
                     # a hanging thing (a box on a rail) is pegged by the middle of its top edge, not by its feet
                     anchors[nm] = (cut.width / 2, 0) if lv.get("anchor") == "top" else poses.measure(cut)["contact"]
+                    if LOOK.get("shadow") and lv.get("anchor") != "top" and nm.split("@")[0] not in lv.get("noshadow", []):
+                        cut = shadowed(cut, anchors[nm])
+                    d[nm] = cut
             spec = {k: v for k, v in lv.items() if k not in ("plate", "height", "anchor")}
             if lv.get("plate"):
                 spec.setdefault("at", [-120, -67])
@@ -365,6 +424,18 @@ def sheets():
     todo = [f for f in sorted(first.glob("*.png")) if "-v1" not in f.stem and not (SHEETS / f.name).exists()]
 
     def one(f):
+        if LOOK.get("sheet_mode") == "redesign":
+            # a new construction: the character's identity from its first sheet, the acting build from the example sheet
+            img = produce._try(c, ["A character model sheet for an animated short, on plain paper, no text: the character "
+                                   "in the first attached picture redesigned for full acting in the construction of the "
+                                   "example sheet in the second attached picture (its eyes with lids and eyebrows, its "
+                                   "mouth, its hands, its line of action). Keep the first character's body shape, material, "
+                                   "markings and every colour exactly (a silver one stays silver, a grey one grey, a black "
+                                   "one black), and any companions or props it has. Front, three-quarter, side and back "
+                                   "views and three expressions, drawn as " + LOOK["cel"] + "."], [f.read_bytes(), example])
+            if img:
+                (SHEETS / f.name).write_bytes(img)
+            return
         img = produce._try(c, ["Redraw the character model sheet in the first attached picture: exactly the same characters, "
                                "the same poses, faces, shapes, proportions and layout, and every colour exactly as in the first picture (a silver "
                                "character stays silver, a grey one grey), on plain light paper, no text, "

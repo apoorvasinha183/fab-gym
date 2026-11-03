@@ -365,6 +365,7 @@ class Looks(unittest.TestCase):
             sc = json.loads(f.read_text())
             known = set(sc.get("plates", {})) | set(sc.get("drawings", {})) | set(sc.get("machines", {})) | {"none"}
             known |= {f"{k}~{i + 1}" for k, p in sc.get("plates", {}).items() for i in range(int(p.get("variants", 0)))}
+            known |= {f"{k}@{s}" for k, dd in sc.get("drawings", {}).items() if dd.get("mouths") for s in ("rest", "ah", "ee", "oh", "oo", "ff", "ll", "ss")}
             for shot in sc["shots"]:
                 for lv in shot["levels"]:
                     used = [x[0] for x in lv.get("cels", [])] + list(lv.get("cycle", []))
@@ -372,3 +373,20 @@ class Looks(unittest.TestCase):
                 for ins in shot.get("insets", []):
                     used = {x[0] for x in ins["cels"]}
                     self.assertFalse(used - known, f"{shot['id']} inset: {sorted(used - known)} not directed")
+
+
+class Lipsync(unittest.TestCase):
+    """D24: a line's mouth shapes come from its letters, are held on twos and fill only the line's own frames."""
+
+    def test_d24_mouths_follow_the_line_and_hold_on_twos(self):
+        from viz.drawn import lipsync
+        self.assertEqual(lipsync.shapes("I've grown.")[:3], ["ah", "ff", "ee"])
+        lines = [{"who": "grain", "from": 1.0, "to": 2.0, "text": "There go my travelling companions!"},
+                 {"who": "narrator", "from": 2.0, "to": 3.0, "text": "Not Grain's line."}]
+        cels = lipsync.talk([["G", 72]], "G", lines, 0.0, "grain")
+        self.assertEqual(sum(k for _, k in cels), 72)
+        self.assertEqual(cels[0], ["G", 24])                       # nothing before the line starts at 1 s
+        self.assertEqual(cels[-1], ["G", 24])                      # the narrator's line moves no mouth of Grain's
+        inner = cels[1:-1]
+        self.assertTrue(all(name.startswith("G@") for name, _ in inner))
+        self.assertTrue(all(k >= 2 for _, k in inner[:-1]))         # on twos

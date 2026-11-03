@@ -1,6 +1,6 @@
 {
  "about": "The film's looks (docs/ART-DIRECTION.md). A look sets how every background and every drawing is painted; the direction (poses, timing, places) is shared by all looks. 'colour' is the colour script: the light of each scene, used in its backgrounds and its drawings alike, so a character is lit by the room it stands in.",
- "chosen": "storybook",
+ "chosen": "theatrical",
  "looks": {
   "comic": {
    "name": "Clean comic (the first cut)",
@@ -48,6 +48,99 @@
    "style_ref": "film/drawn/looks/flatcomic-plate.jpg",
    "cel_ref": "film/drawn/looks/flatcomic-cel.jpg",
    "colour": {}
+  },
+  "theatrical": {
+   "name": "Theatrical cast in storybook rooms",
+   "plate": "A wide 16:9 background painting for a 1940s-era hand-painted animated feature film, no characters, no people, no faces, no text, in the painting technique of the attached picture only (its brushwork, edges and haze; never its place, its objects or its colours): opaque gouache and watercolour, visible brush texture, broad simple shapes, soft edges, gentle atmospheric depth and haze, the clearest detail and strongest contrast only in the middle where the action is, restrained detail elsewhere, no hard specular highlights, no glossy rendering, no digital look. ",
+   "cel": "a character drawn like a 1940s golden-age theatrical cartoon short: confident full-bodied construction, a strong line of action, squash and stretch, big expressive eyes with eyelids and eyebrows, an articulate mouth, four-fingered expressive hands, a lively tapered warm brown-black ink line, rich painted cel colour with one shadow tone on the side away from the light, appealing for grown-ups as well as children, nothing babyish or toy-like, no gloss, no rim light",
+   "style_ref": "film/drawn/looks/storybook-plate.jpg",
+   "cel_ref": "film/drawn/looks/theatrical-cel.jpg",
+   "colour": {
+    "0": "the light of a dim warm evening, deep blue-black with one warm sandy beam",
+    "1": "warm sandy daylight with soft golden shadows",
+    "2": "charcoal shadows, burnt-orange firelight and cream highlights",
+    "3": "pale lilac and frosty white light, soft and cool",
+    "4": "cool silver light; a white-orange glow only where there is melt",
+    "5": "cool silver-grey daylight of a clean workshop",
+    "6": "cool blue night light with teal glowing seams",
+    "7": "cool blue and teal light of a clean room, each machine adding its own colour (yellow, violet, white)",
+    "8": "dark with beams of stained-glass colour, gold and violet",
+    "9": "soft green light of a test station",
+    "10": "cool slate light with warm sparks",
+    "11": "warm green and gold light of a circuit board",
+    "12": "warm sunset gold and orange on the beach"
+   },
+   "flicker": 8.0,
+   "shadow": true,
+   "grade": {
+    "0": [
+     0.85,
+     0.85,
+     1.0
+    ],
+    "1": [
+     1.0,
+     0.95,
+     0.85
+    ],
+    "2": [
+     1.0,
+     0.82,
+     0.65
+    ],
+    "3": [
+     0.95,
+     0.9,
+     1.0
+    ],
+    "4": [
+     0.88,
+     0.92,
+     1.0
+    ],
+    "5": [
+     0.92,
+     0.94,
+     1.0
+    ],
+    "6": [
+     0.82,
+     0.95,
+     0.98
+    ],
+    "7": [
+     0.85,
+     0.95,
+     1.0
+    ],
+    "8": [
+     0.95,
+     0.88,
+     1.0
+    ],
+    "9": [
+     0.88,
+     1.0,
+     0.9
+    ],
+    "10": [
+     0.9,
+     0.92,
+     0.98
+    ],
+    "11": [
+     1.0,
+     0.96,
+     0.86
+    ],
+    "12": [
+     1.0,
+     0.9,
+     0.78
+    ]
+   },
+   "grade_strength": 0.35,
+   "sheet_mode": "redesign"
   }
  }
 }
