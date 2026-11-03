@@ -1,0 +1,386 @@
+{
+ "scene": "6",
+ "title": "Into the fab",
+ "start": 74.0,
+ "end": 84.0,
+ "plates": {
+  "door": {
+   "prompt": "The dark outside of a chip factory at night: a big closed sliding door on the right with glowing teal light lines around its seams, an overhead rail running from left to right into the door at the upper third of the picture, an empty floor in front.",
+   "variants": 2,
+   "variant": "the teal light lines pulse a little brighter"
+  },
+  "inside": {
+   "prompt": "Inside a chip factory like a tidy diorama: neat rows of white machines, an overhead rail across the upper third, soft light, the whole picture framed by a thin glowing teal border.",
+   "variants": 2,
+   "variant": "the teal border glows a little brighter"
+  }
+ },
+ "drawings": {
+  "b_ride1": {
+   "sheet": "grain-06-wafer",
+   "pose": "small, sitting inside a little clear box that hangs from a rail trolley above it, peeking out over the edge, holding on, excited"
+  },
+  "b_ride2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "b_ride1",
+   "pose": "the same, the box swaying a little the other way, still peeking out, excited"
+  },
+  "l_wave": {
+   "sheet": "lou-latency",
+   "pose": "standing, waving hello with one hand, the other hand on its hip, cheerful"
+  },
+  "l_stamp1": {
+   "sheet": "lou-latency",
+   "pose": "standing, raising a big rubber stamp high in one hand, cheerful"
+  },
+  "l_stamp2": {
+   "sheet": "lou-latency",
+   "kind": "next",
+   "after": "l_stamp1",
+   "pose": "bringing the big rubber stamp down in front of it, eyes squeezed happily"
+  },
+  "l_watch": {
+   "sheet": "lou-latency",
+   "pose": "standing, arms folded, nodding, pleased"
+  }
+ },
+ "shots": [
+  {
+   "id": "6-1",
+   "start": 74.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "door",
+      "door~1",
+      "door~2",
+      "door~1"
+     ],
+     "on": 8
+    },
+    {
+     "name": "box",
+     "depth": 0.2,
+     "height": 440,
+     "cels": [
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ]
+     ],
+     "path": [
+      [
+       0,
+       300,
+       40
+      ],
+      [
+       119,
+       1250,
+       40
+      ]
+     ],
+     "anchor": "top"
+    },
+    {
+     "name": "lou",
+     "depth": 0.2,
+     "height": 420,
+     "cels": [
+      [
+       "l_wave",
+       34
+      ],
+      [
+       "l_stamp1",
+       20
+      ],
+      [
+       "l_stamp2",
+       10
+      ],
+      [
+       "l_stamp1",
+       10
+      ],
+      [
+       "l_stamp2",
+       46
+      ]
+     ],
+     "at": [
+      1690,
+      980
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 60,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "simulated from here",
+     "from": 74,
+     "to": 120,
+     "y": 470
+    }
+   ]
+  },
+  {
+   "id": "6-2",
+   "start": 79.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "inside",
+      "inside~1",
+      "inside~2",
+      "inside~1"
+     ],
+     "on": 8
+    },
+    {
+     "name": "box",
+     "depth": 0.2,
+     "height": 440,
+     "cels": [
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ],
+      [
+       "b_ride1",
+       6
+      ],
+      [
+       "b_ride2",
+       6
+      ]
+     ],
+     "path": [
+      [
+       0,
+       250,
+       30
+      ],
+      [
+       119,
+       1350,
+       30
+      ]
+     ],
+     "anchor": "top"
+    },
+    {
+     "name": "lou",
+     "depth": 0.2,
+     "height": 340,
+     "cels": [
+      [
+       "l_watch",
+       120
+      ]
+     ],
+     "at": [
+      1760,
+      1000
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 80,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "SMT2020, simulated",
+     "from": 20,
+     "to": 110,
+     "y": 560
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1009 @@
+{
+ "scene": "7",
+ "title": "The loop",
+ "start": 84.0,
+ "end": 120.0,
+ "plates": {
+  "chamber": {
+   "prompt": "A process chamber close up: a round platform under a glass dome, a fine pale mist falling gently from above, soft blue light, the platform empty.",
+   "variants": 2,
+   "variant": "the mist has fallen a little lower"
+  },
+  "litho": {
+   "prompt": "A yellow-lit lithography room: a patterned glass mask plate held above a round stage, beams of light coming down through it, warm yellow light, the stage empty.",
+   "variants": 2,
+   "variant": "the beams of light flash a little brighter"
+  },
+  "etch": {
+   "prompt": "An etch chamber filled with a glowing violet plasma haze, sparks of violet light, a round stage in the middle, empty.",
+   "variants": 2,
+   "variant": "the violet haze swirls a little"
+  },
+  "wash": {
+   "prompt": "A wash station: a clear sheet of water falling on the left, a green scanning light line across a round stage, clean white light, the stage empty."
+  },
+  "blur": {
+   "prompt": "A ring of process chambers blurred with speed lines, teal and yellow streaks of light rushing around, an empty round stage in the middle.",
+   "variants": 2,
+   "variant": "the speed streaks have moved on"
+  },
+  "city": {
+   "prompt": "A glowing stack of thin city floors rising like a building cross-section behind a round stage, tiny lights in every floor, a counter panel on the right, warm light.",
+   "variants": 2,
+   "variant": "more of the tiny lights in the floors are lit"
+  },
+  "done": {
+   "prompt": "A calm round stage in warm settled light, behind it a tall finished stack of many glowing city-like floors, soft glow."
+  }
+ },
+ "drawings": {
+  "f_up": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing, looking up at falling mist, curious"
+  },
+  "f_up2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "f_up",
+   "pose": "standing, a thin shiny film settling over its head, blinking, smiling"
+  },
+  "p_lit": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing, stripes of patterned light across its body, squinting, bracing"
+  },
+  "p_lit2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "p_lit",
+   "pose": "standing, the stripes of light brighter, squinting the other way, bracing"
+  },
+  "e_brave": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing in a violet glow, fists up, brave face, cheeks puffed"
+  },
+  "e_brave2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "e_brave",
+   "pose": "standing, teeth chattering, shivering, fists up, brave face"
+  },
+  "k_wash": {
+   "sheet": "grain-06-wafer",
+   "pose": "dripping wet, eyes shut, shaking off water drops"
+  },
+  "k_tick": {
+   "sheet": "grain-06-wafer",
+   "pose": "big smile, a green tick mark floating beside it, thumbs up"
+  },
+  "c_spin1": {
+   "sheet": "grain-07-coach",
+   "pose": "spinning fast, arms out, grinning, red headband, little speed lines"
+  },
+  "c_spin2": {
+   "sheet": "grain-07-coach",
+   "kind": "next",
+   "after": "c_spin1",
+   "pose": "spinning fast, turned a quarter, arms out, grinning, red headband, speed lines"
+  },
+  "c_flex": {
+   "sheet": "grain-07-coach",
+   "pose": "flexing one arm, winking, red headband, confident grin"
+  },
+  "c_proud": {
+   "sheet": "grain-07-coach",
+   "pose": "standing tall, fists on hips, red headband, proud grin"
+  },
+  "c_smile": {
+   "sheet": "grain-07-coach",
+   "pose": "standing calm, warm smile, waving to us with one hand"
+  }
+ },
+ "shots": [
+  {
+   "id": "7-1",
+   "start": 84.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "chamber",
+      "chamber~1",
+      "chamber~2",
+      "chamber~1"
+     ],
+     "on": 8
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "f_up",
+       40
+      ],
+      [
+       "f_up2",
+       56
+      ]
+     ],
+     "at": [
+      960,
+      930
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 40,
+      "y": 0,
+      "zoom": 1.06
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-2",
+   "start": 88.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "litho",
+      "litho~1",
+      "litho~2",
+      "litho~1"
+     ],
+     "on": 4
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ],
+      [
+       "p_lit",
+       6
+      ],
+      [
+       "p_lit2",
+       6
+      ]
+     ],
+     "at": [
+      960,
+      930
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 60,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-3",
+   "start": 92.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "etch",
+      "etch~1",
+      "etch~2",
+      "etch~1"
+     ],
+     "on": 4
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ]
+     ],
+     "at": [
+      960,
+      930
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 80,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-4",
+   "start": 97.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "wash",
+       120
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "k_wash",
+       40
+      ],
+      [
+       "k_tick",
+       22
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "e_brave",
+       4
+      ],
+      [
+       "e_brave2",
+       4
+      ],
+      [
+       "k_tick",
+       22
+      ]
+     ],
+     "at": [
+      960,
+      930
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 80,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-5",
+   "start": 102.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "blur",
+      "blur~1",
+      "blur~2",
+      "blur~1"
+     ],
+     "on": 2
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_spin2",
+       2
+      ],
+      [
+       "c_spin1",
+       2
+      ],
+      [
+       "c_flex",
+       46
+      ]
+     ],
+     "at": [
+      960,
+      940
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 100,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-6",
+   "start": 106.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "city",
+      "city~1",
+      "city~2",
+      "city~1"
+     ],
+     "on": 12
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "c_proud",
+       96
+      ]
+     ],
+     "at": [
+      960,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.2
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "583 steps",
+     "from": 30,
+     "to": 96,
+     "y": 110
+    }
+   ]
+  },
+  {
+   "id": "7-7",
+   "start": 110.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "city",
+      "city~1",
+      "city~2",
+      "city~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ],
+      [
+       "c_spin1",
+       3
+      ],
+      [
+       "c_spin2",
+       3
+      ]
+     ],
+     "at": [
+      960,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 30,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 0,
+      "y": -30,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "7-8",
+   "start": 115.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "done",
+       120
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 400,
+     "cels": [
+      [
+       "c_proud",
+       24
+      ],
+      [
+       "c_smile",
+       96
+      ]
+     ],
+     "at": [
+      960,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.1
+     }
+    ],
+    [
+     119,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  }
+ ]
+}

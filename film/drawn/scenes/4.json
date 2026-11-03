@@ -1,0 +1,381 @@
+{
+ "scene": "4",
+ "title": "The crystal",
+ "start": 46.0,
+ "end": 62.0,
+ "plates": {
+  "crucible": {
+   "prompt": "A round crucible full of glowing white-orange molten silicon seen from just above its rim, a dark hall above, a thin metal rod hanging straight down from the top middle towards the melt, heat shimmer.",
+   "variants": 2,
+   "variant": "the glow of the melt shimmers and ripples a little"
+  },
+  "meltface": {
+   "prompt": "A close-up of a glowing white-orange molten surface across the bottom of the picture, dark above it, a soft column of light rising from the middle of the melt, heat shimmer.",
+   "variants": 2,
+   "variant": "the glowing surface ripples a little"
+  },
+  "grid": {
+   "prompt": "A macro close-up: the bottom third a bright glowing orange melt, above it a neat silver grid of round atoms like marbles in perfect rows, tiny sparkles along the line where they meet.",
+   "variants": 2,
+   "variant": "the sparkles along the line where they meet have moved"
+  },
+  "hall": {
+   "prompt": "A tall clean factory hall with a tall silver crystal-pulling machine on the left, its chamber open, a temperature dial on the wall, and one small adult person in a white clean-room suit standing on the floor on the right, about a third of the picture's height, for scale."
+  }
+ },
+ "drawings": {
+  "c_seed": {
+   "sheet": "grain-05-crystal",
+   "pose": "very small, only the size of a thimble, hanging from a thin rod by the top of its head, looking down nervously, arms tucked in"
+  },
+  "c_spin1": {
+   "sheet": "grain-05-crystal",
+   "pose": "spinning, seen from the front, a thin rod on top of its head, arms out, laughing"
+  },
+  "c_spin2": {
+   "sheet": "grain-05-crystal",
+   "kind": "next",
+   "after": "c_spin1",
+   "pose": "spinning, turned a quarter to its left, arms out, laughing"
+  },
+  "c_spin3": {
+   "sheet": "grain-05-crystal",
+   "kind": "next",
+   "after": "c_spin1",
+   "pose": "spinning, seen from the side, arms out, laughing"
+  },
+  "c_watch": {
+   "sheet": "grain-05-crystal",
+   "pose": "looking down at its own feet in wonder, mouth open, small sparkles at its feet"
+  },
+  "c_tall": {
+   "sheet": "grain-05-crystal",
+   "pose": "standing tall and proud, hands on hips, chest out, big smile"
+  }
+ },
+ "shots": [
+  {
+   "id": "4-1",
+   "start": 46.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "crucible",
+      "crucible~1",
+      "crucible~2",
+      "crucible~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 150,
+     "cels": [
+      [
+       "c_seed",
+       96
+      ]
+     ],
+     "path": [
+      [
+       0,
+       960,
+       520
+      ],
+      [
+       95,
+       960,
+       640
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.08
+     }
+    ]
+   ]
+  },
+  {
+   "id": "4-2",
+   "start": 50.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "meltface",
+      "meltface~1",
+      "meltface~2",
+      "meltface~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin1",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ],
+      [
+       "c_spin3",
+       4
+      ],
+      [
+       "c_spin2",
+       4
+      ]
+     ],
+     "path": [
+      [
+       0,
+       960,
+       900
+      ],
+      [
+       95,
+       960,
+       760
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": -60,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "4-3",
+   "start": 54.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "grid",
+      "grid~1",
+      "grid~2",
+      "grid~1"
+     ],
+     "on": 4
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 520,
+     "cels": [
+      [
+       "c_watch",
+       96
+      ]
+     ],
+     "at": [
+      960,
+      1060
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.04
+     }
+    ]
+   ]
+  },
+  {
+   "id": "4-4",
+   "start": 58.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "hall",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 175,
+     "cels": [
+      [
+       "c_tall",
+       96
+      ]
+     ],
+     "at": [
+      1470,
+      668
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 300,
+      "y": -60,
+      "zoom": 1.5
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "1414 °C",
+     "from": 30,
+     "to": 96,
+     "y": 110
+    }
+   ]
+  }
+ ]
+}

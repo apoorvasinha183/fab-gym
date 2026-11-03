@@ -24,6 +24,7 @@ ART = ROOT / "data/drawn/scenes"
 SHEETS = ROOT / "data/drawn/sheets"
 W, H, FPS = 1920, 1080, 24
 PW, PH = W + 240, H + 135
+FLICKER = 22.0   # mean difference (0-255) above which a painted variant is held as the first plate
 CHAR = ("The same character as in the attached model sheet, same face, colours and outline, drawn once, full body, alone "
         "in the middle of the picture, " + produce.BACKDROP + " Pose: ")
 
@@ -179,8 +180,9 @@ def render(n):
                 else:
                     cut = poses.fit(pilot.key(img), float(lv["height"]))
                     d[nm] = cut
-                    anchors[nm] = poses.measure(cut)["contact"]
-            spec = {k: v for k, v in lv.items() if k not in ("plate", "height")}
+                    # a hanging thing (a box on a rail) is pegged by the middle of its top edge, not by its feet
+                    anchors[nm] = (cut.width / 2, 0) if lv.get("anchor") == "top" else poses.measure(cut)["contact"]
+            spec = {k: v for k, v in lv.items() if k not in ("plate", "height", "anchor")}
             if lv.get("plate"):
                 spec.setdefault("at", [-120, -67])
             for key in ("cels",):
@@ -188,6 +190,11 @@ def render(n):
                     spec[key] = [[x[0] if x[0] in d else "none", x[1]] for x in spec[key]]
             if "cycle" in spec:
                 spec["cycle"] = [x for x in spec["cycle"] if x in d] or ["none"]
+                if lv.get("plate") and spec["cycle"][0] != "none":
+                    # a painted variant that repaints the light or framing flickers; hold the first plate instead
+                    base = np.asarray(d[spec["cycle"][0]].convert("RGB"), float)
+                    spec["cycle"] = [x if np.abs(np.asarray(d[x].convert("RGB"), float) - base).mean() <= FLICKER
+                                     else spec["cycle"][0] for x in spec["cycle"]]
             levels.append(spec)
         s = sh.load({"shot": shot["id"], "frames": int(shot["frames"]), "fps": FPS, "levels": levels,
                      "camera": shot.get("camera", []), "cuts": shot.get("cuts", [])})

@@ -1,0 +1,176 @@
+{
+ "scene": "8",
+ "title": "Identical chips",
+ "start": 120.0,
+ "end": 130.0,
+ "plates": {
+  "reveal": {
+   "prompt": "A dark stage lit by beams of coloured light like stained glass falling from above, glints of colour on the floor, an empty space in the middle.",
+   "variants": 2,
+   "variant": "the coloured glints have moved a little"
+  },
+  "streets": {
+   "prompt": "Looking down into a chip: glowing streets of tiny switches laid out like a city grid seen from above, thin teal lines, a bright centre.",
+   "variants": 2,
+   "variant": "the tiny lights in the streets flicker"
+  }
+ },
+ "drawings": {
+  "d_tile": {
+   "sheet": "grain-08-die",
+   "pose": "standing in the front middle of a crowd of identical little green tile characters with red headbands, all in neat rows, it waving"
+  },
+  "d_tile2": {
+   "sheet": "grain-08-die",
+   "kind": "next",
+   "after": "d_tile",
+   "pose": "the same crowd in neat rows, all of them smiling and waving together"
+  },
+  "d_center": {
+   "sheet": "grain-08-die",
+   "pose": "alone, floating, arms out wide, amazed, looking around"
+  }
+ },
+ "shots": [
+  {
+   "id": "8-1",
+   "start": 120.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "reveal",
+      "reveal~1",
+      "reveal~2",
+      "reveal~1"
+     ],
+     "on": 10
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 600,
+     "cels": [
+      [
+       "d_tile",
+       12
+      ],
+      [
+       "d_tile2",
+       12
+      ],
+      [
+       "d_tile",
+       12
+      ],
+      [
+       "d_tile2",
+       12
+      ],
+      [
+       "d_tile",
+       12
+      ],
+      [
+       "d_tile2",
+       12
+      ],
+      [
+       "d_tile",
+       12
+      ],
+      [
+       "d_tile2",
+       12
+      ],
+      [
+       "d_tile",
+       12
+      ],
+      [
+       "d_tile2",
+       12
+      ]
+     ],
+     "at": [
+      960,
+      1020
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.08
+     }
+    ]
+   ]
+  },
+  {
+   "id": "8-2",
+   "start": 125.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "streets",
+      "streets~1",
+      "streets~2",
+      "streets~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 300,
+     "cels": [
+      [
+       "d_center",
+       120
+      ]
+     ],
+     "at": [
+      960,
+      700
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.5
+     }
+    ]
+   ]
+  }
+ ]
+}

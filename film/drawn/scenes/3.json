@@ -1,0 +1,537 @@
+{
+ "scene": "3",
+ "title": "Distilled",
+ "start": 34.0,
+ "end": 46.0,
+ "plates": {
+  "column": {
+   "prompt": "The inside of a tall glass distillation column seen close up, curved glass walls, soft swirling lilac haze rising through it, warm light glowing from below, a calm empty space in the middle.",
+   "variants": 2,
+   "variant": "the swirls of lilac haze have drifted a little higher"
+  },
+  "filters": {
+   "prompt": "The middle of a tall glass column: thin round filter plates crossing it one above another, pale lilac haze between them, a round gauge on the glass wall to the right, an empty space in the middle."
+  },
+  "rods": {
+   "prompt": "The cold top of a tall glass column: a frosty chamber with a row of tall grey solid rods standing upright at the back, frost sparkles in the air, pale blue light, an empty floor in front."
+  }
+ },
+ "drawings": {
+  "g_melt": {
+   "sheet": "grain-03-grey",
+   "pose": "standing, its lower half melting away into soft lilac mist, eyes wide and surprised"
+  },
+  "w_swirl1": {
+   "sheet": "grain-04-wisp",
+   "pose": "floating upward, a curling lilac tail of gas below it, arms out, happy"
+  },
+  "w_swirl2": {
+   "sheet": "grain-04-wisp",
+   "kind": "next",
+   "after": "w_swirl1",
+   "pose": "floating upward, the curling tail swung the other way, arms out, happy"
+  },
+  "gw_b": {
+   "kind": "between",
+   "between": [
+    "g_melt",
+    "w_swirl1"
+   ]
+  },
+  "w_shake1": {
+   "sheet": "grain-04-wisp",
+   "pose": "floating, shaking itself like a wet dog, little brown dots flying off its body, eyes squeezed"
+  },
+  "w_shake2": {
+   "sheet": "grain-04-wisp",
+   "kind": "next",
+   "after": "w_shake1",
+   "pose": "floating, shaking the other way, more little brown dots flying off, eyes squeezed"
+  },
+  "s_fall1": {
+   "sheet": "specks",
+   "pose": "three small round brown specks drifting downward, little arms up, plain faces"
+  },
+  "s_fall2": {
+   "sheet": "specks",
+   "kind": "next",
+   "after": "s_fall1",
+   "pose": "the same three small brown specks drifting a little lower, little arms up"
+  },
+  "w_freeze": {
+   "sheet": "grain-04-wisp",
+   "pose": "standing tall and straight like a small upright rod, its body turned pale grey and frosty, tiny frost sparkles, still smiling"
+  },
+  "wf_b": {
+   "kind": "between",
+   "between": [
+    "w_swirl1",
+    "w_freeze"
+   ]
+  }
+ },
+ "shots": [
+  {
+   "id": "3-1",
+   "start": 34.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "column",
+      "column~1",
+      "column~2",
+      "column~1"
+     ],
+     "on": 8
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 340,
+     "cels": [
+      [
+       "g_melt",
+       22
+      ],
+      [
+       "gw_b",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       6
+      ],
+      [
+       "w_swirl1",
+       6
+      ],
+      [
+       "w_swirl2",
+       2
+      ]
+     ],
+     "path": [
+      [
+       0,
+       960,
+       930
+      ],
+      [
+       28,
+       960,
+       920
+      ],
+      [
+       95,
+       960,
+       800
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": -40,
+      "zoom": 1.04
+     }
+    ]
+   ]
+  },
+  {
+   "id": "3-2",
+   "start": 38.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "filters",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 320,
+     "cels": [
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ],
+      [
+       "w_shake1",
+       4
+      ],
+      [
+       "w_shake2",
+       4
+      ]
+     ],
+     "at": [
+      820,
+      760
+     ]
+    },
+    {
+     "name": "specks",
+     "depth": 0.2,
+     "height": 120,
+     "cels": [
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ],
+      [
+       "s_fall1",
+       4
+      ],
+      [
+       "s_fall2",
+       4
+      ]
+     ],
+     "path": [
+      [
+       0,
+       980,
+       720
+      ],
+      [
+       95,
+       1060,
+       1180
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": -30,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "99%",
+     "from": 0,
+     "to": 32,
+     "y": 110
+    },
+    {
+     "text": "99.99%",
+     "from": 32,
+     "to": 64,
+     "y": 110
+    },
+    {
+     "text": "99.9999%",
+     "from": 64,
+     "to": 96,
+     "y": 110
+    }
+   ]
+  },
+  {
+   "id": "3-3",
+   "start": 42.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "rods",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "w_swirl1",
+       20
+      ],
+      [
+       "wf_b",
+       6
+      ],
+      [
+       "w_freeze",
+       70
+      ]
+     ],
+     "at": [
+      960,
+      940
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "99.9999999% pure",
+     "from": 40,
+     "to": 96,
+     "y": 110
+    }
+   ]
+  }
+ ]
+}

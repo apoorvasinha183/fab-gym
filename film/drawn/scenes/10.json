@@ -1,0 +1,205 @@
+{
+ "scene": "10",
+ "title": "Cut free",
+ "start": 138.0,
+ "end": 146.0,
+ "plates": {
+  "grind": {
+   "prompt": "A low angle across a big round disc turned over on a grinding wheel, a spray of sparks and fine dust, dark around.",
+   "variants": 2,
+   "variant": "the sparks spray the other way"
+  },
+  "dice": {
+   "prompt": "A low angle across a grid of green tiles with a glowing red laser line running along the narrow gaps between them, small crack lines appearing.",
+   "variants": 2,
+   "variant": "the laser line has run further along the gaps"
+  }
+ },
+ "drawings": {
+  "x_flip": {
+   "sheet": "grain-08-die",
+   "pose": "rolled over onto its side, lying sideways in mid-air with its legs kicked out, surprised, its face the right way up"
+  },
+  "x_dizzy": {
+   "sheet": "grain-08-die",
+   "pose": "standing, wobbling, dizzy, laughing, little stars over its head"
+  },
+  "x_free": {
+   "sheet": "grain-08-die",
+   "pose": "stepping forward on its own, arms up, cheering"
+  },
+  "x_free2": {
+   "sheet": "grain-08-die",
+   "kind": "next",
+   "after": "x_free",
+   "pose": "stepping forward with the other foot, arms up, cheering"
+  }
+ },
+ "shots": [
+  {
+   "id": "10-1",
+   "start": 138.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "grind",
+      "grind~1",
+      "grind~2",
+      "grind~1"
+     ],
+     "on": 3
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "x_flip",
+       30
+      ],
+      [
+       "x_dizzy",
+       66
+      ]
+     ],
+     "at": [
+      960,
+      950
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.04
+     }
+    ]
+   ]
+  },
+  {
+   "id": "10-2",
+   "start": 142.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "dice",
+      "dice~1",
+      "dice~2",
+      "dice~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 360,
+     "cels": [
+      [
+       "x_dizzy",
+       30
+      ],
+      [
+       "x_free",
+       6
+      ],
+      [
+       "x_free2",
+       6
+      ],
+      [
+       "x_free",
+       6
+      ],
+      [
+       "x_free2",
+       6
+      ],
+      [
+       "x_free",
+       6
+      ],
+      [
+       "x_free2",
+       6
+      ],
+      [
+       "x_free",
+       6
+      ],
+      [
+       "x_free2",
+       6
+      ],
+      [
+       "x_free",
+       6
+      ],
+      [
+       "x_free2",
+       6
+      ],
+      [
+       "x_free",
+       6
+      ]
+     ],
+     "path": [
+      [
+       0,
+       900,
+       950
+      ],
+      [
+       30,
+       900,
+       950
+      ],
+      [
+       95,
+       1080,
+       950
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.08
+     }
+    ]
+   ]
+  }
+ ]
+}

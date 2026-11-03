@@ -1,0 +1,145 @@
+{
+ "scene": "11",
+ "title": "A home",
+ "start": 146.0,
+ "end": 154.0,
+ "plates": {
+  "board": {
+   "prompt": "A close three-quarter view of a green circuit board: a square landing pad in the middle with rows of small gold pins around it, soft warm light, the pad empty."
+  }
+ },
+ "drawings": {
+  "b_land": {
+   "sheet": "grain-08-die",
+   "pose": "sitting with its knees up, looking small and shy"
+  },
+  "b_wire": {
+   "sheet": "grain-08-die",
+   "pose": "standing, thin gold wires arcing out from its edges, little sparkles, surprised and pleased"
+  },
+  "b_peek": {
+   "sheet": "grain-10-packaged",
+   "pose": "standing, peeking up with big happy eyes, bow tie"
+  },
+  "b_home": {
+   "sheet": "grain-10-packaged",
+   "pose": "standing, smiling, waving with one hand, bow tie"
+  }
+ },
+ "shots": [
+  {
+   "id": "11-1",
+   "start": 146.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "board",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 240,
+     "cels": [
+      [
+       "b_land",
+       40
+      ],
+      [
+       "b_wire",
+       56
+      ]
+     ],
+     "at": [
+      960,
+      610
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ]
+  },
+  {
+   "id": "11-2",
+   "start": 150.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "board",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 260,
+     "cels": [
+      [
+       "b_wire",
+       30
+      ],
+      [
+       "b_peek",
+       20
+      ],
+      [
+       "b_home",
+       46
+      ]
+     ],
+     "at": [
+      960,
+      610
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ]
+  }
+ ]
+}

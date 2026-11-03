@@ -1,0 +1,382 @@
+{
+ "scene": "5",
+ "title": "Wafers",
+ "start": 62.0,
+ "end": 74.0,
+ "plates": {
+  "saw": {
+   "prompt": "A saw room: a long silver crystal cylinder lying on its side on a cradle across the middle of the picture, a frame of taut glinting wires over it, a fine sparkle of sawdust, cool light, the floor empty below."
+  },
+  "polish": {
+   "prompt": "A polishing station: a big round soft polishing pad seen at a low angle, soft white light, a calm empty space in the middle.",
+   "variants": 2,
+   "variant": "a soft band of shine has swept a little further across the pad"
+  },
+  "boxes": {
+   "prompt": "A clean bench under white light with a clear plastic box on the right holding a row of thin shiny round discs standing in slots, one slot empty, an empty bench in front on the left."
+  }
+ },
+ "drawings": {
+  "w_disc1": {
+   "sheet": "grain-06-wafer",
+   "pose": "falling, a thin disc tilting backwards, eyes wide, arms out"
+  },
+  "w_disc2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "w_disc1",
+   "pose": "falling, the thin disc tilted forwards now, eyes wide, arms out"
+  },
+  "w_shine": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing, facing us, its body mirror-bright with a soft white shine across it, delighted"
+  },
+  "w_shine2": {
+   "sheet": "grain-06-wafer",
+   "kind": "next",
+   "after": "w_shine",
+   "pose": "standing, facing us, the white shine streak moved further across its body, delighted, a little sparkle"
+  },
+  "w_slide": {
+   "sheet": "grain-06-wafer",
+   "pose": "leaning, sliding sideways to the right, waving goodbye with one hand"
+  }
+ },
+ "shots": [
+  {
+   "id": "5-1",
+   "start": 62.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "saw",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 260,
+     "cels": [
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ],
+      [
+       "w_disc1",
+       4
+      ],
+      [
+       "w_disc2",
+       4
+      ]
+     ],
+     "path": [
+      [
+       0,
+       1200,
+       760
+      ],
+      [
+       95,
+       1240,
+       980
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": -40,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 40,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "5-2",
+   "start": 66.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "polish",
+      "polish~1",
+      "polish~2",
+      "polish~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 420,
+     "cels": [
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ],
+      [
+       "w_shine",
+       6
+      ],
+      [
+       "w_shine2",
+       6
+      ]
+     ],
+     "at": [
+      960,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.15
+     }
+    ]
+   ]
+  },
+  {
+   "id": "5-3",
+   "start": 70.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "boxes",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 220,
+     "cels": [
+      [
+       "w_slide",
+       96
+      ]
+     ],
+     "path": [
+      [
+       0,
+       480,
+       770
+      ],
+      [
+       70,
+       1420,
+       770
+      ],
+      [
+       95,
+       1420,
+       770
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 80,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "a lot of 25",
+     "from": 50,
+     "to": 96,
+     "y": 110
+    }
+   ]
+  }
+ ]
+}

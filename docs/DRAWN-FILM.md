@@ -200,3 +200,10 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   across the ground; perspective applies only where the ground recedes. The test plate's ledge stones (about 3 cm) read
   85 px: 2,833 px a metre, so the 10 cm grey lump is 283 px and the thieves 227 px.
 
+- 3 Nov: the automated director (`direct.py`, `produce.py`) was dropped after shot 2-1 failed review twice (Grain a
+  speck, effects as floating icons; Muse Spark's reading of a plate's scale was unreliable). Every scene is now written
+  by hand in `film/drawn/scenes/<n>.json` and run by `scene.py` (draw, contact sheet, render).
+- 3 Nov: a painted plate variant whose mean difference from its plate is over 22 (of 255) is held as the plate; the
+  quarry's variants (41.7) flipped the sky from pink to gold. Each variant's prompt carries its number, since two
+  identical requests came back as one cached picture.
+- 3 Nov: a cycle's next drawings are each made from its first drawing, so a mistake in one does not carry into the next.

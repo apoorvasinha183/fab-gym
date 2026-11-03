@@ -1,0 +1,160 @@
+{
+ "scene": "9",
+ "title": "The exam",
+ "start": 130.0,
+ "end": 138.0,
+ "plates": {
+  "probe": {
+   "prompt": "Seen from above at a slight angle: a test station with a grid of small green tiles on a dark plate, a bed of fine silver needles hanging above the middle, cool light, the middle front empty."
+  }
+ },
+ "drawings": {
+  "n_wince": {
+   "sheet": "grain-08-die",
+   "pose": "looking up nervously, eyes squeezed, shoulders up, bracing"
+  },
+  "n_pass": {
+   "sheet": "grain-08-die",
+   "pose": "glowing soft green all over, big relieved smile, arms up"
+  },
+  "n_ouch": {
+   "sheet": "grain-08-die",
+   "pose": "hopping on one foot, one hand rubbing the top of its head, eyes wide, mouth open"
+  },
+  "n_red": {
+   "sheet": "grain-08-die",
+   "pose": "glowing soft red, a small red dot on its forehead, sheepish smile"
+  }
+ },
+ "shots": [
+  {
+   "id": "9-1",
+   "start": 130.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "probe",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "n_wince",
+       96
+      ]
+     ],
+     "at": [
+      960,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.06
+     }
+    ]
+   ]
+  },
+  {
+   "id": "9-2",
+   "start": 134.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "probe",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 380,
+     "cels": [
+      [
+       "n_wince",
+       28
+      ],
+      [
+       "n_pass",
+       36
+      ],
+      [
+       "n_ouch",
+       32
+      ]
+     ],
+     "at": [
+      880,
+      960
+     ]
+    },
+    {
+     "name": "sib",
+     "depth": 0.2,
+     "height": 300,
+     "cels": [
+      [
+       "none",
+       20
+      ],
+      [
+       "n_red",
+       76
+      ]
+     ],
+     "at": [
+      1460,
+      960
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.06
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.06
+     }
+    ]
+   ]
+  }
+ ]
+}
