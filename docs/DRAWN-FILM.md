@@ -54,7 +54,8 @@ One JSON file per shot, `film/drawn/sheets/<scene>-<shot>.json`, committed:
 ```
 
 `cels` lists [drawing, frames held]; `cycle` repeats its drawings, each held `on` frames; `path` keys a slide
-(frame, x, y), eased between keys; `depth` 1.0 is the far plate, which moves with the camera, and 0 the nearest.
+(frame, x, y), eased between keys; `depth` 1.0 is the farthest level, which slides a third as far as the camera moves, and
+0 the nearest, which slides the whole way.
 
 ## Checks
 
@@ -90,3 +91,8 @@ checked by Muse Spark, and some will be redrawn. Smooth in-betweens are where im
 limited animation: strong poses, holds, slides and smear drawings for fast moves.
 
 ## Changes
+
+- 3 Nov, during the build: the sentence on `depth` said the far plate moves with the camera; it slides least (a third
+  of the camera's move at depth 1, all of it at depth 0). D5's pop is a spike: over a quarter of the pixels change by
+  more than 8 levels, and over three times the change of the frames around it, so a steady pan over detailed paint
+  is not a pop. Tests unchanged.
