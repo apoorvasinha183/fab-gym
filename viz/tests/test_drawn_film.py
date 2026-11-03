@@ -198,5 +198,93 @@ class Words(unittest.TestCase):
             self.assertIn(name, text)
 
 
+def blob(canvas, box, colour=(251, 241, 230, 255)):
+    """A pose on its own canvas: a filled rounded body at box (x0, y0, x1, y1), the rest clear."""
+    img = Image.new("RGBA", canvas, (0, 0, 0, 0))
+    x0, y0, x1, y1 = box
+    a = np.zeros((canvas[1], canvas[0], 4), dtype=np.uint8)
+    yy, xx = np.mgrid[0:canvas[1], 0:canvas[0]]
+    cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+    m = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
+    a[m] = colour
+    return Image.fromarray(a, "RGBA")
+
+
+@unittest.skipIf(np is None, "numpy and Pillow are needed")
+class Poses(unittest.TestCase):
+    """Keeping a character steady across drawings made one at a time (docs/DRAWN-FILM.md, D13 to D17)."""
+
+    def setUp(self):
+        from viz.drawn import compose, poses, sheet as sh
+        self.compose, self.poses, self.sh = compose, poses, sh
+
+    def test_d13_anchors_are_measured_from_the_cut_out(self):
+        m = self.poses.measure(blob((100, 100), (30, 20, 70, 80)))
+        self.assertLessEqual(abs(m["contact"][0] - 50), 1)
+        self.assertLessEqual(abs(m["contact"][1] - 79), 1)
+        self.assertLessEqual(abs(m["height"] - 60), 1)
+        fx, fy = m["face"]
+        self.assertTrue(30 <= fx <= 70 and 20 <= fy <= 60, m)
+
+    def test_d14_swapping_poses_keeps_the_contact_point_and_the_size(self):
+        a = blob((100, 100), (30, 20, 70, 80))
+        b = self.poses.fit(blob((140, 140), (10, 50, 70, 130)), 60)      # drawn bigger and lower on a larger canvas
+        self.assertLessEqual(abs(self.poses.measure(b)["height"] - 60), 1)
+        d = {"plate": Image.new("RGBA", (W, H), (0, 0, 0, 255)), "A": a, "B": b}
+        anchors = {k: self.poses.measure(v)["contact"] for k, v in (("A", a), ("B", b))}
+        s = self.sh.load({"shot": "p", "frames": 4, "fps": 24, "levels": [
+            {"name": "plate", "depth": 1.0, "cels": [["plate", 4]]},
+            {"name": "grain", "depth": 0.5, "cels": [["A", 2], ["B", 2]], "at": [160, 150]}], "camera": []})
+        r = self.compose.Renderer(d, (W, H), anchors=anchors)
+        feet = []
+        for f in (0, 2):
+            fr = r.frame(s, f)
+            ys, xs = np.nonzero(fr.sum(-1) > 300)
+            low = ys.max()
+            feet.append((xs[ys == low].mean(), low))
+        self.assertLessEqual(abs(feet[0][0] - feet[1][0]), 1.0)
+        self.assertLessEqual(abs(feet[0][1] - feet[1][1]), 1.0)
+        self.assertLessEqual(abs(feet[0][1] - 150), 1.0, "the contact point lands where the sheet says")
+
+    def test_d15_a_planted_pose_that_moves_is_reported(self):
+        base = {"shot": "p", "frames": 6, "fps": 24, "camera": []}
+        moving = self.sh.load(dict(base, levels=[{"name": "grain", "depth": 0.5, "cels": [["stand", 6]],
+                                                  "path": [[0, 100, 150], [5, 130, 150]]}]))
+        self.assertEqual(self.poses.sliding(moving, planted={"stand"}), [1, 2, 3, 4, 5])
+        self.assertEqual(self.poses.sliding(moving, planted={"hop"}), [])
+        still = self.sh.load(dict(base, levels=[{"name": "grain", "depth": 0.5, "cels": [["stand", 6]], "at": [100, 150]}]))
+        self.assertEqual(self.poses.sliding(still, planted={"stand"}), [])
+
+    def test_d16_the_face_sits_on_the_face_point(self):
+        from viz.drawn import faces
+        drawings, anchors = faces.face_set(scale=1.0)
+        for name in ("eyes_open", "eyes_half", "eyes_shut", "mouth_rest", "mouth_a", "mouth_o", "mouth_e", "mouth_m", "mouth_smile"):
+            self.assertIn(name, drawings)
+            self.assertIn(name, anchors)
+        d = dict(drawings, plate=Image.new("RGBA", (W, H), (233, 211, 181, 255)))
+        s = self.sh.load({"shot": "f", "frames": 1, "fps": 24, "levels": [
+            {"name": "plate", "depth": 1.0, "cels": [["plate", 1]]},
+            {"name": "eyes", "depth": 0.5, "cels": [["eyes_open", 1]], "at": [120, 80]}], "camera": []})
+        fr = self.compose.Renderer(d, (W, H), anchors=anchors).frame(s, 0)
+        ys, xs = np.nonzero(fr.max(-1) < 60)                     # the dark pupils
+        self.assertLessEqual(abs(xs.mean() - 120), 2.0)
+        self.assertLessEqual(abs(ys.mean() - 80), 2.0)
+
+    def test_d17_a_tracked_character_moves_smoothly_unless_it_jumps(self):
+        from viz.drawn import track
+        a = blob((100, 100), (30, 20, 70, 80))
+        b = blob((100, 100), (10, 30, 50, 90))                   # the same body drawn somewhere else on its canvas
+        d = {"plate": Image.new("RGBA", (W, H), (0, 0, 0, 255)), "A": a, "B": b}
+        anchors = {k: self.poses.measure(v)["contact"] for k, v in (("A", a), ("B", b))}
+        lv = {"name": "grain", "depth": 0.0, "cels": [["A", 6], ["B", 6]], "path": [[0, 100, 150], [11, 155, 150]]}
+        s = self.sh.load({"shot": "t", "frames": 12, "fps": 24, "camera": [],
+                          "levels": [{"name": "plate", "depth": 1.0, "cels": [["plate", 12]]}, lv]})
+        key = (251, 241, 230)
+        pegged = track.centres(self.compose.Renderer(d, (W, H), anchors=anchors).frames(s), key)
+        self.assertEqual(track.jumps(pegged, limit=12.0), [])
+        loose = track.centres(self.compose.Renderer(d, (W, H)).frames(s), key)
+        self.assertEqual(track.jumps(loose, limit=12.0), [6])
+
+
 if __name__ == "__main__":
     unittest.main()

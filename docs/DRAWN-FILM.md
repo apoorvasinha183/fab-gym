@@ -57,6 +57,30 @@ One JSON file per shot, `film/drawn/sheets/<scene>-<shot>.json`, committed:
 (frame, x, y), eased between keys; `depth` 1.0 is the farthest level, which slides a third as far as the camera moves, and
 0 the nearest, which slides the whole way.
 
+## Keeping poses registered
+
+The painful part of drawn animation is keeping one character steady across drawings made one at a time; an image
+model makes it worse, since it puts the character at a slightly different place, size and angle in every picture. So
+every pose is pegged, as animators peg drawings on a bar:
+
+- **One canvas, one ground line.** Each pose is edited from its form's model sheet on the same canvas, centred, with
+  the same ground line, and the prompt says so.
+- **Anchors measured, not guessed.** From each cut-out, our code measures the contact point (the middle of the lowest
+  painted row: where it stands or rests), the face point (where its eyes go) and the body height. They are kept in the
+  pose library, `film/drawn/poses.json`, with the pose's form, view, action and source picture.
+- **Placed by anchor.** A sheet says where the contact point goes; the compositor puts the pose's contact point
+  there, never its corner, so swapping poses does not make the character jump.
+- **Size held.** Poses of one form are scaled to the form's height; only a pose marked squash or stretch may differ.
+- **Planted contacts do not slide.** A pose marked planted keeps its contact point still on the plate while it
+  shows; travel happens on poses that step, hop or slide.
+- **Faces drawn by us.** Grain's body poses come from Muse Image without a face; its eyes, blinks and mouth shapes
+  are our own drawings on their own level, put at each pose's face point. The face never drifts, and lip sync and
+  blinks cost no pictures.
+- **Line-ups.** Every form's poses are shown side by side on their anchors, so a drifted pose shows at a glance.
+- **Tracked after.** Each rendered shot is checked by following the character's painted area frame to frame; its
+  path must be smooth wherever the sheet holds or eases it (SAM 3.1's video tracking can do the same at $0.20 per
+  1,000 frames).
+
 ## Checks
 
 - **D1** Every frame of every sheet resolves to a drawing that exists, on every level.
@@ -73,6 +97,15 @@ One JSON file per shot, `film/drawn/sheets/<scene>-<shot>.json`, committed:
 - **D11** Every caption's words appear in `docs/CHIP-FILM.md`.
 - **D12** The end card names each Meta model used and the CC0 music (The Budding of Consciousness by Yoiyami, New
   Sunrise by nene).
+- **D13** Every pose's anchors are measured from its cut-out: the contact point is the middle of its lowest painted row,
+  the height is its painted height.
+- **D14** Swapping poses at one place keeps the contact point within 1 pixel on screen, and poses of one form are
+  scaled to the same height.
+- **D15** A sheet that moves a planted pose is reported (its frames named).
+- **D16** The face level puts the eyes at the pose's face point, within 2 pixels; blinks and mouth shapes come from a
+  fixed set.
+- **D17** In a rendered shot, the character's painted area moves smoothly: no frame-to-frame jump of its centre over
+  a set size where the sheet does not cut, step or slide it.
 
 ## In order
 
