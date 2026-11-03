@@ -21,17 +21,157 @@
   }
  },
  "drawings": {
+  "tumble_1": {
+   "sheet": "grain-02-quartz",
+   "pose": "tumbling forward on its side, arms out holding hands with the two red oxygen twins who tumble with it, all three surprised; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_2": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "rolled halfway over, lying on its back with its feet up, face looking up, still holding hands with the two red oxygen twins, all three wide-eyed; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_3": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "on its other side mid-tumble, still holding hands with the two red oxygen twins, all three dizzy; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_4": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "landing upright with a little bounce, still holding hands with the two red oxygen twins, all three dizzy and laughing; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "Q_cling": {
+   "sheet": "grain-02-quartz",
+   "pose": "standing between its two small red oxygen twins, holding their hands, all three looking up wide-eyed"
+  },
+  "land_squash": {
+   "sheet": "grain-02-quartz",
+   "pose": "just landed: its body squashed wide and low, knees bent, holding the twins' hands, the two twins bounced up into the air beside it"
+  },
+  "land_up": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "land_squash",
+   "pose": "springing back up: its body stretched tall and thin, arms up, the two twins still up in the air a little behind, holding its hands"
+  },
+  "land_settle": {
+   "kind": "between",
+   "between": [
+    "land_up",
+    "Q_cling"
+   ]
+  },
+  "T_lurk": {
+   "sheet": "carbon-thieves",
+   "pose": "both thieves crouching low side by side, sly grins, rubbing their hands"
+  },
   "lurk_b": {
    "sheet": "carbon-thieves",
    "kind": "next",
    "after": "T_lurk",
    "pose": "both thieves crouching side by side, sly grins, rubbing their hands the other way"
   },
-  "sit_b": {
-   "sheet": "grain-03-grey",
+  "T_grab": {
+   "sheet": "carbon-thieves",
+   "pose": "both thieves leaning forward, each taking a small red oxygen twin by the hand and pulling it along"
+  },
+  "run_1": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 1 of an 8-drawing run cycle, side view, running to the right: front foot just touching the ground ahead, back leg stretched behind, body upright"
+  },
+  "run_2": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 2 of the run cycle: front foot flat on the ground, knee bent, body at its lowest",
    "kind": "next",
-   "after": "G_sit",
-   "pose": "sitting on the ground, glum, a small puff of steam rising off its head, eyes half closed"
+   "after": "run_1"
+  },
+  "run_3": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 3 of the run cycle: back leg swinging forward past the standing leg, body rising",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "run_4": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 4 of the run cycle: pushing off the standing foot, both feet off the ground, body at its highest",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "run_5": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 5 of the run cycle: the other foot now just touching the ground ahead, the first leg stretched behind",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "run_6": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 6 of the run cycle: that foot flat on the ground, knee bent, body at its lowest",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "run_7": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 7 of the run cycle: the first leg swinging forward past the standing leg, body rising",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "run_8": {
+   "sheet": "carbon-thieves",
+   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 8 of the run cycle: pushing off, both feet off the ground, body at its highest",
+   "kind": "next",
+   "after": "run_1"
+  },
+  "G_look": {
+   "sheet": "grain-03-grey",
+   "pose": "looking down at its own grey body, surprised"
+  },
+  "shout_1": {
+   "sheet": "grain-03-grey",
+   "pose": "leaning back, breathing in, arms pulled to its sides, about to shout"
+  },
+  "shout_2": {
+   "sheet": "grain-03-grey",
+   "pose": "shouting, mouth wide open, both arms flung out forward"
+  },
+  "shout_3": {
+   "sheet": "grain-03-grey",
+   "pose": "still shouting, arms pumping forward, eyes squeezed"
+  },
+  "shout_4": {
+   "sheet": "grain-03-grey",
+   "pose": "arms dropping, mouth closing, shoulders slumping"
+  },
+  "shout_1b": {
+   "kind": "between",
+   "between": [
+    "shout_1",
+    "shout_2"
+   ]
+  },
+  "shout_2b": {
+   "kind": "between",
+   "between": [
+    "shout_2",
+    "shout_3"
+   ]
+  },
+  "shout_3b": {
+   "kind": "between",
+   "between": [
+    "shout_3",
+    "shout_4"
+   ]
+  },
+  "G_sad": {
+   "sheet": "grain-03-grey",
+   "pose": "standing alone, arms hanging down, head low, sad"
+  },
+  "G_sit": {
+   "sheet": "grain-03-grey",
+   "pose": "sitting on the ground, glum, a little steam rising off its head"
   },
   "sad_b": {
    "sheet": "grain-03-grey",
@@ -40,6 +180,12 @@
     "G_sad",
     "G_sit"
    ]
+  },
+  "sit_b": {
+   "sheet": "grain-03-grey",
+   "kind": "next",
+   "after": "G_sit",
+   "pose": "sitting on the ground, glum, a small puff of steam rising off its head, eyes half closed"
   }
  },
  "shots": [
@@ -71,9 +217,14 @@
        420
       ],
       [
-       30,
-       780,
-       580
+       14,
+       690,
+       452
+      ],
+      [
+       28,
+       790,
+       532
       ],
       [
        44,
@@ -136,8 +287,32 @@
        3
       ],
       [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_4",
+       2
+      ],
+      [
+       "land_squash",
+       3
+      ],
+      [
+       "land_up",
+       4
+      ],
+      [
+       "land_settle",
+       3
+      ],
+      [
        "Q_cling",
-       60
+       42
       ]
      ]
     },

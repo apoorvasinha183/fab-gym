@@ -324,3 +324,48 @@ class Scale(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Looks(unittest.TestCase):
+    """D20 to D22 (docs/ART-DIRECTION.md, docs/FILM-PLAYBOOK.md): the film's looks are data, the chosen look covers every
+    scene's light, and the first cut's prompts are unchanged by the look switch."""
+
+    def setUp(self):
+        import json
+        from pathlib import Path
+        self.root = Path(__file__).resolve().parents[2]
+        self.data = json.loads((self.root / "film/drawn/looks.json").read_text())
+
+    def test_d20_every_look_says_how_it_paints_and_has_its_style_pictures(self):
+        for name, look in self.data["looks"].items():
+            for k in ("name", "plate", "cel", "style_ref", "cel_ref", "colour"):
+                self.assertIn(k, look, f"{name} has no {k}")
+            for k in ("style_ref", "cel_ref"):
+                self.assertTrue((self.root / look[k]).is_file(), f"{name}: {look[k]} is missing")
+
+    def test_d21_the_chosen_look_lights_every_scene(self):
+        chosen = self.data["looks"][self.data["chosen"]]
+        scenes = sorted(int(p.stem) for p in (self.root / "film/drawn/scenes").glob("*.json"))
+        self.assertEqual(sorted(int(k) for k in chosen["colour"]), scenes)
+
+    def test_d22_the_comic_look_keeps_the_first_cuts_prompts_and_folders(self):
+        from viz.drawn import pilot, produce, scene
+        scene.use("comic")
+        self.assertEqual(scene.char(2), scene.CHAR)
+        self.assertEqual(scene.backdrop(2), produce.BACKDROP)
+        self.assertEqual(scene.plate_text(2, {"prompt": "x"}), pilot.PLATE + "x")
+        self.assertEqual(scene.ART, self.root / "data/drawn/scenes")
+        scene.use("storybook")
+        self.assertIn("lit by", scene.char(2))
+        self.assertEqual(scene.ART, self.root / "data/drawn/storybook/scenes")
+
+    def test_d23_every_picture_a_shot_uses_is_directed_so_any_look_can_paint_it(self):
+        import json
+        for f in sorted((self.root / "film/drawn/scenes").glob("*.json")):
+            sc = json.loads(f.read_text())
+            known = set(sc.get("plates", {})) | set(sc.get("drawings", {})) | set(sc.get("machines", {})) | {"none"}
+            known |= {f"{k}~{i + 1}" for k, p in sc.get("plates", {}).items() for i in range(int(p.get("variants", 0)))}
+            for shot in sc["shots"]:
+                for lv in shot["levels"]:
+                    used = [x[0] for x in lv.get("cels", [])] + list(lv.get("cycle", []))
+                    self.assertFalse(set(used) - known, f"{shot['id']} {lv['name']}: {sorted(set(used) - known)} not directed")

@@ -1,10 +1,18 @@
-"""A hand-directed scene of the drawn film (docs/DRAWN-FILM.md). The direction is written by hand in
-film/drawn/scenes/<n>.json: plates (with painted variants for flicker), every drawing (a key from a model sheet, an
-in-between from two drawings, or the next drawing after another) and each shot's exposure sheet. Muse Image draws every
-picture; a contact sheet of them is made for review before rendering; the engine renders each shot with its captions.
+"""A hand-directed scene of the drawn film (docs/DRAWN-FILM.md, docs/FILM-PLAYBOOK.md). The direction is written by
+hand in film/drawn/scenes/<n>.json: plates (with painted variants for flicker), every drawing (a key from a model sheet,
+an in-between from two drawings, or the next drawing after another) and each shot's exposure sheet. Muse Image draws
+every picture in the chosen look (film/drawn/looks.json: how it is painted and the colour script's light for each
+scene); a contact sheet of them is made for review before rendering; the engine renders each shot with its captions.
+The direction is shared by every look; each look keeps its own pictures and shots.
 
-    python3 -m viz.drawn.scene draw N       data/drawn/scenes/N/*.png, then data/drawn/scenes/N/contact.jpg
-    python3 -m viz.drawn.scene render N     data/drawn/shots/<shot>.mp4 for each shot of the scene
+    python3 -m viz.drawn.scene [--look L] sheets          the model sheets redrawn in the look
+    python3 -m viz.drawn.scene [--look L] draw N          every picture of scene N, then its contact sheet
+    python3 -m viz.drawn.scene [--look L] render N [IDS]  each shot of scene N (or only the shots named)
+    python3 -m viz.drawn.scene [--look L] test IDS        the cohesion test: draw and render only these shots
+    python3 -m viz.drawn.scene [--look L] cut             every shot joined, with the score
+
+The comic look keeps the first cut's folders (data/drawn/scenes, sheets, shots); any other look lives in
+data/drawn/<look>/. The look is --look, else looks.json's 'chosen'.
 """
 
 import json
@@ -20,30 +28,94 @@ from . import compose, pilot, poses, produce, sheet as sh
 
 ROOT = Path(__file__).resolve().parents[2]
 SCENES = ROOT / "film/drawn/scenes"
+LOOKS = ROOT / "film/drawn/looks.json"
 ART = ROOT / "data/drawn/scenes"
 SHEETS = ROOT / "data/drawn/sheets"
+SHOTS_OUT = produce.SHOTS_OUT
 W, H, FPS = 1920, 1080, 24
 PW, PH = W + 240, H + 135
 FLICKER = 22.0   # mean difference (0-255) above which a painted variant is held as the first plate
 CHAR = ("The same character as in the attached model sheet, same face, colours and outline, drawn once, full body, alone "
         "in the middle of the picture, " + produce.BACKDROP + " Pose: ")
+LOOK = {"name": "comic"}      # set by use(); the comic look keeps the first cut's exact prompts (and so its cache)
+
+
+def use(name=None):
+    """Choose the look: its folders, how backgrounds and drawings are painted, and its colour script."""
+    global ART, SHEETS, SHOTS_OUT, LOOK
+    data = json.loads(LOOKS.read_text())
+    name = name or data["chosen"]
+    LOOK = dict(data["looks"][name], name=name)
+    base = ROOT / "data/drawn" if name == "comic" else ROOT / "data/drawn" / name
+    ART, SHEETS = base / "scenes", base / "sheets"
+    SHOTS_OUT = base / "shots"
+    return LOOK
+
+
+def backdrop(n=None):
+    """What every drawing is drawn on, and how: green to be keyed out, painted in the look, lit by the scene's light."""
+    if LOOK["name"] == "comic":
+        return produce.BACKDROP
+    light = LOOK.get("colour", {}).get(str(n), "")
+    return ("on a solid flat bright green background (#00FF66), no ground, no shadow on the ground, no text, drawn as "
+            + LOOK["cel"] + (f", lit by {light}" if light else "") + ".")
+
+
+def char(n=None):
+    if LOOK["name"] == "comic":
+        return CHAR
+    return ("The same character as in the attached model sheet, same face, same shapes, proportions and colours, drawn "
+            "once, full body, alone in the middle of the picture, " + backdrop(n) + " Pose: ")
+
+
+def plate_text(n, p):
+    if LOOK["name"] == "comic":
+        return pilot.PLATE + p["prompt"]
+    light = LOOK.get("colour", {}).get(str(n), "")
+    return LOOK["plate"] + (f"The light: {light}. " if light else "") + p["prompt"]
 
 
 def load(n):
     return json.loads((SCENES / f"{n}.json").read_text())
 
 
-def draw(n):
+def needed(sc, only):
+    """The pictures the named shots use, with every drawing they are made from."""
+    names = set()
+    for shot in sc["shots"]:
+        if shot["id"] in only:
+            for lv in shot["levels"]:
+                names |= {x[0] for x in lv.get("cels", [])} | set(lv.get("cycle", []))
+    names = {x.split("~")[0] for x in names}
+    grow = True
+    while grow:
+        grow = False
+        for k in list(names):
+            dd = sc.get("drawings", {}).get(k, {})
+            for src in ([dd["after"]] if dd.get("kind") == "next" else []) + list(dd.get("between", [])):
+                if src not in names:
+                    names.add(src)
+                    grow = True
+    return names
+
+
+def draw(n, only=None):
     sc = load(n)
+    if only:
+        keep = needed(sc, only)
+        sc = dict(sc, plates={k: v for k, v in sc.get("plates", {}).items() if k in keep},
+                  drawings={k: v for k, v in sc.get("drawings", {}).items() if k in keep},
+                  machines={k: v for k, v in sc.get("machines", {}).items() if k in keep})
     out = ART / str(n)
     out.mkdir(parents=True, exist_ok=True)
     c = pilot.client()
-    hero = pilot.HERO.read_bytes()
+    hero = (ROOT / LOOK.get("style_ref", "docs/img/fabgym-hero.jpg")).read_bytes()
+    CHAR = char(n)
 
     def plate(name, p):
         f = out / f"{name}.png"
         if not f.exists():
-            img = produce._try(c, [pilot.PLATE + p["prompt"]], [hero])
+            img = produce._try(c, [plate_text(n, p)], [hero])
             if img:
                 f.write_bytes(img)
         prev = f
@@ -76,10 +148,10 @@ def draw(n):
         f = out / f"{name}.png"
         if not f.exists():
             if prev is None:
-                img = produce._try(c, [f"{what}, drawn once, alone in the middle of the picture, " + produce.BACKDROP], [hero])
+                img = produce._try(c, [f"{what}, drawn once, alone in the middle of the picture, " + backdrop(n)], [hero])
             else:
                 img = produce._try(c, [f"{what}. The same machine as in the attached picture, same size, colours and "
-                                       "outline, only its moving part has moved, " + produce.BACKDROP], [prev.read_bytes()])
+                                       "outline, only its moving part has moved, " + backdrop(n)], [prev.read_bytes()])
             if img:
                 f.write_bytes(img)
         prev = f
@@ -98,7 +170,7 @@ def draw(n):
             a, b = (out / f"{k}.png" for k in dd["between"])
             refs = [a.read_bytes(), b.read_bytes()]
             text = ("The in-between drawing for animation: the same character exactly halfway between the pose in the "
-                    "first attached picture and the pose in the second, same size, same face and colours, " + produce.BACKDROP)
+                    "first attached picture and the pose in the second, same size, same face and colours, " + backdrop(n))
         img = produce._try(c, [text], refs)
         if img:
             f.write_bytes(img)
@@ -155,7 +227,7 @@ def title(dr, text, y, font, a):
         x += dr.textlength(s, font=f)
 
 
-def render(n):
+def render(n, only=None):
     sc = load(n)
     out = ART / str(n)
     captions = json.loads((ROOT / "film/drawn/voice.json").read_text())["lines"]
@@ -164,6 +236,8 @@ def render(n):
         if Path("/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf").exists() else font
     results = []
     for shot in sc["shots"]:
+        if only and shot["id"] not in only:
+            continue
         d, anchors = {"none": Image.new("RGBA", (4, 4), (0, 0, 0, 0))}, {}
         levels = []
         for lv in shot["levels"]:
@@ -200,8 +274,8 @@ def render(n):
                      "camera": shot.get("camera", []), "cuts": shot.get("cuts", [])})
         errs = sh.validate(s, set(d))
         r = compose.Renderer(d, (W, H), anchors=anchors)
-        produce.SHOTS_OUT.mkdir(parents=True, exist_ok=True)
-        mp4 = produce.SHOTS_OUT / f"{shot['id']}.mp4"
+        SHOTS_OUT.mkdir(parents=True, exist_ok=True)
+        mp4 = SHOTS_OUT / f"{shot['id']}.mp4"
         cmd = ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r",
                str(FPS), "-i", "-", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(mp4)]
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
@@ -231,6 +305,94 @@ def render(n):
     return results
 
 
+def sheets():
+    """The model sheets redrawn in the look: the same characters, poses and layout as the first sheets, painted as the
+    look paints its drawings (the look's 'cel_ref' is an example drawing in it)."""
+    if LOOK["name"] == "comic":
+        return
+    SHEETS.mkdir(parents=True, exist_ok=True)
+    c = pilot.client()
+    example = (ROOT / LOOK["cel_ref"]).read_bytes()
+    first = ROOT / "data/drawn/sheets"
+    todo = [f for f in sorted(first.glob("*.png")) if "-v1" not in f.stem and not (SHEETS / f.name).exists()]
+
+    def one(f):
+        img = produce._try(c, ["Redraw the character model sheet in the first attached picture: exactly the same characters, "
+                               "the same poses, faces, shapes, proportions and layout, and every colour exactly as in the first picture (a silver "
+                               "character stays silver, a grey one grey), on plain light paper, no text, "
+                               "drawn as " + LOOK["cel"] + ", in the painting style of the character in the second attached "
+                               "picture."], [f.read_bytes(), example])
+        if img:
+            (SHEETS / f.name).write_bytes(img)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(one, todo))
+    lineup = Image.new("RGB", (4 * 480, ((len(list(SHEETS.glob("*.png"))) + 3) // 4) * 300), (250, 248, 240))
+    for i, f in enumerate(sorted(SHEETS.glob("*.png"))):
+        im = Image.open(f).convert("RGB")
+        im.thumbnail((470, 290))
+        lineup.paste(im, ((i % 4) * 480 + 5, (i // 4) * 300 + 5))
+    lineup.save(SHEETS.parent / "sheets.jpg", quality=85)
+    print(SHEETS.parent / "sheets.jpg")
+
+
+def scene_of(shot_id):
+    return shot_id.split("-")[0]
+
+
+def test(ids):
+    """The cohesion test: draw the scenes these shots belong to, render only these shots, and lay one frame of each
+    side by side, so Grain and its rooms can be judged together in paused frames."""
+    for n in dict.fromkeys(scene_of(i) for i in ids):
+        draw(n, set(ids))
+        render(n, only=set(ids))
+    frames = []
+    for i in ids:
+        f = SHOTS_OUT / f"{i}.mp4"
+        shot = next(s for s in load(scene_of(i))["shots"] if s["id"] == i)
+        out = SHOTS_OUT / f"{i}-mid.jpg"
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", str(int(shot["frames"]) / FPS / 2), "-i", str(f),
+                        "-frames:v", "1", str(out)], check=True)
+        frames.append(Image.open(out).convert("RGB").resize((960, 540)))
+    board = Image.new("RGB", (960 * min(3, len(frames)), 540 * ((len(frames) + 2) // 3)))
+    for k, im in enumerate(frames):
+        board.paste(im, ((k % 3) * 960, (k // 3) * 540))
+    board.save(SHOTS_OUT / "cohesion-test.jpg", quality=86)
+    print(SHOTS_OUT / "cohesion-test.jpg")
+
+
+def cut(out=None):
+    """Every shot of every scene joined in order, with the score under it."""
+    rows = []
+    for f in sorted(SCENES.glob("*.json"), key=lambda p: int(p.stem)):
+        rows += [(s["id"], int(s["frames"])) for s in json.loads(f.read_text())["shots"]]
+    missing = [i for i, _ in rows if not (SHOTS_OUT / f"{i}.mp4").exists()]
+    if missing:
+        raise SystemExit(f"shots not rendered yet: {', '.join(missing)}")
+    lst = SHOTS_OUT / "cut.txt"
+    lst.write_text("".join(f"file '{SHOTS_OUT / i}.mp4'\n" for i, _ in rows))
+    out = Path(out or SHOTS_OUT.parent / "sand-to-chip.mp4")
+    seconds = sum(n for _, n in rows) / FPS
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-i",
+                    str(ROOT / "data/drawn/score.mp3"), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+                    "-b:a", "192k", "-t", str(seconds), str(out)], check=True)
+    print(out, f"{len(rows)} shots, {seconds:.1f} s")
+    return out
+
+
 if __name__ == "__main__":
-    cmd, n = sys.argv[1], sys.argv[2]
-    {"draw": draw, "render": render, "contact": contact}[cmd](n)
+    args = sys.argv[1:]
+    look = None
+    if args and args[0] == "--look":
+        look, args = args[1], args[2:]
+    use(look)
+    cmd, rest = args[0], args[1:]
+    if cmd == "sheets":
+        sheets()
+    elif cmd == "test":
+        test(rest)
+    elif cmd == "cut":
+        cut(*rest)
+    elif cmd == "render":
+        render(rest[0], set(rest[1:]) or None)
+    else:
+        {"draw": draw, "contact": contact}[cmd](rest[0])

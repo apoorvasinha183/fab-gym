@@ -1,0 +1,52 @@
+{
+ "about": "The film's looks (docs/ART-DIRECTION.md). A look sets how every background and every drawing is painted; the direction (poses, timing, places) is shared by all looks. 'colour' is the colour script: the light of each scene, used in its backgrounds and its drawings alike, so a character is lit by the room it stands in.",
+ "chosen": "storybook",
+ "looks": {
+  "comic": {
+   "name": "Clean comic (the first cut)",
+   "plate": "A wide 16:9 background painting for an animated film, no characters, no people, no faces, no text, in the style of the attached picture: hand-inked comic, bold clean black outlines of one even weight, flat cel colour with a single shade, no gradients. ",
+   "cel": "in the style of the attached picture: hand-inked comic, bold clean black outlines of one even weight, flat cel colour with a single shade, no gradients",
+   "style_ref": "docs/img/fabgym-hero.jpg",
+   "colour": {},
+   "cel_ref": "docs/img/fabgym-hero.jpg"
+  },
+  "storybook": {
+   "name": "A · Storybook painted",
+   "plate": "A wide 16:9 background painting for a 1940s-era hand-painted animated feature film, no characters, no people, no faces, no text, in the painting style of the attached picture: opaque gouache and watercolour, visible brush texture, broad simple shapes, soft edges, gentle atmospheric depth and haze, the clearest detail and strongest contrast only in the middle where the action is, restrained detail elsewhere, no hard specular highlights, no glossy rendering, no digital look. ",
+   "cel": "a hand-inked and hand-painted animation cel from a 1940s-era feature: flat local colours, one soft shadow shape on the side away from the light, at most one small highlight, a fine warm brown-black ink line that thickens on the shadow side, no gradients, no glossy highlights, no rim light, no plastic or vinyl look",
+   "style_ref": "film/drawn/looks/storybook-plate.jpg",
+   "colour": {
+    "0": "the light of a dim warm evening, deep blue-black with one warm sandy beam",
+    "1": "warm sandy daylight with soft golden shadows",
+    "2": "deep amber firelight from the furnace with dark umber shadows",
+    "3": "pale lilac and frosty white light, soft and cool",
+    "4": "cool silver light with a white-orange glow from the melt below",
+    "5": "cool silver-grey daylight of a clean workshop",
+    "6": "cool blue night light with teal glowing seams",
+    "7": "cool blue and teal light of a clean room, each machine adding its own colour (yellow, violet, white)",
+    "8": "dark with beams of stained-glass colour, gold and violet",
+    "9": "soft green light of a test station",
+    "10": "cool slate light with warm sparks",
+    "11": "warm green and gold light of a circuit board",
+    "12": "warm sunset gold and orange on the beach"
+   },
+   "cel_ref": "film/drawn/looks/storybook-cel.jpg"
+  },
+  "graphic": {
+   "name": "B · Graphic ink line",
+   "plate": "A wide 16:9 background for a 1960s-era animated feature film, no characters, no people, no faces, no text: flat shapes of a limited palette with loose scratchy black ink lines drawn over them, the line slightly off-register from the colour, simple stylised perspective, dry brush texture, no gradients, no glossy highlights. ",
+   "cel": "a 1960s-era animation cel: flat colours with a loose, scratchy, slightly broken black ink line drawn over them, the colour slightly off-register from the line, one flat shadow shape, no gradients, no glossy highlights",
+   "style_ref": "film/drawn/looks/graphic-plate.jpg",
+   "cel_ref": "film/drawn/looks/graphic-cel.jpg",
+   "colour": {}
+  },
+  "flatcomic": {
+   "name": "C · Clean comic, flattened",
+   "plate": "A wide 16:9 background painting for an animated film, no characters, no people, no faces, no text, clean comic style with bold even black outlines, but simplified: far fewer pipes, panels and small details, big calm shapes, flat colour with one shadow tone, no glossy highlights, no gradients on metal. ",
+   "cel": "a clean comic cel: bold even black outline, flat colours with one hard shadow shape, no gradients, no glossy highlights, no rim light",
+   "style_ref": "film/drawn/looks/flatcomic-plate.jpg",
+   "cel_ref": "film/drawn/looks/flatcomic-cel.jpg",
+   "colour": {}
+  }
+ }
+}

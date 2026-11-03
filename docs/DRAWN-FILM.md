@@ -207,3 +207,14 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   quarry's variants (41.7) flipped the sky from pink to gold. Each variant's prompt carries its number, since two
   identical requests came back as one cached picture.
 - 3 Nov: a cycle's next drawings are each made from its first drawing, so a mistake in one does not carry into the next.
+- 3 Nov, decided by quiz after a second opinion ("the pictures look plastic"): the film is repainted in look A, storybook painted (gouache rooms,
+  a fine ink line, one soft shadow, Grain lit by the room), on a warm, cool, warm colour script; a rules sheet
+  (docs/ART-DIRECTION.md) and new model sheets come first, then a 3-shot test (2-1 the furnace, 4-4 the crystal, 7-1 the
+  wafer in the fab) before the other 35 shots; full acting (6 to 12 drawings with anticipation, squash and stretch,
+  arcs and follow-through) in about 10 key moments, holds elsewhere.
+- 3 Nov, decided by quiz after the reviewer's rewrite: the script is replaced by the reviewer's (the narrator explains,
+  Grain asks, Lou keeps it precise; magnified "simplified view" circles for atoms and circuits; the process corrected:
+  pure silicon deposits onto heated rods, the wafer comes before the chips, the fab's operations one per shot, no
+  universal step count); the film runs about 3 minutes and the score is re-timed to it; three test shots are shown
+  again under the new action before the rest. The first cohesion test passed the furnace and the clean room by eye; the
+  crystal hall copied the furnace, since the style picture attached to every background also carried its place.
