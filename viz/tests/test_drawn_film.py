@@ -282,7 +282,11 @@ class Poses(unittest.TestCase):
         key = (251, 241, 230)
         pegged = track.centres(self.compose.Renderer(d, (W, H), anchors=anchors).frames(s), key)
         self.assertEqual(track.jumps(pegged, limit=12.0), [])
-        loose = track.centres(self.compose.Renderer(d, (W, H)).frames(s), key)
+        # unpegged, the sheet's place is the drawing's corner: keep that corner inside the frame
+        lv_loose = dict(lv, path=[[0, 100, 40], [11, 155, 40]])
+        s_loose = self.sh.load({"shot": "t", "frames": 12, "fps": 24, "camera": [],
+                                "levels": [{"name": "plate", "depth": 1.0, "cels": [["plate", 12]]}, lv_loose]})
+        loose = track.centres(self.compose.Renderer(d, (W, H)).frames(s_loose), key)
         self.assertEqual(track.jumps(loose, limit=12.0), [6])
 
 

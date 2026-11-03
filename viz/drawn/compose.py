@@ -20,9 +20,10 @@ def offset(depth, cam):
 
 
 class Renderer:
-    def __init__(self, drawings, size):
+    def __init__(self, drawings, size, anchors=None):
         self.src = drawings                  # name -> PIL image, or a callable name -> PIL image
         self.size = (int(size[0]), int(size[1]))
+        self.anchors = anchors or {}         # name -> (x, y) in the drawing: the point the sheet places (its peg)
         self.cache = {}
         self.rendered = 0
 
@@ -47,6 +48,9 @@ class Renderer:
             z = 1.0 + (float(cam["zoom"]) - 1.0) * p
             ox, oy = float(cam["x"]) * p, float(cam["y"]) * p
             ax, ay = sheet.place(lv, f)
+            if name in self.anchors:         # a pegged drawing is placed by its anchor, not by its corner
+                ax -= float(self.anchors[name][0])
+                ay -= float(self.anchors[name][1])
             # output pixel (X, Y) shows world point ((X - c) / z + c + camera); the drawing's pixel is that minus its place
             a, c = 1.0 / z, -cx / z + cx + ox - ax
             e, g = 1.0 / z, -cy / z + cy + oy - ay

@@ -129,3 +129,5 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   of the camera's move at depth 1, all of it at depth 0). D5's pop is a spike: over a quarter of the pixels change by
   more than 8 levels, and over three times the change of the frames around it, so a steady pan over detailed paint
   is not a pop. Tests unchanged.
+- 3 Nov: D17's test placed the unpegged drawing's corner where the pegged one's contact goes, off the bottom of the
+  frame, so nothing was tracked; the unpegged run now keeps its corner inside the frame. The check is unchanged.
