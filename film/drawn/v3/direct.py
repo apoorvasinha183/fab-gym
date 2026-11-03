@@ -245,7 +245,7 @@ S[5] = {"plates": {"room": room(5),
                   shot("5-2", [plates([["edge", int(n2 * 0.26)], ["polish", int(n2 * 0.26)], ["clean", int(n2 * 0.24)], ["polish", n2 - int(n2 * 0.26) * 2 - int(n2 * 0.24)]]),
                                lv("grain", 320, seq([["W_spin", 26], ["W_shine", 26], ["W_rinse", 24], ["W_admire", 24]], n2), at=[960, 900])], cam(n2, 1.04, 1.04),
                        cuts=[int(n2 * 0.26), int(n2 * 0.52), int(n2 * 0.76)]),
-                  shot("5-3", [plates([["carrier", int(n3 * 0.82)], ["carrier2", n3 - int(n3 * 0.82)]]),
+                  shot("5-3", [plates([["carrier", int(n3 * 0.82)], ["carrier2", n3 - int(n3 * 0.82)]], dissolve=8),
                                lv("grain", 300, talkseq("5-3", "grain", [], "W_ask", [["W_nod", 3], ["none", 2]]), at=[1350, 900], talk={"key": "W_ask", "who": "grain"})],
                        cam(n3, 1.0, 1.05, 0, 40), titles=[label("WAFER", int(n3 * 0.55), n3)])]}
 
@@ -344,7 +344,7 @@ S[9] = {"plates": {"room": room(9),
                      "d_hold": nxt(DIE, "d_up", "holding very still, cheeks puffed, holding its breath, eyes squeezed"),
                      "d_ask": key(DIE, "looking off to the right, hopeful and nervous, asking", mouths=True),
                      "d_relief": nxt(DIE, "d_ask", "shoulders dropping in relief, a big relieved smile, a small green glow")},
-        "shots": [shot("9-1", [plates([["room", int(n1 * 0.55)], ["touch", n1 - int(n1 * 0.55)]]), lv("grain", 300, seq([["d_up", 5], ["d_hold", 5]], n1), at=[960, 930])], cam(n1, 1.0, 1.05)),
+        "shots": [shot("9-1", [plates([["room", int(n1 * 0.55)], ["touch", n1 - int(n1 * 0.55)]], dissolve=8), lv("grain", 300, seq([["d_up", 5], ["d_hold", 5]], n1), at=[960, 930])], cam(n1, 1.0, 1.05)),
                   shot("9-2", [plate("touch", n2), lv("grain", 300, talkseq("9-2", "grain", [], "d_ask", [["d_relief", 1]]), at=[760, 930], talk={"key": "d_ask", "who": "grain"})], cam(n2, 1.05, 1.05),
                        insets=[{"at": [1450, 400], "r": 250, "from": int(n2 * 0.1), "to": n2, "cels": [["map", n2]], "label": "test map"}])]}
 
@@ -374,7 +374,7 @@ S[11] = {"plates": {"room": room(11),
          "shots": [shot("11-1", [plate("room", n1), lv("grain", 230, seq([["d_seat", 4], ["d_set", 6]], n1), at=[780, 850])], cam(n1, 1.0, 1.06),
                         insets=[{"at": [1450, 380], "r": 250, "from": int(n1 * 0.35), "to": n1, "cels": [["bond", n1]], "label": "simplified view"}],
                         titles=[label("PACKAGE", int(n1 * 0.5), n1)]),
-                   shot("11-2", [plates([["room", int(n2 * 0.3)], ["closed", n2 - int(n2 * 0.3)]]), lv("grain", 250, talkseq("11-2", "grain", [["d_set", 3], ["dp_b", 1]], "p_eyes", []), at=[780, 850], talk={"key": "p_eyes", "who": "grain"})], cam(n2, 1.06, 1.06))]}
+                   shot("11-2", [plates([["room", int(n2 * 0.3)], ["closed", n2 - int(n2 * 0.3)]], dissolve=8), lv("grain", 250, talkseq("11-2", "grain", [["d_set", 3], ["dp_b", 1]], "p_eyes", []), at=[780, 850], talk={"key": "p_eyes", "who": "grain"})], cam(n2, 1.06, 1.06))]}
 
 # 12 · something useful
 n1, n2 = frames("12-1"), frames("12-2")

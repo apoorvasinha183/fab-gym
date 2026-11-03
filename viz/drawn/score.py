@@ -2,6 +2,7 @@
 part, and each cue as MusicXML for MuseScore to print and play. Notes are given at concert pitch as [pitch, beats]:
 "D5", "C#4", "Bb3", "r" for a rest, "C4+E4+G4" for a chord. Standard library only."""
 
+import json
 import math
 import re
 import xml.etree.ElementTree as ET
@@ -94,8 +95,27 @@ def _notes(part):
         yield p, d
 
 
+def shape_errors(c):
+    """Notes that are not [pitch, beats] with a pitch string and a number of beats (M8): sent back, never crashed on."""
+    errs = []
+    for inst, part in c.get("parts", {}).items():
+        if not isinstance(part, list):
+            errs.append(f"{inst}: the part is not a list of [pitch, beats]")
+            continue
+        for k, item in enumerate(part):
+            ok = (isinstance(item, (list, tuple)) and len(item) == 2 and isinstance(item[0], str)
+                  and isinstance(item[1], (int, float)) and not isinstance(item[1], bool))
+            if not ok:
+                errs.append(f"{inst}: note {k + 1} is {json.dumps(item)[:60]}, not [pitch, beats] "
+                            f"(a pitch like \"D5\", \"C4+E4\" or \"r\", then a number of beats)")
+    return errs
+
+
 def check(c):
     """Everything wrong with a cue, as sentences (M2, M3)."""
+    shape = shape_errors(c)
+    if shape:
+        return shape
     errs = []
     bpb = beats_per_bar(c.get("meter", [4, 4]))
     totals = {}

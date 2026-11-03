@@ -1,0 +1,710 @@
+{
+ "theme": {
+  "key": "D major",
+  "meter": [
+   4,
+   4
+  ],
+  "notes": [
+   [
+    "D5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "B5",
+    1
+   ],
+   [
+    "A5",
+    1.5
+   ],
+   [
+    "F#5",
+    0.5
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "D5",
+    1
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "G5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "D6",
+    2
+   ],
+   [
+    "D5",
+    2
+   ]
+  ]
+ },
+ "cues": [
+  {
+   "cue": "c01",
+   "title": "A Grain Wakes",
+   "from": 0.0,
+   "to": 12.0,
+   "mood": "tender, curious, sunlit stillness",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Oboe",
+    "Harp",
+    "Violin I",
+    "Viola",
+    "Violoncello"
+   ],
+   "arc": "Solo flute states Grain theme gently over harp and high strings; oboe answers second half; warm swell to title then hush for hand stillness.",
+   "moments": [
+    {
+     "t": 5.0,
+     "what": "Grain opens eyes"
+    },
+    {
+     "t": 7.0,
+     "what": "peer over fingertip"
+    },
+    {
+     "t": 10.0,
+     "what": "title appears in quiet sky"
+    }
+   ],
+   "tempo": 119.59,
+   "bars": 6,
+   "half_beats": false,
+   "hits": [
+    [
+     3,
+     3.0
+    ],
+    [
+     4,
+     3.0
+    ],
+    [
+     6,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c02",
+   "title": "Quarry and Twins",
+   "from": 12.0,
+   "to": 28.5,
+   "mood": "earthy march, playful discovery",
+   "key": "G major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Bassoon",
+    "Clarinet in B\u266d",
+    "Horn in F",
+    "Violin II",
+    "Viola",
+    "Contrabass"
+   ],
+   "arc": "Low strings and bassoon walking quarry motif; Grain theme in clarinet, then bouncy duet variation for the Twins on clarinet and bassoon.",
+   "moments": [
+    {
+     "t": 12.0,
+     "what": "pull back to quarry terraces"
+    },
+    {
+     "t": 19.5,
+     "what": "Grain taps side, magnifier opens"
+    },
+    {
+     "t": 24.5,
+     "what": "Twins greet in lattice"
+    }
+   ],
+   "tempo": 101.82,
+   "bars": 7,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     4,
+     1.5
+    ],
+    [
+     6,
+     2.0
+    ]
+   ]
+  },
+  {
+   "cue": "c03",
+   "title": "Furnace Farewell",
+   "from": 28.5,
+   "to": 44.0,
+   "mood": "hot, brave, bittersweet",
+   "key": "E minor",
+   "meter": [
+    6,
+    8
+   ],
+   "instruments": [
+    "Trombone",
+    "Trumpet in B\u266d",
+    "Timpani",
+    "Violin I",
+    "Violin II",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Rolling 6/8 fire music with brass swells; Grain theme stretches in minor on cellos, farewell wave softens to solo violin; timpani pulse to next hall.",
+   "moments": [
+    {
+     "t": 29.5,
+     "what": "furnace charge glows, brace"
+    },
+    {
+     "t": 34.5,
+     "what": "Carbons escort Twins upward"
+    },
+    {
+     "t": 41.0,
+     "what": "Grain grey silicon, inset impurity"
+    }
+   ],
+   "tempo": 150.7,
+   "bars": 13,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     3.5
+    ],
+    [
+     6,
+     1.0
+    ],
+    [
+     11,
+     2.5
+    ]
+   ]
+  },
+  {
+   "cue": "c04",
+   "title": "Purification",
+   "from": 44.0,
+   "to": 60.5,
+   "mood": "sparkling, clean, rising",
+   "key": "A major",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Clarinet in B\u266d",
+    "Glockenspiel",
+    "Celesta",
+    "Harp",
+    "Violin I",
+    "Viola"
+   ],
+   "arc": "Waltzing distillation: Grain theme in augmentation on flute over celesta and glockenspiel bubbles; harp gliss marks stream choice, bright close on chunks.",
+   "moments": [
+    {
+     "t": 44.0,
+     "what": "violet wisp transfer"
+    },
+    {
+     "t": 50.5,
+     "what": "vapour rises, streams separate"
+    },
+    {
+     "t": 57.5,
+     "what": "rods thicken, chunks break"
+    }
+   ],
+   "tempo": 119.7,
+   "bars": 11,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     5,
+     2.0
+    ],
+    [
+     10,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c05",
+   "title": "The Crystal Grows",
+   "from": 60.5,
+   "to": 83.0,
+   "mood": "awe, slow wonder, majestic",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Oboe",
+    "Horn in F",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Hushed tremolo strings, horn states Grain theme nobly as seed pulls; growing ostinato for rotating crystal, full warm tutti on ingot reveal.",
+   "moments": [
+    {
+     "t": 65.0,
+     "what": "seed touches melt"
+    },
+    {
+     "t": 71.5,
+     "what": "lattice joins in order"
+    },
+    {
+     "t": 77.0,
+     "what": "finished ingot reveal, look down length"
+    }
+   ],
+   "tempo": 96.0,
+   "bars": 9,
+   "half_beats": true,
+   "hits": [
+    [
+     2,
+     4.0
+    ],
+    [
+     5,
+     2.5
+    ],
+    [
+     7,
+     3.5
+    ]
+   ]
+  },
+  {
+   "cue": "c06",
+   "title": "Slice and Polish",
+   "from": 83.0,
+   "to": 100.5,
+   "mood": "precise, light, hopeful",
+   "key": "B minor",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Piccolo",
+    "Flute",
+    "Xylophone",
+    "Violin I",
+    "Violoncello"
+   ],
+   "arc": "Ticking xylophone saw rhythm; Grain theme pizzicato-light in piccolo and flute; pause to solo violin question, gentle pizz resolve as carrier closes.",
+   "moments": [
+    {
+     "t": 83.0,
+     "what": "ingot into wire saw"
+    },
+    {
+     "t": 88.0,
+     "what": "polish reflection flash"
+    },
+    {
+     "t": 93.0,
+     "what": "wafer pauses, hopeful eyebrows, seats"
+    }
+   ],
+   "tempo": 72.17,
+   "bars": 7,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ],
+    [
+     5,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c07",
+   "title": "Lou Steps In",
+   "from": 100.5,
+   "to": 113.0,
+   "mood": "dependable, sly, reassuring",
+   "key": "C major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Clarinet in B\u266d",
+    "Bassoon",
+    "Trumpet in B\u266d",
+    "Trombone",
+    "Viola",
+    "Contrabass"
+   ],
+   "arc": "Square Lou march in low brass and bassoon; Grain theme as counter-melody in clarinet; stern hit for dust, crisp cadence on dock.",
+   "moments": [
+    {
+     "t": 100.5,
+     "what": "Lou enters alongside carrier"
+    },
+    {
+     "t": 106.5,
+     "what": "dust looms beside feature"
+    },
+    {
+     "t": 111.0,
+     "what": "carrier docks, wafer in"
+    }
+   ],
+   "tempo": 134.07,
+   "bars": 7,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     4,
+     2.5
+    ],
+    [
+     6,
+     4.5
+    ]
+   ]
+  },
+  {
+   "cue": "c08",
+   "title": "Layers of Light",
+   "from": 113.0,
+   "to": 134.0,
+   "mood": "meticulous magic, glowing",
+   "key": "E major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Oboe",
+    "Horn in F",
+    "Celesta",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola"
+   ],
+   "arc": "Layered additive variations of Grain theme: harp and celesta for film, oboe for coral coat, luminous horn swell for exposure, delicate dissolve for etch.",
+   "moments": [
+    {
+     "t": 113.0,
+     "what": "ochre film forms"
+    },
+    {
+     "t": 123.0,
+     "what": "light transfers pattern"
+    },
+    {
+     "t": 129.5,
+     "what": "etch opens, resist lifts"
+    }
+   ],
+   "tempo": 114.26,
+   "bars": 10,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     5,
+     4.0
+    ],
+    [
+     8,
+     4.5
+    ]
+   ]
+  },
+  {
+   "cue": "c09",
+   "title": "Coach Grain",
+   "from": 134.0,
+   "to": 156.5,
+   "mood": "curious drive to playful triumph",
+   "key": "D major",
+   "meter": [
+    6,
+    8
+   ],
+   "instruments": [
+    "Flute",
+    "Trumpet in B\u266d",
+    "Timpani",
+    "Glockenspiel",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello"
+   ],
+   "arc": "Energetic 6/8 factory dance on Grain theme fragments; Lou nod accent; broad lyrical statement as avatar earns coach headband, glockenspiel sparkle.",
+   "moments": [
+    {
+     "t": 140.5,
+     "what": "clean-measure-inspect montage"
+    },
+    {
+     "t": 144.5,
+     "what": "clock dissolves, time passes"
+    },
+    {
+     "t": 151.0,
+     "what": "circuit reveal, headband on display"
+    }
+   ],
+   "tempo": 119.78,
+   "bars": 15,
+   "half_beats": false,
+   "hits": [
+    [
+     5,
+     2.0
+    ],
+    [
+     8,
+     1.0
+    ],
+    [
+     12,
+     2.0
+    ]
+   ]
+  },
+  {
+   "cue": "c10",
+   "title": "Test of Heart",
+   "from": 156.5,
+   "to": 177.5,
+   "mood": "tense, held breath, relief",
+   "key": "F# minor",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Oboe",
+    "Bassoon",
+    "Horn in F",
+    "Tuba",
+    "Timpani",
+    "Violin I",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Muted suspense, Grain theme fragmented low; timpani heartbeat under probe hold; warm major lift in horns and upper strings on pass.",
+   "moments": [
+    {
+     "t": 156.5,
+     "what": "wafer grid, one die chosen"
+    },
+    {
+     "t": 166.5,
+     "what": "probes descend, breath held"
+    },
+    {
+     "t": 174.5,
+     "what": "pass mark, shoulders drop"
+    }
+   ],
+   "tempo": 102.86,
+   "bars": 9,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     5,
+     2.0
+    ],
+    [
+     8,
+     4.0
+    ]
+   ]
+  },
+  {
+   "cue": "c11",
+   "title": "Cut and Carry",
+   "from": 177.5,
+   "to": 198.0,
+   "mood": "gentle courage, tender lift",
+   "key": "G major",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Clarinet in B\u266d",
+    "Harp",
+    "Violin I",
+    "Viola",
+    "Violoncello"
+   ],
+   "arc": "Floating waltz, Grain theme lullaby in flute over harp; solo cello for look-back; soft chime-like strings for bond, hushed close as eyes reappear.",
+   "moments": [
+    {
+     "t": 177.5,
+     "what": "cutting lanes establish"
+    },
+    {
+     "t": 183.0,
+     "what": "die lifts, looks back"
+    },
+    {
+     "t": 187.0,
+     "what": "wire bonds join, enclosure covers"
+    }
+   ],
+   "tempo": 113.92,
+   "bars": 13,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     4,
+     2.5
+    ],
+    [
+     7,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c12",
+   "title": "Wake Up",
+   "from": 198.0,
+   "to": 218.0,
+   "mood": "warm homecoming, joyful",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Piccolo",
+    "Flute",
+    "Oboe",
+    "Horn in F",
+    "Trumpet in B\u266d",
+    "Trombone",
+    "Timpani",
+    "Celesta",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Full orchestra triumph: Grain theme stated complete and soaring for phone wake; tender recall for tilt match; broad benediction coda leaving room for sea.",
+   "moments": [
+    {
+     "t": 198.0,
+     "what": "final test pass, board pullback"
+    },
+    {
+     "t": 205.0,
+     "what": "beach evening, phone wakes"
+    },
+    {
+     "t": 212.0,
+     "what": "avatar head tilt matches Grain, recap"
+    }
+   ],
+   "tempo": 119.76,
+   "bars": 10,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     4,
+     3.0
+    ],
+    [
+     8,
+     1.0
+    ]
+   ]
+  }
+ ]
+}

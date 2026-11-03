@@ -139,3 +139,14 @@ class Voice(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Shapes(unittest.TestCase):
+    """M8: a note in the wrong shape is reported for a rewrite, never a crash."""
+
+    def test_m8_a_malformed_note_is_sent_back(self):
+        from viz.drawn import score
+        c = {"meter": [4, 4], "bars": 1, "tempo": 120, "instruments": ["Flute"],
+             "parts": {"Flute": [["D5", 1], ["E5", [1]], ["F5", 2]]}}
+        errs = score.check(c)
+        self.assertTrue(errs and "note 2" in errs[0])

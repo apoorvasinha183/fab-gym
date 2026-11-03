@@ -236,7 +236,8 @@
        "carrier2",
        33
       ]
-     ]
+     ],
+     "dissolve": 8
     },
     {
      "name": "grain",

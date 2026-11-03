@@ -58,7 +58,8 @@
        "touch",
        71
       ]
-     ]
+     ],
+     "dissolve": 8
     },
     {
      "name": "grain",
