@@ -171,3 +171,9 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   caption the script's own words ($0.0017).
 - 3 Nov: the score tests' made-up cue added up to 12 bars for a 6-bar cue, and one made-up hit (26.25 s) fell on no beat
   between 60 and 160 a minute; both corrected before the checks were changed.
+- 3 Nov, by the founder after the model sheets ("keep meta's faces"): faces are Muse Image's, painted in every pose,
+  since its sheets kept Grain's face steady across all forms. Our face level (D16) stays in the engine for blinks or
+  fixes on top; talking is done with Muse Image poses (mouth open and closed). The crystal sheet was redrawn as a
+  smooth ingot ($0.01). The founder asked to see the finished look: the pilot (Smelt, 22 to 34 s) comes next, with
+  its cut-outs keyed from a flat green backdrop until SAM 3.1's mask answers are read.
+

@@ -28,7 +28,8 @@ CAST = [
                         "round red balls with their own little eyes, one on each side"),
     ("grain-03-grey", "Grain as a dusty grey lump of raw silicon with a few brown specks of dirt on it, looking lost"),
     ("grain-04-wisp", "Grain as a curling lilac wisp of gas, soft rounded swirl shape"),
-    ("grain-05-crystal", "Grain as a tall silver crystal ingot, a rounded cylinder with a thin seed rod on top, proud"),
+    ("grain-05-crystal", "Grain as a tall smooth silver crystal ingot: a polished cylinder about three times taller than "
+                         "it is wide, with rounded ends, no facets, and a thin seed rod sticking up from the top; proud"),
     ("grain-06-wafer", "Grain as a thin mirror-bright silver wafer disc, seen standing up on its edge and tilted"),
     ("grain-07-coach", "Grain as the wafer coach: a round wafer tiled with a grid of small iridescent coloured squares "
                        "(chips), wearing a red sweatband headband, with skinny cartoon arms and legs and white sneakers"),
