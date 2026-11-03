@@ -1,422 +1,419 @@
 {
- "about": "Shot list, script v2 (the reviewer's rewrite, adopted 3 Nov). Times from a calm read at 2.5 words a second, to be settled by the read-through; shots-v1.json is the first cut's.",
+ "about": "Shot list, screenplay v3 (the rewrite, 3 Nov). Times from a calm read at 2.5 words a second with room for each action, until the scratch read; the ending held 4 s longer for the recap and the sea.",
  "shots": [
   {
    "id": "0-1",
    "scene": "0",
    "start": 0.0,
-   "end": 5.5,
-   "action": "A painted beach at dawn; a fingertip lifts a little sand; Grain, one grain among them, peers up with its head tilted.",
+   "end": 7.0,
+   "action": "A low, wide view of a painted beach. A hand lifts a pinch of sand. Push toward one pale quartz grain until GRAIN opens its eyes. Its little head tilt is inquisitive, not a wink to camera.",
    "labels": [],
-   "board": "tiny sand grain glowing in blackness as camera pushes in",
-   "caption": "Big things can begin very small. How small?"
+   "handoff": "Sand form; alone on the fingertip. Hold the eye line toward the open sky; cut closer without changing sides.",
+   "caption": "A handful of sand. Hardly a treasure. Depends what you find."
   },
   {
    "id": "0-2",
    "scene": "0",
-   "start": 5.5,
-   "end": 10.0,
-   "action": "Grain's questioning look held against a quiet sky, then the title.",
+   "start": 7.0,
+   "end": 12.0,
+   "action": "Grain peers over the fingertip, steadies itself, then looks out with growing interest. The title appears in the quiet sky. The hand stays still so the character supplies the movement.",
    "labels": [
-    "From Sand to Chip",
-    "How silicon becomes the heart of our electronics"
+    "FROM SAND TO CHIP"
    ],
-   "board": "grain fills screen revealing lattice and title From Sand to Chip",
-   "caption": "Small enough to slip between your fingers."
+   "handoff": "Sand form; alone. A pale quartz facet fills the picture. Match its shape to a quarry rock. This is a narrated change of setting, not the beach grain physically becoming a boulder.",
+   "caption": "Come along. There’s something remarkable inside quartz."
   },
   {
    "id": "1-1",
    "scene": "1",
-   "start": 10.0,
-   "end": 17.5,
-   "action": "From the beach to an ochre quarry with broad terraces; a selected quartz rock is lifted onto a conveyor, Grain riding on it.",
+   "start": 12.0,
+   "end": 19.5,
+   "action": "The matching facet belongs to a large quartz rock. Pull back to ochre quarry terraces. A loader sets selected rock onto a conveyor moving screen right. Grain’s familiar face appears on the selected piece: our guide now represents the material we follow.",
    "labels": [],
-   "board": "wide quarry at dawn with excavator loading white rock",
-   "caption": "Many grains of sand contain quartz. Our factory journey starts with carefully selected quartz rock."
+   "handoff": "Quartz form; companions not yet visible. Follow the same rock rightward into the next shot.",
+   "caption": "Many sand grains contain quartz. For this journey, we start with selected quartz rock."
   },
   {
    "id": "1-2",
    "scene": "1",
-   "start": 17.5,
-   "end": 21.5,
-   "action": "On the conveyor Grain peers at the rock; a magnifying circle opens over it.",
+   "start": 19.5,
+   "end": 23.5,
+   "action": "Grain taps its own side, puzzled. A magnifying window opens from the tap. The physical rock remains visible outside the window.",
    "labels": [
-    "simplified view"
+    "SIMPLIFIED VIEW"
    ],
-   "board": "truck dumps rock into crusher feeding gravel conveyor",
-   "caption": "What's inside it?"
+   "handoff": "Quartz form outside; the symbolic material view opens inside. Push into that window, preserving its border.",
+   "caption": "What am I made of?"
   },
   {
    "id": "1-3",
    "scene": "1",
-   "start": 21.5,
-   "end": 25.5,
-   "action": "Inside the circle a simplified silicon-and-oxygen arrangement; the oxygen twins hold Grain's hands as the cartoon of the bond.",
+   "start": 23.5,
+   "end": 28.5,
+   "action": "Inside the window, a connected silicon-and-oxygen network extends beyond the frame. Two red oxygen characters, THE TWINS, greet Grain within that network. They are a mnemonic for the formula, not a free-floating three-atom molecule.",
    "labels": [
-    "QUARTZ: SiO₂"
+    "QUARTZ · SiO₂"
    ],
-   "board": "pebble bursts into SiO2 diagram with one silicon and two oxygens",
-   "caption": "Silicon and oxygen, chemically joined."
+   "handoff": "Quartz form; Twins exist within the explanatory view. Close the window onto the same rock; follow it right into the furnace chute.",
+   "caption": "Silicon and oxygen, joined in a crystal."
   },
   {
    "id": "2-1",
    "scene": "2",
-   "start": 25.5,
-   "end": 31.0,
-   "action": "The furnace in charcoal, burnt orange and cream; the quartz goes in with carbon; Grain tumbles in with its twins and lands; the carbon characters wait.",
+   "start": 28.5,
+   "end": 34.5,
+   "action": "Establish quartz and carbon entering the furnace together. Move into the familiar explanatory window over the hot charge. Grain braces; the Twins grip its hands. Two charcoal CARBON figures step forward, purposeful rather than villainous.",
    "labels": [],
-   "board": "gravel tipping into blazing arc furnace mouth",
+   "handoff": "Quartz form with Twins and Carbon in the explanatory view. Cut closer on Carbon reaching toward the oxygen figures.",
    "caption": "In a fiercely hot furnace, carbon helps remove the oxygen."
   },
   {
    "id": "2-2",
    "scene": "2",
-   "start": 31.0,
-   "end": 35.0,
-   "action": "The carbon characters lead the oxygen twins away as departing wisps of gas; Grain, now grey silicon, calls after them.",
+   "start": 34.5,
+   "end": 38.5,
+   "action": "Each Carbon figure escorts an oxygen figure into a rising gas trail. The Twins wave; Grain reaches after them, then returns a small wave. Grain’s body resolves into grey silicon. Keep the separation legible against broad orange flame shapes.",
    "labels": [],
-   "board": "atoms split as black carbons steal red oxygens from grey silicon",
-   "caption": "There go my travelling companions!"
+   "handoff": "Grey silicon form; Twins and Carbon leave upward with the gas and do not return. Follow Grain’s downward glance.",
+   "caption": "Oh! We’re going different ways."
   },
   {
    "id": "2-3",
    "scene": "2",
-   "start": 35.0,
-   "end": 40.0,
-   "action": "Grain in its grey silicon form looks itself over and notices flecks of unwanted material on its body.",
+   "start": 38.5,
+   "end": 44.0,
+   "action": "Grain examines itself. An inset reveals unwanted material mixed within the silicon, not just soot sitting on its skin. Return to the hall as the silicon moves toward the next operation.",
    "labels": [],
-   "board": "grey silicon stream cooling into dull lump",
-   "caption": "What remains is silicon, but it still needs cleaning."
+   "handoff": "Grey silicon; alone. Track its container right. Match the container’s outlet to the inlet of the chemical-processing sequence.",
+   "caption": "We have silicon. But it isn’t pure enough yet."
   },
   {
    "id": "3-1",
    "scene": "3",
-   "start": 40.0,
-   "end": 46.5,
-   "action": "Pale violet, warm white and steel blue: Grain turns into its wisp form, the silicon-containing chemical, rising into a distillation column.",
+   "start": 44.0,
+   "end": 50.5,
+   "action": "A simplified process window shows silicon undergoing chemical conversion. Grain’s face transfers into a violet wisp representing the silicon-bearing chemical. A label sits beside the equipment, never on Grain’s body.",
    "labels": [],
-   "board": "grey lump melting into swirling gas in glass column",
-   "caption": "First, silicon is converted into a chemical that can be purified by distillation."
+   "handoff": "Chemical-wisp form; alone. Follow the process line right into the distillation column; this is not elemental silicon simply evaporating.",
+   "caption": "We convert it into a chemical that’s easier to purify."
   },
   {
    "id": "3-2",
    "scene": "3",
-   "start": 46.5,
-   "end": 50.5,
-   "action": "The wisp rises through the column, the dark flecks left behind on the plates.",
+   "start": 50.5,
+   "end": 55.0,
+   "action": "In a clean cutaway, vapour rises and liquid returns through the column. Different components separate into different streams. Follow the chosen stream with Grain. Do not depict dirt caught in sieves, or every impurity dropping to the bottom.",
    "labels": [
-    "PURIFY"
+    "DISTILLATION"
    ],
-   "board": "gas rising through filters shedding specks as counter climbs",
-   "caption": "Leave the unwanted bits behind."
+   "handoff": "Chemical-wisp form in the selected stream. Follow its pipe right to a distinct deposition chamber.",
+   "caption": "Distillation separates it from unwanted substances."
   },
   {
    "id": "3-3",
    "scene": "3",
-   "start": 50.5,
-   "end": 56.0,
-   "action": "Glowing heated rods in a chamber visibly thicken as pure silicon deposits on them; Grain's face settles onto one rod.",
-   "labels": [
-    "DEPOSIT"
-   ],
-   "board": "pure gas freezing into solid rods beside purity counter",
-   "caption": "Then a reaction deposits very pure silicon onto heated rods."
+   "start": 55.0,
+   "end": 60.5,
+   "action": "Heated seed rods glow in the new chamber. Silicon accumulates on their surfaces and the rods visibly thicken. Grain’s face settles into the deposited material. After a short time transition, cooled material is broken into feedstock chunks.",
+   "labels": [],
+   "handoff": "Solid purified silicon; alone. Follow one recognizable chunk right into a crucible. No icicles, frost, or freezing-from-gas transition.",
+   "caption": "Another reaction deposits very pure silicon onto heated rods."
   },
   {
    "id": "4-1",
    "scene": "4",
-   "start": 56.0,
-   "end": 60.0,
-   "action": "Chunks of the rods melt in a glowing crucible.",
+   "start": 60.5,
+   "end": 65.0,
+   "action": "The purified chunks melt in a crucible. Grain’s face briefly resolves in the melt in the explanatory view, then looks upward toward something approaching.",
    "labels": [],
-   "board": "seed rod dipping into glowing silicon melt",
-   "caption": "The purified silicon is melted."
+   "handoff": "Silicon in the melt; alone. Follow its upward eye line to the incoming seed. Grain is not the seed.",
+   "caption": "Next, we melt the purified silicon."
   },
   {
    "id": "4-2",
    "scene": "4",
-   "start": 60.0,
-   "end": 66.5,
-   "action": "A small seed on a rod touches the melt, then rises and turns slowly; the crystal starts to grow from the contact.",
+   "start": 65.0,
+   "end": 71.5,
+   "action": "A separate, unpersonified seed crystal touches the melt. Show contact first, then slow withdrawal and rotation. Solid silicon grows at the boundary; Grain’s face reappears in this newly grown portion.",
    "labels": [],
-   "board": "seed rising and spinning pulling crystal column upward",
-   "caption": "A tiny seed crystal touches the surface, then slowly rises and turns."
+   "handoff": "Growing-crystal form beneath the seed. Push into a magnifying window at the growth boundary; retain the same orientation.",
+   "caption": "A seed crystal touches the melt, then slowly rises and turns."
   },
   {
    "id": "4-3",
    "scene": "4",
-   "start": 66.5,
-   "end": 72.0,
-   "action": "A magnifying circle at the growth front: atoms joining in neat rows; then back to the chamber.",
+   "start": 71.5,
+   "end": 77.0,
+   "action": "Within the window, incoming atoms join an ordered structure continuing from the seed. The attached crystal remains solid while liquid feeds the growing boundary. Use a clearly schematic lattice, not decorative circles presented as an exact atomic diagram.",
    "labels": [
-    "simplified view"
+    "SIMPLIFIED VIEW"
    ],
-   "board": "atoms clicking into perfect lattice at crystal edge",
-   "caption": "Silicon solidifies onto it, following the seed's orderly atomic pattern."
+   "handoff": "Growing crystal; alone. Pull back through the same window. Use a gentle time dissolve to make the long growth process explicit.",
+   "caption": "Silicon solidifies onto it, following the seed’s atomic pattern."
   },
   {
    "id": "4-4",
    "scene": "4",
-   "start": 72.0,
-   "end": 77.0,
-   "action": "The wide reveal: the tall ingot hangs from the puller in the hall, its size clear against the machine and a person; Grain's face is on the ingot itself.",
+   "start": 77.0,
+   "end": 83.0,
+   "action": "Reveal the finished ingot held securely by the equipment. A distant worker provides scale. Grain looks down the length of its new body, astonished. Let the wide composition settle before the final word.",
    "labels": [
     "INGOT"
    ],
-   "board": "giant silver ingot towering beside tiny human figure",
-   "caption": "I've grown. One continuous crystal: an ingot."
+   "handoff": "Ingot form; worker distant. Show a supported lowering toward horizontal, then cut on that movement to the same orientation in the saw cradle. Do not jump directly from hanging vertical to unsupported horizontal.",
+   "caption": "All that… is me? One continuous crystal. An ingot."
   },
   {
    "id": "5-1",
    "scene": "5",
-   "start": 77.0,
-   "end": 81.5,
-   "action": "Match cut from the hanging ingot to the ingot lying in the saw; a wire slices thin discs.",
+   "start": 83.0,
+   "end": 88.0,
+   "action": "The supported ingot travels into the wire saw. Follow one newly separated disc; Grain’s face transfers onto that chosen slice. The remaining slices are unpersonified.",
    "labels": [],
-   "board": "wire slicing sideways ingot into thin discs",
+   "handoff": "One rough wafer; alone among other discs. A handler carries our chosen disc right toward finishing.",
    "caption": "The ingot is sliced into thin discs."
   },
   {
    "id": "5-2",
    "scene": "5",
-   "start": 81.5,
-   "end": 86.0,
-   "action": "Follow one disc through a short montage: edge ground, polished, cleaned; one broad painted reflection; Grain looks into it, pleased.",
+   "start": 88.0,
+   "end": 93.0,
+   "action": "A restrained montage shows edge shaping, surface finishing, polishing and cleaning. Match the disc’s position across cuts. A single broad reflection reveals the polished surface. Grain tries to inspect its new edge, pleased.",
    "labels": [],
-   "board": "thin disc polishing until it mirrors the room",
-   "caption": "Their surfaces are carefully finished, polished, and cleaned."
+   "handoff": "One clean blank wafer. Follow it toward an open carrier at the loading station; keep its face oriented consistently.",
+   "caption": "Their surfaces are finished, polished, and carefully cleaned."
   },
   {
    "id": "5-3",
    "scene": "5",
-   "start": 86.0,
-   "end": 93.0,
-   "action": "The blank wafer enters a protective carrier with others.",
+   "start": 93.0,
+   "end": 100.5,
+   "action": "The wafer pauses just before entering its slot. Grain asks its question with hopeful eyebrows. The handler seats the wafer, and the carrier closes.",
    "labels": [
     "WAFER"
    ],
-   "board": "mirror wafer sliding into sealed box of 25",
-   "caption": "Am I a chip now? You're a wafer, the foundation for many chips."
+   "handoff": "Blank wafer inside closed carrier; alone as a character. Track the carrier right through a doorway into the fab.",
+   "caption": "Am I a chip now? A wafer. We’ll build many chips on you."
   },
   {
    "id": "6-1",
    "scene": "6",
-   "start": 93.0,
-   "end": 97.5,
-   "action": "Lou guides the closed carrier into a calm, orderly, blue-green clean room.",
+   "start": 100.5,
+   "end": 105.5,
+   "action": "LOU enters alongside the moving carrier and checks its destination. Lou’s shape is square and dependable; gestures are small and precise. The wafer remains protected.",
    "labels": [],
-   "board": "box on overhead rail arriving as robot stamps it",
+   "handoff": "Blank wafer inside carrier; Lou alongside. Cut on Lou’s glance toward a cleanroom information panel.",
    "caption": "Welcome to the fab. Precious cargo coming through!"
   },
   {
    "id": "6-2",
    "scene": "6",
-   "start": 97.5,
-   "end": 105.0,
-   "action": "An inset enlarges a dust speck beside a delicate pattern; Lou gives the speck a stern look; the inset closes.",
+   "start": 105.5,
+   "end": 113.0,
+   "action": "The panel becomes an explanatory inset: a dust particle looms beside a tiny circuit feature. Lou regards it with a stern eyebrow. Close the inset. The carrier docks with a tool; its loading interface transfers the wafer into the enclosed system.",
    "labels": [
-    "simplified view"
+    "FAB · CHIP FACTORY"
    ],
-   "board": "box gliding into teal-lit fab interior with frame overlay",
-   "caption": "Here, tiny patterns become electronic circuits. Even a speck of dust can spoil the work."
+   "handoff": "Blank wafer enters the tool; Lou remains outside. Cut through the tool housing to a schematic interior. Lou never opens a carrier casually in the room.",
+   "caption": "Here we build the circuits. Even a speck of dust can spoil the work."
   },
   {
    "id": "7-1",
    "scene": "7",
-   "start": 105.0,
-   "end": 110.0,
-   "action": "Grain in a deposition chamber; a magnified cross-section shows a new thin film forming across the wafer's surface.",
+   "start": 113.0,
+   "end": 118.0,
+   "action": "Establish Grain as a wafer within the tool. Open a framed cross-section from its surface. A thin film forms across it. The substrate is slate blue and the added film ochre; these colours retain the same meanings in every subsequent view.",
    "labels": [
     "DEPOSITION"
    ],
-   "board": "mist filming over close-up wafer",
-   "caption": "Thin films of material are added to the wafer."
+   "handoff": "Wafer with film; Lou outside tool. Keep the same cross-section orientation for the next instructional cut.",
+   "caption": "First, we add a thin film of material."
   },
   {
    "id": "7-2",
    "scene": "7",
-   "start": 110.0,
-   "end": 114.5,
-   "action": "The same cross-section: a distinct coating covers the film.",
+   "start": 118.0,
+   "end": 123.0,
+   "action": "A muted coral layer covers the film in the cross-section. Briefly return to Grain watching the operation. Keep the explanatory overlay separate from the character’s facial features.",
    "labels": [
     "PHOTORESIST"
    ],
-   "board": "yellow room flashing pattern onto wafer with light",
-   "caption": "A light-sensitive coating goes on top."
+   "handoff": "Coated wafer. Move to a separately identified exposure tool; maintain the cross-section’s left and right.",
+   "caption": "Then a light-sensitive coating, called photoresist."
   },
   {
    "id": "7-3",
    "scene": "7",
-   "start": 114.5,
-   "end": 120.5,
-   "action": "Light through a patterned mask changes parts of the coating; then the developer opens those areas, as two clear steps.",
+   "start": 123.0,
+   "end": 129.5,
+   "action": "Light transfers a pattern to the coating. Show a change in the exposed regions before cutting to development, where selected regions dissolve. Use a positive-resist example consistently. The light does not cut trenches into the silicon.",
    "labels": [
     "LITHOGRAPHY"
    ],
-   "board": "plasma carving trenches then beam dosing atoms",
-   "caption": "Light transfers a pattern. Developing opens selected areas in the coating."
+   "handoff": "Patterned resist on the wafer. Match the revealed openings into the etching view; do not change their shape between shots.",
+   "caption": "Light transfers a pattern. Developing opens selected parts of the coating."
   },
   {
    "id": "7-4",
    "scene": "7",
-   "start": 120.5,
-   "end": 124.5,
-   "action": "The same cross-section: material disappears only under the openings.",
+   "start": 129.5,
+   "end": 134.0,
+   "action": "In the same simple cross-section, exposed film is removed through the openings while protected regions remain. End with a brief indication that the temporary resist is removed before proceeding.",
    "labels": [
-    "ETCH"
+    "ETCHING"
    ],
-   "board": "water washing wafer then scanner marking green tick",
+   "handoff": "Wafer with patterned film. Close this example before cutting to a separate doping illustration; do not imply that every wafer follows this exact sequence.",
    "caption": "Etching removes material through those openings."
   },
   {
    "id": "7-5",
    "scene": "7",
-   "start": 124.5,
-   "end": 130.5,
-   "action": "A separate magnified view: a controlled, local addition of atoms; Grain watches with interest.",
+   "start": 134.0,
+   "end": 140.5,
+   "action": "A new framed example shows selected atoms introduced into a defined region of silicon. Keep their visual size explicitly schematic. Grain leans closer with curiosity. Avoid presenting one literal cross-section as a complete transistor recipe.",
    "labels": [
     "DOPING"
    ],
-   "board": "wafer whirling fast through film to check again",
-   "caption": "Selected atoms can also be added to change silicon's electrical behaviour."
+   "handoff": "Wafer remains in enclosed processing; explanatory view closes. Cut to Lou at the tool’s readout.",
+   "caption": "Adding selected atoms changes how parts of the silicon conduct electricity."
   },
   {
    "id": "7-6",
    "scene": "7",
-   "start": 130.5,
-   "end": 134.5,
-   "action": "Lou does three short actions, one per word, inspects the result and gives a small nod.",
+   "start": 140.5,
+   "end": 144.5,
+   "action": "A three-beat montage: cleaning within a tool, measurement of a feature, inspection result on Lou’s panel. Lou checks before nodding. These actions recur throughout production.",
    "labels": [],
-   "board": "wafer growing tall with stacked city floors and counter",
+   "handoff": "Wafer; Lou outside. Lou’s final tap cues a time-compressed montage of further operations.",
    "caption": "Clean. Measure. Check."
   },
   {
    "id": "7-7",
    "scene": "7",
-   "start": 134.5,
-   "end": 140.5,
-   "action": "The operations again with visible changes building up layer on layer.",
+   "start": 144.5,
+   "end": 151.0,
+   "action": "Revisit familiar tool silhouettes as the patterned structures visibly change. Use a dissolving clock motif or shifting light to mark elapsed time. Lou consults the process route, not a universal loop count.",
    "labels": [],
-   "board": "tower of layers climbing higher in time-lapse",
-   "caption": "And again? Many times. Each pattern has a job."
+   "handoff": "Processed wafer; Lou accompanying its route. Match a patterned feature into the next magnified view.",
+   "caption": "Again? Many times. Each step has a job."
   },
   {
    "id": "7-8",
    "scene": "7",
-   "start": 140.5,
-   "end": 146.0,
-   "action": "The montage resolves into a clear simplified circuit; Grain, satisfied, earns its red coach headband.",
+   "start": 151.0,
+   "end": 156.5,
+   "action": "Reveal an orderly simplified circuit in the magnifying window. On Lou’s display, a tiny illustrated Grain avatar receives a red coach headband. The physical wafer stays protected; the game identity belongs to the display rather than cleanroom clothing.",
    "labels": [],
-   "board": "finished wafer-city with many floors complete",
-   "caption": "Together, these steps form transistors and the connections between them."
+   "handoff": "Processed wafer in the physical scene; headband only on display avatar. Pull out from the schematic to the complete wafer. Keep that distinction through the rest of the film.",
+   "caption": "Together, these steps build transistors and their connections."
   },
   {
    "id": "8-1",
    "scene": "8",
-   "start": 146.0,
-   "end": 150.5,
-   "action": "A round wafer with a grid of dies; one die is highlighted; Grain points to it.",
+   "start": 156.5,
+   "end": 161.0,
+   "action": "Under a restrained inspection light, reveal the round wafer and its grid of dies. Highlight one complete die. Grain’s face transfers deliberately from the whole wafer to this selected die; every other die remains unpersonified.",
    "labels": [
     "DIE"
    ],
-   "board": "wafer rising to show mosaic of identical dies",
-   "caption": "One wafer holds many individual chips, called dies."
+   "handoff": "Grain represents one highlighted die still attached to the wafer. Push through its framed magnifying view.",
+   "caption": "One wafer. Many chips, called dies."
   },
   {
    "id": "8-2",
    "scene": "8",
-   "start": 150.5,
-   "end": 156.0,
-   "action": "Into the highlighted die's magnified view; a simple demonstration of a switch turning a signal on and off.",
+   "start": 161.0,
+   "end": 166.5,
+   "action": "Inside the window, demonstrate a transistor controlling a signal, then several working together. This is an explanatory diagram with simple paths and distinct states, not a fantasy city or an electrically exact circuit drawing.",
    "labels": [
-    "wafer → die → transistor"
+    "TRANSISTOR"
    ],
-   "board": "dive into one die revealing transistor streets",
-   "caption": "Inside them, transistors control electrical signals: tiny switches working together."
+   "handoff": "Selected die still attached; alone. Pull back to the same highlighted location. Match the wafer’s orientation at the probe station.",
+   "caption": "Inside, transistors control electrical signals: tiny switches working together."
   },
   {
    "id": "9-1",
    "scene": "9",
-   "start": 156.0,
-   "end": 162.0,
-   "action": "A hold before contact; fine probes meet the die's contact points, never its body.",
+   "start": 166.5,
+   "end": 173.0,
+   "action": "The wafer settles under the probe assembly. Fine contacts meet designated pads. Grain watches the approaching equipment, draws in a breath and holds still. Its face does not overlap the contact pads.",
    "labels": [],
-   "board": "needle bed lowering onto die from above",
-   "caption": "Electrical probes test the dies while they're still on the wafer."
+   "handoff": "Selected die attached to wafer; Lou at readout. Cut on contact to the corresponding location on the test map.",
+   "caption": "Electrical probes test the dies while they’re still on the wafer."
   },
   {
    "id": "9-2",
    "scene": "9",
-   "start": 162.0,
-   "end": 166.5,
-   "action": "A wafer map records results; Grain waits, gets its green mark, lets out its breath; failing dies stay on the wafer, marked.",
+   "start": 173.0,
+   "end": 177.5,
+   "action": "The map records results. Grain looks to Lou. A pass mark appears; Lou checks it before answering. Grain’s shoulders drop in relief. Dies marked as failing remain physically in place.",
    "labels": [],
-   "board": "dies flashing green pass and one red fail with dot",
+   "handoff": "Selected passing die remains attached; Lou stays behind at the station. The wafer moves right toward dicing. Preserve the selected die’s map location.",
    "caption": "Did I pass? You passed."
   },
   {
    "id": "10-1",
    "scene": "10",
-   "start": 166.5,
-   "end": 172.0,
-   "action": "Overhead view following a cutting lane between the dies.",
+   "start": 177.5,
+   "end": 183.0,
+   "action": "An overhead view establishes the cutting lanes. Show the wafer supported during cutting. Follow a lane between dies with controlled movement and minimal spectacle.",
    "labels": [],
-   "board": "wafer flipping and grinding thinner",
-   "caption": "The wafer is cut along the spaces between the dies."
+   "handoff": "Selected die cut free but still supported among its neighbours. Cut closer along the same axis to the pick-up tool.",
+   "caption": "We cut along the spaces between the dies."
   },
   {
    "id": "10-2",
    "scene": "10",
-   "start": 172.0,
-   "end": 176.0,
-   "action": "Closer: one selected die, Grain's, is lifted out.",
+   "start": 183.0,
+   "end": 187.0,
+   "action": "A tool lifts our chosen die. Grain looks back at the wafer, then toward its destination. The lift has a tiny anticipation and a gentle settle; no free fall or unsupported leap.",
    "labels": [],
-   "board": "laser cutting grid that breaks into separate dies",
-   "caption": "A little room of my own."
+   "handoff": "Individual bare die; alone. Follow the tool right and cut on its lowering action into packaging.",
+   "caption": "Where to now?"
   },
   {
    "id": "11-1",
    "scene": "11",
-   "start": 176.0,
-   "end": 181.5,
-   "action": "Warm cream and muted gold: the die is seated on its substrate, its connections made.",
+   "start": 187.0,
+   "end": 194.0,
+   "action": "Continue the lowering movement as the die seats on a package substrate. Show one conventional wire-bond example: delicate connections join the die’s pads to the package. Use a clear magnified view, not an implication that all chips use this package.",
    "labels": [
     "PACKAGE"
    ],
-   "board": "die landing on green square with gold wires arcing",
-   "caption": "A package protects the delicate die and provides electrical connections."
+   "handoff": "Die seated and connected in package. Hold its orientation as the protective enclosure is added.",
+   "caption": "A package protects the die and connects it to the outside world."
   },
   {
    "id": "11-2",
    "scene": "11",
-   "start": 181.5,
-   "end": 185.5,
-   "action": "The protective housing closes; Grain's eyes keep their shape on the package.",
+   "start": 194.0,
+   "end": 198.0,
+   "action": "The enclosure covers the die. Grain’s eyes reappear on its outside as the established character convention. Grain tests a small hopeful gesture; no literal arms interfere with the connections.",
    "labels": [],
-   "board": "black lid closing over wired die",
+   "handoff": "Packaged chip; alone. A handler moves it right into a separate final-test fixture before board assembly.",
    "caption": "So I can join in."
   },
   {
    "id": "12-1",
    "scene": "12",
-   "start": 185.5,
-   "end": 192.0,
-   "action": "The packaged chip is installed on a circuit board.",
+   "start": 198.0,
+   "end": 205.0,
+   "action": "Show a short final-test beat and a recorded pass. Then cut to the package installed on a board. Pull back to establish that this board belongs inside the phone; close the enclosure before returning to the beach.",
    "labels": [],
-   "board": "chips sweeping into three bins by speed",
-   "caption": "After final testing, the chip is ready to become part of a device."
+   "handoff": "Packaged chip on board, then enclosed in phone. Match the phone’s outline to the same device in a hand at the beach.",
+   "caption": "One final test. Then the chip can become part of a device."
   },
   {
    "id": "12-2",
    "scene": "12",
-   "start": 192.0,
-   "end": 199.0,
-   "action": "Back to the beach: the phone wakes in someone's hand; the opening head tilt echoed by a tiny on-screen character; the sea and the last phrase breathe.",
+   "start": 205.0,
+   "end": 218.0,
+   "action": "Return to the opening beach composition, now warm with evening light. The phone wakes in the hand. On its display, the little Grain avatar tilts its head exactly as Grain did in shot 0-1. Hold the answered gesture, then show the process recap. Leave room for the sea after the last line.",
    "labels": [
-    "Quartz → Silicon → Crystal → Wafer → Chips"
+    "QUARTZ → SILICON → CRYSTAL → WAFER → CHIPS"
    ],
-   "board": "chip flying into phone waking up on beach",
-   "caption": "From quartz, to crystal, to wafer, to chip. Small beginnings. Quite a journey."
+   "handoff": "Physical chip remains inside phone; Grain avatar on display. No claim that a chip is conscious or that this single chip powers every function. End on the beach, with a quiet hold.",
+   "caption": "From quartz to silicon. From wafer to working chip. Quite a lot inside something so small."
   }
  ]
 }

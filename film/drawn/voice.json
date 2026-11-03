@@ -1,313 +1,313 @@
 {
- "about": "Voice lines, script v2; times assumed from a calm read until recorded. voice-v1.json is the first cut's.",
+ "about": "Voice lines, screenplay v3; times assumed from a calm read until the scratch read.",
  "lines": [
   {
    "shot": "0-1",
    "from": 0.5,
-   "to": 2.9,
+   "to": 3.3,
    "who": "narrator",
-   "text": "Big things can begin very small."
+   "text": "A handful of sand. Hardly a treasure."
   },
   {
    "shot": "0-1",
-   "from": 3.3,
-   "to": 4.5,
+   "from": 3.8,
+   "to": 5.4,
    "who": "grain",
-   "text": "How small?"
+   "text": "Depends what you find."
   },
   {
    "shot": "0-2",
-   "from": 6.0,
-   "to": 8.8,
+   "from": 7.5,
+   "to": 10.3,
    "who": "narrator",
-   "text": "Small enough to slip between your fingers."
+   "text": "Come along. There’s something remarkable inside quartz."
   },
   {
    "shot": "1-1",
-   "from": 10.5,
-   "to": 16.5,
+   "from": 12.5,
+   "to": 18.1,
    "who": "narrator",
-   "text": "Many grains of sand contain quartz. Our factory journey starts with carefully selected quartz rock."
+   "text": "Many sand grains contain quartz. For this journey, we start with selected quartz rock."
   },
   {
    "shot": "1-2",
-   "from": 18.0,
-   "to": 19.2,
+   "from": 20.0,
+   "to": 22.0,
    "who": "grain",
-   "text": "What's inside it?"
+   "text": "What am I made of?"
   },
   {
    "shot": "1-3",
-   "from": 22.0,
-   "to": 24.0,
+   "from": 24.0,
+   "to": 26.8,
    "who": "narrator",
-   "text": "Silicon and oxygen, chemically joined."
+   "text": "Silicon and oxygen, joined in a crystal."
   },
   {
    "shot": "2-1",
-   "from": 26.0,
-   "to": 30.0,
+   "from": 29.0,
+   "to": 33.0,
    "who": "narrator",
    "text": "In a fiercely hot furnace, carbon helps remove the oxygen."
   },
   {
    "shot": "2-2",
-   "from": 31.5,
-   "to": 33.5,
+   "from": 35.0,
+   "to": 37.0,
    "who": "grain",
-   "text": "There go my travelling companions!"
+   "text": "Oh! We’re going different ways."
   },
   {
    "shot": "2-3",
-   "from": 35.5,
-   "to": 39.1,
+   "from": 39.0,
+   "to": 42.6,
    "who": "narrator",
-   "text": "What remains is silicon, but it still needs cleaning."
+   "text": "We have silicon. But it isn’t pure enough yet."
   },
   {
    "shot": "3-1",
-   "from": 40.5,
-   "to": 45.7,
+   "from": 44.5,
+   "to": 48.5,
    "who": "narrator",
-   "text": "First, silicon is converted into a chemical that can be purified by distillation."
+   "text": "We convert it into a chemical that’s easier to purify."
   },
   {
    "shot": "3-2",
-   "from": 47.0,
-   "to": 49.0,
-   "who": "grain",
-   "text": "Leave the unwanted bits behind."
+   "from": 51.0,
+   "to": 53.4,
+   "who": "narrator",
+   "text": "Distillation separates it from unwanted substances."
   },
   {
    "shot": "3-3",
-   "from": 51.0,
-   "to": 55.0,
+   "from": 55.5,
+   "to": 59.1,
    "who": "narrator",
-   "text": "Then a reaction deposits very pure silicon onto heated rods."
+   "text": "Another reaction deposits very pure silicon onto heated rods."
   },
   {
    "shot": "4-1",
-   "from": 56.5,
-   "to": 58.5,
+   "from": 61.0,
+   "to": 63.4,
    "who": "narrator",
-   "text": "The purified silicon is melted."
+   "text": "Next, we melt the purified silicon."
   },
   {
    "shot": "4-2",
-   "from": 60.5,
-   "to": 65.3,
+   "from": 65.5,
+   "to": 69.9,
    "who": "narrator",
-   "text": "A tiny seed crystal touches the surface, then slowly rises and turns."
+   "text": "A seed crystal touches the melt, then slowly rises and turns."
   },
   {
    "shot": "4-3",
-   "from": 67.0,
-   "to": 71.0,
+   "from": 72.0,
+   "to": 75.6,
    "who": "narrator",
-   "text": "Silicon solidifies onto it, following the seed's orderly atomic pattern."
+   "text": "Silicon solidifies onto it, following the seed’s atomic pattern."
   },
   {
    "shot": "4-4",
-   "from": 72.5,
-   "to": 73.7,
+   "from": 77.5,
+   "to": 79.1,
    "who": "grain",
-   "text": "I've grown."
+   "text": "All that… is me?"
   },
   {
    "shot": "4-4",
-   "from": 74.1,
-   "to": 76.1,
+   "from": 79.6,
+   "to": 81.6,
    "who": "narrator",
-   "text": "One continuous crystal: an ingot."
+   "text": "One continuous crystal. An ingot."
   },
   {
    "shot": "5-1",
-   "from": 77.5,
-   "to": 80.3,
+   "from": 83.5,
+   "to": 86.3,
    "who": "narrator",
    "text": "The ingot is sliced into thin discs."
   },
   {
    "shot": "5-2",
-   "from": 82.0,
-   "to": 85.2,
+   "from": 88.5,
+   "to": 91.7,
    "who": "narrator",
-   "text": "Their surfaces are carefully finished, polished, and cleaned."
+   "text": "Their surfaces are finished, polished, and carefully cleaned."
   },
   {
    "shot": "5-3",
-   "from": 86.5,
-   "to": 88.5,
+   "from": 93.5,
+   "to": 95.5,
    "who": "grain",
    "text": "Am I a chip now?"
   },
   {
    "shot": "5-3",
-   "from": 88.9,
-   "to": 92.1,
+   "from": 96.0,
+   "to": 99.2,
    "who": "narrator",
-   "text": "You're a wafer, the foundation for many chips."
+   "text": "A wafer. We’ll build many chips on you."
   },
   {
    "shot": "6-1",
-   "from": 93.5,
-   "to": 96.7,
+   "from": 101.0,
+   "to": 104.2,
    "who": "lou",
    "text": "Welcome to the fab. Precious cargo coming through!"
   },
   {
    "shot": "6-2",
-   "from": 98.0,
-   "to": 104.0,
+   "from": 106.0,
+   "to": 111.6,
    "who": "narrator",
-   "text": "Here, tiny patterns become electronic circuits. Even a speck of dust can spoil the work."
+   "text": "Here we build the circuits. Even a speck of dust can spoil the work."
   },
   {
    "shot": "7-1",
-   "from": 105.5,
-   "to": 109.1,
+   "from": 113.5,
+   "to": 116.7,
    "who": "narrator",
-   "text": "Thin films of material are added to the wafer."
+   "text": "First, we add a thin film of material."
   },
   {
    "shot": "7-2",
-   "from": 110.5,
-   "to": 113.3,
+   "from": 118.5,
+   "to": 121.3,
    "who": "narrator",
-   "text": "A light-sensitive coating goes on top."
+   "text": "Then a light-sensitive coating, called photoresist."
   },
   {
    "shot": "7-3",
-   "from": 115.0,
-   "to": 119.4,
+   "from": 123.5,
+   "to": 127.9,
    "who": "narrator",
-   "text": "Light transfers a pattern. Developing opens selected areas in the coating."
+   "text": "Light transfers a pattern. Developing opens selected parts of the coating."
   },
   {
    "shot": "7-4",
-   "from": 121.0,
-   "to": 123.4,
+   "from": 130.0,
+   "to": 132.4,
    "who": "narrator",
    "text": "Etching removes material through those openings."
   },
   {
    "shot": "7-5",
-   "from": 125.0,
-   "to": 129.4,
+   "from": 134.5,
+   "to": 138.9,
    "who": "narrator",
-   "text": "Selected atoms can also be added to change silicon's electrical behaviour."
+   "text": "Adding selected atoms changes how parts of the silicon conduct electricity."
   },
   {
    "shot": "7-6",
-   "from": 131.0,
-   "to": 132.2,
+   "from": 141.0,
+   "to": 142.2,
    "who": "lou",
    "text": "Clean. Measure. Check."
   },
   {
    "shot": "7-7",
-   "from": 135.0,
-   "to": 136.2,
+   "from": 145.0,
+   "to": 146.0,
    "who": "grain",
-   "text": "And again?"
+   "text": "Again?"
   },
   {
    "shot": "7-7",
-   "from": 136.6,
-   "to": 139.4,
+   "from": 146.5,
+   "to": 149.3,
    "who": "lou",
-   "text": "Many times. Each pattern has a job."
+   "text": "Many times. Each step has a job."
   },
   {
    "shot": "7-8",
-   "from": 141.0,
-   "to": 145.0,
+   "from": 151.5,
+   "to": 154.7,
    "who": "narrator",
-   "text": "Together, these steps form transistors and the connections between them."
+   "text": "Together, these steps build transistors and their connections."
   },
   {
    "shot": "8-1",
-   "from": 146.5,
-   "to": 149.7,
+   "from": 157.0,
+   "to": 159.4,
    "who": "narrator",
-   "text": "One wafer holds many individual chips, called dies."
+   "text": "One wafer. Many chips, called dies."
   },
   {
    "shot": "8-2",
-   "from": 151.0,
-   "to": 155.0,
+   "from": 161.5,
+   "to": 165.1,
    "who": "narrator",
-   "text": "Inside them, transistors control electrical signals: tiny switches working together."
+   "text": "Inside, transistors control electrical signals: tiny switches working together."
   },
   {
    "shot": "9-1",
-   "from": 156.5,
-   "to": 160.9,
+   "from": 167.0,
+   "to": 171.4,
    "who": "narrator",
-   "text": "Electrical probes test the dies while they're still on the wafer."
+   "text": "Electrical probes test the dies while they’re still on the wafer."
   },
   {
    "shot": "9-2",
-   "from": 162.5,
-   "to": 163.7,
+   "from": 173.5,
+   "to": 174.7,
    "who": "grain",
    "text": "Did I pass?"
   },
   {
    "shot": "9-2",
-   "from": 164.1,
-   "to": 165.3,
+   "from": 175.2,
+   "to": 176.2,
    "who": "lou",
    "text": "You passed."
   },
   {
    "shot": "10-1",
-   "from": 167.0,
-   "to": 171.0,
+   "from": 178.0,
+   "to": 181.2,
    "who": "narrator",
-   "text": "The wafer is cut along the spaces between the dies."
+   "text": "We cut along the spaces between the dies."
   },
   {
    "shot": "10-2",
-   "from": 172.5,
-   "to": 174.9,
+   "from": 183.5,
+   "to": 184.7,
    "who": "grain",
-   "text": "A little room of my own."
+   "text": "Where to now?"
   },
   {
    "shot": "11-1",
-   "from": 176.5,
-   "to": 180.5,
+   "from": 187.5,
+   "to": 192.3,
    "who": "narrator",
-   "text": "A package protects the delicate die and provides electrical connections."
+   "text": "A package protects the die and connects it to the outside world."
   },
   {
    "shot": "11-2",
-   "from": 182.0,
-   "to": 184.0,
+   "from": 194.5,
+   "to": 196.5,
    "who": "grain",
    "text": "So I can join in."
   },
   {
    "shot": "12-1",
-   "from": 186.0,
-   "to": 191.2,
+   "from": 198.5,
+   "to": 203.3,
    "who": "narrator",
-   "text": "After final testing, the chip is ready to become part of a device."
+   "text": "One final test. Then the chip can become part of a device."
   },
   {
    "shot": "12-2",
-   "from": 192.5,
-   "to": 195.7,
+   "from": 205.5,
+   "to": 209.1,
    "who": "narrator",
-   "text": "From quartz, to crystal, to wafer, to chip."
+   "text": "From quartz to silicon. From wafer to working chip."
   },
   {
    "shot": "12-2",
-   "from": 196.1,
-   "to": 198.1,
+   "from": 209.6,
+   "to": 212.4,
    "who": "grain",
-   "text": "Small beginnings. Quite a journey."
+   "text": "Quite a lot inside something so small."
   }
  ]
 }
