@@ -106,11 +106,19 @@ def boards(shots):
         prompt = (f"A rough storyboard sketch for an animated film, loose grey pencil on white paper, 16:9, simple shapes, "
                   f"no colour, no words. {s['board']} The hero Grain is {FORMS.get(str(s['scene']), 'a grain of sand')}, "
                   f"with big round eyes. Camera: {s['camera']}.")
-        try:
-            img = c.image(prompt)
-        except meta.OverCap as e:
-            print("stopped:", e)
-            break
+        img = None
+        for attempt in (prompt, f"A rough storyboard sketch, loose grey pencil on white paper, no words. {s['board']}"):
+            try:
+                img = c.image(attempt)
+                break
+            except meta.OverCap as e:
+                print("stopped:", e)
+                return c.spent()
+            except Exception as e:                   # a refused prompt: say why, try the plainer one, then move on
+                body = e.read()[:300] if hasattr(e, "read") else b""
+                print(s["id"], "refused:", getattr(e, "code", e), body.decode("utf-8", "replace"))
+        if img is None:
+            continue
         p.write_bytes(img)
         print(s["id"], "board", f"spent ${c.spent():.2f}")
     return c.spent()
@@ -131,9 +139,11 @@ def reel(shots):
     for s in sorted(shots, key=lambda s: float(s["start"])):
         n = int(round((float(s["end"]) - float(s["start"])) * fps))
         bp = DATA / "boards" / f"{s['id']}.png"
-        img = Image.open(bp).convert("RGB").resize((W, H - 120)) if bp.exists() else Image.new("RGB", (W, H - 120), (240, 240, 240))
         frame = Image.new("RGB", (W, H), (13, 20, 48))
-        frame.paste(img, (0, 0))
+        if bp.exists():
+            img = Image.open(bp).convert("RGB")
+            img.thumbnail((W, H - 120), Image.LANCZOS)          # keep the board's own proportions
+            frame.paste(img, ((W - img.width) // 2, (H - 120 - img.height) // 2))
         d = ImageDraw.Draw(frame)
         d.text((16, H - 112), f"{s['id']}  {s.get('action', '')}"[:110], font=font, fill=(255, 211, 77))
         words = s.get("caption", "")
