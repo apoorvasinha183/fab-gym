@@ -94,7 +94,7 @@ def assets():
 
 # ------------------------------------------------------------------ cut-outs
 
-def key(img, tol=110):
+def key(img, tol=110, crop=True):
     """The pose off its green backdrop: the backdrop's colour from the picture's border, everything near it made clear,
     green spill at the edge pulled out, cropped to the body with a margin."""
     a = np.asarray(img.convert("RGB")).astype(np.int32)
@@ -107,7 +107,7 @@ def key(img, tol=110):
     m = Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3))
     rgba = Image.fromarray(a.astype(np.uint8), "RGB").convert("RGBA")
     rgba.putalpha(m)
-    box = rgba.getbbox()
+    box = rgba.getbbox() if crop else None
     if box:
         x0, y0, x1, y1 = box
         rgba = rgba.crop((max(0, x0 - 8), max(0, y0 - 8), min(rgba.width, x1 + 8), min(rgba.height, y1 + 8)))

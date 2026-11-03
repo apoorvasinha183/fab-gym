@@ -9,6 +9,8 @@ SIZES_M = {"grain-01-sand": 0.0005, "grain-02-quartz": 0.03, "grain-03-grey": 0.
 def px_per_m(plate, y):
     """Pixels a metre covers on the ground at screen row y (the plate's horizon, reference row and its pixels a metre)."""
     h, ry, k = float(plate["horizon"]), float(plate["ref_y"]), float(plate["px_per_m"])
+    if ry - h < 150:
+        return k            # a front-on stage (the horizon just behind the ground's front): no perspective to speak of
     return max(0.0, k * (y - h) / (ry - h))
 
 
@@ -45,7 +47,7 @@ def inbetween_ok(a, b, mid, slack=0.15):
     """An in-between sits between its keys: its contact point and height between theirs (with a little slack)."""
     def between(x, p, q):
         lo, hi = min(p, q), max(p, q)
-        pad = (hi - lo) * slack + 2
+        pad = max((hi - lo) * slack, 0.02 * abs(x), 2)     # never stricter than 2% of the size
         return lo - pad <= x <= hi + pad
     return (between(mid["contact"][0], a["contact"][0], b["contact"][0])
             and between(mid["contact"][1], a["contact"][1], b["contact"][1])

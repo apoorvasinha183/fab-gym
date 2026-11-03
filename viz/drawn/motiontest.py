@@ -73,26 +73,82 @@ def draw():
                 print(name, "refused:", getattr(e, "code", e), body)
 
 
+def inbetweens():
+    """The shout's in-betweens: each drawn by Muse Image from the two keys either side of it, as an in-betweener works."""
+    c = pilot.client()
+    for k in (1, 2, 3):
+        p = OUT / f"shout_{k}b.png"
+        if p.exists():
+            continue
+        a, b = (OUT / f"shout_{k}.png").read_bytes(), (OUT / f"shout_{k + 1}.png").read_bytes()
+        prompt = ("The in-between drawing for animation: the same character exactly halfway between the pose in the first "
+                  "attached picture and the pose in the second, same size, same place, same face and colours, " + BASE)
+        p.write_bytes(c.image(prompt, refs=[a, b]))
+        print(p.name, f"${c.spent():.2f}")
+
+
+def read_scale(plate_path, stone_m=0.03):
+    """Muse Spark reads the plate: its horizon, the front edge of its ground and the size of a stone there; at pebble
+    scale those stones are about 3 cm, which gives the pixels a metre covers where the characters stand."""
+    import base64
+    import json
+    from io import BytesIO
+    from . import music
+    img = Image.open(plate_path).convert("RGB").resize((W + 240, H + 135))
+    buf = BytesIO()
+    img.save(buf, "JPEG", quality=85)
+    url = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    q = (f"This background painting is {img.width} x {img.height} pixels. Answer with JSON only: "
+         '{"horizon_y": the pixel row of the horizon or vanishing line, '
+         '"ledge_front_y": the pixel row of the front edge of the ground or ledge a character would stand on, '
+         '"stone_px": the width in pixels of a typical stone or rock at that front edge}.')
+    cl = music.client()
+    d, _ = music.ask_json(cl, [{"role": "user", "content": [{"type": "text", "text": q},
+                                                            {"type": "image_url", "image_url": {"url": url}}]}],
+                          "reading the plate's scale", 2000)
+    plate = {"horizon": float(d["horizon_y"]) - 67, "ref_y": float(d["ledge_front_y"]) - 67,
+             "px_per_m": float(d["stone_px"]) / stone_m}
+    (OUT / "scale.json").write_text(json.dumps(dict(plate, read=d), indent=1))
+    return plate
+
+
 def render(out=None):
     d, anchors = {}, {}
     d["plate"] = Image.open(pilot.OUT / "smelt_cutaway.png").convert("RGBA").resize((W + 240, H + 135), Image.LANCZOS)
+    import json
+    from . import scale
+    sp = OUT / "scale.json"
+    plate_scale = json.loads(sp.read_text()) if sp.exists() else read_scale(pilot.OUT / "smelt_cutaway.png")
+    feet = plate_scale["ref_y"]                                           # on the ledge's front edge, as Spark read it
+    grain_h = scale.height_px(plate_scale, feet, scale.SIZES_M["grain-03-grey"])
+    thief_h = scale.height_px(plate_scale, feet, 0.08)                  # a thief a little smaller than the lump
+    print("scale:", {k: plate_scale[k] for k in ("horizon", "ref_y", "px_per_m")}, "Grain", round(grain_h), "px; thieves", round(thief_h), "px")
     for k in range(1, 9):
-        cut = poses.fit(pilot.key(Image.open(OUT / f"run_{k}.png")), 300)
+        cut = poses.fit(pilot.key(Image.open(OUT / f"run_{k}.png")), thief_h)
         d[f"run_{k}"], anchors[f"run_{k}"] = cut, poses.measure(cut)["contact"]
-    for k in range(1, 5):
-        cut = poses.fit(pilot.key(Image.open(OUT / f"shout_{k}.png")), 340)
+    for k in ("1", "1b", "2", "2b", "3", "3b", "4"):
+        cut = poses.fit(pilot.key(Image.open(OUT / f"shout_{k}.png")), grain_h)
         d[f"shout_{k}"], anchors[f"shout_{k}"] = cut, poses.measure(cut)["contact"]
+    for k in range(1, 5):
+        # the painted flames as bands: tall behind the characters, low in front of the ledge, tiled across the frame
         f = pilot.key(Image.open(OUT / f"fire_{k}.png"))
-        f = f.resize((W + 200, int(f.height * (W + 200) / f.width)), Image.LANCZOS)
-        d[f"fire_{k}"] = f
+        for tag, hgt in (("back", 360), ("front", 150)):
+            one = f.resize((max(1, int(f.width * hgt / f.height)), hgt), Image.LANCZOS)
+            band = Image.new("RGBA", (W + 400, hgt), (0, 0, 0, 0))
+            x = -(k * 97) % one.width - one.width
+            while x < band.width:
+                band.alpha_composite(one, (x, 0))
+                x += one.width - 20
+            d[f"fire_{tag}_{k}"] = band
     s = {"shot": "test", "frames": 48, "fps": FPS, "camera": [[0, {"x": 0, "y": 0, "zoom": 1.0}], [47, {"x": 40, "y": 0, "zoom": 1.04}]],
          "levels": [
              {"name": "plate", "depth": 0.5, "at": [-120, -67], "cels": [["plate", 48]]},
-             {"name": "fire_back", "depth": 0.45, "at": [-100, 260], "cycle": [f"fire_{k}" for k in (1, 2, 3, 4)], "on": 3},
-             {"name": "grain", "depth": 0.2, "at": [720, 905], "cels": [["shout_1", 6], ["shout_2", 9], ["shout_3", 9], ["shout_2", 9], ["shout_4", 15]]},
+             {"name": "fire_back", "depth": 0.45, "at": [-200, feet - 330], "cycle": [f"fire_back_{k}" for k in (1, 2, 3, 4)], "on": 3},
+             {"name": "grain", "depth": 0.2, "at": [720, feet], "cels": [["shout_1", 4], ["shout_1b", 3], ["shout_2", 8],
+                                                                         ["shout_2b", 3], ["shout_3", 9], ["shout_3b", 3],
+                                                                         ["shout_4", 18]]},
              {"name": "thieves", "depth": 0.2, "cycle": [f"run_{k}" for k in range(1, 9)], "on": 3,
-              "path": [[0, 1150, 900], [47, 1750, 900]]},
-             {"name": "fire_front", "depth": 0.1, "at": [-100, 860], "cycle": [f"fire_{k}" for k in (3, 4, 1, 2)], "on": 3}]}
+              "path": [[0, 1150, feet], [47, 1750, feet]]}]}
     sheet = sh.load(s)
     out = out or ROOT / "data/drawn/motion-test.mp4"
     r = compose.Renderer(d, (W, H), anchors=anchors)
@@ -107,6 +163,16 @@ def render(out=None):
     # the same 2 seconds slowed to a quarter speed, so each drawing can be seen
     slow = out.with_name(out.stem + "-slow.mp4")
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(out), "-an", "-vf", "setpts=4*PTS", str(slow)])
+    # onion skins: each moving character's drawings laid over each other, fainter the earlier, the animator's check
+    for name, keys in (("shout", ["shout_1", "shout_1b", "shout_2", "shout_2b", "shout_3", "shout_3b", "shout_4"]),
+                       ("run", [f"run_{k}" for k in range(1, 9)])):
+        sk = Image.new("RGBA", (900, 700), (255, 250, 242, 255))
+        for i, k in enumerate(keys):
+            im = d[k].copy()
+            im.putalpha(im.split()[3].point(lambda v, i=i: int(v * (0.25 + 0.5 * i / len(keys)))))
+            ax, ay = anchors[k]
+            sk.alpha_composite(im, (int(450 - ax), int(640 - ay)))
+        sk.convert("RGB").save(ROOT / f"data/drawn/onion-{name}.jpg", quality=85)
     print(out, slow, "drawings:", r.rendered)
 
 

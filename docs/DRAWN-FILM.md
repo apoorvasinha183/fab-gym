@@ -196,4 +196,7 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   that lost the oxygen twins was redrawn, and Grain's shout was moved onto its line (28.6 to 29.9 s). Muse Image's
   content filter refuses some wordings for these child-like characters (for example "holding ... close to its body,
   scared"); the plainer fallback prompt gets through.
+- 3 Nov: a front-on stage (Muse Spark reads its horizon less than 150 px behind the ground's front) keeps one scale
+  across the ground; perspective applies only where the ground recedes. The test plate's ledge stones (about 3 cm) read
+  85 px: 2,833 px a metre, so the 10 cm grey lump is 283 px and the thieves 227 px.
 
