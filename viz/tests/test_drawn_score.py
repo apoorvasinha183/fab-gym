@@ -76,6 +76,40 @@ class Score(unittest.TestCase):
             self.assertIn(name, score.RANGES)
 
 
+class Film(unittest.TestCase):
+    def test_m6_a_cues_bars_fill_its_place_and_its_hits_land(self):
+        from viz.drawn import score
+        p = score.plan_cue(22.0, 34.0, [23.5, 27.0, 31.0], [4, 4])
+        self.assertTrue(60 <= p["tempo"] <= 160, p)
+        length = p["bars"] * 4 * 60.0 / p["tempo"]
+        self.assertLessEqual(abs(length - 12.0), 1 / 24, p)
+        step = 60.0 / p["tempo"] * (0.5 if p["half_beats"] else 1.0)
+        for h in (23.5, 27.0, 31.0):
+            self.assertLessEqual(abs(22.0 + round((h - 22.0) / step) * step - h), 1 / 24, (p, h))
+        self.assertEqual(len(p["hits"]), 3)
+        self.assertTrue(all(len(x) == 2 for x in p["hits"]), "each hit as (bar, beat)")
+
+    def test_m7_the_whole_film_is_one_score(self):
+        from viz.drawn import score
+        a = cue()
+        b = cue(cue="purify", **{"from": 34.0, "to": 46.0}, tempo=90, meter=[3, 4], key="A major",
+                parts={"Flute": [["A5", 3]] * 6, "Harp": [["A3+C#4+E4", 3]] * 6})
+        b["to"] = 34.0 + 6 * 3 * 60.0 / 90
+        xml = score.film_musicxml([a, b])
+        root = ET.fromstring(xml)
+        names = [p.findtext("part-name") for p in root.iter("score-part")]
+        self.assertEqual(sorted(names), sorted(["Violin I", "Tuba", "Timpani", "Flute", "Harp"]))
+        for part in root.iter("part"):
+            ms = part.findall("measure")
+            self.assertEqual(len(ms), 12, "6 bars of each cue")
+        first = root.find("part")
+        self.assertEqual(first.findall("measure")[6].find("attributes/time/beats").text, "3")
+        marks = [w.text for w in root.iter("rehearsal")]
+        self.assertEqual(marks, ["smelt", "purify"])
+        tempos = [s.get("tempo") for s in root.find("part").iter("sound") if s.get("tempo")]
+        self.assertEqual(tempos, ["120", "90"])
+
+
 class Voice(unittest.TestCase):
     shots = [{"id": "2-1", "start": 22.0, "end": 26.0}, {"id": "2-2", "start": 26.0, "end": 30.0}]
 

@@ -129,6 +129,10 @@ a beat); the voice-over is **a narrator plus a few lines from Grain and Lou**, v
 - **M3** Every note is inside its instrument's range.
 - **M4** Each cue becomes valid MusicXML: one part per instrument, named, every measure adding up to its meter.
 - **M5** The orchestra is a full symphony: strings, woodwinds, brass, percussion and harp each have a part.
+- **M6** Each cue's tempo makes its bars fill its place on the film within a frame, with its hits on beats or half
+  beats within a frame (half beats only when no tempo puts them all on beats).
+- **M7** The whole film's score is one MusicXML: the cues in order, each from its own measure with its own tempo, key
+  and rehearsal mark, every instrument present in every measure (resting where a cue leaves it out).
 - **V1** Every voice line sits inside its shot; the narrator speaks at most 2.8 words a second, Grain and Lou 3.2.
 - **V2** Every number the narrator says is in `docs/CHIP-FILM.md`.
 - **V3** Grain has at most 8 lines of at most 8 words each; Lou has 1 or 2.
