@@ -81,6 +81,26 @@ every pose is pegged, as animators peg drawings on a bar:
   path must be smooth wherever the sheet holds or eases it (SAM 3.1's video tracking can do the same at $0.20 per
   1,000 frames).
 
+## The score and the voice
+
+Decided 3 Nov by quiz: Meta writes an orchestral score that **MuseScore Studio 4.7.5** (GPL-3.0, open source) plays
+and prints; a **full symphony orchestra**; the music **catches the big moments** (two to four hits a scene, each on
+a beat); the voice-over is **a narrator plus a few lines from Grain and Lou**, voiced by people the founder brings.
+
+- **Spotting** (Muse Spark): `film/drawn/score/spotting.json`, the cues, each with its start and end on the film,
+  mood, key, meter, instruments and hit points (seconds on the film).
+- **Tempo** (our code): each cue's tempo is chosen, between 60 and 160 beats a minute, so its hit points fall on
+  beats, within one frame.
+- **Composing** (Muse Spark): `film/drawn/score/<cue>.json`, every part bar by bar, notes as pitch and length in
+  beats (`["D5", 1.5]`, `["r", 0.5]` a rest, `["C4+E4+G4", 2]` a chord).
+- **Checks** (our code): every part adds up to the cue's bars; notes inside each instrument's range; the cue lasts
+  its length. A failed check goes back to Spark with the reason; Spark then reads the checked score and revises.
+- **Sheet and sound** (our code, MuseScore): each cue to MusicXML, the whole score as a PDF and each cue as audio from
+  MuseScore's command line; the cues laid on the film and lowered under the voice.
+- **Voice-over** (Muse Spark): `film/drawn/voice.json`, one entry per line: shot, who (narrator, Grain, Lou), words,
+  start and end, an acting note. The founder brings the voices; our code places each take on its shot, checks its
+  length and moves the speaker's mouth to it.
+
 ## Checks
 
 - **D1** Every frame of every sheet resolves to a drawing that exists, on every level.
@@ -104,6 +124,14 @@ every pose is pegged, as animators peg drawings on a bar:
 - **D15** A sheet that moves a planted pose is reported (its frames named).
 - **D16** The face level puts the eyes at the pose's face point, within 2 pixels; blinks and mouth shapes come from a
   fixed set.
+- **M1** Every hit point lands within one frame of a beat at its cue's tempo, and every tempo is 60 to 160.
+- **M2** Every part of a cue adds up to the cue's bars, and the cue lasts its length within half a beat.
+- **M3** Every note is inside its instrument's range.
+- **M4** Each cue becomes valid MusicXML: one part per instrument, named, every measure adding up to its meter.
+- **M5** The orchestra is a full symphony: strings, woodwinds, brass, percussion and harp each have a part.
+- **V1** Every voice line sits inside its shot; the narrator speaks at most 2.8 words a second, Grain and Lou 3.2.
+- **V2** Every number the narrator says is in `docs/CHIP-FILM.md`.
+- **V3** Grain has at most 8 lines of at most 8 words each; Lou has 1 or 2.
 - **D17** In a rendered shot, the character's painted area moves smoothly: no frame-to-frame jump of its centre over
   a set size where the sheet does not cut, step or slide it.
 
