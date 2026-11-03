@@ -68,10 +68,21 @@ def char(n=None):
             "once, full body, alone in the middle of the picture, " + backdrop(n) + " Pose: ")
 
 
+DIAGRAM = ("A clean, clear explanatory diagram for an animated film, painted flat in soft gouache with a fine ink line, "
+           "plain and uncluttered, seen straight on, no room, no machines unless named, no characters, no text: ")
+
+
+def is_diagram(p):
+    return p.get("prompt", "").startswith("A simplified")
+
+
 def plate_text(n, p):
     if LOOK["name"] == "comic":
         return pilot.PLATE + p["prompt"]
-    light = LOOK.get("colour", {}).get(str(n), "")
+    if is_diagram(p):
+        # a magnified 'simplified view' is a diagram: no room painting, no style picture, no scene light
+        return DIAGRAM + p["prompt"][len("A simplified "):]
+    light = p.get("light") or LOOK.get("colour", {}).get(str(n), "")   # a background may carry its own light
     # painted at the character's scale: where it stands, how tall it is in the frame, and the things next to it drawn to
     # its size, so a small character does not look pasted onto a room built for people
     stage = p.get("stage")
@@ -128,7 +139,7 @@ def draw(n, only=None):
     def plate(name, p):
         f = out / f"{name}.png"
         if not f.exists():
-            img = produce._try(c, [plate_text(n, p)], [hero])
+            img = produce._try(c, [plate_text(n, p)], [] if is_diagram(p) else [hero])
             if img:
                 f.write_bytes(img)
         prev = f
@@ -396,6 +407,7 @@ def render(n, only=None):
                 img = Image.open(f).convert("RGBA")
                 if lv.get("plate") and ">" in nm:
                     continue
+                if lv.get("plate"):
                     d[nm] = img.resize((PW, PH), Image.LANCZOS)
                 else:
                     cut = graded(poses.fit(pilot.key(img), float(lv["height"])), n)

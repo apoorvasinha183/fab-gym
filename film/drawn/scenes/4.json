@@ -59,14 +59,14 @@
   },
   "C_long": {
    "sheet": "grain-05-crystal",
-   "pose": "very long like a giant silver ingot, hanging from its top, looking down along its own long body, astonished, mouth open",
+   "pose": "very tall and long like a big silver ingot, held up at its top, looking down along its own long body in amazement, mouth open",
    "mouths": true
   },
   "C_proud": {
    "sheet": "grain-05-crystal",
    "kind": "next",
    "after": "C_long",
-   "pose": "very long like a giant silver ingot, hanging from its top, a quiet proud smile"
+   "pose": "the same tall silver ingot, held up at its top, a quiet proud smile"
   }
  },
  "shots": [

@@ -52,17 +52,21 @@ def ask_json(cl, messages, what, max_tokens, repairs=2):
 def spot():
     shots = json.loads(SHOTS.read_text())["shots"]
     brief = [{k: s.get(k) for k in ("id", "scene", "start", "end", "action", "grain", "camera")} for s in shots]
+    total = float(shots[-1]["end"])
+    old = OUT / "v1/spotting.json" if (OUT / "v1/spotting.json").exists() else OUT / "spotting.json"
+    keep = (" Keep Grain's theme exactly as it is, so the re-timed score is the same film's: " +
+            json.dumps(json.loads(old.read_text())["theme"]) + ".") if old.exists() else ""
     shape = {"theme": {"key": "D major", "meter": [4, 4], "notes": [["D5", 1], ["F#5", 0.5]]},
              "cues": [{"cue": "c01", "title": "The grain", "from": 0.0, "to": 8.0, "mood": "...", "key": "D major",
                        "meter": [4, 4], "instruments": ["Celesta", "Violin I"], "hits": [{"t": 4.0, "what": "lattice glows"}],
                        "arc": "how the music moves through the cue"}]}
     prompt = (
-        "You are the composer of a short hand-drawn animated film, 'Sand to Chip' (164 s): a grain of sand called Grain "
+        f"You are the composer of a short hand-drawn animated film, 'Sand to Chip' ({total:.0f} s): a grain of sand called Grain "
         "travels from a quarry, through a furnace, purification, crystal growing, slicing, a chip factory and testing, "
         "into a phone that wakes up; it becomes the wafer coach in the factory. Score it for a full symphony orchestra "
         "in the classic style of hand-drawn feature films: melodic, warm, and catching the big moments of the picture.\n\n"
         "1. Write Grain's theme: a memorable melody of 4 bars, in the JSON note format below, to be reused and varied in "
-        "every cue.\n2. Spot the film into 8 to 13 cues that run back to back from 0 to 164 seconds, each starting and "
+        f"every cue.{keep}\n2. Spot the film into 8 to 14 cues that run back to back from 0 to {total:.0f} seconds, each starting and "
         "ending on a shot boundary. For each: a title, from and to (seconds), mood, key, meter ([4,4], [3,4] or [6,8]), "
         "the instruments it uses (choose from " + json.dumps(SYMPHONY) + "; across the film use every family: strings, "
         "woodwinds, brass, percussion and harp), 2 to 4 hit points (seconds on the film, at the moments the picture "
@@ -85,7 +89,7 @@ def spot():
         t = float(cue["to"])
         grid = cue["tempo"] * (2 if cue["half_beats"] else 1)        # half beats: a beat grid twice as fast
         errs += [f"{cue['cue']}: {e}" for e in score.check_hits(float(cue["from"]), [float(h["t"]) for h in cue["moments"]], grid)]
-    if abs(t - 164.0) > 0.05:
+    if abs(t - total) > 0.05:
         errs.append(f"the cues end at {t}")
     missing = score.families_missing([i for c in d["cues"] for i in c["instruments"]])
     if missing:

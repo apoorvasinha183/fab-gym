@@ -42,36 +42,69 @@
   "circuit": {
    "prompt": "A simplified diagram for an animated film: an orderly simple circuit of a few transistors joined by neat ochre connection lines on a slate-blue ground, clear and calm, no labels"
   },
-  "xs0": {
-   "prompt": "A simplified cross-section diagram for an animated film, side view, flat and clear: a thick slate-blue substrate filling the lower half with a flat top, plain soft pale light above, no labels"
+  "xs0_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
-  "xs_film": {
-   "from": "xs0",
-   "prompt": "a thin even ochre film now covers the slate-blue substrate's whole top surface"
+  "xs0": {
+   "from": "xs0_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_half_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_half": {
-   "from": "xs0",
-   "prompt": "a thin even ochre film has begun to cover the left half of the substrate's top surface"
+   "from": "xs_half_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_film_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
+  },
+  "xs_film": {
+   "from": "xs_film_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_res_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_res": {
-   "from": "xs_film",
-   "prompt": "a muted coral coating now covers the ochre film"
+   "from": "xs_res_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_exp_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_exp": {
-   "from": "xs_res",
-   "prompt": "a patterned mask hangs above with light shining through its gaps, and the coral coating under the gaps has turned paler"
+   "from": "xs_exp_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_dev_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_dev": {
-   "from": "xs_exp",
-   "prompt": "the mask and light are gone and the paler parts of the coral coating have dissolved away, leaving openings down to the ochre film"
+   "from": "xs_dev_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_etch_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_etch": {
-   "from": "xs_dev",
-   "prompt": "under each opening the ochre film has been removed down to the slate blue, the coral coating still protecting the rest"
+   "from": "xs_etch_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
+  },
+  "xs_strip_base": {
+   "code": "film/drawn/v3/xs.py",
+   "prompt": "the exact cross-section geometry, drawn in code"
   },
   "xs_strip": {
-   "from": "xs_etch",
-   "prompt": "the coral coating is gone, leaving the patterned ochre film on the slate-blue substrate"
+   "from": "xs_strip_base",
+   "prompt": "repainted as a clean hand-painted gouache diagram with a fine warm ink line and soft paper texture; every shape, its position, size and colour kept exactly; no new shapes, no text"
   }
  },
  "drawings": {

@@ -181,7 +181,13 @@
   },
   "G_go": {
    "sheet": "grain-03-grey",
-   "pose": "stepping off to the right with determination, chin up"
+   "pose": "walking off to the right with determination, chin up, left foot forward"
+  },
+  "G_go2": {
+   "sheet": "grain-03-grey",
+   "kind": "next",
+   "after": "G_go",
+   "pose": "the next step of the walk, right foot forward, chin up"
   }
  },
  "shots": [
@@ -474,11 +480,47 @@
       ],
       [
        "G_fleck",
-       40
+       39
       ],
       [
        "G_go",
-       39
+       4
+      ],
+      [
+       "G_go2",
+       4
+      ],
+      [
+       "G_go",
+       4
+      ],
+      [
+       "G_go2",
+       4
+      ],
+      [
+       "G_go",
+       4
+      ],
+      [
+       "G_go2",
+       4
+      ],
+      [
+       "G_go",
+       4
+      ],
+      [
+       "G_go2",
+       4
+      ],
+      [
+       "G_go",
+       4
+      ],
+      [
+       "G_go2",
+       4
       ]
      ],
      "path": [

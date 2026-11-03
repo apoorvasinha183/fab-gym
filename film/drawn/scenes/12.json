@@ -13,6 +13,7 @@
    "prompt": "the phone's screen has woken and glows softly with warm light"
   },
   "socket": {
+   "light": "warm, clean workshop light",
    "prompt": "A final test socket in warm light: a small black chip seated in it, a small green pass light beside it",
    "stage": {
     "where": "in the socket",
@@ -21,6 +22,7 @@
    }
   },
   "board": {
+   "light": "warm, clean workshop light",
    "prompt": "A green circuit board in warm light with one small black chip soldered in place among other parts",
    "stage": {
     "where": "in its place on the board",
@@ -29,6 +31,7 @@
    }
   },
   "phone": {
+   "light": "warm, clean workshop light",
    "prompt": "A circuit board being closed inside a smartphone's case, warm light"
   }
  },
@@ -49,7 +52,7 @@
   },
   "a_tilt": {
    "sheet": "grain-01-sand",
-   "pose": "a tiny glowing figure on a phone screen tilting its head, curious and warm",
+   "pose": "small, softly glowing, its head tilted, curious and warm, nothing else in the picture",
    "mouths": true
   }
  },

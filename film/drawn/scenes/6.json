@@ -19,7 +19,7 @@
   },
   "L_walk1": {
    "sheet": "lou-latency",
-   "pose": "walking beside something to its right, one hand resting on it, small precise steps"
+   "pose": "walking to the right with small precise steps, one hand held out low to its right as if resting on a cart, nothing else in the picture"
   },
   "L_walk2": {
    "sheet": "lou-latency",
@@ -29,7 +29,7 @@
   },
   "L_check": {
    "sheet": "lou-latency",
-   "pose": "stopping to check a label on the box beside it, one finger raised, then speaking warmly",
+   "pose": "stopped, looking down to its right at something low, one finger raised, speaking warmly, nothing else in the picture",
    "mouths": true
   },
   "L_look": {

@@ -23,11 +23,11 @@
  "drawings": {
   "w_whole": {
    "sheet": "grain-06-wafer",
-   "pose": "standing proudly in front of a gridded wafer, arms out, presenting it"
+   "pose": "standing proudly, arms out, presenting something behind it, nothing else in the picture"
   },
   "d_one": {
    "sheet": "grain-08-die",
-   "pose": "a single small square die, stepping forward out of a neat grid, the only one with a face, pleased"
+   "pose": "a single small square die stepping forward, pleased, nothing else in the picture"
   },
   "wd_b": {
    "kind": "between",
