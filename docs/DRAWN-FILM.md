@@ -101,6 +101,17 @@ a beat); the voice-over is **a narrator plus a few lines from Grain and Lou**, v
   start and end, an acting note. The founder brings the voices; our code places each take on its shot, checks its
   length and moves the speaker's mouth to it.
 
+## Sizes that make sense
+
+Decided 3 Nov (the founder: "make sure that their sizes make sense relative to the background they sit in"). Every
+form has a real size from the script and the process: a grain of sand about 0.5 mm, the quartz pebble about 3 cm, the
+grey lump about 10 cm, the ingot about 2 m ("as tall as the small human figure beside it"), the wafer 300 mm across, a
+die about 1 cm, the packaged chip about 2.5 cm; Lou 1.8 m; the carbon thieves and the twins sized against Grain in
+each form. A plate is painted at its hero's scale (the prompt names the scale and a reference object at the hero's
+spot), Muse Spark reads the plate (its horizon and the reference object's size in pixels where the hero stands), and
+our code sizes every cel by perspective: a character's height on screen is its real height times the pixels a metre
+covers at its feet, which shrink toward the horizon.
+
 ## Checks
 
 - **D1** Every frame of every sheet resolves to a drawing that exists, on every level.
@@ -124,6 +135,10 @@ a beat); the voice-over is **a narrator plus a few lines from Grain and Lou**, v
 - **D15** A sheet that moves a planted pose is reported (its frames named).
 - **D16** The face level puts the eyes at the pose's face point, within 2 pixels; blinks and mouth shapes come from a
   fixed set.
+- **D18** Every character's height on screen is within 15% of its real height times the plate's pixels per metre at
+  its feet; nearer the horizon it is smaller.
+- **D19** Cel animation: a moving character changes drawing at least every third frame while it moves (no sliding a
+  single drawing), and its in-betweens sit between their keys (contact point and height between the two keys').
 - **M1** Every hit point lands within one frame of a beat at its cue's tempo, and every tempo is 60 to 160.
 - **M2** Every part of a cue adds up to the cue's bars, and the cue lasts its length within half a beat.
 - **M3** Every note is inside its instrument's range.

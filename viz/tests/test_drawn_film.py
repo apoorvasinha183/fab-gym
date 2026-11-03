@@ -290,5 +290,37 @@ class Poses(unittest.TestCase):
         self.assertEqual(track.jumps(loose, limit=12.0), [6])
 
 
+@unittest.skipIf(np is None, "numpy and Pillow are needed")
+class Scale(unittest.TestCase):
+    """Sizes that make sense (docs/DRAWN-FILM.md, D18) and cel motion (D19)."""
+
+    def test_d18_height_on_screen_follows_real_size_and_perspective(self):
+        from viz.drawn import scale
+        plate = {"horizon": 300.0, "ref_y": 900.0, "px_per_m": 2000.0}   # 2,000 px a metre where y = 900
+        self.assertAlmostEqual(scale.px_per_m(plate, 900.0), 2000.0)
+        self.assertAlmostEqual(scale.px_per_m(plate, 600.0), 1000.0, msg="half way to the horizon, half the size")
+        self.assertAlmostEqual(scale.height_px(plate, 900.0, 0.10), 200.0, msg="a 10 cm lump")
+        self.assertEqual(scale.check(plate, [("grain", 900.0, 0.10, 210.0)]), [])
+        self.assertTrue(scale.check(plate, [("grain", 900.0, 0.10, 330.0)]), "a lump drawn 65% too big is named")
+
+    def test_d19_moving_characters_change_drawing_and_inbetweens_sit_between_keys(self):
+        from viz.drawn import scale
+        base = {"shot": "c", "frames": 12, "fps": 24, "camera": []}
+        slid = self.sh_load(dict(base, levels=[{"name": "grain", "depth": 0.2, "cels": [["A", 12]],
+                                                "path": [[0, 100, 900], [11, 400, 900]]}]))
+        self.assertEqual(scale.sliding_drawings(slid, limit=3), ["grain"])
+        drawn = self.sh_load(dict(base, levels=[{"name": "grain", "depth": 0.2,
+                                                 "cels": [["A", 2], ["B", 2], ["C", 2], ["D", 2], ["E", 2], ["F", 2]],
+                                                 "path": [[0, 100, 900], [11, 400, 900]]}]))
+        self.assertEqual(scale.sliding_drawings(drawn, limit=3), [])
+        keys = {"k1": {"contact": (50, 100), "height": 100}, "k2": {"contact": (70, 100), "height": 120}}
+        self.assertEqual(scale.inbetween_ok(keys["k1"], keys["k2"], {"contact": (60, 100), "height": 110}), True)
+        self.assertEqual(scale.inbetween_ok(keys["k1"], keys["k2"], {"contact": (95, 100), "height": 160}), False)
+
+    def sh_load(self, d):
+        from viz.drawn import sheet
+        return sheet.load(d)
+
+
 if __name__ == "__main__":
     unittest.main()
