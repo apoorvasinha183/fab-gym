@@ -165,4 +165,5 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   scene's narration across its shots; D10 waits for word times. The game's spoken questions use the same call.
 - 3 Nov: Muse Spark wrote the shot list (`film/drawn/shots.json`): 38 shots, back to back from 0 to 164 s, every
   caption the script's own words ($0.0017).
-
+- 3 Nov: the score tests' made-up cue added up to 12 bars for a 6-bar cue, and one made-up hit (26.25 s) fell on no beat
+  between 60 and 160 a minute; both corrected before the checks were changed.

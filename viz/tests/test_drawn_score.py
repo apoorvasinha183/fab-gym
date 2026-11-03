@@ -15,9 +15,9 @@ sys.path.insert(0, str(ROOT))
 
 def cue(**over):
     c = {"cue": "smelt", "from": 22.0, "to": 34.0, "tempo": 120, "meter": [4, 4], "key": "D minor",
-         "parts": {"Violin I": [["D5", 2], ["F5", 2], ["A5", 4]] * 6,
-                   "Tuba": [["D2", 4], ["A1", 4]] * 6,
-                   "Timpani": [["D3", 1], ["r", 3], ["A2", 1], ["r", 3]] * 6}}
+         "parts": {"Violin I": [["D5", 2], ["F5", 1], ["A5", 1]] * 6,          # 6 bars of 4/4: 12 s at 120
+                   "Tuba": [["D2", 4], ["A1", 4]] * 3,
+                   "Timpani": [["D3", 1], ["r", 3], ["A2", 1], ["r", 3]] * 3}}
     c.update(over)
     return c
 
@@ -25,7 +25,7 @@ def cue(**over):
 class Tempo(unittest.TestCase):
     def test_m1_hit_points_fall_on_beats(self):
         from viz.drawn import score
-        hits = [23.5, 26.25, 31.0]
+        hits = [23.5, 26.0, 31.0]
         t = score.fit_tempo(22.0, hits, lo=60, hi=160)
         self.assertTrue(60 <= t <= 160, t)
         beat = 60.0 / t
@@ -47,7 +47,7 @@ class Score(unittest.TestCase):
 
     def test_m3_notes_stay_inside_their_instruments(self):
         from viz.drawn import score
-        low = cue(parts=dict(cue()["parts"], **{"Violin I": [["C3", 2], ["F5", 2], ["A5", 4]] * 6}))
+        low = cue(parts=dict(cue()["parts"], **{"Violin I": [["C3", 2], ["F5", 1], ["A5", 1]] * 6}))
         errs = score.check(low)
         self.assertTrue(any("Violin I" in e and "C3" in e for e in errs), errs)
 
