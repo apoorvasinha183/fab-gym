@@ -82,6 +82,16 @@ def main():
     campus["entrance"] = fab3d.entrance(permit)
     campus["exterior"] = fab3d.exterior(permit)
     campus["drone"] = fab3d.drone(b, campus["exterior"], campus["entrance"], SHOP.read_text())
+    # the cinema's floors (docs/FAB-3D.md, F11), so the visitor stands on its steps, aisles and ramp
+    cp = ROOT / "data/cinema/plan.json"
+    if cp.exists():
+        pl = json.loads(cp.read_text())
+        rooms = {r["name"]: r for r in pl["rooms"]}
+        campus["cinema"] = {"hall": rooms["hall"]["box"],
+                            "floors": [[r["x0"], r["x1"], r["level"]] for r in pl["rows"] if r["block"] == "centre"]
+                                      + [[a["box"][0], a["box"][2], a["level"]] for a in pl["cross_aisles"]],
+                            "ramp": {"box": rooms["ramp"]["box"], "rise": rooms["ramp"]["rises_to"], "runs": rooms["ramp"]["runs"],
+                                     "run_m": rooms["ramp"]["run_m"], "landing_m": pl["choices"]["landing_m"]}}
     (DATA / "campus.json").write_text(json.dumps(campus, separators=(",", ":")))
     (DATA / "models").mkdir(exist_ok=True)
     for f in sorted(MODELS.glob("*.glb")):

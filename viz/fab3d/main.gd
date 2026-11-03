@@ -194,7 +194,13 @@ func _start_tour() -> void:
 		guide.talk_scale = 0.62
 	player.roaming = false
 	player.follow = guide
-	guide.start(_tour())
+	var tour := _tour()
+	if "--cinema" in OS.get_cmdline_user_args():
+		# start at the cinema door, for checking that part of the tour
+		var k := tour.find(tour.filter(func(st): return st["kind"] == "cinema_door")[0])
+		tour = tour.slice(k)
+		guide.global_position = tour[0]["at"]
+	guide.start(tour)
 
 
 func _process(dt: float) -> void:
@@ -376,8 +382,12 @@ func _tour() -> Array:
 			stops.append({"kind": "via", "via": true, "at": Vector3(255.0, z, 0.0)})
 			stops.append({"kind": "bridge", "at": Vector3(285.8, z, 0.0), "face": -PI / 2})
 			stops.append({"kind": "via", "via": true, "at": Vector3(316.0, z, 0.0)})
-	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 90.0), "face": PI, "teleport": true})
-	stops.append({"kind": "cinema", "at": Vector3(58.0, 0.1, 106.5), "face": 0.0})
+	# the cinema (data/cinema/plan.json): in by the main entrance, across the lobby, up the ramp, onto the mid cross aisle
+	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 92.0), "face": PI, "teleport": true})
+	for p in [[58.0, -99.5, 0.1], [69.2, -104.5, 0.1], [69.2, -109.1, 0.1], [61.2, -109.1, 0.7], [59.7, -109.1, 0.7],
+			[52.5, -109.1, 1.3], [52.3, -109.1, 1.3]]:
+		stops.append({"kind": "via", "via": true, "at": Vector3(p[0], p[2], -p[1])})
+	stops.append({"kind": "cinema", "at": Vector3(52.3, 1.3, 112.0), "face": PI / 2.0})
 	return stops
 
 
@@ -409,7 +419,10 @@ func _on_arrived(s: Dictionary) -> void:
 	if s["kind"] == "cinema":
 		player.follow = null
 		player.roaming = true
-		player.place(58.0, -110.0, PI)
+		# the view from a seat in row 5 (data/cinema/plan.json: floor 1.8 m, eyes 1.15 m above it), at the screen
+		player.global_position = Vector3(54.4, player.floor_at(54.4, -116.0) + 1.15, 116.0)
+		player.yaw = PI / 2.0
+		player.pitch = -0.04
 
 
 func _stop_title(s: Dictionary) -> String:

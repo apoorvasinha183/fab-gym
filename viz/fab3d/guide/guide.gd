@@ -27,6 +27,9 @@ var viewer: Node3D            # the visitor, whom the guide turns to at a stop m
 var shower_box: Array = []    # the air shower's box [x0, y0, z0, x1, y1, z1], plan metres: he ducks inside it
 var _ducking := false
 var _bonk_t := 0.0
+var _seg := -1
+var _seg_from := Vector3.ZERO
+var _seg_len := 1.0
 const BONK_LINE := "Ow! Somebody log that defect: one cracked CEO. There goes the yield."
 
 
@@ -165,6 +168,11 @@ func _process(dt: float) -> void:
 			d = Vector3.ZERO
 		var dist := d.length()
 		var via: bool = s.get("via", false)
+		if _seg != i:
+			# a new leg: remember where it starts, so height follows the walk (up a ramp, down a step)
+			_seg = i
+			_seg_from = global_position
+			_seg_len = maxf(dist, 0.001)
 		if dist < (VIA_RADIUS if via else 0.06) or (not via and dist < 0.3 and _v < 0.15):
 			if not via:
 				global_position = Vector3(to.x, to.y, to.z)
@@ -189,7 +197,8 @@ func _process(dt: float) -> void:
 		if off > 1.2:
 			step = Vector3.ZERO      # turn on the spot first
 		global_position += step
-		global_position.y = to.y
+		var u := clampf(1.0 - Vector2(to.x - global_position.x, to.z - global_position.z).length() / _seg_len, 0.0, 1.0)
+		global_position.y = lerpf(_seg_from.y, to.y, u)
 		if _v > 0.12:
 			_play("Walk_Formal_Loop", _v / CLIP_SPEED)
 		else:

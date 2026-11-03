@@ -239,3 +239,8 @@ After the founder's play-through, 3 Nov:
   through the air shower by squashing (2.3 m to 2.1 m) with a slight lean, so his head stays in the booth. The FabGYM
   logo is over the visitors' entrance; the phases are named by the drone's labels, now larger. `--corridor` is a fixed
   6 s camera move down that strip, for comparing shimmer.
+- 3 Nov: Blender builds the cinema from the plan file (`viz/blender/buildings/cinema.py`, run on the Mac mini at the
+  founder's word: 3,418 faces); doors onto the cross aisles land on the clear path (a test caught them over the
+  wheelchair spaces). The tour enters by the main entrance, crosses the lobby, climbs the ramp to the mid cross aisle
+  and leaves the visitor in a row 5 seat; the visitor's floor heights follow the cinema's steps, aisles and ramp
+  (campus.json `cinema`, from the plan). `--cinema` starts the tour at the cinema door.

@@ -94,6 +94,15 @@ class Cinema(unittest.TestCase):
             for a in self.p["cross_aisles"]:
                 self.assertFalse(boxes_overlap(b, a["clear_path"]), (s, a))
 
+    def test_f11_doors_into_cross_aisles_open_onto_the_clear_path(self):
+        # a door onto a cross aisle lands on its clear path, never across a wheelchair space
+        for d in self.p["doors"]:
+            if d["name"] not in ("front passage door", "ramp door"):
+                continue
+            ca = min(self.p["cross_aisles"], key=lambda a: abs(a["level"] - d["level"]))
+            cp = ca["clear_path"]
+            self.assertTrue(cp[0] <= d["at"][0] - d["clear_m"] / 2 and d["at"][0] + d["clear_m"] / 2 <= cp[2], (d, cp))
+
     def test_f11_every_rule_is_met_or_says_cannot_say(self):
         self.assertTrue(self.c["rules"])
         for r in self.c["rules"]:

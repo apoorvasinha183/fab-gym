@@ -127,14 +127,15 @@ def layout(seats_target=100, sprinklered=True, rake="stadium", choices=None):
                            "dead_end_m": 0.0, "riser_m": round(rise / 2, 4), "tread_m": round(rd / 2, 4), "handrail": True,
                            "box": [round(rr[0][0], 3), round(ya, 3), round(rr[-1][1], 3), round(yb, 3)]})
     # doors: two exits from the hall (front to outside at grade, rear to the exit stair), the passages from the lobby
+    path_x = {ca["name"]: (ca["clear_path"][0] + ca["clear_path"][2]) / 2 for ca in cross}   # doors land on the clear path
     doors = [
-        {"name": "front exit", "at": [round((front[0] + front[1]) / 2, 3), round(y0 + T / 2, 3)], "clear_m": 1.83, "exit": True,
+        {"name": "front exit", "at": [round(path_x["front cross aisle"], 3), round(y0 + T / 2, 3)], "clear_m": 1.1, "exit": True,
          "level": 0.0, "to": "outside, at grade"},
         {"name": "rear exit", "at": [round(hx1 + T / 2, 3), round(hy0 + 3.0, 3)], "clear_m": 1.0, "exit": True,
          "level": round(lv_rear, 3), "to": "exit stair, then outside at grade"},
-        {"name": "front passage door", "at": [round((front[0] + front[1]) / 2, 3), round(hy1 + T / 2, 3)], "clear_m": 1.5,
+        {"name": "front passage door", "at": [round(path_x["front cross aisle"], 3), round(hy1 + T / 2, 3)], "clear_m": 1.1,
          "level": 0.0, "to": "lobby"},
-        {"name": "ramp door", "at": [round((mid[0] + mid[1]) / 2, 3), round(hy1 + T / 2, 3)], "clear_m": 1.0,
+        {"name": "ramp door", "at": [round(path_x["mid cross aisle"], 3), round(hy1 + T / 2, 3)], "clear_m": 1.0,
          "level": round(lv_mid, 3), "to": "ramp, then lobby"},
         {"name": "main entrance", "at": [round((x0 + x1) / 2, 3), round(y1 - T / 2, 3)], "clear_m": 6.0, "exit": True,
          "level": 0.0, "to": "outside, north"},

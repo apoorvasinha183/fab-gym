@@ -14,16 +14,44 @@ var lift: Array = []          # the lift's box [x0, y0, z0, x1, y1, z1] in plan 
 @onready var camera: Camera3D = $camera
 
 
+var cinema: Dictionary = {}
+
+
 func setup(campus_data: Dictionary) -> void:
 	fabs = campus_data["fabs"]
 	clean_z = float(campus_data["heights"]["clean_z"])
+	cinema = campus_data.get("cinema", {})
 
 
 func floor_at(x: float, y: float) -> float:
-	# plan point to the floor height: the clean floor inside a fab building, the ground outside
+	# plan point to the floor height: the clean floor inside a fab building, the cinema's steps, aisles and ramp, the
+	# ground outside
 	for f in fabs:
 		if x >= float(f[0]) and x <= float(f[1]) and y >= float(f[2]) and y <= float(f[3]):
 			return clean_z
+	if not cinema.is_empty():
+		var h: Array = cinema["hall"]
+		if x >= float(h[0]) and x <= float(h[2]) and y >= float(h[1]) and y <= float(h[3]):
+			for fl in cinema["floors"]:
+				if x >= float(fl[0]) and x < float(fl[1]):
+					return 0.04 + float(fl[2])
+			return 0.06
+		var r: Dictionary = cinema["ramp"]
+		var b: Array = r["box"]
+		if x >= float(b[0]) and x <= float(b[2]) and y >= float(b[1]) and y <= float(b[3]):
+			# up from the east end: a landing, then runs at 1 in 12 with landings between
+			var d := float(b[2]) - x
+			var land := float(r["landing_m"])
+			var run := float(r["run_m"])
+			var each := float(r["rise"]) / float(r["runs"])
+			var z := 0.0
+			d -= land
+			for k in int(r["runs"]):
+				if d <= 0.0:
+					break
+				z += each * clampf(d / run, 0.0, 1.0)
+				d -= run + land
+			return 0.06 + z
 	return 0.1
 
 

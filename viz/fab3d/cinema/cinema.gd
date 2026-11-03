@@ -4,7 +4,7 @@ extends Node3D
 ## plays). From the SMT2020 testbed; not a real fab.
 
 const FILM := "res://data/film/from-sand-to-chip.ogv"
-const HALL := Rect2(40.3, -121.7, 35.4, 16.4)     # plan x, y, width, depth of the hall (cinema.py)
+const HALL := Rect2(40.3, -121.7, 17.7, 11.4)     # plan x, y, depth, width of the hall (data/cinema/plan.json)
 
 var viewer: Node3D
 var video: VideoStreamPlayer
