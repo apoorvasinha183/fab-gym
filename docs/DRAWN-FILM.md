@@ -131,3 +131,10 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   is not a pop. Tests unchanged.
 - 3 Nov: D17's test placed the unpegged drawing's corner where the pegged one's contact goes, off the bottom of the
   frame, so nothing was tracked; the unpegged run now keeps its corner inside the frame. The check is unchanged.
+- 3 Nov: Muse Voice Transcribe is listed in `/v1/models` for our key but every request tried answers 404
+  (`/audio/transcriptions`, `/audio/transcribe`, `/speech/transcriptions`) or `model_not_found` (chat, responses).
+  Until a working request is found, the story reel is timed by the script's scene times and Muse Spark's split of each
+  scene's narration across its shots; D10 waits for word times. The game's spoken questions use the same call.
+- 3 Nov: Muse Spark wrote the shot list (`film/drawn/shots.json`): 38 shots, back to back from 0 to 164 s, every
+  caption the script's own words ($0.0017).
+

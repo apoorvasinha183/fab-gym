@@ -88,6 +88,36 @@ class Client:
                           lambda o: o["choices"][0]["message"]["content"])
 
 
+def _multipart(path, fields, file_field, filename, mime, data, key_file=KEY, base=BASE, timeout=240):
+    import uuid
+    key = Path(key_file).read_text().strip()
+    bd = uuid.uuid4().hex
+    parts = [f'--{bd}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields]
+    parts += [f'--{bd}\r\nContent-Disposition: form-data; name="{file_field}"; filename="{filename}"\r\n'
+              f'Content-Type: {mime}\r\n\r\n'.encode(), data, f"\r\n--{bd}--\r\n".encode()]
+    req = urllib.request.Request(base.rstrip("/") + path, data=b"".join(parts), method="POST",
+                                 headers={"Authorization": "Bearer " + key, "Content-Type": f"multipart/form-data; boundary={bd}"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+
+
+def transcribe(client, audio, mime="audio/mpeg"):
+    """The soundtrack's words with their times, from Muse Voice Transcribe (word times when the service gives them,
+    else its segments). Metered and cached like every other call."""
+    digest = hashlib.sha256(audio).hexdigest()
+    fields = [("model", VOICE), ("response_format", "verbose_json"), ("timestamp_granularities[]", "word"),
+              ("timestamp_granularities[]", "segment")]
+    t = client.transport if client.transport is not _http else (
+        lambda path, body: _multipart(path, fields, "file", "soundtrack.mp3", mime, audio))
+    saved = client.transport
+    client.transport = t
+    try:
+        return client._call(VOICE, "/audio/transcriptions", {"model": VOICE, "audio_sha256": digest, "words": True},
+                            PRICE[VOICE], f"transcribe {digest[:12]}", lambda o: o)
+    finally:
+        client.transport = saved
+
+
 def _data_url(b):
     mime = "image/jpeg" if b[:2] == b"\xff\xd8" else ("image/webp" if b[8:12] == b"WEBP" else "image/png")
     return f"data:{mime};base64," + base64.b64encode(b).decode()
