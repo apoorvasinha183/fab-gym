@@ -176,4 +176,9 @@ limited animation: strong poses, holds, slides and smear drawings for fast moves
   fixes on top; talking is done with Muse Image poses (mouth open and closed). The crystal sheet was redrawn as a
   smooth ingot ($0.01). The founder asked to see the finished look: the pilot (Smelt, 22 to 34 s) comes next, with
   its cut-outs keyed from a flat green backdrop until SAM 3.1's mask answers are read.
+- 3 Nov: the pilot (Smelt, 22 to 34 s) rendered: 3 plates and 10 poses from Muse Image, keyed from green; glow,
+  sparks, puffs and steam by our code; 50 drawings make 288 frames on twos; no pops. Two faults fixed by eye: a pose
+  that lost the oxygen twins was redrawn, and Grain's shout was moved onto its line (28.6 to 29.9 s). Muse Image's
+  content filter refuses some wordings for these child-like characters (for example "holding ... close to its body,
+  scared"); the plainer fallback prompt gets through.
 
