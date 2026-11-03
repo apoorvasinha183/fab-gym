@@ -35,6 +35,11 @@ def _http(path, body, key_file=KEY, base=BASE, timeout=240):
         return json.loads(r.read())
 
 
+import threading
+
+_LOCK = threading.Lock()
+
+
 class Client:
     def __init__(self, ledger, cache, cap_usd, transport=None):
         self.ledger = Path(ledger)
@@ -50,7 +55,7 @@ class Client:
         return sum(json.loads(x)["usd"] for x in self.ledger.read_text().splitlines() if x.strip())
 
     def _log(self, model, usd, what, cached):
-        with open(self.ledger, "a") as f:
+        with _LOCK, open(self.ledger, "a") as f:
             f.write(json.dumps({"t": round(time.time(), 1), "model": model, "usd": round(usd, 6),
                                 "cached": cached, "what": what[:120]}) + "\n")
 
@@ -60,8 +65,9 @@ class Client:
         if hit.exists():
             self._log(model, 0.0, what, True)
             return parse(json.loads(hit.read_text()))
-        if self.spent() + price > self.cap + 1e-9:
-            raise OverCap(f"{what[:60]!r} would take the spend to ${self.spent() + price:.2f}, over the ${self.cap:.2f} cap")
+        with _LOCK:                                # several drawings at once: the cap is checked one call at a time
+            if self.spent() + price > self.cap + 1e-9:
+                raise OverCap(f"{what[:60]!r} would take the spend to ${self.spent() + price:.2f}, over the ${self.cap:.2f} cap")
         out = self.transport(path, body)
         hit.write_text(json.dumps(out))
         usd = price

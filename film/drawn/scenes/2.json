@@ -1,0 +1,449 @@
+{
+ "scene": "2",
+ "title": "Smelt",
+ "start": 22.0,
+ "end": 34.0,
+ "plates": {
+  "furnace": {
+   "prompt": "(from the pilot)",
+   "variants": 2,
+   "variant": "the glow in the furnace and the sparks flicker and shift"
+  },
+  "inside": {
+   "prompt": "(from the pilot)",
+   "variants": 2,
+   "variant": "the flames curl the other way and leap a little higher"
+  },
+  "pour": {
+   "prompt": "(from the pilot)",
+   "variants": 2,
+   "variant": "the steam has drifted up and the pouring stream ripples"
+  }
+ },
+ "drawings": {
+  "lurk_b": {
+   "sheet": "carbon-thieves",
+   "kind": "next",
+   "after": "T_lurk",
+   "pose": "both thieves crouching side by side, sly grins, rubbing their hands the other way"
+  },
+  "sit_b": {
+   "sheet": "grain-03-grey",
+   "kind": "next",
+   "after": "G_sit",
+   "pose": "sitting on the ground, glum, a small puff of steam rising off its head, eyes half closed"
+  },
+  "sad_b": {
+   "sheet": "grain-03-grey",
+   "kind": "between",
+   "between": [
+    "G_sad",
+    "G_sit"
+   ]
+  }
+ },
+ "shots": [
+  {
+   "id": "2-1",
+   "start": 22.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "furnace",
+      "furnace~1",
+      "furnace~2",
+      "furnace~1"
+     ],
+     "on": 4
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 160,
+     "path": [
+      [
+       0,
+       600,
+       420
+      ],
+      [
+       30,
+       780,
+       580
+      ],
+      [
+       44,
+       880,
+       628
+      ],
+      [
+       95,
+       900,
+       628
+      ]
+     ],
+     "cels": [
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       3
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       3
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       3
+      ],
+      [
+       "Q_cling",
+       60
+      ]
+     ]
+    },
+    {
+     "name": "thieves",
+     "depth": 0.2,
+     "height": 140,
+     "at": [
+      1580,
+      950
+     ],
+     "cels": [
+      [
+       "none",
+       36
+      ],
+      [
+       "T_lurk",
+       8
+      ],
+      [
+       "lurk_b",
+       8
+      ],
+      [
+       "T_lurk",
+       8
+      ],
+      [
+       "lurk_b",
+       8
+      ],
+      [
+       "T_lurk",
+       8
+      ],
+      [
+       "lurk_b",
+       8
+      ],
+      [
+       "T_lurk",
+       12
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 50,
+      "y": 20,
+      "zoom": 1.12
+     }
+    ]
+   ]
+  },
+  {
+   "id": "2-2",
+   "start": 26.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "inside",
+      "inside~1",
+      "inside~2",
+      "inside~1"
+     ],
+     "on": 3
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 283,
+     "at": [
+      720,
+      950
+     ],
+     "cels": [
+      [
+       "Q_cling",
+       22
+      ],
+      [
+       "G_look",
+       40
+      ],
+      [
+       "shout_1",
+       4
+      ],
+      [
+       "shout_1b",
+       3
+      ],
+      [
+       "shout_2",
+       8
+      ],
+      [
+       "shout_2b",
+       3
+      ],
+      [
+       "shout_3",
+       9
+      ],
+      [
+       "shout_3b",
+       3
+      ],
+      [
+       "shout_4",
+       4
+      ]
+     ]
+    },
+    {
+     "name": "thieves",
+     "depth": 0.2,
+     "height": 227,
+     "path": [
+      [
+       0,
+       1250,
+       950
+      ],
+      [
+       40,
+       1250,
+       950
+      ],
+      [
+       62,
+       1300,
+       950
+      ],
+      [
+       95,
+       2150,
+       940
+      ]
+     ],
+     "cels": [
+      [
+       "none",
+       22
+      ],
+      [
+       "T_grab",
+       40
+      ],
+      [
+       "run_1",
+       3
+      ],
+      [
+       "run_2",
+       3
+      ],
+      [
+       "run_3",
+       3
+      ],
+      [
+       "run_4",
+       3
+      ],
+      [
+       "run_5",
+       3
+      ],
+      [
+       "run_6",
+       3
+      ],
+      [
+       "run_7",
+       3
+      ],
+      [
+       "run_8",
+       3
+      ],
+      [
+       "run_1",
+       3
+      ],
+      [
+       "run_2",
+       3
+      ],
+      [
+       "run_3",
+       3
+      ],
+      [
+       "run_4",
+       1
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 30,
+      "y": 0,
+      "zoom": 1.03
+     }
+    ]
+   ]
+  },
+  {
+   "id": "2-3",
+   "start": 30.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cycle": [
+      "pour",
+      "pour~1",
+      "pour~2",
+      "pour~1"
+     ],
+     "on": 6
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 300,
+     "at": [
+      960,
+      950
+     ],
+     "cels": [
+      [
+       "G_sad",
+       34
+      ],
+      [
+       "sad_b",
+       4
+      ],
+      [
+       "G_sit",
+       24
+      ],
+      [
+       "sit_b",
+       12
+      ],
+      [
+       "G_sit",
+       10
+      ],
+      [
+       "sit_b",
+       12
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": -40,
+      "zoom": 1.05
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": 40,
+      "zoom": 1.05
+     }
+    ]
+   ]
+  }
+ ]
+}

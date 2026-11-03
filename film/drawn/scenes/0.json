@@ -1,0 +1,29 @@
+{
+ "scene": "0", "title": "Cold open", "start": 0.0, "end": 8.0,
+ "plates": {
+  "dark": {"prompt": "Near-total darkness, a deep blue-black background, with one soft beam of warm light coming in from the left and a few tiny glints of dust floating in it; nothing else, lots of empty dark space in the middle.",
+           "variants": 2, "variant": "the tiny glints of dust have drifted slightly and the beam is a touch brighter"},
+  "lattice": {"prompt": "An enormous close-up of the surface of a grain of sand filling the whole picture: pale golden translucent quartz, and inside it a glowing grid of tiny round points of light in perfectly neat rows, like a crystal lattice seen through glass, fading into dark at the edges, the middle left calm for a title.",
+              "variants": 2, "variant": "the points of light glow a little brighter and the glow breathes outward"}
+ },
+ "drawings": {
+  "sand_1": {"sheet": "grain-01-sand", "pose": "floating in the air, seen from the front, eyes closed as if asleep, arms relaxed, lit from the left"},
+  "sand_2": {"sheet": "grain-01-sand", "kind": "next", "after": "sand_1", "pose": "floating, turned a quarter to its left, eyes just opening, lit from the left"},
+  "sand_3": {"sheet": "grain-01-sand", "kind": "next", "after": "sand_2", "pose": "floating, seen from the side, eyes open, looking around curiously, lit from the left"},
+  "sand_4": {"sheet": "grain-01-sand", "kind": "next", "after": "sand_3", "pose": "floating, turned back towards the front, eyes wide open, a small smile, lit from the left"}
+ },
+ "shots": [
+  {"id": "0-1", "start": 0.0, "frames": 96,
+   "levels": [
+    {"name": "plate", "plate": true, "depth": 0.6, "cycle": ["dark", "dark~1", "dark~2"], "on": 8},
+    {"name": "grain", "depth": 0.2, "height": 230, "at": [960, 690],
+     "cels": [["sand_1", 12], ["sand_2", 8], ["sand_3", 8], ["sand_4", 12], ["sand_3", 8], ["sand_2", 8],
+              ["sand_1", 8], ["sand_2", 8], ["sand_3", 8], ["sand_4", 16]]}],
+   "camera": [[0, {"x": 0, "y": 0, "zoom": 1.0}], [95, {"x": 0, "y": -20, "zoom": 1.28}]]},
+  {"id": "0-2", "start": 4.0, "frames": 96,
+   "levels": [
+    {"name": "plate", "plate": true, "depth": 0.5, "cycle": ["lattice", "lattice~1", "lattice~2", "lattice~1"], "on": 6}],
+   "camera": [[0, {"x": 0, "y": 0, "zoom": 1.0}], [95, {"x": 0, "y": 0, "zoom": 1.18}]],
+   "titles": [{"text": "From Sand to Chip", "from": 30, "to": 96, "y": 430}]}
+ ]
+}

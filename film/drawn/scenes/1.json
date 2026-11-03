@@ -1,0 +1,399 @@
+{
+ "scene": "1",
+ "title": "The quarry",
+ "start": 8.0,
+ "end": 22.0,
+ "plates": {
+  "quarry": {
+   "prompt": "Dawn over an open-pit quartz quarry cut into wide stepped terraces of white and pale grey rock, a soft pink and gold sky, a dirt road winding down; empty space on the middle terrace on the right for a machine.",
+   "variants": 2,
+   "variant": "a little dust drifts in the air and the dawn light is a shade warmer"
+  },
+  "belt": {
+   "prompt": "A macro close-up at the height of a small pebble: a rubber conveyor belt running left to right, covered with chunky white quartz gravel, each pebble large in the picture, the steel side of the belt in front, a big crushing machine only a dark blurred shape far behind, morning light.",
+   "variants": 1,
+   "variant": "the gravel has moved along the belt a little"
+  },
+  "pebble": {
+   "prompt": "A macro close-up on a bed of grey and white gravel, soft dawn light from the left, a smooth flat spot in the lower middle where a small character can stand, the rest of the gravel softly out of focus, calm.",
+   "variants": 1,
+   "variant": "the light is a touch brighter"
+  }
+ },
+ "drawings": {
+  "tumble_1": {
+   "sheet": "grain-02-quartz",
+   "pose": "tumbling forward on its side, arms out holding hands with the two red oxygen twins who tumble with it, all three surprised; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_2": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "rolled halfway over, lying on its back with its feet up, face looking up, still holding hands with the two red oxygen twins, all three wide-eyed; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_3": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "on its other side mid-tumble, still holding hands with the two red oxygen twins, all three dizzy; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "tumble_4": {
+   "sheet": "grain-02-quartz",
+   "kind": "next",
+   "after": "tumble_1",
+   "pose": "landing upright with a little bounce, still holding hands with the two red oxygen twins, all three dizzy and laughing; the two oxygen twins look exactly like the two small red balls in the model sheet, perfectly round and smooth"
+  },
+  "present": {
+   "sheet": "grain-02-quartz",
+   "pose": "standing between its two red oxygen twins, holding hands with both, all three facing us and smiling, presenting themselves"
+  },
+  "proud": {
+   "sheet": "grain-02-quartz",
+   "pose": "standing between its two red oxygen twins, holding hands with both, chest puffed out, mouth wide open shouting proudly"
+  },
+  "proud_b": {
+   "sheet": "grain-02-quartz",
+   "kind": "between",
+   "between": [
+    "present",
+    "proud"
+   ]
+  }
+ },
+ "machines": {
+  "dig_1": "A yellow cartoon excavator digger, side view facing left, its long arm raised high with the bucket empty",
+  "dig_2": "The same yellow excavator, its arm down low, the bucket scooping into white rock",
+  "dig_3": "The same yellow excavator, its arm swung up, the bucket tipping white rock out"
+ },
+ "shots": [
+  {
+   "id": "1-1",
+   "start": 8.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.6,
+     "cels": [
+      [
+       "quarry",
+       120
+      ]
+     ]
+    },
+    {
+     "name": "digger",
+     "depth": 0.5,
+     "height": 210,
+     "at": [
+      1380,
+      640
+     ],
+     "cels": [
+      [
+       "dig_1",
+       16
+      ],
+      [
+       "dig_2",
+       24
+      ],
+      [
+       "dig_3",
+       24
+      ],
+      [
+       "dig_1",
+       16
+      ],
+      [
+       "dig_2",
+       24
+      ],
+      [
+       "dig_3",
+       16
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": -60,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ],
+    [
+     119,
+     {
+      "x": 60,
+      "y": 0,
+      "zoom": 1.1
+     }
+    ]
+   ]
+  },
+  {
+   "id": "1-2",
+   "start": 13.0,
+   "frames": 120,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "belt",
+       120
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 330,
+     "path": [
+      [
+       0,
+       620,
+       860
+      ],
+      [
+       119,
+       1240,
+       860
+      ]
+     ],
+     "cels": [
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       3
+      ],
+      [
+       "tumble_4",
+       3
+      ],
+      [
+       "tumble_1",
+       3
+      ],
+      [
+       "tumble_2",
+       3
+      ],
+      [
+       "tumble_3",
+       3
+      ],
+      [
+       "tumble_4",
+       6
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     119,
+     {
+      "x": 160,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ]
+   ]
+  },
+  {
+   "id": "1-3",
+   "start": 18.0,
+   "frames": 96,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "pebble",
+       96
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 400,
+     "at": [
+      960,
+      900
+     ],
+     "cels": [
+      [
+       "present",
+       62
+      ],
+      [
+       "proud_b",
+       4
+      ],
+      [
+       "proud",
+       26
+      ],
+      [
+       "present",
+       4
+      ]
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     95,
+     {
+      "x": 0,
+      "y": -15,
+      "zoom": 1.08
+     }
+    ]
+   ],
+   "titles": [
+    {
+     "text": "quartz = SiO₂",
+     "from": 6,
+     "to": 60,
+     "y": 120
+    }
+   ]
+  }
+ ]
+}
