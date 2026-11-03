@@ -43,6 +43,19 @@ def name(n, flats=False):
     return (flat if flats else sharp)[n % 12] + str(n // 12 - 1)
 
 
+def canon(inst):
+    """An instrument's name as the orchestra list spells it: "Clarinet in Bb" and "Clarinet in B-flat" are the B-flat
+    clarinet; case and spacing do not matter."""
+    k = " ".join(str(inst).replace("B-flat", "B\u266d").replace("Bb", "B\u266d").split()).lower()
+    for name in RANGES:
+        if name.lower() == k:
+            return name
+    aliases = {"violin 1": "Violin I", "violin 2": "Violin II", "cello": "Violoncello", "double bass": "Contrabass",
+               "bass": "Contrabass", "french horn": "Horn in F", "horn": "Horn in F", "clarinet": "Clarinet in B\u266d",
+               "trumpet": "Trumpet in B\u266d", "timpani": "Timpani", "glock": "Glockenspiel"}
+    return aliases.get(k, inst)
+
+
 def beats_per_bar(meter):
     return meter[0] * 4.0 / meter[1]
 

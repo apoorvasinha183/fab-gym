@@ -1,0 +1,240 @@
+{
+ "cue": "c01",
+ "title": "The grain",
+ "from": 0.0,
+ "to": 8.0,
+ "mood": "wondrous tender introduction",
+ "key": "D major",
+ "meter": [
+  4,
+  4
+ ],
+ "instruments": [
+  "Flute",
+  "Harp",
+  "Violin I",
+  "Violoncello"
+ ],
+ "arc": "Soft Grain theme on flute over harp, strings warm under push-in, swell to lattice glow, resolve on title",
+ "moments": [
+  {
+   "t": 0.0,
+   "what": "grain drifts in"
+  },
+  {
+   "t": 4.0,
+   "what": "face fills screen lattice glows"
+  },
+  {
+   "t": 7.0,
+   "what": "title appears"
+  }
+ ],
+ "tempo": 119.38,
+ "bars": 4,
+ "half_beats": false,
+ "hits": [
+  [
+   1,
+   1.0
+  ],
+  [
+   3,
+   1.0
+  ],
+  [
+   4,
+   3.0
+  ]
+ ],
+ "parts": {
+  "Flute": [
+   [
+    "D5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "B5",
+    1
+   ],
+   [
+    "A5",
+    1.5
+   ],
+   [
+    "F#5",
+    0.5
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "D5",
+    1
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "G5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "D6",
+    2
+   ],
+   [
+    "D5",
+    2
+   ]
+  ],
+  "Harp": [
+   [
+    "D4",
+    1
+   ],
+   [
+    "F#4",
+    1
+   ],
+   [
+    "A4",
+    1
+   ],
+   [
+    "D5",
+    1
+   ],
+   [
+    "B3",
+    1
+   ],
+   [
+    "D4",
+    1
+   ],
+   [
+    "F#4",
+    1
+   ],
+   [
+    "A4",
+    1
+   ],
+   [
+    "G3",
+    1
+   ],
+   [
+    "D4",
+    1
+   ],
+   [
+    "G4",
+    1
+   ],
+   [
+    "B4",
+    1
+   ],
+   [
+    "D3",
+    1
+   ],
+   [
+    "A3",
+    1
+   ],
+   [
+    "D4+F#4+A4",
+    2
+   ]
+  ],
+  "Violin I": [
+   [
+    "F#4",
+    2
+   ],
+   [
+    "A4",
+    2
+   ],
+   [
+    "G4",
+    2
+   ],
+   [
+    "F#4",
+    2
+   ],
+   [
+    "G5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "B5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "A5",
+    2
+   ],
+   [
+    "F#5",
+    2
+   ]
+  ],
+  "Violoncello": [
+   [
+    "D3",
+    4
+   ],
+   [
+    "B2",
+    2
+   ],
+   [
+    "E3",
+    2
+   ],
+   [
+    "G2",
+    2
+   ],
+   [
+    "A2",
+    2
+   ],
+   [
+    "D3",
+    4
+   ]
+  ]
+ }
+}

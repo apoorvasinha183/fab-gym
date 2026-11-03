@@ -1,0 +1,749 @@
+{
+ "theme": {
+  "key": "D major",
+  "meter": [
+   4,
+   4
+  ],
+  "notes": [
+   [
+    "D5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "B5",
+    1
+   ],
+   [
+    "A5",
+    1.5
+   ],
+   [
+    "F#5",
+    0.5
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "D5",
+    1
+   ],
+   [
+    "E5",
+    1
+   ],
+   [
+    "F#5",
+    1
+   ],
+   [
+    "G5",
+    1
+   ],
+   [
+    "A5",
+    1
+   ],
+   [
+    "D6",
+    2
+   ],
+   [
+    "D5",
+    2
+   ]
+  ]
+ },
+ "cues": [
+  {
+   "cue": "c01",
+   "title": "The grain",
+   "from": 0.0,
+   "to": 8.0,
+   "mood": "wondrous tender introduction",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Harp",
+    "Violin I",
+    "Violoncello"
+   ],
+   "arc": "Soft Grain theme on flute over harp, strings warm under push-in, swell to lattice glow, resolve on title",
+   "moments": [
+    {
+     "t": 0.0,
+     "what": "grain drifts in"
+    },
+    {
+     "t": 4.0,
+     "what": "face fills screen lattice glows"
+    },
+    {
+     "t": 7.0,
+     "what": "title appears"
+    }
+   ],
+   "tempo": 119.38,
+   "bars": 4,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ],
+    [
+     4,
+     3.0
+    ]
+   ]
+  },
+  {
+   "cue": "c02",
+   "title": "Quarry ride",
+   "from": 8.0,
+   "to": 22.0,
+   "mood": "sunny playful adventure",
+   "key": "G major",
+   "meter": [
+    6,
+    8
+   ],
+   "instruments": [
+    "Flute",
+    "Oboe",
+    "Bassoon",
+    "Horn in F",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Contrabass"
+   ],
+   "arc": "Bouncy 6/8 Grain theme, brass stabs for scoop, rolling strings for truck, bright hold for label",
+   "moments": [
+    {
+     "t": 8.0,
+     "what": "excavator scoops at dawn"
+    },
+    {
+     "t": 13.0,
+     "what": "truck rolls gravel tumbles"
+    },
+    {
+     "t": 18.0,
+     "what": "SiO2 callout pops"
+    }
+   ],
+   "tempo": 90.26,
+   "bars": 7,
+   "half_beats": true,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     2.5
+    ],
+    [
+     6,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c03",
+   "title": "Furnace fire",
+   "from": 22.0,
+   "to": 34.0,
+   "mood": "dangerous hot and sad parting",
+   "key": "D minor",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Bassoon",
+    "Trombone",
+    "Tuba",
+    "Timpani",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Dark low brass and timpani hit for pour, theme fragments in minor for parting, cooling to low sad sustain",
+   "moments": [
+    {
+     "t": 22.0,
+     "what": "pour into furnace"
+    },
+    {
+     "t": 26.0,
+     "what": "oxygen twins torn away"
+    },
+    {
+     "t": 30.0,
+     "what": "silicon pours and cools"
+    }
+   ],
+   "tempo": 119.59,
+   "bars": 6,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ],
+    [
+     5,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c04",
+   "title": "Purification",
+   "from": 34.0,
+   "to": 46.0,
+   "mood": "mysterious floating cleaner",
+   "key": "A major",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Clarinet in Bb",
+    "Harp",
+    "Celesta",
+    "Violin I",
+    "Viola",
+    "Violoncello"
+   ],
+   "arc": "Airy 3/4 with celesta and harp, rising arpeggios as meter climbs, crystalline cadence on rods",
+   "moments": [
+    {
+     "t": 34.0,
+     "what": "lump dissolves to lilac gas"
+    },
+    {
+     "t": 38.0,
+     "what": "specks shake off meter climbs"
+    },
+    {
+     "t": 42.0,
+     "what": "freeze to rods full purity"
+    }
+   ],
+   "tempo": 104.64,
+   "bars": 7,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     2.0
+    ],
+    [
+     5,
+     3.0
+    ]
+   ]
+  },
+  {
+   "cue": "c05",
+   "title": "The crystal grows",
+   "from": 46.0,
+   "to": 62.0,
+   "mood": "awe slow miracle",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Oboe",
+    "Horn in F",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass",
+    "Glockenspiel"
+   ],
+   "arc": "Tender oboe theme, slow growing string swell with pull, glockenspiel sparkle for snap, broad warm reveal",
+   "moments": [
+    {
+     "t": 46.0,
+     "what": "seed dips into melt"
+    },
+    {
+     "t": 50.0,
+     "what": "pull and spin begins"
+    },
+    {
+     "t": 54.0,
+     "what": "atoms snap to grid"
+    },
+    {
+     "t": 58.0,
+     "what": "reveal ingot tall as human"
+    }
+   ],
+   "tempo": 104.73,
+   "bars": 7,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     2,
+     4.0
+    ],
+    [
+     4,
+     3.0
+    ],
+    [
+     6,
+     2.0
+    ]
+   ]
+  },
+  {
+   "cue": "c06",
+   "title": "Slicing mirrors",
+   "from": 62.0,
+   "to": 74.0,
+   "mood": "glittering precise",
+   "key": "E major",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Piccolo",
+    "Harp",
+    "Xylophone",
+    "Violin I",
+    "Violin II",
+    "Viola"
+   ],
+   "arc": "Bright staccato xylophone and piccolo for wire, gliss to mirror shine, soft settle into box",
+   "moments": [
+    {
+     "t": 62.0,
+     "what": "diamond wire glints discs fall"
+    },
+    {
+     "t": 66.0,
+     "what": "disc polishes to mirror"
+    },
+    {
+     "t": 70.0,
+     "what": "slide into box of 25"
+    }
+   ],
+   "tempo": 104.64,
+   "bars": 7,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     2.0
+    ],
+    [
+     5,
+     3.0
+    ]
+   ]
+  },
+  {
+   "cue": "c07",
+   "title": "To the fab",
+   "from": 74.0,
+   "to": 84.0,
+   "mood": "marching curious journey",
+   "key": "C major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Clarinet in Bb",
+    "Bassoon",
+    "Trumpet in Bb",
+    "Trombone",
+    "Violin II",
+    "Viola",
+    "Contrabass"
+   ],
+   "arc": "Steady march, muted brass theme, forward motion into fab with lift on door",
+   "moments": [
+    {
+     "t": 74.0,
+     "what": "box rides overhead track"
+    },
+    {
+     "t": 79.0,
+     "what": "inside fab teal frame"
+    }
+   ],
+   "tempo": 96.4,
+   "bars": 4,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c08",
+   "title": "First pattern",
+   "from": 84.0,
+   "to": 102.0,
+   "mood": "magical building wonder to trial",
+   "key": "F major",
+   "meter": [
+    6,
+    8
+   ],
+   "instruments": [
+    "Flute",
+    "Oboe",
+    "Clarinet in Bb",
+    "Horn in F",
+    "Harp",
+    "Violin I",
+    "Violoncello",
+    "Timpani"
+   ],
+   "arc": "Lilting 6/8 theme variations per process, tense etch then wash resolves warm on tick",
+   "moments": [
+    {
+     "t": 84.0,
+     "what": "mist films"
+    },
+    {
+     "t": 88.0,
+     "what": "UV prints through mask"
+    },
+    {
+     "t": 92.0,
+     "what": "plasma etch and implant"
+    },
+    {
+     "t": 97.0,
+     "what": "wash clean green tick"
+    }
+   ],
+   "tempo": 119.73,
+   "bars": 12,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     3.0
+    ],
+    [
+     6,
+     2.0
+    ],
+    [
+     9,
+     3.0
+    ]
+   ]
+  },
+  {
+   "cue": "c09",
+   "title": "Coach builds up",
+   "from": 102.0,
+   "to": 120.0,
+   "mood": "joyful accelerating triumph",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Piccolo",
+    "Flute",
+    "Trumpet in Bb",
+    "Horn in F",
+    "Trombone",
+    "Timpani",
+    "Xylophone",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Fast heroic theme, brass and strings drive stacking, timpani build to joyful tutti on coach",
+   "moments": [
+    {
+     "t": 102.0,
+     "what": "lap two double speed headband on"
+    },
+    {
+     "t": 106.0,
+     "what": "floors stack counter to 583"
+    },
+    {
+     "t": 115.0,
+     "what": "finished wafer coach smiles"
+    }
+   ],
+   "tempo": 119.73,
+   "bars": 9,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ],
+    [
+     7,
+     3.0
+    ]
+   ]
+  },
+  {
+   "cue": "c10",
+   "title": "Test and dive",
+   "from": 120.0,
+   "to": 138.0,
+   "mood": "suspense then relief",
+   "key": "G minor",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Oboe",
+    "Bassoon",
+    "Horn in F",
+    "Harp",
+    "Celesta",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello"
+   ],
+   "arc": "Hushed suspense, high strings for reveal and dive, held breath for needles, warm release on green",
+   "moments": [
+    {
+     "t": 120.0,
+     "what": "mosaic of dies revealed"
+    },
+    {
+     "t": 125.0,
+     "what": "dive into transistor streets"
+    },
+    {
+     "t": 130.0,
+     "what": "needles lower"
+    },
+    {
+     "t": 134.0,
+     "what": "green pass one red dot"
+    }
+   ],
+   "tempo": 119.73,
+   "bars": 9,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     3.0
+    ],
+    [
+     6,
+     1.0
+    ],
+    [
+     8,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c11",
+   "title": "Cut free",
+   "from": 138.0,
+   "to": 154.0,
+   "mood": "tender brave becoming",
+   "key": "D major",
+   "meter": [
+    3,
+    4
+   ],
+   "instruments": [
+    "Flute",
+    "Horn in F",
+    "Harp",
+    "Glockenspiel",
+    "Violin I",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Gentle 3/4 theme, delicate glockenspiel for laser, lyrical horn for bonding, soft close for lid",
+   "moments": [
+    {
+     "t": 138.0,
+     "what": "flip and grind thinner"
+    },
+    {
+     "t": 142.0,
+     "what": "laser splits like chocolate"
+    },
+    {
+     "t": 146.0,
+     "what": "gold wires arc"
+    },
+    {
+     "t": 150.0,
+     "what": "black lid closes"
+    }
+   ],
+   "tempo": 90.23,
+   "bars": 8,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     1.0
+    ],
+    [
+     5,
+     1.0
+    ],
+    [
+     7,
+     1.0
+    ]
+   ]
+  },
+  {
+   "cue": "c12",
+   "title": "Phone wakes",
+   "from": 154.0,
+   "to": 164.0,
+   "mood": "triumphant warm homecoming",
+   "key": "D major",
+   "meter": [
+    4,
+    4
+   ],
+   "instruments": [
+    "Piccolo",
+    "Flute",
+    "Oboe",
+    "Clarinet in Bb",
+    "Bassoon",
+    "Horn in F",
+    "Trumpet in Bb",
+    "Trombone",
+    "Tuba",
+    "Timpani",
+    "Glockenspiel",
+    "Celesta",
+    "Harp",
+    "Violin I",
+    "Violin II",
+    "Viola",
+    "Violoncello",
+    "Contrabass"
+   ],
+   "arc": "Full orchestra heroic Grain theme, fanfare for sort, soaring lift for flight, warm tutti on wake, gentle close",
+   "moments": [
+    {
+     "t": 154.0,
+     "what": "chips sort to bins"
+    },
+    {
+     "t": 159.0,
+     "what": "chip flies to phone"
+    },
+    {
+     "t": 162.0,
+     "what": "screen wakes beach pull-back"
+    }
+   ],
+   "tempo": 119.51,
+   "bars": 5,
+   "half_beats": false,
+   "hits": [
+    [
+     1,
+     1.0
+    ],
+    [
+     3,
+     3.0
+    ],
+    [
+     5,
+     1.0
+    ]
+   ]
+  }
+ ]
+}
