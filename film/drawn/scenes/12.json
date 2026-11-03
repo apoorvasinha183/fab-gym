@@ -1,161 +1,109 @@
 {
- "scene": "12",
- "title": "Shipped",
- "start": 154.0,
- "end": 164.0,
  "plates": {
-  "bins": {
-   "prompt": "A long tray running across the picture into three open bins on the right marked with one, two and three stars, a soft light sweeping across, a small bar chart on the wall behind.",
-   "variants": 2,
-   "variant": "the soft light has swept a little further"
+  "room": {
+   "prompt": "A beach at sunset seen from just above a smartphone lying in a person's open hand, the screen dark, the sea gold behind.",
+   "stage": {
+    "where": "on the phone's screen",
+    "share": "a quarter",
+    "near": "the phone and the hand are huge beside it"
+   }
   },
-  "beach": {
-   "prompt": "A smartphone lying on golden sand on a beach at sunset, seen from close by, its screen dark, small waves behind, warm light.",
-   "variants": 1,
-   "variant": "the phone's screen is now lit up bright and glowing, everything else exactly the same"
+  "awake": {
+   "from": "room",
+   "prompt": "the phone's screen has woken and glows softly with warm light"
+  },
+  "socket": {
+   "prompt": "A final test socket in warm light: a small black chip seated in it, a small green pass light beside it",
+   "stage": {
+    "where": "in the socket",
+    "share": "a quarter",
+    "near": "the socket is its own size"
+   }
+  },
+  "board": {
+   "prompt": "A green circuit board in warm light with one small black chip soldered in place among other parts",
+   "stage": {
+    "where": "in its place on the board",
+    "share": "a quarter",
+    "near": "the other parts are its own size"
+   }
+  },
+  "phone": {
+   "prompt": "A circuit board being closed inside a smartphone's case, warm light"
   }
  },
  "drawings": {
-  "s_ride": {
+  "p_test": {
    "sheet": "grain-10-packaged",
-   "pose": "sitting, riding along, holding the edge in front of it, excited"
+   "pose": "seated, hopeful, waiting"
   },
-  "s_ride2": {
+  "p_pass": {
    "sheet": "grain-10-packaged",
    "kind": "next",
-   "after": "s_ride",
-   "pose": "sitting, riding along, bouncing a little, excited"
+   "after": "p_test",
+   "pose": "relieved, a small happy bounce"
   },
-  "s_fly": {
+  "p_board": {
    "sheet": "grain-10-packaged",
-   "pose": "flying through the air to the right, arms forward, a sparkle trail behind"
+   "pose": "in its place among other parts, settling in, content"
   },
-  "s_fly2": {
-   "sheet": "grain-10-packaged",
-   "kind": "next",
-   "after": "s_fly",
-   "pose": "flying to the right, arms forward, the sparkle trail swung the other way"
-  },
-  "s_cheer": {
-   "sheet": "grain-10-packaged",
-   "pose": "arms up, cheering, eyes shut with joy"
+  "a_tilt": {
+   "sheet": "grain-01-sand",
+   "pose": "a tiny glowing figure on a phone screen tilting its head, curious and warm",
+   "mouths": true
   }
  },
  "shots": [
   {
    "id": "12-1",
-   "start": 154.0,
-   "frames": 120,
+   "start": 198.0,
+   "frames": 168,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "bins",
-      "bins~1",
-      "bins~2",
-      "bins~1"
+     "cels": [
+      [
+       "socket",
+       58
+      ],
+      [
+       "board",
+       67
+      ],
+      [
+       "phone",
+       43
+      ]
      ],
-     "on": 8
+     "dissolve": 10
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 220,
+     "height": 230,
      "cels": [
       [
-       "s_ride",
-       6
+       "p_test",
+       42
       ],
       [
-       "s_ride2",
-       6
+       "p_pass",
+       42
       ],
       [
-       "s_ride",
-       6
+       "p_board",
+       56
       ],
       [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
-      ],
-      [
-       "s_ride",
-       6
-      ],
-      [
-       "s_ride2",
-       6
+       "none",
+       28
       ]
      ],
-     "path": [
-      [
-       0,
-       360,
-       700
-      ],
-      [
-       119,
-       1380,
-       700
-      ]
+     "at": [
+      960,
+      760
      ]
     }
    ],
@@ -163,25 +111,25 @@
     [
      0,
      {
-      "x": -40,
+      "x": 0,
       "y": 0,
       "zoom": 1.0
      }
     ],
     [
-     119,
+     167,
      {
-      "x": 60,
+      "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.04
      }
     ]
    ]
   },
   {
    "id": "12-2",
-   "start": 159.0,
-   "frames": 120,
+   "start": 205.0,
+   "frames": 312,
    "levels": [
     {
      "name": "plate",
@@ -189,105 +137,40 @@
      "depth": 0.5,
      "cels": [
       [
-       "beach",
-       60
+       "room",
+       78
       ],
       [
-       "beach~1",
-       60
+       "awake",
+       234
       ]
-     ]
+     ],
+     "dissolve": 12
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 170,
+     "height": 200,
      "cels": [
       [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
-       "s_fly2",
-       4
-      ],
-      [
-       "s_fly",
-       4
-      ],
-      [
        "none",
-       4
+       110
       ],
       [
-       "s_cheer",
-       56
+       "a_tilt",
+       202
       ]
      ],
-     "path": [
-      [
-       0,
-       150,
-       560
-      ],
-      [
-       60,
-       850,
-       790
-      ],
-      [
-       119,
-       850,
-       790
-      ]
+     "at": [
+      1100,
+      790
+     ],
+     "talk": {
+      "key": "a_tilt",
+      "who": "grain"
+     },
+     "noshadow": [
+      "a_tilt"
      ]
     }
    ],
@@ -297,18 +180,28 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.2
+      "zoom": 1.1
      }
     ],
     [
-     119,
+     311,
      {
       "x": 0,
-      "y": 0,
+      "y": -20,
       "zoom": 1.0
      }
     ]
+   ],
+   "titles": [
+    {
+     "text": "QUARTZ → SILICON → CRYSTAL → WAFER → CHIPS",
+     "from": 193,
+     "to": 312,
+     "y": 90,
+     "size": 84
+    }
    ]
   }
- ]
+ ],
+ "scene": "12"
 }

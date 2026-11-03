@@ -1,8 +1,4 @@
 {
- "scene": "2",
- "title": "Smelt",
- "start": 22.0,
- "end": 34.0,
  "plates": {
   "furnace": {
    "prompt": "A close view on the wide stone rim of a huge silicon furnace: the flat rim runs across the front of the picture, glowing white-orange melt below and beyond it, a chute high on the left pouring pale quartz lumps and black carbon lumps down onto the rim.",
@@ -14,18 +10,8 @@
    "variants": 2,
    "variant": "the glow of the melt flickers a little brighter"
   },
-  "inside": {
-   "prompt": "On the floor of a silicon furnace, among pale quartz lumps and black carbon lumps, glowing melt and heat haze behind, and on the right a vent in the furnace wall where wisps of gas drift up and away.",
-   "stage": {
-    "where": "on the floor in the front left",
-    "share": "a third",
-    "near": "the lumps around it are about its own size; the vent on the right is a doorway much taller than it"
-   }
-  },
-  "pour": {
-   "prompt": "(from the pilot)",
-   "variants": 2,
-   "variant": "the steam has drifted up and the pouring stream ripples"
+  "imp": {
+   "prompt": "A simplified diagram for an animated film: a cut-away block of grey silicon with small dark specks of other elements mixed all through its inside, on a soft charcoal ground, no labels"
   }
  },
  "drawings": {
@@ -51,10 +37,6 @@
    "kind": "next",
    "after": "tumble_3"
   },
-  "Q_cling": {
-   "sheet": "grain-02-quartz",
-   "pose": "standing between its two small red oxygen twins, holding their hands, all three looking up wide-eyed"
-  },
   "land_squash": {
    "sheet": "grain-02-quartz",
    "pose": "just landed: its body squashed wide and low, knees bent, holding the twins' hands, the two twins bounced up into the air beside it"
@@ -72,119 +54,6 @@
     "Q_cling"
    ]
   },
-  "T_grab": {
-   "sheet": "carbon-thieves",
-   "pose": "both thieves leaning forward, each taking a small red oxygen twin by the hand and pulling it along"
-  },
-  "run_1": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 1 of an 8-drawing run cycle, side view, running to the right: front foot just touching the ground ahead, back leg stretched behind, body upright"
-  },
-  "run_2": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 2 of the run cycle: front foot flat on the ground, knee bent, body at its lowest",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_3": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 3 of the run cycle: back leg swinging forward past the standing leg, body rising",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_4": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 4 of the run cycle: pushing off the standing foot, both feet off the ground, body at its highest",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_5": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 5 of the run cycle: the other foot now just touching the ground ahead, the first leg stretched behind",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_6": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 6 of the run cycle: that foot flat on the ground, knee bent, body at its lowest",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_7": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 7 of the run cycle: the first leg swinging forward past the standing leg, body rising",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "run_8": {
-   "sheet": "carbon-thieves",
-   "pose": "two thieves side by side, each carrying a small round red ball character under one arm. Drawing 8 of the run cycle: pushing off, both feet off the ground, body at its highest",
-   "kind": "next",
-   "after": "run_1"
-  },
-  "G_look": {
-   "sheet": "grain-03-grey",
-   "pose": "looking down at its own grey body, surprised"
-  },
-  "shout_1": {
-   "sheet": "grain-03-grey",
-   "pose": "leaning back, breathing in, arms pulled to its sides, about to shout"
-  },
-  "shout_2": {
-   "sheet": "grain-03-grey",
-   "pose": "shouting, mouth wide open, both arms flung out forward"
-  },
-  "shout_3": {
-   "sheet": "grain-03-grey",
-   "pose": "still shouting, arms pumping forward, eyes squeezed"
-  },
-  "shout_4": {
-   "sheet": "grain-03-grey",
-   "pose": "arms dropping, mouth closing, shoulders slumping"
-  },
-  "shout_1b": {
-   "kind": "between",
-   "between": [
-    "shout_1",
-    "shout_2"
-   ]
-  },
-  "shout_2b": {
-   "kind": "between",
-   "between": [
-    "shout_2",
-    "shout_3"
-   ]
-  },
-  "shout_3b": {
-   "kind": "between",
-   "between": [
-    "shout_3",
-    "shout_4"
-   ]
-  },
-  "G_sad": {
-   "sheet": "grain-03-grey",
-   "pose": "standing alone, arms hanging down, head low, sad"
-  },
-  "G_sit": {
-   "sheet": "grain-03-grey",
-   "pose": "sitting on the ground, glum, a little steam rising off its head"
-  },
-  "sad_b": {
-   "sheet": "grain-03-grey",
-   "kind": "between",
-   "between": [
-    "G_sad",
-    "G_sit"
-   ]
-  },
-  "sit_b": {
-   "sheet": "grain-03-grey",
-   "kind": "next",
-   "after": "G_sit",
-   "pose": "sitting on the ground, glum, a small puff of steam rising off its head, eyes half closed"
-  },
   "Q_see": {
    "sheet": "grain-02-quartz",
    "pose": "just landed, standing, turning its head to the right, noticing something, brows rising, its two red twins beside it holding its hands"
@@ -192,27 +61,6 @@
   "Q_antic": {
    "sheet": "grain-02-quartz",
    "pose": "crouching down low, body squashed, eyes squeezed, about to spring up in surprise, holding the twins' hands"
-  },
-  "Q_take": {
-   "sheet": "grain-02-quartz",
-   "pose": "a big surprised double take: whole body stretched tall, eyes popped wide, brows shot up, mouth open, arms flung up, the two red twins jumping beside it"
-  },
-  "Q_wary": {
-   "sheet": "grain-02-quartz",
-   "pose": "standing wary, leaning back a little, brows knitted, looking right, the two red twins peeking out from behind its legs"
-  },
-  "G_turn": {
-   "sheet": "grain-03-grey",
-   "pose": "looking down at its own new grey body in surprise, hands held up in front of it, brows high"
-  },
-  "G_call": {
-   "sheet": "grain-03-grey",
-   "mouths": true,
-   "pose": "leaning forward on one foot, one arm reaching out to the right after its friends, the other hand cupped beside its mouth, calling out, brows up and worried, mouth open"
-  },
-  "G_slump": {
-   "sheet": "grain-03-grey",
-   "pose": "standing, the reaching arm dropping, shoulders sagging, brows sad, watching its friends go"
   },
   "T_lead_1": {
    "sheet": "carbon-thieves",
@@ -248,45 +96,6 @@
    "kind": "next",
    "after": "tumble_5"
   },
-  "Q_wary2": {
-   "sheet": "grain-02-quartz",
-   "kind": "next",
-   "after": "Q_wary",
-   "pose": "standing wary, glancing down at the two red twins who tug at its legs, then back to the right"
-  },
-  "take_b": {
-   "kind": "between",
-   "between": [
-    "Q_take",
-    "Q_wary"
-   ]
-  },
-  "T_peek": {
-   "sheet": "carbon-thieves",
-   "pose": "both carbon characters peeking out from behind a lump, only their heads and fingers showing, sly eyes"
-  },
-  "T_sneak": {
-   "sheet": "carbon-thieves",
-   "pose": "both tiptoeing forward side by side, knees high, shoulders hunched, sly grins"
-  },
-  "T_rub": {
-   "sheet": "carbon-thieves",
-   "pose": "both standing close together, rubbing their hands, wide sly grins, eyes on the twins"
-  },
-  "ps_b": {
-   "kind": "between",
-   "between": [
-    "T_peek",
-    "T_sneak"
-   ]
-  },
-  "sr_b": {
-   "kind": "between",
-   "between": [
-    "T_sneak",
-    "T_rub"
-   ]
-  },
   "T_lead_5": {
    "sheet": "carbon-thieves",
    "pose": "walking away to the right, smug, side by side, each leading a small red twin by the hand, drawing 5 of an 8-drawing walk cycle; the twins turning into soft wisps of gas from their feet up",
@@ -310,30 +119,142 @@
    "pose": "walking away to the right, smug, side by side, each leading a small red twin by the hand, drawing 8 of an 8-drawing walk cycle; the twins turning into soft wisps of gas from their feet up",
    "kind": "next",
    "after": "T_lead_1"
+  },
+  "Q_brace": {
+   "sheet": "grain-02-quartz",
+   "pose": "standing braced, feet planted, knees bent, the two red twins gripping its hands tightly, all three looking right"
+  },
+  "T_step": {
+   "sheet": "carbon-thieves",
+   "pose": "both stepping forward side by side with purpose, polite and calm, each reaching out a hand toward the twins"
+  },
+  "T_offer": {
+   "sheet": "carbon-thieves",
+   "kind": "next",
+   "after": "T_step",
+   "pose": "both standing with an open hand held out, calm friendly smiles, waiting"
+  },
+  "st_b": {
+   "kind": "between",
+   "between": [
+    "T_step",
+    "T_offer"
+   ]
+  },
+  "Q_reach": {
+   "sheet": "grain-02-quartz",
+   "pose": "reaching after the twins who are leaving up and to the right, one arm out, brows up"
+  },
+  "G_talk": {
+   "sheet": "grain-03-grey",
+   "pose": "standing, giving a small wave up to the right, a little sad smile, mouth open speaking",
+   "mouths": true
+  },
+  "qg_b": {
+   "kind": "between",
+   "between": [
+    "Q_reach",
+    "G_talk"
+   ]
+  },
+  "G_watch": {
+   "sheet": "grain-03-grey",
+   "pose": "standing, watching up and to the right, hand lowered, thoughtful"
+  },
+  "T_rise_1": {
+   "sheet": "carbon-thieves",
+   "pose": "each holding the hand of a small red twin, all rising up and away to the upper right as soft wisps of gas, the twins waving back"
+  },
+  "T_rise_2": {
+   "sheet": "carbon-thieves",
+   "kind": "next",
+   "after": "T_rise_1",
+   "pose": "the same, higher and fainter, more wisp than body"
+  },
+  "G_turn": {
+   "sheet": "grain-03-grey",
+   "pose": "looking down at its own grey body in surprise, hands held up in front of it, brows high"
+  },
+  "G_fleck": {
+   "sheet": "grain-03-grey",
+   "pose": "frowning at a dark fleck on its arm, rubbing at it, finding it is inside, not on top"
+  },
+  "G_go": {
+   "sheet": "grain-03-grey",
+   "pose": "stepping off to the right with determination, chin up"
   }
  },
  "shots": [
   {
    "id": "2-1",
-   "start": 25.5,
-   "frames": 132,
+   "start": 28.5,
+   "frames": 144,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "furnace",
-      "furnace~1",
-      "furnace~2",
-      "furnace~1"
-     ],
-     "on": 4
+     "cels": [
+      [
+       "furnace",
+       144
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
      "height": 290,
+     "cels": [
+      [
+       "tumble_1",
+       5
+      ],
+      [
+       "tumble_2",
+       5
+      ],
+      [
+       "tumble_3",
+       5
+      ],
+      [
+       "tumble_4",
+       5
+      ],
+      [
+       "tumble_5",
+       5
+      ],
+      [
+       "tumble_6",
+       5
+      ],
+      [
+       "land_squash",
+       5
+      ],
+      [
+       "land_up",
+       7
+      ],
+      [
+       "land_settle",
+       5
+      ],
+      [
+       "Q_see",
+       18
+      ],
+      [
+       "Q_antic",
+       7
+      ],
+      [
+       "Q_brace",
+       72
+      ]
+     ],
      "path": [
       [
        0,
@@ -356,71 +277,9 @@
        875
       ],
       [
-       131,
+       143,
        880,
        875
-      ]
-     ],
-     "cels": [
-      [
-       "tumble_1",
-       3
-      ],
-      [
-       "tumble_2",
-       3
-      ],
-      [
-       "tumble_3",
-       3
-      ],
-      [
-       "tumble_4",
-       3
-      ],
-      [
-       "tumble_5",
-       3
-      ],
-      [
-       "tumble_6",
-       3
-      ],
-      [
-       "land_squash",
-       3
-      ],
-      [
-       "land_up",
-       4
-      ],
-      [
-       "land_settle",
-       3
-      ],
-      [
-       "Q_see",
-       10
-      ],
-      [
-       "Q_antic",
-       4
-      ],
-      [
-       "Q_take",
-       14
-      ],
-      [
-       "take_b",
-       4
-      ],
-      [
-       "Q_wary",
-       36
-      ],
-      [
-       "Q_wary2",
-       36
       ]
      ],
      "noshadow": [
@@ -433,38 +292,30 @@
      ]
     },
     {
-     "name": "thieves",
+     "name": "carbon",
      "depth": 0.2,
      "height": 220,
-     "at": [
-      1500,
-      845
-     ],
      "cels": [
       [
        "none",
-       30
+       35
       ],
       [
-       "T_peek",
-       24
+       "T_step",
+       47
       ],
       [
-       "ps_b",
-       3
+       "st_b",
+       4
       ],
       [
-       "T_sneak",
-       26
-      ],
-      [
-       "sr_b",
-       3
-      ],
-      [
-       "T_rub",
-       46
+       "T_offer",
+       58
       ]
+     ],
+     "at": [
+      1480,
+      850
      ]
     }
    ],
@@ -478,26 +329,19 @@
      }
     ],
     [
-     18,
-     {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.03
-     }
-    ],
-    [
-     131,
+     143,
      {
       "x": 30,
       "y": 10,
       "zoom": 1.08
      }
     ]
-   ]
+   ],
+   "view": "simplified"
   },
   {
    "id": "2-2",
-   "start": 31.0,
+   "start": 34.5,
    "frames": 96,
    "levels": [
     {
@@ -506,7 +350,7 @@
      "depth": 0.5,
      "cels": [
       [
-       "inside",
+       "furnace",
        96
       ]
      ]
@@ -514,120 +358,72 @@
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 300,
+     "height": 290,
+     "cels": [
+      [
+       "Q_reach",
+       9
+      ],
+      [
+       "qg_b",
+       3
+      ],
+      [
+       "G_talk",
+       54
+      ],
+      [
+       "G_watch",
+       30
+      ]
+     ],
      "at": [
-      600,
-      940
+      880,
+      875
      ],
      "talk": {
-      "key": "G_call",
+      "key": "G_talk",
       "who": "grain"
-     },
-     "cels": [
-      [
-       "G_turn",
-       12
-      ],
-      [
-       "G_call",
-       48
-      ],
-      [
-       "G_slump",
-       36
-      ]
-     ]
+     }
     },
     {
-     "name": "thieves",
-     "depth": 0.25,
-     "height": 210,
-     "path": [
-      [
-       0,
-       1150,
-       930
-      ],
-      [
-       47,
-       1730,
-       860
-      ],
-      [
-       95,
-       1730,
-       860
-      ]
-     ],
+     "name": "carbon",
+     "depth": 0.2,
+     "height": 230,
      "cels": [
       [
-       "T_lead_1",
-       3
+       "T_rise_1",
+       40
       ],
       [
-       "T_lead_2",
-       3
-      ],
-      [
-       "T_lead_3",
-       3
-      ],
-      [
-       "T_lead_4",
-       3
-      ],
-      [
-       "T_lead_5",
-       3
-      ],
-      [
-       "T_lead_6",
-       3
-      ],
-      [
-       "T_lead_7",
-       3
-      ],
-      [
-       "T_lead_8",
-       3
-      ],
-      [
-       "T_lead_1",
-       3
-      ],
-      [
-       "T_lead_2",
-       3
-      ],
-      [
-       "T_lead_3",
-       3
-      ],
-      [
-       "T_lead_4",
-       3
-      ],
-      [
-       "T_lead_5",
-       3
-      ],
-      [
-       "T_lead_6",
-       3
-      ],
-      [
-       "T_lead_7",
-       3
-      ],
-      [
-       "T_lead_8",
-       3
+       "T_rise_2",
+       32
       ],
       [
        "none",
-       48
+       24
       ]
+     ],
+     "path": [
+      [
+       0,
+       1400,
+       830
+      ],
+      [
+       72,
+       1720,
+       430
+      ],
+      [
+       95,
+       1720,
+       430
+      ]
+     ],
+     "noshadow": [
+      "T_rise_1",
+      "T_rise_2"
      ]
     }
    ],
@@ -635,70 +431,71 @@
     [
      0,
      {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.0
+      "x": 30,
+      "y": 10,
+      "zoom": 1.08
      }
     ],
     [
      95,
      {
-      "x": 60,
-      "y": 0,
-      "zoom": 1.05
+      "x": 30,
+      "y": -20,
+      "zoom": 1.08
      }
     ]
-   ]
+   ],
+   "view": "simplified"
   },
   {
    "id": "2-3",
-   "start": 30.0,
-   "frames": 96,
+   "start": 38.5,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "pour",
-      "pour~1",
-      "pour~2",
-      "pour~1"
-     ],
-     "on": 6
+     "cels": [
+      [
+       "furnace",
+       132
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 300,
-     "at": [
-      960,
-      950
-     ],
+     "height": 290,
      "cels": [
       [
-       "G_sad",
-       34
+       "G_turn",
+       53
       ],
       [
-       "sad_b",
-       4
+       "G_fleck",
+       40
       ],
       [
-       "G_sit",
-       24
+       "G_go",
+       39
+      ]
+     ],
+     "path": [
+      [
+       0,
+       880,
+       875
       ],
       [
-       "sit_b",
-       12
+       92,
+       880,
+       875
       ],
       [
-       "G_sit",
-       10
-      ],
-      [
-       "sit_b",
-       12
+       131,
+       1100,
+       875
       ]
      ]
     }
@@ -708,19 +505,38 @@
      0,
      {
       "x": 0,
-      "y": -40,
-      "zoom": 1.05
+      "y": 0,
+      "zoom": 1.1
      }
     ],
     [
-     95,
+     131,
      {
-      "x": 0,
-      "y": 40,
-      "zoom": 1.05
+      "x": 120,
+      "y": 0,
+      "zoom": 1.0
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1430,
+      420
+     ],
+     "r": 230,
+     "from": 39,
+     "to": 95,
+     "cels": [
+      [
+       "imp",
+       132
+      ]
+     ],
+     "label": "simplified view"
+    }
    ]
   }
- ]
+ ],
+ "scene": "2"
 }

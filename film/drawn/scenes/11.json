@@ -1,36 +1,50 @@
 {
- "scene": "11",
- "title": "A home",
- "start": 146.0,
- "end": 154.0,
  "plates": {
-  "board": {
-   "prompt": "A close three-quarter view of a green circuit board: a square landing pad in the middle with rows of small gold pins around it, soft warm light, the pad empty."
+  "room": {
+   "prompt": "A packaging bench in warm cream and muted gold: a small green substrate with gold pads in the front middle, a black protective lid waiting beside it.",
+   "stage": {
+    "where": "on the substrate in the front middle",
+    "share": "a third",
+    "near": "the gold pads and the lid are drawn to its size"
+   }
+  },
+  "bond": {
+   "prompt": "A simplified close-up for an animated film: a small square die seated on a green package substrate, fine gold wires arching from pads on the die to pads on the substrate, warm cream and muted gold, no labels"
+  },
+  "closed": {
+   "from": "room",
+   "prompt": "the black protective lid now sits closed over the substrate"
   }
  },
  "drawings": {
-  "b_land": {
+  "d_seat": {
    "sheet": "grain-08-die",
-   "pose": "sitting with its knees up, looking small and shy"
+   "pose": "settling down gently into place, knees bending, careful"
   },
-  "b_wire": {
+  "d_set": {
    "sheet": "grain-08-die",
-   "pose": "standing, thin gold wires arcing out from its edges, little sparkles, surprised and pleased"
+   "kind": "next",
+   "after": "d_seat",
+   "pose": "seated, looking at fine gold wires arching from its edges, pleased"
   },
-  "b_peek": {
+  "p_eyes": {
    "sheet": "grain-10-packaged",
-   "pose": "standing, peeking up with big happy eyes, bow tie"
+   "pose": "a black package with its eyes opening on top, hopeful, a small gesture",
+   "mouths": true
   },
-  "b_home": {
-   "sheet": "grain-10-packaged",
-   "pose": "standing, smiling, waving with one hand, bow tie"
+  "dp_b": {
+   "kind": "between",
+   "between": [
+    "d_set",
+    "p_eyes"
+   ]
   }
  },
  "shots": [
   {
    "id": "11-1",
-   "start": 146.0,
-   "frames": 96,
+   "start": 187.0,
+   "frames": 168,
    "levels": [
     {
      "name": "plate",
@@ -38,28 +52,28 @@
      "depth": 0.5,
      "cels": [
       [
-       "board",
-       96
+       "room",
+       168
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 240,
+     "height": 230,
      "cels": [
       [
-       "b_land",
-       40
+       "d_seat",
+       67
       ],
       [
-       "b_wire",
-       56
+       "d_set",
+       101
       ]
      ],
      "at": [
-      960,
-      610
+      780,
+      850
      ]
     }
    ],
@@ -73,18 +87,45 @@
      }
     ],
     [
-     95,
+     167,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.05
+      "zoom": 1.06
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1450,
+      380
+     ],
+     "r": 250,
+     "from": 58,
+     "to": 168,
+     "cels": [
+      [
+       "bond",
+       168
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "PACKAGE",
+     "from": 84,
+     "to": 168,
+     "y": 70,
+     "size": 84
+    }
    ]
   },
   {
    "id": "11-2",
-   "start": 150.0,
+   "start": 194.0,
    "frames": 96,
    "levels": [
     {
@@ -93,33 +134,41 @@
      "depth": 0.5,
      "cels": [
       [
-       "board",
-       96
+       "room",
+       28
+      ],
+      [
+       "closed",
+       68
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 260,
+     "height": 250,
      "cels": [
       [
-       "b_wire",
-       30
+       "d_set",
+       9
       ],
       [
-       "b_peek",
-       20
+       "dp_b",
+       3
       ],
       [
-       "b_home",
-       46
+       "p_eyes",
+       84
       ]
      ],
      "at": [
-      960,
-      610
-     ]
+      780,
+      850
+     ],
+     "talk": {
+      "key": "p_eyes",
+      "who": "grain"
+     }
     }
    ],
    "camera": [
@@ -128,7 +177,7 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.05
+      "zoom": 1.06
      }
     ],
     [
@@ -136,10 +185,11 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.05
+      "zoom": 1.06
      }
     ]
    ]
   }
- ]
+ ],
+ "scene": "11"
 }

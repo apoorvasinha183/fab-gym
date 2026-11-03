@@ -1,170 +1,141 @@
 {
- "scene": "3",
- "title": "Distilled",
- "start": 34.0,
- "end": 46.0,
  "plates": {
-  "column": {
-   "prompt": "The inside of a tall glass distillation column seen close up, curved glass walls, soft swirling lilac haze rising through it, warm light glowing from below, a calm empty space in the middle.",
-   "variants": 2,
-   "variant": "the swirls of lilac haze have drifted a little higher"
+  "room": {
+   "prompt": "Inside a tall glass distillation column in pale lilac and frosty white light, thin filter plates across it, and at the top a chamber of tall glowing heated rods.",
+   "stage": {
+    "where": "floating in the middle of the column",
+    "share": "a third",
+    "near": "the filter plates and rods are drawn large beside it"
+   }
   },
-  "filters": {
-   "prompt": "The middle of a tall glass column: thin round filter plates crossing it one above another, pale lilac haze between them, a round gauge on the glass wall to the right, an empty space in the middle."
+  "conv": {
+   "prompt": "A simplified diagram for an animated film: grey silicon lumps in a vessel meeting a pale gas and turning into a soft violet vapour that rises, lilac ground, no labels"
+  },
+  "column": {
+   "prompt": "A clean cutaway of a tall glass distillation column in pale violet and warm white: violet vapour rising up the middle, pale liquid running back down the sides, three separate coloured streams leaving through pipes at different heights on the right",
+   "stage": {
+    "where": "floating in the middle of the column",
+    "share": "a third",
+    "near": "the column's trays are drawn large beside it"
+   }
   },
   "rods": {
-   "prompt": "The cold top of a tall glass column: a frosty chamber with a row of tall grey solid rods standing upright at the back, frost sparkles in the air, pale blue light, an empty floor in front."
+   "prompt": "A deposition chamber in muted steel blue and violet: a row of thin heated seed rods glowing orange-red standing upright, soft violet haze around them",
+   "stage": {
+    "where": "in front of the middle rod",
+    "share": "a third",
+    "near": "the rods are a little taller than it"
+   }
+  },
+  "rods2": {
+   "from": "rods",
+   "prompt": "the rods are now much thicker, heavy grey silicon columns grown around each glowing core"
+  },
+  "chunks": {
+   "prompt": "Cooled grey silicon rods broken into rough chunks piled on a tray in soft steel-blue light",
+   "stage": {
+    "where": "on top of the pile in the front middle",
+    "share": "a third",
+    "near": "the chunks are about its own size"
+   }
   }
  },
  "drawings": {
-  "g_melt": {
+  "G_in": {
    "sheet": "grain-03-grey",
-   "pose": "standing, its lower half melting away into soft lilac mist, eyes wide and surprised"
+   "pose": "stepping forward into a soft violet glow, curious, a little nervous"
   },
-  "w_swirl1": {
+  "W_rise": {
    "sheet": "grain-04-wisp",
-   "pose": "floating upward, a curling lilac tail of gas below it, arms out, happy"
-  },
-  "w_swirl2": {
-   "sheet": "grain-04-wisp",
-   "kind": "next",
-   "after": "w_swirl1",
-   "pose": "floating upward, the curling tail swung the other way, arms out, happy"
+   "pose": "rising upward as a soft violet wisp, curious, arms out"
   },
   "gw_b": {
    "kind": "between",
    "between": [
-    "g_melt",
-    "w_swirl1"
+    "G_in",
+    "W_rise"
    ]
   },
-  "w_shake1": {
+  "W_follow": {
    "sheet": "grain-04-wisp",
-   "pose": "floating, shaking itself like a wet dog, little brown dots flying off its body, eyes squeezed"
+   "pose": "floating up and to the right, eyes fixed on something ahead, intent"
   },
-  "w_shake2": {
+  "W_pick": {
    "sheet": "grain-04-wisp",
    "kind": "next",
-   "after": "w_shake1",
-   "pose": "floating, shaking the other way, more little brown dots flying off, eyes squeezed"
+   "after": "W_follow",
+   "pose": "pointing to the right with one arm, choosing the way, pleased"
   },
-  "s_fall1": {
-   "sheet": "specks",
-   "pose": "three small round brown specks drifting downward, little arms up, plain faces"
-  },
-  "s_fall2": {
-   "sheet": "specks",
-   "kind": "next",
-   "after": "s_fall1",
-   "pose": "the same three small brown specks drifting a little lower, little arms up"
-  },
-  "w_freeze": {
+  "W_settle": {
    "sheet": "grain-04-wisp",
-   "pose": "standing tall and straight like a small upright rod, its body turned pale grey and frosty, tiny frost sparkles, still smiling"
+   "pose": "drifting down, arms spread, settling gently"
   },
-  "wf_b": {
+  "R_stand": {
+   "sheet": "grain-03-grey",
+   "pose": "standing tall and straight like a column, content, eyes half closed, arms at its sides"
+  },
+  "wr_b": {
    "kind": "between",
    "between": [
-    "w_swirl1",
-    "w_freeze"
+    "W_settle",
+    "R_stand"
    ]
+  },
+  "C_chunk": {
+   "sheet": "grain-03-grey",
+   "pose": "smaller and chipped like a rough chunk, sitting on a pile, cheerful, looking right"
   }
  },
  "shots": [
   {
    "id": "3-1",
-   "start": 34.0,
-   "frames": 96,
+   "start": 44.0,
+   "frames": 156,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "column",
-      "column~1",
-      "column~2",
-      "column~1"
-     ],
-     "on": 8
+     "cels": [
+      [
+       "room",
+       156
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 340,
+     "height": 330,
      "cels": [
       [
-       "g_melt",
-       22
+       "G_in",
+       65
       ],
       [
        "gw_b",
-       6
+       13
       ],
       [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       6
-      ],
-      [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       6
-      ],
-      [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       6
-      ],
-      [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       6
-      ],
-      [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       6
-      ],
-      [
-       "w_swirl1",
-       6
-      ],
-      [
-       "w_swirl2",
-       2
+       "W_rise",
+       78
       ]
      ],
      "path": [
       [
        0,
-       960,
-       930
+       760,
+       940
       ],
       [
-       28,
-       960,
-       920
+       62,
+       820,
+       900
       ],
       [
-       95,
-       960,
-       800
+       155,
+       900,
+       700
       ]
      ]
     }
@@ -179,19 +150,37 @@
      }
     ],
     [
-     95,
+     155,
      {
       "x": 0,
-      "y": -40,
+      "y": -30,
       "zoom": 1.04
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1450,
+      400
+     ],
+     "r": 240,
+     "from": 23,
+     "to": 132,
+     "cels": [
+      [
+       "conv",
+       156
+      ]
+     ],
+     "label": "simplified view"
+    }
    ]
   },
   {
    "id": "3-2",
-   "start": 38.0,
-   "frames": 96,
+   "start": 50.5,
+   "frames": 108,
    "levels": [
     {
      "name": "plate",
@@ -199,8 +188,8 @@
      "depth": 0.5,
      "cels": [
       [
-       "filters",
-       96
+       "column",
+       108
       ]
      ]
     },
@@ -210,220 +199,29 @@
      "height": 320,
      "cels": [
       [
-       "w_shake1",
-       4
+       "W_follow",
+       59
       ],
       [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ],
-      [
-       "w_shake1",
-       4
-      ],
-      [
-       "w_shake2",
-       4
-      ]
-     ],
-     "at": [
-      820,
-      760
-     ]
-    },
-    {
-     "name": "specks",
-     "depth": 0.2,
-     "height": 120,
-     "cels": [
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
-      ],
-      [
-       "s_fall1",
-       4
-      ],
-      [
-       "s_fall2",
-       4
+       "W_pick",
+       49
       ]
      ],
      "path": [
       [
        0,
-       980,
-       720
+       900,
+       900
       ],
       [
-       95,
-       1060,
-       1180
+       107,
+       1150,
+       520
       ]
+     ],
+     "noshadow": [
+      "W_follow",
+      "W_pick"
      ]
     }
    ],
@@ -432,44 +230,34 @@
      0,
      {
       "x": 0,
-      "y": 0,
+      "y": 30,
       "zoom": 1.0
      }
     ],
     [
-     95,
+     107,
      {
-      "x": 0,
-      "y": -30,
+      "x": 60,
+      "y": -60,
       "zoom": 1.0
      }
     ]
    ],
+   "view": "simplified",
    "titles": [
     {
-     "text": "99%",
-     "from": 0,
-     "to": 32,
-     "y": 110
-    },
-    {
-     "text": "99.99%",
+     "text": "DISTILLATION",
      "from": 32,
-     "to": 64,
-     "y": 110
-    },
-    {
-     "text": "99.9999%",
-     "from": 64,
-     "to": 96,
-     "y": 110
+     "to": 108,
+     "y": 70,
+     "size": 84
     }
    ]
   },
   {
    "id": "3-3",
-   "start": 42.0,
-   "frames": 96,
+   "start": 55.0,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
@@ -478,31 +266,47 @@
      "cels": [
       [
        "rods",
-       96
+       72
+      ],
+      [
+       "rods2",
+       26
+      ],
+      [
+       "chunks",
+       34
       ]
-     ]
+     ],
+     "dissolve": 14
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
+     "height": 330,
      "cels": [
       [
-       "w_swirl1",
-       20
+       "W_settle",
+       38
       ],
       [
-       "wf_b",
-       6
+       "wr_b",
+       9
       ],
       [
-       "w_freeze",
-       70
+       "R_stand",
+       47
+      ],
+      [
+       "C_chunk",
+       38
       ]
      ],
      "at": [
       960,
-      940
+      900
+     ],
+     "noshadow": [
+      "W_settle"
      ]
     }
    ],
@@ -516,22 +320,15 @@
      }
     ],
     [
-     95,
+     131,
      {
       "x": 0,
       "y": 0,
       "zoom": 1.05
      }
     ]
-   ],
-   "titles": [
-    {
-     "text": "99.9999999% pure",
-     "from": 40,
-     "to": 96,
-     "y": 110
-    }
    ]
   }
- ]
+ ],
+ "scene": "3"
 }

@@ -1,114 +1,112 @@
 {
- "scene": "4",
- "title": "The crystal",
- "start": 46.0,
- "end": 62.0,
  "plates": {
-  "crucible": {
-   "prompt": "A round crucible full of glowing white-orange molten silicon seen from just above its rim, a dark hall above, a thin metal rod hanging straight down from the top middle towards the melt, heat shimmer.",
-   "variants": 2,
-   "variant": "the glow of the melt shimmers and ripples a little"
+  "room": {
+   "prompt": "Inside a crystal puller: a glowing crucible of white-orange melt low in the front, a thin pull rod coming down from above, cool silver light in the chamber above.",
+   "stage": {
+    "where": "just above the melt in the front middle",
+    "share": "a third",
+    "near": "the crucible's rim and the pull rod are drawn to its size"
+   }
   },
-  "meltface": {
-   "prompt": "A close-up of a glowing white-orange molten surface across the bottom of the picture, dark above it, a soft column of light rising from the middle of the melt, heat shimmer.",
-   "variants": 2,
-   "variant": "the glowing surface ripples a little"
+  "pull": {
+   "prompt": "A close view of a glowing crucible of white-orange melt in amber light with indigo shadows, a thin pull rod coming straight down from above, its tip holding a small plain silver seed crystal just above the middle of the melt",
+   "stage": {
+    "where": "hanging below the seed, just above the melt",
+    "share": "a third",
+    "near": "the crucible's rim is drawn to its size"
+   }
   },
-  "grid": {
-   "prompt": "A macro close-up: the bottom third a bright glowing orange melt, above it a neat silver grid of round atoms like marbles in perfect rows, tiny sparkles along the line where they meet.",
-   "variants": 2,
-   "variant": "the sparkles along the line where they meet have moved"
+  "lattice": {
+   "prompt": "A simplified diagram for an animated film: the lower third glowing orange liquid, above it an orderly schematic grid of silver atoms in neat rows continuing up from a seed at the top, a few loose atoms in the liquid moving up to join the grid at the boundary, no labels"
+  },
+  "lattice2": {
+   "from": "lattice",
+   "prompt": "more loose atoms have joined and the ordered grid has grown a little further down into the liquid"
   },
   "hall": {
-   "prompt": "A tall clean crystal-pulling hall, a tall puller machine on the left with its chamber door open and empty, a low metal cradle on the floor in the front middle, empty, and one adult person in a white clean-room suit standing on the floor just right of the cradle. No crystal anywhere.",
+   "prompt": "A tall crystal-pulling hall in amber and indigo light: a tall puller machine in the middle with its chamber opened wide and its pull cable hanging down empty in the middle of the opening, and far back on the right one small worker in a white clean-room suit",
    "stage": {
-    "where": "upright on the low cradle in the front middle",
+    "where": "hanging from the cable in the open chamber",
     "share": "a half",
-    "near": "the person beside the cradle is as tall as it, the cradle reaches its ankles"
+    "near": "the far worker is small with distance; the chamber is a little taller than it"
    }
   }
  },
  "drawings": {
-  "c_seed": {
+  "M_down": {
    "sheet": "grain-05-crystal",
-   "pose": "very small, only the size of a thimble, hanging from a thin rod by the top of its head, looking down nervously, arms tucked in"
+   "pose": "only a face showing in a glowing pool of melt, eyes closed, calm, no body"
   },
-  "c_spin1": {
-   "sheet": "grain-05-crystal",
-   "pose": "spinning, seen from the front, a thin rod on top of its head, arms out, laughing"
-  },
-  "c_spin2": {
+  "M_up": {
    "sheet": "grain-05-crystal",
    "kind": "next",
-   "after": "c_spin1",
-   "pose": "spinning, turned a quarter to its left, arms out, laughing"
+   "after": "M_down",
+   "pose": "the face in the melt opening its eyes and looking straight up, brows rising"
   },
-  "c_spin3": {
+  "C_neck": {
+   "sheet": "grain-05-crystal",
+   "pose": "a short silver crystal just pulled up out of the melt, hanging from its top, its face forming, eyes wide, brows up"
+  },
+  "C_mid": {
    "sheet": "grain-05-crystal",
    "kind": "next",
-   "after": "c_spin1",
-   "pose": "spinning, seen from the side, arms out, laughing"
+   "after": "C_neck",
+   "pose": "the crystal longer now, turning slowly, hanging from its top, a wondering smile"
   },
-  "c_watch": {
+  "C_watch": {
    "sheet": "grain-05-crystal",
-   "pose": "looking down at its own feet in wonder, mouth open, small sparkles at its feet"
+   "pose": "small, looking down at its own lower end with interest, hanging from its top"
   },
-  "c_tall": {
+  "C_long": {
    "sheet": "grain-05-crystal",
-   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright and proud, a soft smile, arms at its sides"
-  },
-  "c_wonder": {
-   "sheet": "grain-05-crystal",
-   "pose": "very tall and long like a big silver crystal ingot, a thin rod on top, standing upright, looking down at its own long body in soft wonder, mouth a small o",
+   "pose": "very long like a giant silver ingot, hanging from its top, looking down along its own long body, astonished, mouth open",
    "mouths": true
   },
-  "cw_b": {
-   "kind": "between",
-   "between": [
-    "c_wonder",
-    "c_tall"
-   ]
+  "C_proud": {
+   "sheet": "grain-05-crystal",
+   "kind": "next",
+   "after": "C_long",
+   "pose": "very long like a giant silver ingot, hanging from its top, a quiet proud smile"
   }
  },
  "shots": [
   {
    "id": "4-1",
-   "start": 46.0,
-   "frames": 96,
+   "start": 60.5,
+   "frames": 108,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "crucible",
-      "crucible~1",
-      "crucible~2",
-      "crucible~1"
-     ],
-     "on": 6
+     "cels": [
+      [
+       "room",
+       108
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 150,
+     "height": 170,
      "cels": [
       [
-       "c_seed",
-       96
-      ]
-     ],
-     "path": [
-      [
-       0,
-       960,
-       520
+       "M_down",
+       54
       ],
       [
-       95,
-       960,
-       640
+       "M_up",
+       54
       ]
+     ],
+     "at": [
+      960,
+      910
+     ],
+     "noshadow": [
+      "M_down",
+      "M_up"
      ]
     }
    ],
@@ -122,10 +120,10 @@
      }
     ],
     [
-     95,
+     107,
      {
       "x": 0,
-      "y": 0,
+      "y": 20,
       "zoom": 1.08
      }
     ]
@@ -133,135 +131,47 @@
   },
   {
    "id": "4-2",
-   "start": 50.0,
-   "frames": 96,
+   "start": 65.0,
+   "frames": 156,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "meltface",
-      "meltface~1",
-      "meltface~2",
-      "meltface~1"
-     ],
-     "on": 6
+     "cels": [
+      [
+       "pull",
+       156
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
+     "height": 320,
      "cels": [
       [
-       "c_spin1",
-       4
+       "C_neck",
+       71
       ],
       [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin1",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin1",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin1",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin1",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin1",
-       4
-      ],
-      [
-       "c_spin2",
-       4
-      ],
-      [
-       "c_spin3",
-       4
-      ],
-      [
-       "c_spin2",
-       4
+       "C_mid",
+       85
       ]
      ],
      "path": [
       [
        0,
        960,
-       900
+       380
       ],
       [
-       95,
+       155,
        960,
-       760
+       300
       ]
-     ]
+     ],
+     "anchor": "top"
     }
    ],
    "camera": [
@@ -274,10 +184,10 @@
      }
     ],
     [
-     95,
+     155,
      {
       "x": 0,
-      "y": -60,
+      "y": -40,
       "zoom": 1.0
      }
     ]
@@ -285,35 +195,40 @@
   },
   {
    "id": "4-3",
-   "start": 54.0,
-   "frames": 96,
+   "start": 71.5,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "grid",
-      "grid~1",
-      "grid~2",
-      "grid~1"
+     "cels": [
+      [
+       "lattice",
+       66
+      ],
+      [
+       "lattice2",
+       66
+      ]
      ],
-     "on": 4
+     "dissolve": 24
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 520,
+     "height": 260,
      "cels": [
       [
-       "c_watch",
-       96
+       "C_watch",
+       132
       ]
      ],
      "at": [
-      960,
-      1060
-     ]
+      300,
+      360
+     ],
+     "anchor": "top"
     }
    ],
    "camera": [
@@ -326,19 +241,20 @@
      }
     ],
     [
-     95,
+     131,
      {
       "x": 0,
       "y": 0,
       "zoom": 1.04
      }
     ]
-   ]
+   ],
+   "view": "simplified"
   },
   {
    "id": "4-4",
-   "start": 72.0,
-   "frames": 120,
+   "start": 77.0,
+   "frames": 144,
    "levels": [
     {
      "name": "plate",
@@ -347,34 +263,31 @@
      "cels": [
       [
        "hall",
-       120
+       144
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 330,
+     "height": 560,
      "cels": [
       [
-       "c_wonder",
-       50
+       "C_long",
+       56
       ],
       [
-       "cw_b",
-       4
-      ],
-      [
-       "c_tall",
-       66
+       "C_proud",
+       88
       ]
      ],
      "at": [
-      900,
-      975
+      960,
+      260
      ],
+     "anchor": "top",
      "talk": {
-      "key": "c_wonder",
+      "key": "C_long",
       "who": "grain"
      }
     }
@@ -384,12 +297,12 @@
      0,
      {
       "x": 0,
-      "y": 0,
-      "zoom": 1.06
+      "y": -40,
+      "zoom": 1.15
      }
     ],
     [
-     119,
+     143,
      {
       "x": 0,
       "y": 0,
@@ -400,12 +313,13 @@
    "titles": [
     {
      "text": "INGOT",
-     "from": 52,
-     "to": 120,
+     "from": 86,
+     "to": 144,
      "y": 70,
      "size": 84
     }
    ]
   }
- ]
+ ],
+ "scene": "4"
 }

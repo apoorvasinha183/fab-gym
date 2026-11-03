@@ -103,7 +103,9 @@ def needed(sc, only):
         grow = False
         for k in list(names):
             dd = sc.get("drawings", {}).get(k, {})
-            for src in ([dd["after"]] if dd.get("kind") == "next" else []) + list(dd.get("between", [])):
+            pp = sc.get("plates", {}).get(k, {})
+            for src in ([dd["after"]] if dd.get("kind") == "next" else []) + list(dd.get("between", [])) + \
+                    ([pp["from"]] if "from" in pp else []):
                 if src not in names:
                     names.add(src)
                     grow = True
@@ -151,10 +153,20 @@ def draw(n, only=None):
                 f.write_bytes(img)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        futs = [pool.submit(plate, k, v) for k, v in sc.get("plates", {}).items()]
+        futs = [pool.submit(plate, k, v) for k, v in sc.get("plates", {}).items() if "from" not in v]
         futs += [pool.submit(key, k, v) for k, v in sc.get("drawings", {}).items() if v.get("kind", "key") == "key"]
         for f in futs:
             f.result()
+    # plates made from other plates, in the order written, so a series keeps its framing and colours
+    for name, p in sc.get("plates", {}).items():
+        f = out / f"{name}.png"
+        src = out / f"{p.get('from', '')}.png"
+        if "from" in p and not f.exists() and src.exists():
+            img = produce._try(c, ["The same picture as the attached one: exactly the same framing, shapes, colours and "
+                                   "style, changed only like this: " + p["prompt"] + ". No characters, no text."],
+                               [src.read_bytes()])
+            if img:
+                f.write_bytes(img)
     # machines (no model sheet): the first in the house style, each next one edited from the one before
     prev = None
     for name, what in sc.get("machines", {}).items():
@@ -239,23 +251,53 @@ SUB = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
 
 
 def title(dr, text, y, font, a):
-    """A title centred with an outline; subscript digits (as in SiO₂) drawn small and lowered, since the title font has
-    no glyphs for them."""
+    """A title centred with an outline; subscript digits (as in SiO₂) drawn small and lowered, and arrows and middle dots
+    from a font that has them, since the title font has no glyphs for these."""
     small = font.font_variant(size=int(font.size * 0.6))
-    runs, cur = [], ""
+    other = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", int(font.size * 0.8))
+    runs = []
     for ch in text:
-        sub = ch != ch.translate(SUB)
-        if runs and runs[-1][1] == sub:
+        kind = "sub" if ch != ch.translate(SUB) else ("other" if ch in "→·" else "main")
+        if runs and runs[-1][1] == kind:
             runs[-1][0] += ch.translate(SUB)
         else:
-            runs.append([ch.translate(SUB), sub])
-    w = sum(dr.textlength(s, font=small if sub else font) for s, sub in runs)
+            runs.append([ch.translate(SUB), kind])
+    fonts = {"main": font, "sub": small, "other": other}
+    w = sum(dr.textlength(s, font=fonts[k]) for s, k in runs)
     x = W / 2 - w / 2
-    for s, sub in runs:
-        f = small if sub else font
-        dr.text((x, y + (font.size * 0.5 if sub else 0)), s, font=f, fill=(255, 240, 200, int(255 * a)),
-                stroke_width=7 if not sub else 5, stroke_fill=(28, 22, 38, int(255 * a)))
+    for s, k in runs:
+        f = fonts[k]
+        dy = font.size * 0.5 if k == "sub" else (font.size * 0.12 if k == "other" else 0)
+        dr.text((x, y + dy), s, font=f, fill=(255, 240, 200, int(255 * a)), stroke_width=5 if k == "sub" else 7,
+                stroke_fill=(28, 22, 38, int(255 * a)))
         x += dr.textlength(s, font=f)
+
+
+def dissolve_cels(cels, n):
+    """Each change of background becomes a cross-dissolve over n frames, taken from the end of the outgoing cel."""
+    out = []
+    for i, (name, k) in enumerate(cels):
+        k = int(k)
+        if i + 1 < len(cels) and k > n and cels[i + 1][0] != name:
+            nxt = cels[i + 1][0]
+            out.append([name, k - n])
+            out += [[f"{name}>{nxt}#{j}/{n}", 1] for j in range(1, n + 1)]
+        else:
+            out.append([name, k])
+    return out
+
+
+def simplified(fr):
+    """An explanatory shot: a visible border and a small marker that stays on for the whole shot."""
+    dr = ImageDraw.Draw(fr)
+    m = 26
+    dr.rounded_rectangle([m, m, W - m, H - m], 26, outline=(42, 33, 24), width=10)
+    dr.rounded_rectangle([m + 9, m + 9, W - m - 9, H - m - 9], 20, outline=(245, 232, 200), width=3)
+    lf = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
+    text = "simplified view"
+    w = dr.textlength(text, font=lf)
+    dr.rounded_rectangle([W - m - w - 52, m + 22, W - m - 22, m + 66], 10, fill=(42, 33, 24))
+    dr.text((W - m - w - 37, m + 29), text, font=lf, fill=(245, 232, 200))
 
 
 def graded(cut, n):
@@ -342,6 +384,8 @@ def render(n, only=None):
                 if nm not in d and (out / f"{nm}.png").exists():
                     d[nm] = Image.open(out / f"{nm}.png").convert("RGBA")
         for lv in shot["levels"]:
+            if lv.get("plate") and lv.get("dissolve") and lv.get("cels"):
+                lv["cels"] = dissolve_cels(lv["cels"], int(lv["dissolve"]))
             names = [x[0] for x in lv.get("cels", [])] + list(lv.get("cycle", []))
             for nm in names:
                 if nm in d or nm == "none":
@@ -350,7 +394,8 @@ def render(n, only=None):
                 if not f.exists():
                     continue
                 img = Image.open(f).convert("RGBA")
-                if lv.get("plate"):
+                if lv.get("plate") and ">" in nm:
+                    continue
                     d[nm] = img.resize((PW, PH), Image.LANCZOS)
                 else:
                     cut = graded(poses.fit(pilot.key(img), float(lv["height"])), n)
@@ -359,7 +404,15 @@ def render(n, only=None):
                     if LOOK.get("shadow") and lv.get("anchor") != "top" and nm.split("@")[0] not in lv.get("noshadow", []):
                         cut = shadowed(cut, anchors[nm])
                     d[nm] = cut
-            spec = {k: v for k, v in lv.items() if k not in ("plate", "height", "anchor")}
+            if lv.get("plate"):
+                for nm in names:                                  # the blended frames of each dissolve
+                    if ">" in nm and nm not in d:
+                        a, rest = nm.split(">")
+                        b, k = rest.split("#")
+                        k, n_ = (int(x) for x in k.split("/"))
+                        if a in d and b in d:
+                            d[nm] = Image.blend(d[a], d[b], k / n_)
+            spec = {k: v for k, v in lv.items() if k not in ("plate", "height", "anchor", "dissolve", "noshadow", "talk")}
             if lv.get("plate"):
                 spec.setdefault("at", [-120, -67])
             for key in ("cels",):
@@ -390,6 +443,8 @@ def render(n, only=None):
             t = float(shot["start"]) + f / FPS
             for ins in shot.get("insets", []):
                 inset(fr, d, ins, f)
+            if shot.get("view") == "simplified":
+                simplified(fr)
             for tt in shot.get("titles", []):
                 if tt["from"] <= f < tt["to"]:
                     a = min(1.0, (f - tt["from"]) / 12.0, (tt["to"] - f) / 12.0)

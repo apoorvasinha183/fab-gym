@@ -1,146 +1,156 @@
 {
- "scene": "7",
- "title": "The loop",
- "start": 84.0,
- "end": 120.0,
  "plates": {
-  "chamber": {
-   "prompt": "A process chamber close up: a round platform under a glass dome, a fine pale mist falling gently from above, soft blue light, the platform empty.",
-   "variants": 2,
-   "variant": "the mist has fallen a little lower"
+  "room": {
+   "prompt": "Inside a process tool: a round wafer stage in the front middle under a glass dome, cool blue light with the tool's own colour, quiet machinery around.",
+   "stage": {
+    "where": "on the round stage in the front middle",
+    "share": "a third",
+    "near": "the stage's clips and the dome are drawn to its size"
+   }
   },
-  "litho": {
-   "prompt": "A yellow-lit lithography room: a patterned glass mask plate held above a round stage, beams of light coming down through it, warm yellow light, the stage empty.",
-   "variants": 2,
-   "variant": "the beams of light flash a little brighter"
+  "dop": {
+   "prompt": "A simplified diagram for an animated film: a slate-blue silicon block seen from the side, a framed region near its top where a stream of small bright green atoms enters only that region, no labels"
   },
-  "etch": {
-   "prompt": "An etch chamber filled with a glowing violet plasma haze, sparks of violet light, a round stage in the middle, empty.",
-   "variants": 2,
-   "variant": "the violet haze swirls a little"
+  "dop2": {
+   "from": "dop",
+   "prompt": "the green atoms now sit spread through that one region, the rest unchanged"
   },
-  "wash": {
-   "prompt": "A wash station: a clear sheet of water falling on the left, a green scanning light line across a round stage, clean white light, the stage empty."
+  "clean": {
+   "prompt": "Inside a cleaning tool in blue-green light: a round wafer stage under a soft spray of clean water",
+   "stage": {
+    "where": "on the stage",
+    "share": "a third",
+    "near": "the stage is its own size"
+   }
   },
-  "blur": {
-   "prompt": "A ring of process chambers blurred with speed lines, teal and yellow streaks of light rushing around, an empty round stage in the middle.",
-   "variants": 2,
-   "variant": "the speed streaks have moved on"
+  "measure": {
+   "prompt": "A measuring tool in blue-green light: a fine glowing measuring beam pointing down at a round wafer stage, a small readout",
+   "stage": {
+    "where": "on the stage",
+    "share": "a third",
+    "near": "the stage is its own size"
+   }
   },
-  "city": {
-   "prompt": "A glowing stack of thin city floors rising like a building cross-section behind a round stage, tiny lights in every floor, a counter panel on the right, warm light.",
-   "variants": 2,
-   "variant": "more of the tiny lights in the floors are lit"
+  "route": {
+   "prompt": "A calm clean room in blue-green light seen past a row of familiar process tools, a big clock face on the wall, an empty floor in front",
+   "stage": {
+    "where": "on the floor in the front right",
+    "share": "a half",
+    "near": "the tools are taller than it"
+   }
   },
-  "done": {
-   "prompt": "A calm round stage in warm settled light, behind it a tall finished stack of many glowing city-like floors, soft glow."
+  "circuit": {
+   "prompt": "A simplified diagram for an animated film: an orderly simple circuit of a few transistors joined by neat ochre connection lines on a slate-blue ground, clear and calm, no labels"
   },
-  "xs": {
-   "prompt": "A simplified cross-section diagram for an animated film: the edge of a thick grey silicon slab seen from the side, filling the lower half, its flat top surface bare and clean, above it calm soft blue space, a few faint drifting particles, no labels.",
-   "variants": 2,
-   "variant": [
-    "a very thin, even golden-brown film has begun to cover the left half of the slab's top surface",
-    "the thin, even golden-brown film now covers the slab's whole top surface"
-   ]
+  "xs0": {
+   "prompt": "A simplified cross-section diagram for an animated film, side view, flat and clear: a thick slate-blue substrate filling the lower half with a flat top, plain soft pale light above, no labels"
+  },
+  "xs_film": {
+   "from": "xs0",
+   "prompt": "a thin even ochre film now covers the slate-blue substrate's whole top surface"
+  },
+  "xs_half": {
+   "from": "xs0",
+   "prompt": "a thin even ochre film has begun to cover the left half of the substrate's top surface"
+  },
+  "xs_res": {
+   "from": "xs_film",
+   "prompt": "a muted coral coating now covers the ochre film"
+  },
+  "xs_exp": {
+   "from": "xs_res",
+   "prompt": "a patterned mask hangs above with light shining through its gaps, and the coral coating under the gaps has turned paler"
+  },
+  "xs_dev": {
+   "from": "xs_exp",
+   "prompt": "the mask and light are gone and the paler parts of the coral coating have dissolved away, leaving openings down to the ochre film"
+  },
+  "xs_etch": {
+   "from": "xs_dev",
+   "prompt": "under each opening the ochre film has been removed down to the slate blue, the coral coating still protecting the rest"
+  },
+  "xs_strip": {
+   "from": "xs_etch",
+   "prompt": "the coral coating is gone, leaving the patterned ochre film on the slate-blue substrate"
   }
  },
  "drawings": {
-  "f_up": {
+  "w_watch": {
    "sheet": "grain-06-wafer",
-   "pose": "standing, looking up, curious, nothing else in the picture"
+   "pose": "standing, watching something up and to the right with interest"
   },
-  "f_up2": {
-   "sheet": "grain-06-wafer",
-   "kind": "next",
-   "after": "f_up",
-   "pose": "standing, a thin shiny film settling over its head, blinking, smiling"
-  },
-  "p_lit": {
-   "sheet": "grain-06-wafer",
-   "pose": "standing, stripes of patterned light across its body, squinting, bracing"
-  },
-  "p_lit2": {
+  "w_watch2": {
    "sheet": "grain-06-wafer",
    "kind": "next",
-   "after": "p_lit",
-   "pose": "standing, the stripes of light brighter, squinting the other way, bracing"
+   "after": "w_watch",
+   "pose": "the same, leaning a little closer, eyes wide"
   },
-  "e_brave": {
+  "w_lean": {
    "sheet": "grain-06-wafer",
-   "pose": "standing in a violet glow, fists up, brave face, cheeks puffed"
+   "pose": "leaning in close with real curiosity, a hand on its rim"
   },
-  "e_brave2": {
+  "w_window": {
    "sheet": "grain-06-wafer",
-   "kind": "next",
-   "after": "e_brave",
-   "pose": "standing, teeth chattering, shivering, fists up, brave face"
+   "pose": "small, seen through the round window of a process tool, looking out",
+   "mouths": true
   },
-  "k_wash": {
-   "sheet": "grain-06-wafer",
-   "pose": "dripping wet, eyes shut, shaking off water drops"
+  "L_clean": {
+   "sheet": "lou-latency",
+   "pose": "watching a cleaning step closely, hands behind its back"
   },
-  "k_tick": {
-   "sheet": "grain-06-wafer",
-   "pose": "big smile, a green tick mark floating beside it, thumbs up"
+  "L_measure": {
+   "sheet": "lou-latency",
+   "pose": "reading a small handheld gauge, focused"
   },
-  "c_spin1": {
-   "sheet": "grain-07-coach",
-   "pose": "spinning fast, arms out, grinning, red headband, little speed lines"
+  "L_ok": {
+   "sheet": "lou-latency",
+   "pose": "checking a panel, then a small firm nod",
+   "mouths": true
   },
-  "c_spin2": {
-   "sheet": "grain-07-coach",
-   "kind": "next",
-   "after": "c_spin1",
-   "pose": "spinning fast, turned a quarter, arms out, grinning, red headband, speed lines"
+  "L_route": {
+   "sheet": "lou-latency",
+   "pose": "consulting a clipboard of the route, then speaking kindly",
+   "mouths": true
   },
-  "c_flex": {
-   "sheet": "grain-07-coach",
-   "pose": "flexing one arm, winking, red headband, confident grin"
-  },
-  "c_proud": {
-   "sheet": "grain-07-coach",
-   "pose": "standing tall, fists on hips, red headband, proud grin"
-  },
-  "c_smile": {
-   "sheet": "grain-07-coach",
-   "pose": "standing calm, warm smile, waving to us with one hand"
+  "L_avatar": {
+   "sheet": "lou-latency",
+   "pose": "holding up a small tablet that shows a tiny cheerful character wearing a red headband, Lou smiling down at it"
   }
  },
  "shots": [
   {
    "id": "7-1",
-   "start": 105.0,
+   "start": 113.0,
    "frames": 120,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "chamber",
-      "chamber~1",
-      "chamber~2",
-      "chamber~1"
-     ],
-     "on": 8
+     "cels": [
+      [
+       "room",
+       120
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 330,
+     "height": 250,
      "cels": [
       [
-       "f_up",
-       44
+       "w_watch",
+       53
       ],
       [
-       "f_up2",
-       76
+       "w_watch2",
+       67
       ]
      ],
      "at": [
-      700,
-      930
+      960,
+      700
      ]
     }
    ],
@@ -156,33 +166,33 @@
     [
      119,
      {
-      "x": 20,
+      "x": 0,
       "y": 0,
-      "zoom": 1.04
+      "zoom": 1.05
      }
     ]
    ],
    "insets": [
     {
      "at": [
-      1450,
-      470
+      1460,
+      420
      ],
-     "r": 250,
-     "from": 20,
+     "r": 270,
+     "from": 18,
      "to": 120,
      "cels": [
       [
-       "xs",
-       28
+       "xs0",
+       36
       ],
       [
-       "xs~1",
-       24
+       "xs_half",
+       30
       ],
       [
-       "xs~2",
-       48
+       "xs_film",
+       120
       ]
      ],
      "label": "simplified view"
@@ -200,287 +210,7 @@
   },
   {
    "id": "7-2",
-   "start": 88.0,
-   "frames": 96,
-   "levels": [
-    {
-     "name": "plate",
-     "plate": true,
-     "depth": 0.5,
-     "cycle": [
-      "litho",
-      "litho~1",
-      "litho~2",
-      "litho~1"
-     ],
-     "on": 4
-    },
-    {
-     "name": "grain",
-     "depth": 0.2,
-     "height": 360,
-     "cels": [
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ],
-      [
-       "p_lit",
-       6
-      ],
-      [
-       "p_lit2",
-       6
-      ]
-     ],
-     "at": [
-      960,
-      930
-     ]
-    }
-   ],
-   "camera": [
-    [
-     0,
-     {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.0
-     }
-    ],
-    [
-     95,
-     {
-      "x": 60,
-      "y": 0,
-      "zoom": 1.0
-     }
-    ]
-   ]
-  },
-  {
-   "id": "7-3",
-   "start": 92.0,
-   "frames": 120,
-   "levels": [
-    {
-     "name": "plate",
-     "plate": true,
-     "depth": 0.5,
-     "cycle": [
-      "etch",
-      "etch~1",
-      "etch~2",
-      "etch~1"
-     ],
-     "on": 4
-    },
-    {
-     "name": "grain",
-     "depth": 0.2,
-     "height": 360,
-     "cels": [
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ]
-     ],
-     "at": [
-      960,
-      930
-     ]
-    }
-   ],
-   "camera": [
-    [
-     0,
-     {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.0
-     }
-    ],
-    [
-     119,
-     {
-      "x": 80,
-      "y": 0,
-      "zoom": 1.0
-     }
-    ]
-   ]
-  },
-  {
-   "id": "7-4",
-   "start": 97.0,
+   "start": 118.0,
    "frames": 120,
    "levels": [
     {
@@ -489,7 +219,7 @@
      "depth": 0.5,
      "cels": [
       [
-       "wash",
+       "room",
        120
       ]
      ]
@@ -497,60 +227,16 @@
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 360,
+     "height": 250,
      "cels": [
       [
-       "k_wash",
-       40
-      ],
-      [
-       "k_tick",
-       22
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "e_brave",
-       4
-      ],
-      [
-       "e_brave2",
-       4
-      ],
-      [
-       "k_tick",
-       22
+       "w_watch2",
+       120
       ]
      ],
      "at": [
       960,
-      930
+      700
      ]
     }
    ],
@@ -560,149 +246,255 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.05
      }
     ],
     [
      119,
      {
-      "x": 80,
+      "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.05
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1460,
+      420
+     ],
+     "r": 270,
+     "from": 0,
+     "to": 120,
+     "cels": [
+      [
+       "xs_film",
+       36
+      ],
+      [
+       "xs_res",
+       120
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "PHOTORESIST",
+     "from": 36,
+     "to": 120,
+     "y": 70,
+     "size": 84
+    }
+   ]
+  },
+  {
+   "id": "7-3",
+   "start": 123.0,
+   "frames": 156,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "room",
+       156
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 250,
+     "cels": [
+      [
+       "w_watch",
+       156
+      ]
+     ],
+     "at": [
+      960,
+      700
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ],
+    [
+     155,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1460,
+      420
+     ],
+     "r": 270,
+     "from": 0,
+     "to": 156,
+     "cels": [
+      [
+       "xs_res",
+       31
+      ],
+      [
+       "xs_exp",
+       62
+      ],
+      [
+       "xs_dev",
+       156
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "LITHOGRAPHY",
+     "from": 31,
+     "to": 156,
+     "y": 70,
+     "size": 84
+    }
+   ]
+  },
+  {
+   "id": "7-4",
+   "start": 129.5,
+   "frames": 108,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "room",
+       108
+      ]
+     ]
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 250,
+     "cels": [
+      [
+       "w_watch2",
+       108
+      ]
+     ],
+     "at": [
+      960,
+      700
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ],
+    [
+     107,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1460,
+      420
+     ],
+     "r": 270,
+     "from": 0,
+     "to": 108,
+     "cels": [
+      [
+       "xs_dev",
+       21
+      ],
+      [
+       "xs_etch",
+       48
+      ],
+      [
+       "xs_strip",
+       108
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "ETCHING",
+     "from": 21,
+     "to": 108,
+     "y": 70,
+     "size": 84
+    }
    ]
   },
   {
    "id": "7-5",
-   "start": 102.0,
-   "frames": 96,
+   "start": 134.0,
+   "frames": 156,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "blur",
-      "blur~1",
-      "blur~2",
-      "blur~1"
-     ],
-     "on": 2
+     "cels": [
+      [
+       "room",
+       156
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
+     "height": 250,
      "cels": [
       [
-       "c_spin1",
-       2
+       "w_watch",
+       52
       ],
       [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_spin2",
-       2
-      ],
-      [
-       "c_spin1",
-       2
-      ],
-      [
-       "c_flex",
-       46
+       "w_lean",
+       104
       ]
      ],
      "at": [
       960,
-      940
+      700
      ]
     }
    ],
@@ -712,50 +504,92 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.05
      }
     ],
     [
-     95,
+     155,
      {
-      "x": 100,
+      "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.1
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1460,
+      420
+     ],
+     "r": 270,
+     "from": 15,
+     "to": 156,
+     "cels": [
+      [
+       "dop",
+       70
+      ],
+      [
+       "dop2",
+       156
+      ]
+     ],
+     "label": "simplified view"
+    }
+   ],
+   "titles": [
+    {
+     "text": "DOPING",
+     "from": 46,
+     "to": 156,
+     "y": 70,
+     "size": 84
+    }
    ]
   },
   {
    "id": "7-6",
-   "start": 106.0,
+   "start": 140.5,
    "frames": 96,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "city",
-      "city~1",
-      "city~2",
-      "city~1"
-     ],
-     "on": 12
-    },
-    {
-     "name": "grain",
-     "depth": 0.2,
-     "height": 380,
      "cels": [
       [
-       "c_proud",
+       "clean",
+       28
+      ],
+      [
+       "measure",
+       28
+      ],
+      [
+       "route",
+       40
+      ]
+     ]
+    },
+    {
+     "name": "lou",
+     "depth": 0.2,
+     "height": 520,
+     "cels": [
+      [
+       "L_ok",
        96
       ]
      ],
      "at": [
-      960,
-      960
-     ]
+      1350,
+      1010
+     ],
+     "talk": {
+      "key": "L_ok",
+      "who": "lou"
+     }
     }
    ],
    "camera": [
@@ -764,7 +598,7 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.2
+      "zoom": 1.0
      }
     ],
     [
@@ -776,202 +610,73 @@
      }
     ]
    ],
-   "titles": [
-    {
-     "text": "583 steps",
-     "from": 30,
-     "to": 96,
-     "y": 110
-    }
+   "cuts": [
+    28,
+    57
    ]
   },
   {
    "id": "7-7",
-   "start": 110.0,
-   "frames": 120,
+   "start": 144.5,
+   "frames": 156,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "city",
-      "city~1",
-      "city~2",
-      "city~1"
+     "cels": [
+      [
+       "room",
+       54
+      ],
+      [
+       "route",
+       102
+      ]
      ],
-     "on": 6
+     "dissolve": 12
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
+     "height": 200,
      "cels": [
       [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
-      ],
-      [
-       "c_spin1",
-       3
-      ],
-      [
-       "c_spin2",
-       3
+       "w_window",
+       156
       ]
      ],
      "at": [
-      960,
-      960
-     ]
+      700,
+      640
+     ],
+     "talk": {
+      "key": "w_window",
+      "who": "grain"
+     }
+    },
+    {
+     "name": "lou",
+     "depth": 0.2,
+     "height": 520,
+     "cels": [
+      [
+       "none",
+       48
+      ],
+      [
+       "L_route",
+       108
+      ]
+     ],
+     "at": [
+      1380,
+      1010
+     ],
+     "talk": {
+      "key": "L_route",
+      "who": "lou"
+     }
     }
    ],
    "camera": [
@@ -979,15 +684,15 @@
      0,
      {
       "x": 0,
-      "y": 30,
+      "y": 0,
       "zoom": 1.0
      }
     ],
     [
-     119,
+     155,
      {
-      "x": 0,
-      "y": -30,
+      "x": 40,
+      "y": 0,
       "zoom": 1.0
      }
     ]
@@ -995,8 +700,8 @@
   },
   {
    "id": "7-8",
-   "start": 115.0,
-   "frames": 120,
+   "start": 151.0,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
@@ -1004,28 +709,24 @@
      "depth": 0.5,
      "cels": [
       [
-       "done",
-       120
+       "route",
+       132
       ]
      ]
     },
     {
-     "name": "grain",
+     "name": "lou",
      "depth": 0.2,
-     "height": 400,
+     "height": 520,
      "cels": [
       [
-       "c_proud",
-       24
-      ],
-      [
-       "c_smile",
-       96
+       "L_avatar",
+       132
       ]
      ],
      "at": [
-      960,
-      960
+      1380,
+      1010
      ]
     }
    ],
@@ -1035,18 +736,37 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.1
+      "zoom": 1.0
      }
     ],
     [
-     119,
+     131,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.06
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      620,
+      420
+     ],
+     "r": 280,
+     "from": 0,
+     "to": 132,
+     "cels": [
+      [
+       "circuit",
+       132
+      ]
+     ],
+     "label": "simplified view"
+    }
    ]
   }
- ]
+ ],
+ "scene": "7"
 }

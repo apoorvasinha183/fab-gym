@@ -1,36 +1,49 @@
 {
- "scene": "9",
- "title": "The exam",
- "start": 130.0,
- "end": 138.0,
  "plates": {
-  "probe": {
-   "prompt": "Seen from above at a slight angle: a test station with a grid of small green tiles on a dark plate, a bed of fine silver needles hanging above the middle, cool light, the middle front empty."
+  "room": {
+   "prompt": "A probe station seen from just above a wafer: a grid of dies across the front, a card of fine probe needles hanging just above, soft green test light.",
+   "stage": {
+    "where": "on one die in the front middle",
+    "share": "a third",
+    "near": "the neighbouring dies are its own size, the needles hair-thin beside it"
+   }
+  },
+  "touch": {
+   "from": "room",
+   "prompt": "the fine probe needles have come down and touch only the small pads around the edges of the front die"
+  },
+  "map": {
+   "prompt": "A test map for an animated film: a round wafer drawn as a grid of small squares, most of them green, a few red, one square in the middle outlined brightly, no labels"
   }
  },
  "drawings": {
-  "n_wince": {
+  "d_up": {
    "sheet": "grain-08-die",
-   "pose": "looking up nervously, eyes squeezed, shoulders up, bracing"
+   "pose": "looking up at something coming down from above, drawing in a breath"
   },
-  "n_pass": {
+  "d_hold": {
    "sheet": "grain-08-die",
-   "pose": "glowing soft green all over, big relieved smile, arms up"
+   "kind": "next",
+   "after": "d_up",
+   "pose": "holding very still, cheeks puffed, holding its breath, eyes squeezed"
   },
-  "n_ouch": {
+  "d_ask": {
    "sheet": "grain-08-die",
-   "pose": "hopping on one foot, one hand rubbing the top of its head, eyes wide, mouth open"
+   "pose": "looking off to the right, hopeful and nervous, asking",
+   "mouths": true
   },
-  "n_red": {
+  "d_relief": {
    "sheet": "grain-08-die",
-   "pose": "glowing soft red, a small red dot on its forehead, sheepish smile"
+   "kind": "next",
+   "after": "d_ask",
+   "pose": "shoulders dropping in relief, a big relieved smile, a small green glow"
   }
  },
  "shots": [
   {
    "id": "9-1",
-   "start": 130.0,
-   "frames": 96,
+   "start": 166.5,
+   "frames": 156,
    "levels": [
     {
      "name": "plate",
@@ -38,24 +51,32 @@
      "depth": 0.5,
      "cels": [
       [
-       "probe",
-       96
+       "room",
+       85
+      ],
+      [
+       "touch",
+       71
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
+     "height": 300,
      "cels": [
       [
-       "n_wince",
-       96
+       "d_up",
+       78
+      ],
+      [
+       "d_hold",
+       78
       ]
      ],
      "at": [
       960,
-      960
+      930
      ]
     }
    ],
@@ -69,19 +90,19 @@
      }
     ],
     [
-     95,
+     155,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.06
+      "zoom": 1.05
      }
     ]
    ]
   },
   {
    "id": "9-2",
-   "start": 134.0,
-   "frames": 96,
+   "start": 173.0,
+   "frames": 108,
    "levels": [
     {
      "name": "plate",
@@ -89,52 +110,33 @@
      "depth": 0.5,
      "cels": [
       [
-       "probe",
-       96
+       "touch",
+       108
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 380,
-     "cels": [
-      [
-       "n_wince",
-       28
-      ],
-      [
-       "n_pass",
-       36
-      ],
-      [
-       "n_ouch",
-       32
-      ]
-     ],
-     "at": [
-      880,
-      960
-     ]
-    },
-    {
-     "name": "sib",
-     "depth": 0.2,
      "height": 300,
      "cels": [
       [
-       "none",
-       20
+       "d_ask",
+       46
       ],
       [
-       "n_red",
-       76
+       "d_relief",
+       62
       ]
      ],
      "at": [
-      1460,
-      960
-     ]
+      760,
+      930
+     ],
+     "talk": {
+      "key": "d_ask",
+      "who": "grain"
+     }
     }
    ],
    "camera": [
@@ -143,18 +145,37 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.06
+      "zoom": 1.05
      }
     ],
     [
-     95,
+     107,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.06
+      "zoom": 1.05
      }
     ]
+   ],
+   "insets": [
+    {
+     "at": [
+      1450,
+      400
+     ],
+     "r": 250,
+     "from": 10,
+     "to": 108,
+     "cels": [
+      [
+       "map",
+       108
+      ]
+     ],
+     "label": "test map"
+    }
    ]
   }
- ]
+ ],
+ "scene": "9"
 }

@@ -1,52 +1,96 @@
 {
- "scene": "5",
- "title": "Wafers",
- "start": 62.0,
- "end": 74.0,
  "plates": {
+  "room": {
+   "prompt": "A clean wafer workshop in cool silver-grey daylight: a wire saw on the left, a polishing pad in the middle, a clear wafer carrier with slots on the right, all seen low from the bench.",
+   "stage": {
+    "where": "standing on the bench in the front middle",
+    "share": "a third",
+    "near": "the carrier's slots and the pad are drawn to its size"
+   }
+  },
   "saw": {
-   "prompt": "A saw room: a long silver crystal cylinder lying on its side on a cradle across the middle of the picture, a frame of taut glinting wires over it, a fine sparkle of sawdust, cool light, the floor empty below."
+   "prompt": "A wire saw in a cool pearl and steel-blue workshop: a long silver ingot lying supported in a cradle across the picture, a frame of fine glinting wires cutting through it into thin discs, the discs separating at the right end",
+   "stage": {
+    "where": "at the right end where the discs separate",
+    "share": "a third",
+    "near": "each disc is its own size"
+   }
+  },
+  "edge": {
+   "prompt": "A close view of an edge grinder in steel-blue light: a soft spinning wheel touching the rim of a thin round disc held on a small chuck",
+   "stage": {
+    "where": "on the chuck in the middle",
+    "share": "a third",
+    "near": "the wheel is about its own size"
+   }
   },
   "polish": {
-   "prompt": "A polishing station: a big round soft polishing pad seen at a low angle, soft white light, a calm empty space in the middle.",
-   "variants": 2,
-   "variant": "a soft band of shine has swept a little further across the pad"
+   "prompt": "A close view of a soft round polishing pad in pearl light, one broad soft reflection across it",
+   "stage": {
+    "where": "on the pad in the middle",
+    "share": "a third",
+    "near": "the pad is wider than it"
+   }
   },
-  "boxes": {
-   "prompt": "A clean bench under white light with a clear plastic box on the right holding a row of thin shiny round discs standing in slots, one slot empty, an empty bench in front on the left."
+  "clean": {
+   "prompt": "A close view of a rinse station: a gentle sheet of clean water falling over a small stand, pearl light",
+   "stage": {
+    "where": "on the stand in the middle",
+    "share": "a third",
+    "near": "the stand is its own size"
+   }
+  },
+  "carrier": {
+   "prompt": "A loading station in pearl and steel-blue light: an open clear wafer carrier with slots on the right, thin shiny discs standing in most of them, one slot empty at the front",
+   "stage": {
+    "where": "just in front of the empty slot",
+    "share": "a third",
+    "near": "each slot is its own size"
+   }
+  },
+  "carrier2": {
+   "from": "carrier",
+   "prompt": "the carrier's clear lid is now closed"
   }
  },
  "drawings": {
-  "w_disc1": {
+  "W_cut": {
    "sheet": "grain-06-wafer",
-   "pose": "falling, a thin disc tilting backwards, eyes wide, arms out"
+   "pose": "a thin round disc just separated, standing, surprised, looking at its own thinness"
   },
-  "w_disc2": {
+  "W_spin": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing on its edge, held steady, eyes squeezed, a little dizzy"
+  },
+  "W_shine": {
+   "sheet": "grain-06-wafer",
+   "pose": "facing us, its surface mirror-bright with one broad soft reflection, delighted"
+  },
+  "W_rinse": {
+   "sheet": "grain-06-wafer",
+   "pose": "eyes closed, water running off it, shaking off drops, pleased"
+  },
+  "W_admire": {
+   "sheet": "grain-06-wafer",
+   "pose": "turning to inspect its own new smooth edge, pleased, one hand on its rim"
+  },
+  "W_ask": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing in front of a slot, hopeful brows raised, hands together, asking",
+   "mouths": true
+  },
+  "W_nod": {
    "sheet": "grain-06-wafer",
    "kind": "next",
-   "after": "w_disc1",
-   "pose": "falling, the thin disc tilted forwards now, eyes wide, arms out"
-  },
-  "w_shine": {
-   "sheet": "grain-06-wafer",
-   "pose": "standing, facing us, its body mirror-bright with a soft white shine across it, delighted"
-  },
-  "w_shine2": {
-   "sheet": "grain-06-wafer",
-   "kind": "next",
-   "after": "w_shine",
-   "pose": "standing, facing us, the white shine streak moved further across its body, delighted, a little sparkle"
-  },
-  "w_slide": {
-   "sheet": "grain-06-wafer",
-   "pose": "leaning, sliding sideways to the right, waving goodbye with one hand"
+   "after": "W_ask",
+   "pose": "a small understanding nod, a warm smile"
   }
  },
  "shots": [
   {
    "id": "5-1",
-   "start": 62.0,
-   "frames": 96,
+   "start": 83.0,
+   "frames": 120,
    "levels": [
     {
      "name": "plate",
@@ -55,123 +99,23 @@
      "cels": [
       [
        "saw",
-       96
+       120
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 260,
+     "height": 290,
      "cels": [
       [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
-      ],
-      [
-       "w_disc1",
-       4
-      ],
-      [
-       "w_disc2",
-       4
+       "W_cut",
+       120
       ]
      ],
-     "path": [
-      [
-       0,
-       1200,
-       760
-      ],
-      [
-       95,
-       1240,
-       980
-      ]
+     "at": [
+      1560,
+      860
      ]
     }
    ],
@@ -179,15 +123,15 @@
     [
      0,
      {
-      "x": -40,
+      "x": -60,
       "y": 0,
       "zoom": 1.0
      }
     ],
     [
-     95,
+     119,
      {
-      "x": 40,
+      "x": 60,
       "y": 0,
       "zoom": 1.0
      }
@@ -196,94 +140,57 @@
   },
   {
    "id": "5-2",
-   "start": 66.0,
-   "frames": 96,
+   "start": 88.0,
+   "frames": 120,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "polish",
-      "polish~1",
-      "polish~2",
-      "polish~1"
-     ],
-     "on": 6
+     "cels": [
+      [
+       "edge",
+       31
+      ],
+      [
+       "polish",
+       31
+      ],
+      [
+       "clean",
+       28
+      ],
+      [
+       "polish",
+       30
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 420,
+     "height": 320,
      "cels": [
       [
-       "w_shine",
-       6
+       "W_spin",
+       31
       ],
       [
-       "w_shine2",
-       6
+       "W_shine",
+       31
       ],
       [
-       "w_shine",
-       6
+       "W_rinse",
+       29
       ],
       [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
-      ],
-      [
-       "w_shine",
-       6
-      ],
-      [
-       "w_shine2",
-       6
+       "W_admire",
+       29
       ]
      ],
      "at": [
       960,
-      960
+      900
      ]
     }
    ],
@@ -293,23 +200,28 @@
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.04
      }
     ],
     [
-     95,
+     119,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.15
+      "zoom": 1.04
      }
     ]
+   ],
+   "cuts": [
+    31,
+    62,
+    91
    ]
   },
   {
    "id": "5-3",
-   "start": 70.0,
-   "frames": 96,
+   "start": 93.0,
+   "frames": 180,
    "levels": [
     {
      "name": "plate",
@@ -317,38 +229,41 @@
      "depth": 0.5,
      "cels": [
       [
-       "boxes",
-       96
+       "carrier",
+       147
+      ],
+      [
+       "carrier2",
+       33
       ]
      ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 220,
+     "height": 300,
      "cels": [
       [
-       "w_slide",
-       96
+       "W_ask",
+       66
+      ],
+      [
+       "W_nod",
+       68
+      ],
+      [
+       "none",
+       46
       ]
      ],
-     "path": [
-      [
-       0,
-       480,
-       770
-      ],
-      [
-       70,
-       1420,
-       770
-      ],
-      [
-       95,
-       1420,
-       770
-      ]
-     ]
+     "at": [
+      1350,
+      900
+     ],
+     "talk": {
+      "key": "W_ask",
+      "who": "grain"
+     }
     }
    ],
    "camera": [
@@ -361,22 +276,24 @@
      }
     ],
     [
-     95,
+     179,
      {
-      "x": 80,
+      "x": 40,
       "y": 0,
-      "zoom": 1.0
+      "zoom": 1.05
      }
     ]
    ],
    "titles": [
     {
-     "text": "a lot of 25",
-     "from": 50,
-     "to": 96,
-     "y": 110
+     "text": "WAFER",
+     "from": 99,
+     "to": 180,
+     "y": 70,
+     "size": 84
     }
    ]
   }
- ]
+ ],
+ "scene": "5"
 }

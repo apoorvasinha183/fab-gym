@@ -1,75 +1,79 @@
 {
- "scene": "10",
- "title": "Cut free",
- "start": 138.0,
- "end": 146.0,
  "plates": {
-  "grind": {
-   "prompt": "A low angle across a big round disc turned over on a grinding wheel, a spray of sparks and fine dust, dark around.",
-   "variants": 2,
-   "variant": "the sparks spray the other way"
+  "room": {
+   "prompt": "A dicing saw in cool slate light: the wafer's grid of dies across the front, a thin cutting lane running into the distance, a few warm sparks.",
+   "stage": {
+    "where": "on one die in the front middle",
+    "share": "a third",
+    "near": "the neighbouring dies are its own size, the lane a narrow street beside it"
+   }
   },
-  "dice": {
-   "prompt": "A low angle across a grid of green tiles with a glowing red laser line running along the narrow gaps between them, small crack lines appearing.",
-   "variants": 2,
-   "variant": "the laser line has run further along the gaps"
+  "lift": {
+   "prompt": "A close view in cool slate light: the soft suction tip of a pick-up tool coming down from above over a single small die in a neatly cut grid, the wafer held flat",
+   "stage": {
+    "where": "on the front die under the tip",
+    "share": "a third",
+    "near": "the neighbouring dies are its own size"
+   }
   }
  },
  "drawings": {
-  "x_flip": {
+  "d_lane": {
    "sheet": "grain-08-die",
-   "pose": "rolled over onto its side, lying sideways in mid-air with its legs kicked out, surprised, its face the right way up"
+   "pose": "watching a cut run along the lane beside it, leaning away a little, eyes on it"
   },
-  "x_dizzy": {
+  "d_free": {
    "sheet": "grain-08-die",
-   "pose": "standing, wobbling, dizzy, laughing, little stars over its head"
+   "pose": "standing alone in its own square, cut free, looking around, a little amazed"
   },
-  "x_free": {
+  "d_back": {
    "sheet": "grain-08-die",
-   "pose": "stepping forward on its own, arms up, cheering"
+   "pose": "lifted up from its top, looking back down at the grid below"
   },
-  "x_free2": {
+  "d_squash": {
    "sheet": "grain-08-die",
-   "kind": "next",
-   "after": "x_free",
-   "pose": "stepping forward with the other foot, arms up, cheering"
+   "pose": "squashed down a little, bracing as something takes hold of its top"
+  },
+  "d_ahead": {
+   "sheet": "grain-08-die",
+   "pose": "lifted from its top, looking ahead to the right, asking, curious",
+   "mouths": true
   }
  },
  "shots": [
   {
    "id": "10-1",
-   "start": 138.0,
-   "frames": 96,
+   "start": 177.5,
+   "frames": 132,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "grind",
-      "grind~1",
-      "grind~2",
-      "grind~1"
-     ],
-     "on": 3
+     "cels": [
+      [
+       "room",
+       132
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 360,
+     "height": 300,
      "cels": [
       [
-       "x_flip",
-       30
+       "d_lane",
+       79
       ],
       [
-       "x_dizzy",
-       66
+       "d_free",
+       53
       ]
      ],
      "at": [
       960,
-      950
+      960
      ]
     }
    ],
@@ -83,7 +87,7 @@
      }
     ],
     [
-     95,
+     131,
      {
       "x": 0,
       "y": 0,
@@ -94,92 +98,65 @@
   },
   {
    "id": "10-2",
-   "start": 142.0,
+   "start": 183.0,
    "frames": 96,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "dice",
-      "dice~1",
-      "dice~2",
-      "dice~1"
-     ],
-     "on": 6
+     "cels": [
+      [
+       "lift",
+       96
+      ]
+     ]
     },
     {
      "name": "grain",
      "depth": 0.2,
-     "height": 360,
+     "height": 300,
      "cels": [
       [
-       "x_dizzy",
-       30
+       "d_squash",
+       3
       ],
       [
-       "x_free",
-       6
+       "d_back",
+       9
       ],
       [
-       "x_free2",
-       6
-      ],
-      [
-       "x_free",
-       6
-      ],
-      [
-       "x_free2",
-       6
-      ],
-      [
-       "x_free",
-       6
-      ],
-      [
-       "x_free2",
-       6
-      ],
-      [
-       "x_free",
-       6
-      ],
-      [
-       "x_free2",
-       6
-      ],
-      [
-       "x_free",
-       6
-      ],
-      [
-       "x_free2",
-       6
-      ],
-      [
-       "x_free",
-       6
+       "d_ahead",
+       84
       ]
      ],
      "path": [
       [
        0,
-       900,
-       950
+       960,
+       640
       ],
       [
-       30,
-       900,
-       950
+       19,
+       960,
+       640
+      ],
+      [
+       43,
+       960,
+       560
       ],
       [
        95,
        1080,
-       950
+       540
       ]
-     ]
+     ],
+     "anchor": "top",
+     "talk": {
+      "key": "d_ahead",
+      "who": "grain"
+     }
     }
    ],
    "camera": [
@@ -194,12 +171,13 @@
     [
      95,
      {
-      "x": 0,
+      "x": 60,
       "y": 0,
-      "zoom": 1.08
+      "zoom": 1.0
      }
     ]
    ]
   }
- ]
+ ],
+ "scene": "10"
 }

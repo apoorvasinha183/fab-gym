@@ -1,141 +1,62 @@
 {
- "scene": "8",
- "title": "Identical chips",
- "start": 120.0,
- "end": 130.0,
  "plates": {
-  "reveal": {
-   "prompt": "A dark stage lit by beams of coloured light like stained glass falling from above, glints of colour on the floor, an empty space in the middle.",
-   "variants": 2,
-   "variant": "the coloured glints have moved a little"
+  "room": {
+   "prompt": "A calm wafer inspection station under restrained white light: a round wafer covered in a neat grid of small square dies lies on a dark stage, soft light from above, the rest of the room quiet and dim",
+   "stage": {
+    "where": "on the stage in front of the wafer",
+    "share": "a third",
+    "near": "one die of the grid is a little smaller than it"
+   }
   },
-  "streets": {
-   "prompt": "Looking down into a chip: glowing streets of tiny switches laid out like a city grid seen from above, thin teal lines, a bright centre.",
-   "variants": 2,
-   "variant": "the tiny lights in the streets flicker"
+  "transistor": {
+   "prompt": "A simplified diagram for an animated film: a single switch-like transistor on a simple path, a signal of little light dots stopped at its closed gate, slate-blue and ochre, no labels"
+  },
+  "transistor2": {
+   "from": "transistor",
+   "prompt": "the gate is open and the little dots of light flow through"
+  },
+  "transistor3": {
+   "from": "transistor2",
+   "prompt": "several more transistors in a row pass the dots of light along a simple path"
   }
  },
  "drawings": {
-  "d_tile": {
-   "sheet": "grain-08-die",
-   "pose": "standing in the front middle of a crowd of identical little green tile characters with red headbands, all in neat rows, it waving"
+  "w_whole": {
+   "sheet": "grain-06-wafer",
+   "pose": "standing proudly in front of a gridded wafer, arms out, presenting it"
   },
-  "d_tile2": {
+  "d_one": {
    "sheet": "grain-08-die",
-   "kind": "next",
-   "after": "d_tile",
-   "pose": "the same crowd in neat rows, all of them smiling and waving together"
+   "pose": "a single small square die, stepping forward out of a neat grid, the only one with a face, pleased"
   },
-  "d_center": {
+  "wd_b": {
+   "kind": "between",
+   "between": [
+    "w_whole",
+    "d_one"
+   ]
+  },
+  "d_watch": {
    "sheet": "grain-08-die",
-   "pose": "alone, floating, arms out wide, amazed, looking around"
+   "pose": "small, looking up and to the right with interest"
   }
  },
  "shots": [
   {
    "id": "8-1",
-   "start": 120.0,
-   "frames": 120,
+   "start": 156.5,
+   "frames": 108,
    "levels": [
     {
      "name": "plate",
      "plate": true,
      "depth": 0.5,
-     "cycle": [
-      "reveal",
-      "reveal~1",
-      "reveal~2",
-      "reveal~1"
-     ],
-     "on": 10
-    },
-    {
-     "name": "grain",
-     "depth": 0.2,
-     "height": 600,
      "cels": [
       [
-       "d_tile",
-       12
-      ],
-      [
-       "d_tile2",
-       12
-      ],
-      [
-       "d_tile",
-       12
-      ],
-      [
-       "d_tile2",
-       12
-      ],
-      [
-       "d_tile",
-       12
-      ],
-      [
-       "d_tile2",
-       12
-      ],
-      [
-       "d_tile",
-       12
-      ],
-      [
-       "d_tile2",
-       12
-      ],
-      [
-       "d_tile",
-       12
-      ],
-      [
-       "d_tile2",
-       12
+       "room",
+       108
       ]
-     ],
-     "at": [
-      960,
-      1020
      ]
-    }
-   ],
-   "camera": [
-    [
-     0,
-     {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.0
-     }
-    ],
-    [
-     119,
-     {
-      "x": 0,
-      "y": 0,
-      "zoom": 1.08
-     }
-    ]
-   ]
-  },
-  {
-   "id": "8-2",
-   "start": 125.0,
-   "frames": 120,
-   "levels": [
-    {
-     "name": "plate",
-     "plate": true,
-     "depth": 0.5,
-     "cycle": [
-      "streets",
-      "streets~1",
-      "streets~2",
-      "streets~1"
-     ],
-     "on": 6
     },
     {
      "name": "grain",
@@ -143,13 +64,21 @@
      "height": 300,
      "cels": [
       [
-       "d_center",
-       120
+       "w_whole",
+       49
+      ],
+      [
+       "wd_b",
+       10
+      ],
+      [
+       "d_one",
+       49
       ]
      ],
      "at": [
       960,
-      700
+      930
      ]
     }
    ],
@@ -163,14 +92,94 @@
      }
     ],
     [
-     119,
+     107,
      {
       "x": 0,
       "y": 0,
-      "zoom": 1.5
+      "zoom": 1.06
      }
     ]
+   ],
+   "titles": [
+    {
+     "text": "DIE",
+     "from": 59,
+     "to": 108,
+     "y": 70,
+     "size": 84
+    }
+   ]
+  },
+  {
+   "id": "8-2",
+   "start": 161.0,
+   "frames": 132,
+   "levels": [
+    {
+     "name": "plate",
+     "plate": true,
+     "depth": 0.5,
+     "cels": [
+      [
+       "transistor",
+       46
+      ],
+      [
+       "transistor2",
+       39
+      ],
+      [
+       "transistor3",
+       47
+      ]
+     ],
+     "dissolve": 10
+    },
+    {
+     "name": "grain",
+     "depth": 0.2,
+     "height": 220,
+     "cels": [
+      [
+       "d_watch",
+       132
+      ]
+     ],
+     "at": [
+      260,
+      1000
+     ]
+    }
+   ],
+   "camera": [
+    [
+     0,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.0
+     }
+    ],
+    [
+     131,
+     {
+      "x": 0,
+      "y": 0,
+      "zoom": 1.05
+     }
+    ]
+   ],
+   "view": "simplified",
+   "titles": [
+    {
+     "text": "TRANSISTOR",
+     "from": 39,
+     "to": 132,
+     "y": 70,
+     "size": 84
+    }
    ]
   }
- ]
+ ],
+ "scene": "8"
 }
