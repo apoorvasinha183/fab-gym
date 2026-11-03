@@ -1,0 +1,109 @@
+{
+ "about": "One room per sequence, painted at the character's scale (docs/ART-DIRECTION.md, Round 2 and 3). A scene's backgrounds start from its room; the stage says where the character stands, how much of the frame it fills and what is drawn to its size.",
+ "rooms": {
+  "0": {
+   "prompt": "A beach at dawn seen from right down at the sand: huge soft grains of sand in the front, a giant fingertip coming down from the top right, the sea and the pale sky soft and far behind.",
+   "stage": {
+    "where": "on the sand in the front middle",
+    "share": "a quarter",
+    "near": "the grains of sand around it are its own size, the fingertip far bigger"
+   }
+  },
+  "1": {
+   "prompt": "An ochre quarry with broad terraces, seen low from a conveyor belt that runs left to right across the front, carrying pale quartz rocks.",
+   "stage": {
+    "where": "on a quartz rock on the conveyor in the front middle",
+    "share": "a third",
+    "near": "the rocks on the belt are a little bigger than it"
+   }
+  },
+  "2": {
+   "prompt": "A close view on the wide stone rim of a huge silicon furnace, glowing melt below and beyond it, a chute high on the left pouring pale quartz and black carbon lumps onto the rim, and a vent in the far wall on the right.",
+   "stage": {
+    "where": "on the flat rim in the front middle",
+    "share": "a third",
+    "near": "the quartz and carbon lumps on the rim are about its own size"
+   }
+  },
+  "3": {
+   "prompt": "Inside a tall glass distillation column in pale lilac and frosty white light, thin filter plates across it, and at the top a chamber of tall glowing heated rods.",
+   "stage": {
+    "where": "floating in the middle of the column",
+    "share": "a third",
+    "near": "the filter plates and rods are drawn large beside it"
+   }
+  },
+  "4": {
+   "prompt": "Inside a crystal puller: a glowing crucible of white-orange melt low in the front, a thin pull rod coming down from above, cool silver light in the chamber above.",
+   "stage": {
+    "where": "just above the melt in the front middle",
+    "share": "a third",
+    "near": "the crucible's rim and the pull rod are drawn to its size"
+   }
+  },
+  "5": {
+   "prompt": "A clean wafer workshop in cool silver-grey daylight: a wire saw on the left, a polishing pad in the middle, a clear wafer carrier with slots on the right, all seen low from the bench.",
+   "stage": {
+    "where": "standing on the bench in the front middle",
+    "share": "a third",
+    "near": "the carrier's slots and the pad are drawn to its size"
+   }
+  },
+  "6": {
+   "prompt": "A calm chip-factory clean room in soft blue-green light: long rows of tall white process machines with small status lights, an overhead track carrying closed boxes, and a wide clean floor in front.",
+   "stage": {
+    "where": "on the floor in the front middle",
+    "share": "a half",
+    "near": "a robot guide's knee height; the machines far bigger"
+   }
+  },
+  "7": {
+   "prompt": "Inside a process tool: a round wafer stage in the front middle under a glass dome, cool blue light with the tool's own colour, quiet machinery around.",
+   "stage": {
+    "where": "on the round stage in the front middle",
+    "share": "a third",
+    "near": "the stage's clips and the dome are drawn to its size"
+   }
+  },
+  "8": {
+   "prompt": "A dark stage with beams of stained-glass light in gold and violet falling on a round platform in the middle.",
+   "stage": {
+    "where": "on the platform in the middle",
+    "share": "a half",
+    "near": "the platform's edge is drawn to its size"
+   }
+  },
+  "9": {
+   "prompt": "A probe station seen from just above a wafer: a grid of dies across the front, a card of fine probe needles hanging just above, soft green test light.",
+   "stage": {
+    "where": "on one die in the front middle",
+    "share": "a third",
+    "near": "the neighbouring dies are its own size, the needles hair-thin beside it"
+   }
+  },
+  "10": {
+   "prompt": "A dicing saw in cool slate light: the wafer's grid of dies across the front, a thin cutting lane running into the distance, a few warm sparks.",
+   "stage": {
+    "where": "on one die in the front middle",
+    "share": "a third",
+    "near": "the neighbouring dies are its own size, the lane a narrow street beside it"
+   }
+  },
+  "11": {
+   "prompt": "A packaging bench in warm cream and muted gold: a small green substrate with gold pads in the front middle, a black protective lid waiting beside it.",
+   "stage": {
+    "where": "on the substrate in the front middle",
+    "share": "a third",
+    "near": "the gold pads and the lid are drawn to its size"
+   }
+  },
+  "12": {
+   "prompt": "A beach at sunset seen from just above a smartphone lying in a person's open hand, the screen dark, the sea gold behind.",
+   "stage": {
+    "where": "on the phone's screen",
+    "share": "a quarter",
+    "near": "the phone and the hand are huge beside it"
+   }
+  }
+ }
+}
