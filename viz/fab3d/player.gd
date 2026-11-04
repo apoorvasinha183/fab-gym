@@ -26,6 +26,15 @@ var _trail: Array = []          # where the guide has walked lately, newest last
 var _camera_body := SphereShape3D.new()
 var _body := CapsuleShape3D.new()
 const KNEE := 0.5               # the body clears anything lower than this over the floor (steps, tiers, seat pans)
+# A walk the visitor takes on their own (main.gd --explore): floor points to walk to, some with a spot to stop and look
+# at. Any of W A S D takes over, and the walk ends.
+signal autopilot_at(w: Dictionary)
+signal autopilot_done
+var autopilot: Array = []
+var autopilot_speed := 3.2
+var _ap_hold := 0.0
+var _ap_clock := 0.0
+var _ap_from := Vector3.ZERO
 
 
 func _init() -> void:
@@ -270,7 +279,14 @@ func _process(dt: float) -> void:
 		pitch = lerpf(pitch, atan2(d.y, Vector2(d.x, d.z).length()), clampf(dt * 3.0, 0.0, 1.0))
 	elif seated:
 		global_position = seat_eye
+	elif roaming and not autopilot.is_empty() and not _keys_down():
+		_autopilot(dt)
+		var floor_y := floor_at(global_position.x, -global_position.z) + 1.65
+		global_position.y = floor_y if floor_y > global_position.y else lerpf(global_position.y, floor_y, clampf(dt * 10.0, 0.0, 1.0))
 	elif roaming and not controls_blocked():
+		if not autopilot.is_empty():
+			autopilot.clear()       # the visitor took over
+			autopilot_done.emit()
 		var dir := Vector3.ZERO
 		var bz := Basis(Vector3.UP, yaw)
 		if Input.is_key_pressed(KEY_W):
@@ -299,3 +315,56 @@ func _process(dt: float) -> void:
 			global_position.y = want_y if want_y > global_position.y else lerpf(global_position.y, want_y, clampf(dt * 10.0, 0.0, 1.0))
 	rotation = Vector3(0, yaw, 0)
 	camera.rotation = Vector3(pitch, 0, 0)
+
+
+func _keys_down() -> bool:
+	return not controls_blocked() and (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_A)
+			or Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_D))
+
+
+func _look_toward(target: Vector3, dt: float, rate: float) -> void:
+	var d := target - global_position
+	yaw = lerp_angle(yaw, atan2(-d.x, -d.z), clampf(dt * rate, 0.0, 1.0))
+	pitch = lerpf(pitch, clampf(atan2(d.y, Vector2(d.x, d.z).length()), -0.6, 0.4), clampf(dt * rate, 0.0, 1.0))
+
+
+func _autopilot(dt: float) -> void:
+	# walk the way a person does: the head turns first, the feet follow, slower round corners, a pause to look
+	var w: Dictionary = autopilot[0]
+	var at: Vector3 = w["at"]
+	var to := Vector3(at.x - global_position.x, 0.0, at.z - global_position.z)
+	var dist := to.length()
+	if dist < 0.5:
+		if w.has("look") and _ap_hold < float(w.get("hold", 0.0)):
+			if _ap_hold == 0.0:
+				autopilot_at.emit(w)
+			_ap_hold += dt
+			_look_toward(w["look"], dt, 2.0)
+			return
+		_ap_hold = 0.0
+		autopilot.pop_front()
+		_ap_clock = 0.0
+		if autopilot.is_empty():
+			autopilot_done.emit()
+		return
+	# look a little ahead along the path, so corners are turned smoothly
+	var ahead := at
+	if dist < 3.0 and autopilot.size() > 1:
+		ahead = at.lerp(autopilot[1]["at"], 1.0 - dist / 3.0)
+	var heading := atan2(-(ahead.x - global_position.x), -(ahead.z - global_position.z))
+	yaw = lerp_angle(yaw, heading, clampf(dt * 2.2, 0.0, 1.0))
+	pitch = lerpf(pitch, -0.06, clampf(dt * 1.5, 0.0, 1.0))
+	var off := absf(wrapf(heading - yaw, -PI, PI))
+	var speed := autopilot_speed * clampf(1.3 - off, 0.15, 1.0)
+	# the route is already on the walkable floor (the baked navigation mesh), so it is followed exactly
+	global_position += to.normalized() * minf(speed * dt, dist)
+	# stuck against something for two seconds: give that point up
+	_ap_clock += dt
+	if _ap_clock > 2.0:
+		if global_position.distance_to(_ap_from) < 0.4:
+			print("fab3d: explore skipped a point it could not reach at ", Vector2(at.x, -at.z))
+			autopilot.pop_front()
+			if autopilot.is_empty():
+				autopilot_done.emit()
+		_ap_clock = 0.0
+		_ap_from = global_position

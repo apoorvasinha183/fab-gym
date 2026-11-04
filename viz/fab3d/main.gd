@@ -26,6 +26,7 @@ var check_out := ""
 var perf_out := ""
 var shots_dir := ""
 var film := false
+var explore := false          # --explore: no tour; the visitor walks the whole fab on their own, into every bay, W A S D to take over
 const FILM_AREAS := ["Litho", "Dry_Etch", "Implant", "Diffusion", "Planar", "Wet_Etch"]
 const FILM_AREAS_BE := ["TF", "Planar"]
 var touring := false
@@ -58,6 +59,7 @@ func _ready() -> void:
 		check_out = args[args.find("--check") + 1]
 	if "--perf" in args:
 		perf_out = args[args.find("--perf") + 1]
+	explore = "--explore" in args
 	if "--film" in args:
 		film = true
 	if "--shots" in args:
@@ -65,7 +67,7 @@ func _ready() -> void:
 	if "--clearance" in args:
 		_clear_out = args[args.find("--clearance") + 1]
 	near_vehicle = "--near-vehicle" in args
-	no_intro = "--no-intro" in args or near_vehicle
+	no_intro = "--no-intro" in args or near_vehicle or explore
 	sweep = "--sweep" in args
 	corridor = "--corridor" in args
 	if "--no-ssao" in args:
@@ -318,6 +320,74 @@ func _on_run(info: Dictionary) -> void:
 	_start_tour()
 
 
+func _start_explore() -> void:
+	# a visitor walks the whole fab on their own: down phase one's spine, into each bay to look, over the bridge, and
+	# down phase two's; W A S D takes over at any moment
+	if not nav_ready:
+		await nav_baked
+	touring = false
+	intro = false
+	campus.paused = false
+	var z := float(campus.heights["clean_z"])
+	guide.visible = false
+	guide.set_process(false)
+	player.follow = null
+	player.roaming = true
+	player.fly = false
+	player.place(4.0, 0.0, -PI / 2)
+	# no one is talking: the text window and portrait stay closed
+	ui.line_label.text = ""
+	ui.line_label.visible_characters = -1
+	ui._done_for = 99.0
+	ui.set_stop(0, 0, "Exploring the fab  ·  W A S D to take over")
+	var targets := []
+	for phase in [0, 1]:
+		var here := []
+		for c in campus.data["labels"]:
+			if (float(c[1]) < 261.8) == (phase == 0):
+				here.append(c)
+		here.sort_custom(func(a, b): return float(a[1]) < float(b[1]))
+		for c in here:
+			var x := float(c[1])
+			var side := 1.0 if float(c[2]) > 0 else -1.0
+			targets.append({"at": Vector3(x, z, 0.0)})
+			targets.append({"at": Vector3(x, z, -side * 9.0), "look": Vector3(x, z + 1.2, -side * 30.0), "hold": 2.5,
+					"label": str(c[0])})
+			targets.append({"at": Vector3(x, z, 0.0), "look": Vector3(x + 20.0, z + 1.6, 0.0), "hold": 0.6})
+		if phase == 0:
+			for p in [Vector3(255.0, z, 0.0), Vector3(285.8, z, 0.0), Vector3(316.0, z, 0.0)]:
+				targets.append({"at": p})
+	# each leg along the walkable floor, so it goes round tools and through doorways
+	var map := get_world_3d().navigation_map
+	var route := []
+	var from := Vector3(4.0, z, 0.0)
+	for t in targets:
+		# onto the walkable floor: a bay's stop sits in its aisle, clear of the tools
+		var snapped := NavigationServer3D.map_get_closest_point(map, t["at"])
+		if snapped.distance_to(t["at"]) > 6.0:
+			continue
+		t["at"] = snapped
+		if t.has("label"):
+			# look down the bay's own aisle, so the pause shows its tools and not a tool's side panel
+			var far := NavigationServer3D.map_get_closest_point(map, t["look"])
+			t["look"] = far + Vector3(0.0, 1.3, 0.0) if far.distance_to(snapped) > 8.0 else t["look"]
+		var path := NavigationServer3D.map_get_path(map, from, t["at"], true)
+		for k in range(1, path.size() - 1):
+			route.append({"at": path[k]})
+		route.append(t)
+		from = t["at"]
+	player.autopilot = route
+	player.autopilot_at.connect(func(w: Dictionary) -> void:
+		if w.has("label"):
+			ui.set_stop(0, 0, "Exploring  ·  " + str(w["label"]))
+			print("fab3d: explore looking at ", w["label"], " ", Vector2(player.global_position.x, -player.global_position.z)))
+	player.autopilot_done.connect(func() -> void:
+		ui.set_stop(0, 0, "Walk alone  ·  W A S D")
+		print("fab3d: explore finished at ", Vector2(player.global_position.x, -player.global_position.z), " after %.0f s" % _t)
+		if shots_dir != "":
+			get_tree().create_timer(3.0).timeout.connect(func() -> void: get_tree().quit()))
+	print("fab3d: explore started, %d points" % route.size())
+
 func _after_intro() -> void:
 	intro = false
 	campus.paused = false
@@ -325,6 +395,9 @@ func _after_intro() -> void:
 
 
 func _start_tour() -> void:
+	if explore:
+		_start_explore()
+		return
 	ui.show_line("The run is ready: %d tools, the simulator's day from 06:00. Follow me." % campus.data["tools"].size())
 	touring = true
 	_stop_n = 0
@@ -390,7 +463,7 @@ func _process(dt: float) -> void:
 		_frame_ms.append(dt * 1000.0)
 		if _frame_ms.size() >= 3600:
 			_write_perf()
-	ui.talking = intro or guide.mode == "talk"
+	ui.talking = (intro or guide.mode == "talk") and not explore
 	if live.run_id != "":
 		clock += dt * speed
 		campus.clock = clock
