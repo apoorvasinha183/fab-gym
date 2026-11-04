@@ -243,6 +243,13 @@ class Helper:
                 model = self.client()
                 try:
                     reply, answer = ask.ask_model(model, job["question"], self.groups)
+                    first = ask.check(answer, self.groups)
+                    if first:
+                        # refused: shown the reasons, the model tries once more
+                        job["first_refusal"] = first
+                        job["stage"] = "asking the model again"
+                        self._save(jid)
+                        reply, answer = ask.ask_model(model, job["question"], self.groups, refused=[reply, first])
                 finally:
                     job["model_usd"] = round(self.meter.usd - before, 6)
                 job["reply"] = reply

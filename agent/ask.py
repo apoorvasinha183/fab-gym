@@ -259,7 +259,13 @@ def examples():
     return [json.loads(p.read_text()) for p in sorted(EXAMPLES.glob("*.json"))]
 
 
-def ask_model(model, question, groups):
-    """The model's answer to a question, read from its reply (not yet checked)."""
-    reply = model.complete([{"role": "system", "content": prompt(groups)}, {"role": "user", "content": question}])
+def ask_model(model, question, groups, refused=None):
+    """The model's answer to a question, read from its reply (not yet checked). With `refused` ([reply, reasons]
+    from a first try), the model is shown why its answer was refused and asked once more."""
+    msgs = [{"role": "system", "content": prompt(groups)}, {"role": "user", "content": question}]
+    if refused:
+        msgs += [{"role": "assistant", "content": refused[0]},
+                 {"role": "user", "content": "That scenario was refused: " + "; ".join(refused[1])
+                  + ". Write it again, fixing every reason, as JSON only."}]
+    reply = model.complete(msgs)
     return reply, read_reply(reply)
