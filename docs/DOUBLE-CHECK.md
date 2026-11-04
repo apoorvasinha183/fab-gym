@@ -131,6 +131,9 @@ testbed's.
   34.0 and 19.8. The testbed's own paper puts hot lots near a flow factor of 1.0 even at full load [WSC 2019, Figure 1,
   p. 2426], about 29 days for product 3 by its 28.7-day raw processing time. Ours lie between the two published figures;
   this is not settled.
+- **Decided by the founder, 1 November 2026:** cycle times are quoted from the files' own start (the 2,255 lots of
+  `WIP.txt`), with their horizon: under today's rule over 180 days, regular lots of products 3 and 4 take 60.2 and 35.0
+  days (`results/double-check/ours.json`). No warm-up and no lighter release rate in what the gym reports.
 
 Tests: **DC9** every published figure names its source and page; our raw processing times are the exact chain's and
 within 1% of the published theoretical cycle times, for both products of the high-volume testbed and all ten of the
