@@ -272,6 +272,14 @@
         "tokens_per_minute": 4000000
       }
     },
+    "audio": {
+      "muse-voice-transcribe-1.0": {
+        "usd_per_hour": 0.18,
+        "billing": "audio processed, rounded down to whole seconds",
+        "source": "https://dev.meta.ai/docs/speech-to-text",
+        "checked": "2026-11-05"
+      }
+    },
     "other": {
       "muse-image-1.0": "$0.01 per image, 150 a minute",
       "sam-3.1": "$2.50 per 1,000 images or $0.20 per 1,000 video frames",

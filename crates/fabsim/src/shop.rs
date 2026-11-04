@@ -375,7 +375,11 @@ fn optn<T: ToString>(x: Option<T>) -> String {
 }
 
 fn pf(s: &str) -> Result<f64, String> {
-    s.trim().parse::<f64>().map_err(|e| format!("bad float {s:?}: {e}"))
+    let value = s.trim().parse::<f64>().map_err(|e| format!("bad float {s:?}: {e}"))?;
+    if !value.is_finite() {
+        return Err(format!("a finite number is required, got {s:?}"));
+    }
+    Ok(value)
 }
 
 fn pfo(s: &str) -> Result<Option<f64>, String> {
@@ -757,7 +761,67 @@ impl Shop {
                 return Err("fleet wants vehicles and ports above zero, gap > 0, hoist and cross >= 0, and a controller nearest or first".into());
             }
         }
+        s.check_inputs()?;
         Ok(s)
+    }
+
+    /// Reject inputs that would make the event queue stop advancing or index a missing object.
+    fn check_inputs(&self) -> Result<(), String> {
+        use std::collections::{HashMap, HashSet};
+        if self.transport.0 < 0.0 || self.transport.1 < 0.0 || self.probes.iter().any(|t| *t < 0.0) {
+            return Err("transport times and probe times must be nonnegative".into());
+        }
+        let mut groups = HashSet::new();
+        for g in &self.groups {
+            if !groups.insert(g.name.as_str()) {
+                return Err(format!("duplicate group {:?}", g.name));
+            }
+            if g.load < 0.0 || g.unload < 0.0 || g.batch_wait.is_some_and(|v| v < 0.0)
+                || g.breakdown.is_some_and(|(a, b)| a < 0.0 || b < 0.0)
+                || g.setups.iter().any(|(_, v)| *v < 0.0)
+                || g.down.iter().any(|(a, b)| *a < 0.0 || b < a)
+            {
+                return Err(format!("group {:?} has a negative duration or reversed down window", g.name));
+            }
+            for pm in g.pm.iter().chain(&g.pm_pieces) {
+                if pm.every <= 0.0 || pm.lo < 0.0 || pm.hi < pm.lo || pm.first.is_some_and(|v| v < 0.0) {
+                    return Err(format!("group {:?}: maintenance needs every > 0, 0 <= lo <= hi, first >= 0", g.name));
+                }
+            }
+        }
+        let mut routes = HashMap::new();
+        for r in &self.routes {
+            if routes.insert(r.name.as_str(), r.steps.len()).is_some() {
+                return Err(format!("duplicate route {:?}", r.name));
+            }
+            for st in &r.steps {
+                if !groups.contains(st.group.as_str()) {
+                    return Err(format!("route {:?} names missing group {:?}", r.name, st.group));
+                }
+                if st.time < 0.0 || st.spread < 0.0 || st.interval.is_some_and(|v| v < 0.0)
+                    || st.batch_wait.is_some_and(|v| v < 0.0)
+                {
+                    return Err(format!("route {:?} has a negative processing duration", r.name));
+                }
+            }
+        }
+        for l in &self.lots {
+            if !routes.get(l.route.as_str()).is_some_and(|n| l.step < *n) {
+                return Err(format!("lot {:?} names a missing route or step: {:?}#{}", l.id, l.route, l.step));
+            }
+            if l.size <= 0 {
+                return Err(format!("lot {:?} needs a positive wafer count", l.id));
+            }
+        }
+        for r in &self.releases {
+            if !routes.get(r.route.as_str()).is_some_and(|n| *n > 0) {
+                return Err(format!("release {:?} names a missing or empty route {:?}", r.prefix, r.route));
+            }
+            if r.every <= 0.0 || r.first < 0.0 || r.size <= 0 {
+                return Err(format!("release {:?} needs every > 0, first >= 0 and a positive wafer count", r.prefix));
+            }
+        }
+        Ok(())
     }
 
     /// Write the text form.

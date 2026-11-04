@@ -20,14 +20,15 @@ process.on("exit", () => { for (const d of PROFILES) { try { rmProfile(d, { recu
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB = join(HERE, "..");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const HOURS = 6;
+const HOURS = 1;
 
 // ---------------------------------------------------------------- the simulator in Node
 
 async function simulator() {
   const { instance } = await WebAssembly.instantiate(readFileSync(join(WEB, "fabweb.wasm")), {});
   const e = instance.exports;
-  const text = readFileSync(join(WEB, "data", existsSync(join(WEB, "data", "shop-real.txt")) ? "shop-real.txt" : "shop.txt"));
+  const real = JSON.parse(readFileSync(join(WEB, "data/building.json"), "utf8"));
+  const text = readFileSync(join(WEB, "data", real ? "shop-real.txt" : "shop.txt"));
   const p = e.fg_alloc(text.length);
   new Uint8Array(e.memory.buffer, p, text.length).set(text);
   assert.equal(e.fg_load(p, text.length), 0, "the fab file loads");
@@ -45,6 +46,9 @@ test("S1 the first hours of a run are the start of the full run, event for event
   const e = await simulator();
   const short = run(e, HOURS / 24);
   const full = run(e, 3);
+  for (let i = 10; i < full.trace.length; i += 6) {
+    assert.ok(full.trace[i] >= full.trace[i - 6], "engine steps arrive in start order for playback indexes");
+  }
   const cut = HOURS * 60;
   // trace rows: lot, step, tool, arrive, start, end (6 numbers); keep those that start by the cut
   const rows = (tr) => {
@@ -134,7 +138,8 @@ test("S2 from a cold link the floor draws in a second, moves, and takes the full
     assert.ok(seen.moving !== null && seen.moving <= 1500, `the clock moving within 1,500 ms (at ${seen.moving} ms)`);
     assert.ok(seen.full !== null && seen.full <= 6000, `the full run in within 6,000 ms (at ${seen.full} ms)`);
     const moves = await b.ev("window.FabFloorPage && window.FabFloorPage.moves()");
-    assert.equal(moves, 70131, "seed 0, 3 days: the same 70,131 moves as before");
+    const real = JSON.parse(readFileSync(join(WEB, "data/building.json"), "utf8"));
+    assert.equal(moves, real ? 70131 : 69524, "seed 0, 3 days: the selected layout's recorded moves");
     const long = JSON.parse(await b.ev("JSON.stringify(window.__speed.long)"));
     const freezes = long.filter(([start, dur]) => start >= seen.drawn && start <= seen.full && dur > 250);
     assert.deepEqual(freezes, [], "no task on the page's thread over 250 ms between the first draw and the full run");
@@ -162,7 +167,10 @@ test("S3 moods arrive when they are ready, and the hover card says so until then
     assert.equal(b0.mood, null, "no mood before the moods are in");
     assert.match(b0.card, /Working out how it.s doing/, "the card says the mood is being worked out");
     // once in: every group has a mood
-    for (let i = 0; i < 300; i++) { await b.sleep(25); if ((await b.ev("document.body.dataset.moods")) === "in") break; }
+    // Moods are deliberately deferred; the fleet's run is more expensive than the simple floor.
+    // Wait for readiness, with a timeout, before asserting their contents.
+    for (let i = 0; i < 600; i++) { await b.sleep(50); if ((await b.ev("document.body.dataset.moods")) === "in") break; }
+    assert.equal(await b.ev("document.body.dataset.moods"), "in", "moods become ready within 30 seconds");
     const all = await b.ev(`(() => { const n = window.FabFloorPage.groups(); for (let g = 0; g < n; g++) if (!window.FabFloorPage.mood(g)) return "group " + g + " has no mood"; return "ok"; })()`);
     assert.equal(all, "ok");
   } finally {

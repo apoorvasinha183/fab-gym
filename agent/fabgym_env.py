@@ -46,14 +46,16 @@ class FabGymEnv(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, shop, fabsim=str(FABSIM), seeds=(100,), warmup_days=1.0, window_days=3.0, defects=None, picks=None):
+        self.proc = None
         self.shop, self.fabsim = str(shop), str(fabsim)
         self.picks = picks  # a file for the episode's picks, one a line (regret B)
         self.seeds = list(seeds)
+        if not self.seeds:
+            raise ValueError("at least one simulation seed is required")
         self.warmup_days, self.window_days = warmup_days, window_days
         self.defects = defects
         self.action_space = gym.spaces.Discrete(K)
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(K * len(FIELDS) + K + CTX,), dtype=np.float32)
-        self.proc = None
         self.episode = 0
         self.last = None
 
@@ -122,10 +124,12 @@ class FabGymEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
+        if seed is not None:
+            # Gymnasium's seed must reset episode selection too. Keep training within
+            # the configured pool; episode_seed explicitly selects a scoring seed.
+            self.episode = self.seeds.index(seed) if seed in self.seeds else int(self.np_random.integers(len(self.seeds)))
         if options and "episode_seed" in options:
             self.seed_now = int(options["episode_seed"])
-        elif seed is not None and seed in self.seeds:
-            self.seed_now = seed
         else:
             self.seed_now = self.seeds[self.episode % len(self.seeds)]
         self.episode += 1

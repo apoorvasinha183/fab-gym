@@ -9,7 +9,7 @@ from pathlib import Path
 from agent import helper, lou
 
 ROOT = Path(__file__).resolve().parents[2]
-CAMPUS = ROOT / "viz/fab3d/data/campus.json"
+CAMPUS = ROOT / "web/data/building.json"
 FABSIM = ROOT / "target/release/fabsim"
 
 

@@ -22,6 +22,7 @@ import tempfile
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
+from contextlib import nullcontext
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -178,17 +179,16 @@ class HttpModel:
         req = urllib.request.Request(
             self.base_url + "/chat/completions", data=json.dumps(payload).encode(), headers=headers, method="POST"
         )
-        if self.meter is not None:
-            self.meter.check()
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                out = json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            detail = self._scrub(e.read()[:2000].decode("utf-8", "replace"))[:500]
-            raise RuntimeError(f"the model endpoint answered {e.code}: {detail}") from None
-        self.last_usage = out.get("usage")
-        if self.meter is not None:
-            self.meter.add(self.last_usage)
+        with self.meter.request() if self.meter is not None else nullcontext():
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                    out = json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                detail = self._scrub(e.read()[:2000].decode("utf-8", "replace"))[:500]
+                raise RuntimeError(f"the model endpoint answered {e.code}: {detail}") from None
+            self.last_usage = out.get("usage")
+            if self.meter is not None:
+                self.meter.add(self.last_usage)
         return out["choices"][0]
 
 

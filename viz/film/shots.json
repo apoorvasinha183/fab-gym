@@ -32,7 +32,7 @@
     {"id": "13",  "act": 5, "start": 115, "end": 121, "lens": 24, "speed": null, "name": "Back out",
      "captions": ["Which lot should go next? In Fab Gym, an agent proposes, the simulator scores, a person signs."]},
     {"id": "end", "act": 5, "start": 121, "end": 127, "lens": null, "speed": null, "name": "End card",
-     "captions": ["Fab Gym. A gigafab-style layout of our own design from the SMT2020 testbed. Not a real fab."]}
+     "captions": ["Fab Gym. A gigafab-style layout of our own design on the SMT2020 testbed. Not a real fab."]}
   ],
   "note": "Numbers in captions are today's run; after the re-pack the film build fills them from the re-packed run and the lot re-chosen by lot_rule. Shot 6 follows the lot's real ride, in whichever building it is."
 }

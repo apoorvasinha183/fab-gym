@@ -5,6 +5,7 @@ than counted as free, and an answer with no `usage` is an error."""
 
 import json
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 PRICES = Path(__file__).resolve().parent / "baseten_pricing.json"
@@ -52,13 +53,24 @@ class Meter:
         self.calls = 0
         self.usd = 0.0
         self._lock = threading.Lock()
+        self.request_lock = threading.RLock()
+        self.before_request = None
         if self.path and self.path.is_file():
             saved = json.loads(self.path.read_text())
             self.calls, self.usd = int(saved.get("calls", 0)), float(saved.get("usd", 0.0))
 
     def check(self):
+        if self.before_request is not None:
+            self.before_request()
         if self.usd >= self.cap_usd:
             raise CapReached(f"spend cap reached: ${self.usd:.4f} of ${self.cap_usd:g}; raise --spend-cap to go on")
+
+    @contextmanager
+    def request(self):
+        """Check and account for one request while holding the shared feature budget lock."""
+        with self.request_lock:
+            self.check()
+            yield
 
     def add(self, usage):
         c = cost(self.prices, usage)

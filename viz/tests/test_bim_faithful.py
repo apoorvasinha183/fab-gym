@@ -18,8 +18,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
-
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 SCENE = ROOT / "data/layout-real-dd/scene-optimised.json"
@@ -36,6 +34,7 @@ FLOOR_LANDING = 2.10
 MID_LANDING_MIN = 1.118
 
 try:
+    import numpy as np
     import ifcopenshell
     import ifcopenshell.util.element as uel
     import ifcopenshell.validate

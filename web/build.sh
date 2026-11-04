@@ -26,6 +26,9 @@ if [ -f data/layout-real-dd/optimised.shop.txt ]; then
   python3 viz/fleet/building.py --out web/data
   # one lot of product 3 from its release on day 20 to its finish: web/data/journey.json
   cargo run --release -q --bin fabsim -- follow --out web/data/journey.json
+else
+  # A valid empty optional building keeps a fresh clone's fallback floor free of 404s.
+  printf 'null\n' > web/data/building.json
 fi
 # the Results tab: every saved experiment with its settings and numbers
 node web/tools/results-build.js > web/data/results.json

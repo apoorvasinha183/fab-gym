@@ -1,8 +1,8 @@
 {
  "place": "us",
  "jurisdiction": "a hypothetical jurisdiction that adopts the 2024 IBC and the 2024 IFC as published, with no local amendments",
- "read_in": "ICC's free reader, codes.iccsafe.org, on 27 Oct 2026; no copy of the code text is kept",
- "hash": "SHA-256 of the section's text as shown: whitespace collapsed, the reader's CDP and INSIGHTS labels removed, the characters = ? & % turned to spaces; chars is the length hashed",
+ "read_in": "ICC's free reader, codes.iccsafe.org, on 27 Oct 2026; no copy of the code text is kept; ADA 221 and 802 opened directly on access-board.gov on 5 Nov 2026",
+ "hash": "SHA-256 of the section's text as shown: whitespace collapsed, the reader's CDP and INSIGHTS labels removed, the characters = ? & % turned to spaces; chars is the length hashed; ADA sections specify their HTML text extraction in hash_method",
  "sources": {
   "IBC 2024": "2024 International Building Code, International Code Council",
   "IFC 2024": "2024 International Fire Code, International Code Council",
@@ -1047,8 +1047,8 @@
   "ADA 221": {
    "code": "ADA 2010",
    "title": "Assembly areas",
-   "url": "https://www.access-board.gov/ada/",
-   "opened": "2026-11-03",
+   "url": "https://www.access-board.gov/ada/#ada-221",
+   "opened": "2026-11-05",
    "facts": {
     "wheelchair_spaces": {
      "4-25": 1,
@@ -1063,13 +1063,16 @@
     "designated_aisle_seats_share_of_aisle_seats": 0.05,
     "designated_aisle_seats_where": "closest to accessible routes"
    },
-   "note": "read through a page summary of the Access Board text; no hash"
+   "note": "Full section text opened from the US Access Board on 5 Nov 2026; replaces the earlier summary-only reference. Existing extracted facts retained.",
+   "chars": 10120,
+   "sha256": "b8849f562191a2828f71ed4f0c44686888dc264cc39af3376a99d8ab6ba90496",
+   "hash_method": "UTF-8 text nodes from the h2 ada-221 section up to the next h2; nodes joined with spaces, = ? & % replaced by spaces, whitespace collapsed"
   },
   "ADA 802": {
    "code": "ADA 2010",
    "title": "Wheelchair spaces, companion seats, designated aisle seats",
-   "url": "https://www.access-board.gov/ada/",
-   "opened": "2026-11-03",
+   "url": "https://www.access-board.gov/ada/#ada-802",
+   "opened": "2026-11-05",
    "facts": {
     "single_width_mm": 915,
     "adjacent_pair_width_each_mm": 840,
@@ -1081,7 +1084,10 @@
     "companion_shoulder_alignment": true,
     "aisle_seat_folding_armrest": true
    },
-   "note": "read through a page summary of the Access Board text; no hash"
+   "note": "Full section text opened from the US Access Board on 5 Nov 2026; replaces the earlier summary-only reference. Existing extracted facts retained.",
+   "chars": 5163,
+   "sha256": "01373928a89403053698239d45db75bd786a222981b4e24261c453c674aa5a4d",
+   "hash_method": "UTF-8 text nodes from the h2 ada-802 section up to the next h2; nodes joined with spaces, = ? & % replaced by spaces, whitespace collapsed"
   }
  },
  "not_read": [

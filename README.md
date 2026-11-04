@@ -83,7 +83,8 @@ import gymnasium as gym
 import agent.fabgym_env                   # registers FabGym-v0 and FabGymDefects-v0
 
 env = gym.make("FabGym-v0")               # seeds 100 to 199 for training; 0 to 9 are kept for scoring
-obs, info = env.reset(seed=0)
+obs, info = env.reset(seed=0)              # reproducible selection from the training seed pool
+# For an exact simulation seed when scoring: env.reset(options={"episode_seed": 0})
 obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 ```
 
@@ -102,13 +103,18 @@ python3 -m agent.rl train   --shop data/smt2020/hvlm --seeds 100..200 --timestep
 python3 -m agent.rl contest --shop data/smt2020/hvlm --seeds 0..10 --policy ppo=runs/ppo/policy.zip --out runs/contest
 ```
 
+Repeating a contest resumes its completed seeds only when the saved input and policy fingerprints match.
+Use a new `--out` directory after changing the shop, simulator, policy or scoring settings, and for older
+results that have no `resume.json` manifest.
+
 The bar is high: over 60 settled days, today's rule gets 1,263 wafers a day, and FIFO,
 shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" below). Beating it is open.
 
 ### The 3D fab: walk it with Lou
 
-Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). Start the
-helper first (above); the 3D fab reads its live run from it.
+Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). First run
+`sh web/build-3d.sh` once to generate the live building inputs, then start the helper (above).
+The 3D fab reads its live run from it.
 
 - **Any computer (macOS, Windows, Linux): the Godot project.** Install [Godot 4.7.2](https://godotengine.org/download)
   (free, open source), unzip `Fab-Gym-3D-Godot-project.zip`, open its `fab3d/project.godot` in Godot, wait about a

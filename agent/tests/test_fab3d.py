@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from agent import fab3d, helper
 
@@ -23,6 +24,21 @@ def make(d, voice=None):
         s.mkdir(exist_ok=True)
         (s / "voice.json").write_text(json.dumps({"text": voice}))
     return helper.Helper(web=ROOT / "web", jobs=Path(d) / "jobs", runs=Path(d) / "runs", no_model=True, stand_in=s)
+
+
+class Setup(unittest.TestCase):
+    def test_fresh_clone_explains_missing_inputs_without_starting_a_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            web = root / "web"
+            (web / "data").mkdir(parents=True)
+            (web / "data/areas.tsv").write_text("A\tCMP\n")
+            h = helper.Helper(web=web, jobs=root / "jobs", runs=root / "runs", no_model=True)
+            with patch.object(h, "_fab3d_cmd") as run:
+                answer = h.fab3d_run({})
+            run.assert_not_called()
+            self.assertTrue(answer["missing_data"])
+            self.assertIn("sh web/build-3d.sh", answer["error"])
 
 
 class Copper(unittest.TestCase):

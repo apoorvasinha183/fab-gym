@@ -134,6 +134,19 @@ by the helper on your computer and sent only to the model's own service.
 
 ## 5. The 3D fab (optional)
 
+Build its live simulation inputs once from the repository root:
+
+```sh
+sh web/build-3d.sh
+```
+
+This generates the building and vehicle model under `data/` and `web/data/`. The basic `web/build.sh`
+does not create the 3D layout on a fresh clone.
+
+For spoken questions, install FFmpeg as well (`brew install ffmpeg` on macOS, `sudo apt install ffmpeg`
+on Ubuntu, or an FFmpeg build on your Windows PATH). The helper converts microphone recordings locally to
+the WAV format Meta accepts. Typed questions work without FFmpeg.
+
 Start the helper first (step 3); the 3D fab reads its live run from it. Add `--preset open` if you want Lou to answer
 with Muse Spark Open. Then pick one:
 
@@ -197,4 +210,4 @@ The README's "As a reinforcement-learning environment" section explains the acti
 | Windows: `sh: command not found` | Run the commands in Git Bash, not PowerShell or cmd. |
 | macOS: "Fab Gym 3D can't be opened" | Right-click the app, choose **Open**, then **Open** again. |
 | Godot says the project is for a newer or older version | Use Godot **4.7.2** exactly (godotengine.org/download/archive). |
-| The 3D fab shows the tour but nothing moves | Start the helper first (step 3), then reopen the app. |
+| The 3D fab shows the tour but nothing moves | Run `sh web/build-3d.sh` once, restart the helper (step 3), then reopen the app. |
