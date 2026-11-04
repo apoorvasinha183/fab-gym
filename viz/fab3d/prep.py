@@ -25,8 +25,8 @@ PERMIT = ROOT / "data/layout-real-dd/permit-cd/us/boxes.json"
 SHOP = ROOT / "web/data/shop-real.txt"
 POLYHAVEN = Path.home() / "fab-gym-downloads/polyhaven"     # CC0 textures and sky, downloaded 2 Nov (SOURCES.md there)
 # the hall's two films (cinema.gd FILMS), converted to Ogg Theora; data/film/out/ holds the cuts, never committed
-FILMS = [(ROOT / "data/film/out/sand-to-chip-v3.mp4", "sand-to-chip-v3.ogv"),
-         (ROOT / "data/film/out/crime-and-punishment.mp4", "crime-and-punishment.ogv")]
+FILMS = [(ROOT / "data/film/out/sand-to-chip-v10.mp4", "sand-to-chip-v10.ogv"),
+         (ROOT / "data/film/out/crime-and-punishment-acted.mp4", "crime-and-punishment-acted.ogv")]
 
 
 def stages():

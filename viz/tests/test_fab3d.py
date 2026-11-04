@@ -147,7 +147,7 @@ class Headless(unittest.TestCase):
 
     def test_f6_the_cinema_holds_the_film(self):
         # two films in the hall, picked at the seat with 1 and 2; the first is showing until a visitor picks
-        self.assertTrue(R["cinema_film"].endswith(("sand-to-chip-v3.ogv", "from-sand-to-chip.ogv")), R["cinema_film"])
+        self.assertTrue(R["cinema_film"].endswith(("sand-to-chip-v10.ogv", "from-sand-to-chip.ogv")), R["cinema_film"])
         self.assertEqual(R.get("cinema_films"), ["SAND TO CHIP", "CRIME && PUNISHMENT"], R.get("cinema_films"))
 
     def test_f11_the_cinema_floor_follows_the_built_steps(self):

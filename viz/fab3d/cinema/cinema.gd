@@ -9,8 +9,8 @@ signal prompt(text: String)
 
 const FILM := "res://data/film/from-sand-to-chip.ogv"   # the first film, if the new ones are not prepared
 # what the hall shows, picked at the seat with 1 and 2: [title on the screen, Theora file]
-const FILMS := [["SAND TO CHIP", "res://data/film/sand-to-chip-v3.ogv"],
-		["CRIME && PUNISHMENT", "res://data/film/crime-and-punishment.ogv"]]
+const FILMS := [["SAND TO CHIP", "res://data/film/sand-to-chip-v10.ogv"],
+		["CRIME && PUNISHMENT", "res://data/film/crime-and-punishment-acted.ogv"]]
 const HALL := Rect2(40.3, -121.7, 17.7, 11.4)     # plan x, y, depth, width of the hall (data/cinema/plan.json)
 const REACH := 0.6                                # metres from the spot in front of a seat at which the visitor can sit
 const EYE := 1.15                                 # seated eye height over the tier (the plan's choice)

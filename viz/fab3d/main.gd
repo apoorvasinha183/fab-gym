@@ -26,6 +26,8 @@ var check_out := ""
 var perf_out := ""
 var shots_dir := ""
 var film := false
+var cues := []                # --cues [FILE] [--cue N]: Lou's lines for the demo video (video/lou-cues.json), ] for the next
+var cue_i := -1
 var explore := false          # --explore: no tour; the visitor walks the whole fab on their own, into every bay, W A S D to take over
 const FILM_AREAS := ["Litho", "Dry_Etch", "Implant", "Diffusion", "Planar", "Wet_Etch"]
 const FILM_AREAS_BE := ["TF", "Planar"]
@@ -60,6 +62,16 @@ func _ready() -> void:
 	if "--perf" in args:
 		perf_out = args[args.find("--perf") + 1]
 	explore = "--explore" in args
+	if "--cues" in args:
+		var at := args.find("--cues") + 1
+		var path := ProjectSettings.globalize_path("res://").path_join("../../video/lou-cues.json")
+		if at < args.size() and not str(args[at]).begins_with("--"):
+			path = str(args[at])
+		var got = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+		cues = got["cues"] if got is Dictionary and got.has("cues") else []
+		if "--cue" in args:
+			cue_i = int(args[args.find("--cue") + 1]) - 2
+		print("fab3d: %d cues from %s" % [cues.size(), path])
 	if "--film" in args:
 		film = true
 	if "--shots" in args:
@@ -395,6 +407,39 @@ func _after_intro() -> void:
 
 
 func _start_tour() -> void:
+	if "--aisle" in OS.get_cmdline_user_args():
+		# the video: Lou on the clear central aisle of phase one, the visitor a few steps behind him; he speaks, is
+		# asked a question, and walks there along the aisle
+		if not nav_ready:
+			await nav_baked
+		touring = false
+		intro = false
+		campus.paused = false
+		var z := float(campus.heights["clean_z"])
+		guide.visible = true
+		guide.global_position = Vector3(24.0, z, 0.0)
+		guide.rotation.y = PI / 2       # facing the visitor while he makes his promise
+		player.place(31.0, 0.0, PI / 2)
+		player.roaming = false
+		player.follow = guide
+		player._dir_x = -1.0       # he walks west, down the aisle, so the camera keeps behind him from the first step
+		ui.line_label.text = ""
+		ui.set_stop(0, 0, "Phase one · the main aisle")
+		var ua := OS.get_cmdline_user_args()
+		if "--say" in ua and not cues.is_empty():
+			var n := clampi(int(ua[ua.find("--say") + 1]) - 1, 0, cues.size() - 1)
+			get_tree().create_timer(1.0).timeout.connect(func() -> void: ui.show_line(str(cues[n]["text"])))
+		if _lou_ask != "":
+			get_tree().create_timer(5.5).timeout.connect(func() -> void: handle_question(_lou_ask))
+		return
+	if "--seat" in OS.get_cmdline_user_args():
+		# the video: straight to a seat in the cinema, the film playing on its screen
+		touring = false
+		intro = false
+		guide.visible = false
+		cinema.sit("R5C4")
+		get_tree().create_timer(1.0).timeout.connect(func() -> void: cinema.play())
+		return
 	if explore:
 		_start_explore()
 		return
@@ -426,8 +471,13 @@ func _start_tour() -> void:
 		if not st.get("via", false) and not st.get("ride", false):
 			_stop_total += 1
 	guide.start(tour)
+	var say_at := OS.get_cmdline_user_args().find("--say")
+	if say_at >= 0 and not cues.is_empty():
+		# the video: Lou's cue N in his window as the fab appears
+		var n := clampi(int(OS.get_cmdline_user_args()[say_at + 1]) - 1, 0, cues.size() - 1)
+		get_tree().create_timer(1.5).timeout.connect(func() -> void: ui.show_line(str(cues[n]["text"])))
 	if _lou_ask != "":
-		get_tree().create_timer(4.0).timeout.connect(func() -> void: handle_question(_lou_ask))
+		get_tree().create_timer(7.0 if say_at >= 0 else 4.0).timeout.connect(func() -> void: handle_question(_lou_ask))
 
 
 func _process(dt: float) -> void:
@@ -1007,6 +1057,13 @@ func _on_heard(d: Dictionary) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if not cues.is_empty() and e is InputEventKey and e.pressed and not e.echo \
+			and (e.keycode == KEY_BRACKETRIGHT or e.keycode == KEY_BRACKETLEFT):
+		# Lou's next (or last) line for the video, typed out in his own window
+		cue_i = clampi(cue_i + (1 if e.keycode == KEY_BRACKETRIGHT else -1), 0, cues.size() - 1)
+		ui.show_line(str(cues[cue_i]["text"]))
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		var cam: Camera3D = player.camera
 		var i: int = campus.tool_at(cam.project_ray_origin(e.position), cam.project_ray_normal(e.position))
