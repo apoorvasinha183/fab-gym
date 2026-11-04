@@ -35,6 +35,9 @@ def main():
     groups = [line.split("\t")[1] for line in shop.splitlines() if line.startswith("group\t")]
     b = {
         "what": "Today's US building from the SMT2020 testbed: a gigafab-style layout of our own design, not a real fab.",
+        # Lou needs the same area names as the scene, without a Godot asset build.
+        "areas": s["areas"],
+        "group_areas": {g["name"]: g["area"] for g in s["groups"]},
         "fabs": [[r(c["x0"]), r(c["x1"]), r(c["y0"]), r(c["y1"]), c["label"], c["kind"]] for c in s["campus"] if c["kind"] in ("fab", "bridge")],
         "bays": [[r(x["x0"]), r(x["x1"]), r(x["y0"]), r(x["y1"]), x["area"], x["phase"], x["side"]] for x in s["bays"]],
         "tools": [[names[t["g"]], r(t["x0"]), r(t["x1"]), r(t["y0"]), r(t["y1"]), t["kind"], t["wall"], t["h"]] for t in s["tools"]],

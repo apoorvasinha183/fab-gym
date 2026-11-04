@@ -92,7 +92,8 @@ test("RR2 a run in the address replays it, and run 0 is the old run", { skip }, 
     assert.equal(a.run, 4721); assert.equal(c.run, 4721);
     assert.equal(a.moves, c.moves, "the same moves"); assert.equal(fa, fc, "the same lots finished on day 2");
     const z = await floorAt(server, b, "index.html?run=0#floor");
-    assert.equal(z.run, 0); assert.equal(z.moves, 70131, "run 0: the old run's moves");
+    const real = JSON.parse(readFileSync(join(WEB, "data/building.json"), "utf8"));
+    assert.equal(z.run, 0); assert.equal(z.moves, real ? 70131 : 69524, "run 0: the selected layout's recorded moves");
   } finally { b.close(); server.close(); }
 });
 

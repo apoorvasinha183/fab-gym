@@ -27,9 +27,11 @@ class Context:
 def load_campus(path):
     """The campus's areas and which area each tool group stands in."""
     c = json.loads(Path(path).read_text())
-    area_of = {}
-    for t in c["tools"]:
-        area_of.setdefault(t[0], t[1])
+    area_of = c.get("group_areas")
+    if area_of is None:  # older Godot campus bundles
+        area_of = {}
+        for t in c["tools"]:
+            area_of.setdefault(t[0], t[1])
     return {"areas": {k: v["name"] for k, v in c["areas"].items()}, "area_of": area_of,
             "stages": c.get("stages", {})}
 

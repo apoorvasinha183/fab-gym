@@ -112,8 +112,9 @@ shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" be
 
 ### The 3D fab: walk it with Lou
 
-Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). Start the
-helper first (above); the 3D fab reads its live run from it.
+Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). First run
+`sh web/build-3d.sh` once to generate the live building inputs, then start the helper (above).
+The 3D fab reads its live run from it.
 
 - **Any computer (macOS, Windows, Linux): the Godot project.** Install [Godot 4.7.2](https://godotengine.org/download)
   (free, open source), unzip `Fab-Gym-3D-Godot-project.zip`, open its `fab3d/project.godot` in Godot, wait about a

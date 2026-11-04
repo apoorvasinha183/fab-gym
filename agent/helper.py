@@ -572,6 +572,9 @@ class Helper:
     def fab3d_run(self, body):
         """A whole-fab run of today's US building, kept in memory: its moods every 10 minutes, and its carriers fetched
         30 minutes at a time when the scene asks for them."""
+        if any(not (self.web / "data" / name).is_file() for name in ("shop-real.txt", "building.json")):
+            return {"error": "The 3D live inputs are not built yet. Run sh web/build-3d.sh, then restart the helper.",
+                    "missing_data": True}
         seed = int(body.get("seed", 1))
         days = min(max(float(body.get("days", 1.0)), 0.05), 30.0)
         overrides = body.get("overrides")
@@ -609,7 +612,13 @@ class Helper:
         if run is None:
             return {"fallback": True, "message": "No run yet: start one with /api/fab3d/run.", **base}
         if self._lou_campus is None:
-            self._lou_campus = lou.load_campus(ROOT / "viz" / "fab3d" / "data" / "campus.json")
+            try:
+                self._lou_campus = lou.load_campus(self.web / "data" / "building.json")
+            except (KeyError, TypeError):  # support older building files with a Godot bundle
+                legacy = ROOT / "viz" / "fab3d" / "data" / "campus.json"
+                if not legacy.is_file():
+                    return {"fallback": True, "message": "Rebuild the live inputs with sh web/build-3d.sh, then restart the helper.", **base}
+                self._lou_campus = lou.load_campus(legacy)
         campus = self._lou_campus
         terms = [x["term"] for x in self._glossary_terms()]
         t = float(body.get("t", 0))

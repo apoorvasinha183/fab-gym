@@ -276,7 +276,7 @@ function prepare(run, halls, hallOfGroup) {
   // trips between halls: from the end of one step to the arrival at the next
   const trips = [];
   for (const [lot, rows] of byLot) {
-    rows.sort((x, y) => x[0] - y[0]);
+    // The engine emits steps in start order, including each lot's subsequence.
     for (let k = 1; k < rows.length; k++) {
       const [, g0, , end0] = rows[k - 1];
       const [, g1, arrive1] = rows[k];
@@ -287,7 +287,6 @@ function prepare(run, halls, hallOfGroup) {
   // moves (step starts) and finishes over time, for the counters
   const starts = [];
   for (let r = 0; r < nRows; r++) starts.push(trace[r * 6 + 4]);
-  starts.sort((a, b) => a - b);
   const done = j.lots.map(l => l[5]).filter(x => x !== null).sort((a, b) => a - b);
   // for the health panel (docs/FLOOR-HEALTH.md): step ends, releases (lots in the fab at the start count from -inf),
   // and finished lots in time order with running sums of wafers and of cycle times (lots released during the run)
@@ -299,11 +298,11 @@ function prepare(run, halls, hallOfGroup) {
     (h ? hStart : mStart).push(trace[r * 6 + 4]);
     (h ? hEnd : mEnd).push(trace[r * 6 + 5]);
   }
-  for (const a of [mStart, mEnd, hStart, hEnd]) a.sort((x, y) => x - y);
+  // Starts retain trace order; completions can arrive out of order.
+  for (const a of [mEnd, hEnd]) a.sort((x, y) => x - y);
   // each machine step's wait (arrival to start), in start order, with running sums: the mean wait per step so far
   const waitRows = [];
   for (let r = 0; r < nRows; r++) if (toolGroup[trace[r * 6 + 2]] !== holdG) waitRows.push([trace[r * 6 + 4], Math.max(0, trace[r * 6 + 4] - trace[r * 6 + 3])]);
-  waitRows.sort((x, y) => x[0] - y[0]);
   const waitStart = waitRows.map(w => w[0]), waitSum = [0];
   for (const w of waitRows) waitSum.push(waitSum[waitSum.length - 1] + w[1]);
   const released = j.lots.map(l => (l[6] ? -Infinity : l[4])).sort((a, b) => a - b);
@@ -711,6 +710,7 @@ function drawSky() {
 }
 
 function drawFloorBody(s) {
+  BADGES = [];
   // belts: the spine and each hall's feeder
   const phase = (t * 0.35) % 1;
   HALLS_L.forEach((h, i) => {
@@ -833,6 +833,14 @@ function drawGroup(c, cx, cy, showLabels) {
     const [LX, LY] = W(cx + 1, yLabel + 0.2);
     ctx.textBaseline = "top";
     uprightText(P.plain[g], LX, LY, `500 ${1.5 * s}px -apple-system, Inter, sans-serif`, LOOK.label);
+    const mood = moodNow(g);
+    if (mood && (mood !== "work" || (hover && hover.g === g))) {
+      const [bx, by] = S(cx + c.w - 1, yLabel + 0.9);
+      screenSpace();
+      FabLook.badge(ctx, mood, bx, by, Math.max(8, 0.9 * s));
+      BADGES.push(mood);
+      floorSpace();
+    }
   }
   // the group's queue: a count chip at middle zoom, the belt with its lots when close (docs/FLOOR-CLEANUP.md)
   const detail = FabUI.zoomDetail(s);
@@ -1849,11 +1857,12 @@ function startRun(n, keepView) {
   if (!keepView) fit();
   document.body.dataset.floor = "drawn";
   delete document.body.dataset.moods;
-  $("runnote").textContent = "Playing the first hours while the full 3 days run in the background…";
+  $("runnote").textContent = "Playing the first hour while the full 3 days run in the background…";
   fullRun(opts);
 }
 
-const QUICK_DAYS = 0.25;
+// The fleet makes even the preview expensive; one hour keeps first paint responsive.
+const QUICK_DAYS = 1 / 24;
 const BOOT = { full: null };
 
 // the full run from the worker (web/floorworker.js), swapped in where the first hours are playing
@@ -1958,8 +1967,9 @@ function setFloor(run) {
   HALLS_L.flows = flows.f;
   HALLS_L.routes = run.j.routes;
   TARGET_ASPECT = Math.max(1.0, Math.min(2.4, (innerWidth - 48) / (innerHeight - 220)));
-  G = placeHalls(HALLS_L, flows);
-  if (BUILDING && run.fleetE && run.fleetE.length && FabBuilding.fits(BUILDING, groups.map(g => [g.name, g.count]))) G = realGeometry(BUILDING);
+  // A measured building already supplies the geometry; do not optimise a layout just to discard it.
+  G = BUILDING && run.fleetE && run.fleetE.length && FabBuilding.fits(BUILDING, groups.map(g => [g.name, g.count]))
+    ? realGeometry(BUILDING) : placeHalls(HALLS_L, flows);
   const sel = $("down-group");
   sel.length = 1;
   groups
@@ -2595,7 +2605,7 @@ function realPrepare(run, j, trace) {
   // each tool's steps in start order, for the wafers drawn at a tool
   const steps = Array.from({ length: j.tools.length }, () => []);
   for (let r = 0; r < trace.length / 6; r++) steps[trace[r * 6 + 2]].push([trace[r * 6 + 4], trace[r * 6 + 5], trace[r * 6]]);
-  for (const a of steps) a.sort((x, y) => x[0] - y[0]);
+  // Each tool's subsequence also retains the engine's start order.
   // each group's middle, for its label and its queue
   const mid = j.groups.map(() => [0, 0, 0]);
   B.tools.forEach((b, i) => { const k = toolOfBox[i]; if (k < 0) return; const g = j.tools[k], m = mid[g]; m[0] += (b[1] + b[2]) / 2; m[1] += (b[3] + b[4]) / 2; m[2]++; });
