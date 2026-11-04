@@ -121,6 +121,6 @@ test("HO5 the line under the headline says what each Meta model does", { skip },
   const p = await open();
   try {
     const sub = await p.ev(`document.querySelector(".open-sub").textContent`);
-    assert.match(sub, /Muse Spark sets up the what-ifs you ask/); assert.match(sub, /Muse Wonder plays the challenges against you/);
+    assert.match(sub, /Muse Spark Open answers your questions and writes my rules/); assert.match(sub, /Muse Wonder takes on anyone who thinks they can do my job/);
   } finally { p.close(); }
 });

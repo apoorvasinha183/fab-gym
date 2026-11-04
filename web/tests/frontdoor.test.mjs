@@ -18,9 +18,9 @@ const index = read("web/index.html"), editor = read("web/editor.html"), app = re
 
 test("the landing leads with the gym, by the chosen words", () => {
   assert.match(index, /<h1 id="open-title">Morning\. I'm Lou\. My fab is running late again, so I built it a twin\.<\/h1>/);
-  // the models named by their jobs since docs/HOME-REVIEW.md (item 5)
-  assert.ok(index.includes("Build a fab, watch every machine work out, and fix what hurts. Muse Spark sets up the what-ifs you ask, Muse Wonder plays the challenges against you, the simulator scores every change, and a person signs off."));
-  assert.ok(index.includes("Fab Gym · from the SMT2020 testbed"));
+  // the models named by their jobs since docs/HOME-REVIEW.md (item 5), in Lou's voice since docs/LOU-DESK.md
+  assert.ok(index.includes("This is my desk. My staff are Meta's models. Muse Spark Open answers your questions and writes my rules. Muse Wonder takes on anyone who thinks they can do my job. The simulator scores every change, and I sign."));
+  assert.ok(index.includes("Lou Latency · CEO · his desk"));
 });
 
 test("two doors: play a challenge opens the editor, watch the whole fab opens the Floor", () => {

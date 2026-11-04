@@ -116,7 +116,7 @@ body.opening-on .opening { display: flex; }
 body.opening-on .cmd, body.opening-on .lenses, body.opening-on .kpis, body.opening-on .pill,
 body.opening-on .key, body.opening-on .hint, body.opening-on .rail, body.opening-on .dock, body.opening-on .flow-ctl { display: none; }
 .opening .eyebrow { font: 500 12px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-.opening h1 { margin: 0; font-size: clamp(32px, 5vw, 56px); font-weight: 800; letter-spacing: -0.02em; }
+.opening h1 { margin: 0 auto; max-width: 24ch; font-size: clamp(30px, 4.2vw, 50px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.08; text-wrap: balance; }
 .open-form { display: flex; gap: 8px; width: min(680px, 100%); padding: 6px 6px 6px 18px; background: var(--card);
   border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 24px 70px rgba(0,0,0,0.55); }
 .open-form:focus-within { border-color: var(--accent); }
@@ -129,6 +129,7 @@ body.opening-on .key, body.opening-on .hint, body.opening-on .rail, body.opening
 .opening .explore { font-size: 14px; }
 .opening .fine { margin: 0; font-size: 12px; color: var(--muted); max-width: 720px; }
 .opening { overflow-y: auto; justify-content: safe center; }
+@media (max-width: 760px) { .opening { padding-top: 76px; } }   /* clear of the nav card on a phone */
 .open-sub { margin: 0; max-width: 640px; color: var(--muted2); font-size: 16px; line-height: 1.5; }
 .open-doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; width: min(980px, 100%); text-align: left; }
 .door { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border-radius: 16px; background: rgba(14, 27, 31, 0.92); border: 1px solid var(--line); color: var(--text); text-decoration: none; min-width: 0; }
@@ -594,6 +595,7 @@ body.opening-on .topbar, body.opening-on .maptools, body.evidence-on .topbar, bo
 .ch-tile img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #1B2A30; }
 .ch-tile .n { font: 600 12px var(--sans); color: var(--accent); }
 .ch-tile .t { font-size: 12.5px; font-weight: 650; line-height: 1.25; }
+.ch-tile .q { font-size: 11.5px; font-style: italic; line-height: 1.3; color: var(--muted, #9fb3b8); }
 .inside { font-size: 12.5px; color: var(--muted); }
 .door-floor { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 16px; padding: 12px 18px; }
 .door-floor img { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 14px; background: #F4F6F7; object-fit: cover; }
