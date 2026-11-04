@@ -141,9 +141,9 @@ pub fn observation_json(d: &Decision, ord: &[usize], reward: f64, fams: &[String
         .collect();
     let g = &d.group_tools;
     format!(
-        "{{\"t\":{},\"group\":\"{}\",\"tools\":{{\"working\":{},\"idle\":{},\"down\":{}}},\"held_tools\":{},\"totals\":{{\"finished\":{},\"waiting\":{},\"wait_lot_minutes\":{}}},\"cands\":[{}],\"default\":0,\"reward\":{}}}",
+        "{{\"t\":{},\"group\":{},\"tools\":{{\"working\":{},\"idle\":{},\"down\":{}}},\"held_tools\":{},\"totals\":{{\"finished\":{},\"waiting\":{},\"wait_lot_minutes\":{}}},\"cands\":[{}],\"default\":0,\"reward\":{}}}",
         num(d.t),
-        d.tool_group,
+        serde_json::to_string(&d.tool_group).expect("a group name is JSON"),
         g.working,
         g.idle,
         g.down,
@@ -189,7 +189,7 @@ pub fn load_shop(src: &std::path::Path, defects: Option<&str>) -> Result<Shop, S
     };
     if let Some(d) = defects {
         let v: Vec<f64> = d.split(',').map(|x| x.trim().parse::<f64>()).collect::<Result<_, _>>().map_err(|_| "--defects H,L,R in minutes")?;
-        if v.len() != 3 || v.iter().any(|x| *x < 0.0) {
+        if v.len() != 3 || v.iter().any(|x| !x.is_finite() || *x < 0.0) {
             return Err("--defects H,L,R in minutes".into());
         }
         if shop.defects.is_none() {
