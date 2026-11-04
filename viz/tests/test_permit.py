@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -108,9 +109,12 @@ class Data(unittest.TestCase):
         self.assertGreaterEqual(len(secs), 40)
         for k, s in secs.items():
             self.assertRegex(s["sha256"], r"^[0-9a-f]{64}$", k)
-            self.assertEqual(s["opened"], "2026-10-27", k)
-            self.assertTrue(s["url"].startswith("https://codes.iccsafe.org/content/I"), k)
-            self.assertIn(s["code"], ("IBC 2024", "IFC 2024"), k)
+            # Sections may be read again; retain a valid recorded date, not the first audit's date.
+            self.assertEqual(date.fromisoformat(s["opened"]).isoformat(), s["opened"], k)
+            origins = {"IBC 2024": "https://codes.iccsafe.org/content/I", "IFC 2024": "https://codes.iccsafe.org/content/I",
+                       "ADA 2010": "https://www.access-board.gov/ada/"}
+            self.assertIn(s["code"], origins, k)
+            self.assertTrue(s["url"].startswith(origins[s["code"]]), k)
             self.assertGreater(s["chars"], 0, k)
             self.assertIn("facts", s)
         ids = " ".join(n["id"] for n in self.reg["not_read"])
@@ -436,7 +440,8 @@ class Rescore(unittest.TestCase):
 
     def test_rescore(self):
         R = json.loads(RESCORE.read_text())
-        self.assertIn("SMT2020 testbed", R["truth"])
+        self.assertRegex(R["truth"], r"SMT2020 (testbed|model)")
+        self.assertIn("Not a real fab", R["truth"])
         self.assertEqual(R["chase_before_m"], 1.5)
         self.assertGreaterEqual(R["chase_after_m"], 5 * FT)
         L = json.loads((ROOT / "results/layout-real-permit/layout.json").read_text())
