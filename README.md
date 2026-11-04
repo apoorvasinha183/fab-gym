@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/img/fabgym-hero.jpg" width="820" alt="Cartoon of a cleanroom boot camp: a wafer in a red headband yells &quot;You call that planar?&quot; at a sweating CMP robot holding a spirit level."></p>
+<p align="center"><img src="docs/img/fabgym-hero.jpg" width="820" alt="Cartoon by Meta's Muse Image: a cleanroom boot camp, where the wafer drill coach in a red headband yells &quot;You call that planar?&quot; at a sweating polishing machine balancing a wafer with a spirit level, while an engineer checks a wafer map and bunny-suited workers lift dumbbells."></p>
 
 > ***"Your phone's brain spent most of its childhood waiting in line."***  
 > <sub>— a wafer, looking back</sub>
@@ -6,6 +6,11 @@
 # Fab Gym
 
 A simulated wafer fab you can ask questions, and a fair way to check the answers. On the **SMT2020 testbed**, a published set of a fab's tool groups, routes and times: 1,043 machines, 105 groups, routes of 583 and 343 steps. No real fab's data.
+
+> **Voices: made with ElevenLabs.** Every spoken voice in Fab Gym was generated with [ElevenLabs](https://elevenlabs.io):
+> the demo video's narration (the library voice "Eric") and the character voices in both films, *Sand to Chip*
+> (ElevenLabs v3) and *Crime && Punishment* (ElevenLabs v4). Lou's on-screen lines and every picture come from Meta's
+> models.
 
 ## Run it: three ways
 
@@ -118,7 +123,8 @@ The 3D fab reads its live run from it.
 
 - **Any computer (macOS, Windows, Linux): the Godot project.** Install [Godot 4.7.2](https://godotengine.org/download)
   (free, open source), unzip `Fab-Gym-3D-Godot-project.zip`, open its `fab3d/project.godot` in Godot, wait about a
-  minute while it imports, then press **Play** (F5). Every model, texture and both films are inside; all CC0.
+  minute while it imports, then press **Play** (F5). Every model, texture and both films are inside: the models and
+  textures are CC0, and the films are ours, voiced with ElevenLabs.
 - **macOS, no Godot: the app.** Unzip `Fab-Gym-3D-macOS.zip`, then right-click **Fab Gym 3D** and choose **Open** (it is
   not signed by Apple).
 
