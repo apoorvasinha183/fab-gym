@@ -16,7 +16,7 @@ A simulated wafer fab you can ask questions, and a fair way to check the answers
 
 | Way | What you get | You need |
 | --- | --- | --- |
-| **In your browser** | The live Floor (all 1,043 machines simulated in the page), Evidence, Runs, the glossary | Nothing: [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/) |
+| **In your browser** | The live Floor (all 1,043 machines simulated in the page), Simulation settings, Evidence, the glossary, the ask bar with your own key | Nothing: [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/) |
 | **On your computer** | Everything: Build's challenges scored, the ask bar, Race the AI, Lou's Meta brain, the 3D fab | Git, Rust, Python 3.12+, Node.js 18+ |
 | **Headless** | The simulator, the scorer and the agent loop from the command line, no browser | Git, Rust, Python 3.12+ |
 
@@ -25,6 +25,46 @@ running, and adding your keys, step by step.
 
 Meta's models are **bring your own key**: with no key everything runs, with recorded answers where a model would
 speak; with your key the models answer live (see [Meta's models](#metas-models-bring-your-own-key)).
+
+### What works where
+
+Five versions, from nothing to install up to everything. ✅ works · 🔑 works once you add a key (below) · ▶️ shows a
+recorded game or reading instead, when the helper is started with `--stand-in DIR` · — not in this version.
+
+| Feature | Public site | Your computer, no keys | Your computer, with keys | Headless | 3D fab |
+| --- | --- | --- | --- | --- | --- |
+| **Floor**: all 1,043 machines simulated live, Follow a lot, Curves | ✅ | ✅ | ✅ | — | ✅ (in 3D) |
+| **Simulation settings**: change dials, compare with today on 10 paired days | ✅ | ✅ | ✅ | ✅ (`fabsim score`) | — |
+| **Evidence** and the glossary's pages | ✅ | ✅ | ✅ | — | — |
+| **Ask bar, plain changes and live counts** ("breakdowns ×2", "how many lots are waiting") | ✅ | ✅ | ✅ | — | — |
+| **Ask bar, what-ifs read by a model** | 🔑 one change, run in the page | ✅ worked examples, or write the experiment yourself | 🔑 the full experiment: several answers, whole fab | 🔑 | — |
+| **Ask the glossary** (questions about words) | — | — | 🔑 | — | — |
+| **Runs**: every simulation kept with its number | — | ✅ | ✅ | ✅ (files) | — |
+| **Build**: draw a fab, scored as you draw | — (drawing only) | ✅ | ✅ | ✅ | — |
+| **Race the AI** (Muse Wonder) | — | ▶️ a recorded game | 🔑 | — | — |
+| **Build from a photo** (Muse Spark reads a sketch) | — | ▶️ a recorded reading | 🔑 | — | — |
+| **Agent loop**: the model writes dispatch rules in Rust, scored on held-out days | — | — | — | 🔑 | — |
+| **Reinforcement learning** (`gym.make("FabGym-v0")`) | — | — | — | ✅ no key needed | — |
+| **3D tour, walking, flying, the cinema** | — | ✅ | ✅ | — | ✅ (a recorded run without the helper; live with it) |
+| **Ask Lou in 3D** (Muse Spark Open, then he walks you there) | — | ✅ answers from the floor's own rules | 🔑 `baseten.key` | — | 🔑 with the helper running |
+
+**Public site:** [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/).
+**Your computer:** `python3 -m agent.helper --port 8766`, then http://127.0.0.1:8766 ([INSTALL.md](INSTALL.md)).
+**Headless:** `fabsim`, `agent.fabgym_agent` and the Gymnasium environment, below. **3D fab:** the Godot project or
+the desktop app from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest).
+
+### Adding AI: bring your own key
+
+| Where | How | Which key |
+| --- | --- | --- |
+| **Public site** | Open the ask bar (⌘K) and choose **Use your own key**, pick the provider, paste the key, **Use it**. It stays in that browser tab (tick *remember* to keep it on that device) and goes only to that provider. | A Meta Model API key (Muse Spark) or a Baseten key (Muse Spark Open) |
+| **Your computer** | Save each key as a one-line text file in `~/.config/fab-gym/`, then restart the helper. Check http://127.0.0.1:8766/api/status says `"model_connected": true`. | `meta.key`: Muse Spark, Muse Wonder, Muse Image (ask bar, glossary, Race the AI, the sketch). `baseten.key`: Muse Spark Open (add `--preset open` for the ask bar; always used for Lou in 3D) |
+| **3D fab** | Start the helper on the same computer first (with `baseten.key` in place); the 3D fab finds it at 127.0.0.1:8766. | `baseten.key` |
+| **Headless** | Pass the endpoint and key file: `--model meta-models/muse-spark-open-1026 --base-url https://inference.baseten.co/v1 --key-file ~/.config/fab-gym/baseten.key`. Any OpenAI-compatible service works, including Fireworks and Modal. | Any of the above |
+
+[INSTALL.md](INSTALL.md) step 4 shows the commands for macOS, Linux and Windows. Spending stops at a cap
+(`--spend-cap`, $20 by default), and no key ever leaves your machine except to its own provider.
+
 
 ### On your computer: Mac, Linux or Windows
 
