@@ -134,14 +134,21 @@ by the helper on your computer and sent only to the model's own service.
 
 ## 5. The 3D fab (optional)
 
-1. Download the app for your computer from the
-   [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest).
-2. Start the helper (step 3); the 3D fab reads its live run from it. Use `--preset open` if you want Lou to answer
-   with Muse Spark Open.
-3. Open the app:
-   - **macOS:** unzip, then **right-click** Fab Gym 3D and choose **Open** (it is not signed by Apple). The first start
-     takes about 20 seconds.
-   - **Windows:** run the `.exe`. If SmartScreen warns, click **More info**, then **Run anyway**.
+Start the helper first (step 3); the 3D fab reads its live run from it. Add `--preset open` if you want Lou to answer
+with Muse Spark Open. Then pick one:
+
+**On any computer, with Godot (recommended):**
+
+1. Install **Godot 4.7.2** from [godotengine.org/download](https://godotengine.org/download). It is free and open source,
+   and needs no installer on macOS or Windows: unzip it and run it.
+2. Download `Fab-Gym-3D-Godot-project.zip` from the
+   [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) and unzip it.
+3. In Godot, click **Import**, choose the unzipped `fab3d/project.godot`, then **Import & Edit**. The first time it
+   takes about a minute to import the models and films.
+4. Press **Play** (the triangle at the top right, or F5).
+
+**On macOS, without Godot:** download `Fab-Gym-3D-macOS.zip`, unzip it, then **right-click** Fab Gym 3D and choose
+**Open** (it is not signed by Apple). The first start takes about 20 seconds.
 
 **Walk alone** ends the tour. **W A S D** walk, **Shift** hurries, **F** flies (**E** up, **Q** down), the right mouse
 button looks around, and **Ask Lou** asks a question. In the cinema: **E** to sit, **1** or **2** to pick a film,
@@ -189,4 +196,5 @@ The README's "As a reinforcement-learning environment" section explains the acti
 | `/api/status` says `"model_connected": false` | The key file is missing or in the wrong folder: check step 4's paths. |
 | Windows: `sh: command not found` | Run the commands in Git Bash, not PowerShell or cmd. |
 | macOS: "Fab Gym 3D can't be opened" | Right-click the app, choose **Open**, then **Open** again. |
+| Godot says the project is for a newer or older version | Use Godot **4.7.2** exactly (godotengine.org/download/archive). |
 | The 3D fab shows the tour but nothing moves | Start the helper first (step 3), then reopen the app. |

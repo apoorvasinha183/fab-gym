@@ -107,17 +107,18 @@ shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" be
 
 ### The 3D fab: walk it with Lou
 
-Download the app from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) (macOS `.zip`,
-Windows `.exe`) and start the helper first; the app reads its live run from it.
+Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). Start the
+helper first (above); the 3D fab reads its live run from it.
 
-- **macOS:** the app is not signed: right-click it, choose **Open**, then **Open** again.
-- **Windows:** SmartScreen may warn about an unknown publisher: **More info**, then **Run anyway**.
-- **Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold
-  the right mouse button to look; click a tool for its card; **Ask Lou** to ask and be walked there. In the cinema, sit
-  with **E**, pick a film with **1** or **2**, and press **Enter**.
+- **Any computer (macOS, Windows, Linux): the Godot project.** Install [Godot 4.7.2](https://godotengine.org/download)
+  (free, open source), unzip `Fab-Gym-3D-Godot-project.zip`, open its `fab3d/project.godot` in Godot, wait about a
+  minute while it imports, then press **Play** (F5). Every model, texture and both films are inside; all CC0.
+- **macOS, no Godot: the app.** Unzip `Fab-Gym-3D-macOS.zip`, then right-click **Fab Gym 3D** and choose **Open** (it is
+  not signed by Apple).
 
-Building the 3D fab from source needs assets that are not in git (the generated layout, CC0 models and textures; see
-`docs/ASSETS.md` and `viz/fab3d/README.md`).
+**Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold
+the right mouse button to look; click a tool for its card; **Ask Lou** to ask and be walked there. In the cinema, sit
+with **E**, pick a film with **1** or **2**, and press **Enter**.
 
 ### For tinkerers
 
