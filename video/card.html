@@ -1,0 +1,167 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rule card</title>
+<style>body{margin:0;background:#0d1117;color:#e6edf3;font:22px/1.5 Menlo,monospace;padding:60px 80px}
+pre{white-space:pre-wrap;margin:0}</style></head><body><pre># Rule card
+
+Everything here runs on the SMT2020 testbed (a published set of a fab&#x27;s tool groups, routes and times; no real fab or real data).
+Agents propose, the simulator scores, a person signs.
+
+**Not signed.** A person signs with `python3 -m agent.fabgym_agent sign card.json --name NAME`.
+
+Question: Polishing is the bottleneck. What rule should pick the next lot?
+
+- Model: meta-models/muse-spark-open-1026
+- Shop: `data/smt2020/hvlm`
+- Rules tried: 6, scored: 6; training seeds 100 to 103
+- Final scoring: seeds 0 to 9, run once after the search; the model never saw them
+- Window: a day of warm-up, then 3 days; every number is the rule minus today&#x27;s rule, 95% paired t interval
+- Card hash: `66491bacf6554cb764b6c85613d4f5e781901eab0e6ca53b8dc0b1367808137a`
+
+## Finalist 1 (rule 3.2)
+
+Reward against today on the held-out seeds: +3.13 (95% -5.52 to +11.79); training mean reward -593.54.
+
+| Measure | Rule minus today | 95% interval | Verdict |
+| --- | --- | --- | --- |
+| reward (lots finished minus 0.01 per lot-hour waiting) | +3.13 | -5.52 to +11.79 | no clear effect |
+| moves (steps completed) | -1318.10 | -1674.49 to -961.71 | worse |
+| lots finished | +4.30 | -1.31 to +9.91 | no clear effect |
+| lot-hours waiting | +116.55 | -428.27 to +661.37 | no clear effect |
+| minutes waited per move | +1.45 | +0.61 to +2.30 | worse |
+| queue-time breaches | -212.30 | -338.41 to -86.19 | better |
+| lots in the fab (mean) | -14.45 | -17.60 to -11.30 | better |
+
+Against the baselines on reward: fifo +222.12 (+213.54 to +230.69); spt +283.62 (+270.90 to +296.33); cr +391.06 (+363.81 to +418.30).
+Faults: 0 of 878027 decisions; eligible.
+
+Source (sha256 `18fceac4a2c8f8e3380a14ed4e7dfdb58a822e3fb4bec3a3a3335b37b5f4605c`):
+
+```rust
+pub fn key(c: &amp;Cand, x: &amp;Ctx) -&gt; f64 {
+    let lots = c.lots.max(1.0);
+    let per_lot = c.proc_minutes / lots;
+    let q = x.queue;
+    let idle = x.idle;
+    let is_bneck = q &gt; 11.0 &amp;&amp; idle &lt; 1.0;
+
+    let mut k = 0.0;
+    // throughput costs
+    k += c.setup_change * 70.0;
+    k += per_lot * 0.60;
+    k += c.work_left_minutes.ln_1p() * 0.75;
+    k += c.steps_left * 0.32;
+    k += c.size_wafers * 0.02;
+    if c.family == 2.0 {
+        k += 9.5;
+    }
+    // flow benefits
+    k -= c.lots * 28.0;
+    k -= c.is_batch * 16.0;
+    k -= c.priority * 72.0;
+    k -= c.waited_minutes * 0.14;
+    k -= c.age_minutes * 0.005;
+
+    // very light CQT, only imminent breach
+    let s = c.cqt_slack_minutes;
+    if s &lt; 1e8 &amp;&amp; s &lt; 35.0 {
+        let mut b = (35.0 - s) * 0.60;
+        if b &gt; 50.0 { b = 50.0; }
+        k -= b;
+    }
+
+    // polishing bottleneck adaptation
+    if is_bneck {
+        // at bottleneck maximize throughput: avoid setup, prefer full batches, SPT
+        k += c.setup_change * 16.0;
+        k -= c.lots * 7.0;
+        k += per_lot * 0.15;
+        k += c.work_left_minutes.ln_1p() * 0.20;
+        // scale slightly with queue depth
+        k += c.setup_change * q * 0.35;
+        k -= c.lots * q * 0.08;
+    } else {
+        // upstream/downstream keep flow to bottleneck
+        k -= c.waited_minutes * 0.05;
+    }
+
+    // anti-starvation for very long waiters
+    if c.waited_minutes &gt; 340.0 {
+        k -= (c.waited_minutes - 340.0) * 0.028;
+    }
+
+    if c.is_default == 1.0 {
+        k -= 0.0008;
+    }
+    if !k.is_finite() {
+        return 0.0;
+    }
+    k
+}
+```
+
+## Finalist 2 (rule 3.1)
+
+Reward against today on the held-out seeds: -7.16 (95% -14.00 to -0.33); training mean reward -599.08.
+
+| Measure | Rule minus today | 95% interval | Verdict |
+| --- | --- | --- | --- |
+| reward (lots finished minus 0.01 per lot-hour waiting) | -7.16 | -14.00 to -0.33 | worse |
+| moves (steps completed) | -1959.60 | -2377.23 to -1541.97 | worse |
+| lots finished | +2.20 | -3.27 to +7.67 | no clear effect |
+| lot-hours waiting | +936.36 | +381.34 to +1491.38 | worse |
+| minutes waited per move | +2.90 | +1.93 to +3.86 | worse |
+| queue-time breaches | -244.50 | -379.85 to -109.15 | better |
+| lots in the fab (mean) | -14.55 | -17.59 to -11.50 | better |
+
+Against the baselines on reward: fifo +211.82 (+201.24 to +222.40); spt +273.32 (+258.45 to +288.19); cr +380.76 (+351.30 to +410.21).
+Faults: 0 of 870331 decisions; eligible.
+
+Source (sha256 `004e0a461fc963bb7a17ef8fa23081247877705a9ab1721b19794f8c170520f4`):
+
+```rust
+pub fn key(c: &amp;Cand, x: &amp;Ctx) -&gt; f64 {
+    let lots = c.lots.max(1.0);
+    let per_lot_proc = c.proc_minutes / lots;
+    let mut k = 0.0;
+    k += c.setup_change * 62.0;
+    k += per_lot_proc * 0.55;
+    k += c.work_left_minutes.ln_1p() * 1.15;
+    k += c.steps_left * 0.42;
+    k += c.size_wafers * 0.025;
+    if c.family == 2.0 {
+        k += 10.0;
+    }
+    k -= c.lots * 24.0;
+    k -= c.is_batch * 14.0;
+    k -= c.priority * 68.0;
+    k -= c.waited_minutes * 0.16;
+    k -= c.age_minutes * 0.006;
+    let s = c.cqt_slack_minutes;
+    if s &lt; 1e8 &amp;&amp; s &lt; 45.0 {
+        let mut b = (45.0 - s) * 0.75;
+        if b &gt; 70.0 {
+            b = 70.0;
+        }
+        k -= b;
+    }
+    let bneck = x.queue &gt; 11.0 &amp;&amp; x.idle &lt; 1.0;
+    if bneck {
+        k += c.setup_change * 14.0;
+        k -= c.lots * 6.0;
+        k += per_lot_proc * 0.12;
+    } else {
+        k -= c.waited_minutes * 0.05;
+    }
+    if c.waited_minutes &gt; 380.0 {
+        k -= (c.waited_minutes - 380.0) * 0.03;
+    }
+    if c.is_default == 1.0 {
+        k -= 0.0008;
+    }
+    if !k.is_finite() {
+        return 0.0;
+    }
+    k
+}
+```
+</pre>
+<script src="http://127.0.0.1:8766/lou-cue.js"></script><script src="http://127.0.0.1:8766/director.js"></script></body></html>

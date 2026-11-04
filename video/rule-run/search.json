@@ -1,0 +1,2412 @@
+{
+ "question": "Polishing is the bottleneck. What rule should pick the next lot?",
+ "model_name": "meta-models/muse-spark-open-1026",
+ "scorer": {
+  "shop": "data/smt2020/hvlm",
+  "scenario": null,
+  "train_seeds": [
+   100,
+   101,
+   102,
+   103
+  ]
+ },
+ "baselines": {
+  "today": {
+   "reward": -592.6399957490901,
+   "moves": 68262.25,
+   "lots_finished": 167.0,
+   "wait_lot_hours": 75963.999574909,
+   "wait_per_move_minutes": 66.7989537884342,
+   "breaches": 1075.75,
+   "mean_wip": 2265.0911622990966
+  },
+  "fifo": {
+   "reward": -820.8022905579951,
+   "moves": 49967.0,
+   "lots_finished": 175.5,
+   "wait_lot_hours": 99630.2290557995,
+   "wait_per_move_minutes": 119.69015407802021,
+   "breaches": 988.0,
+   "mean_wip": 2258.074755972862
+  },
+  "spt": {
+   "reward": -885.550172313137,
+   "moves": 46150.25,
+   "lots_finished": 159.75,
+   "wait_lot_hours": 104530.01723131369,
+   "wait_per_move_minutes": 135.9881072183853,
+   "breaches": 543.0,
+   "mean_wip": 2252.853547308056
+  },
+  "cr": {
+   "reward": -981.581393242685,
+   "moves": 47898.5,
+   "lots_finished": 113.25,
+   "wait_lot_hours": 109483.13932426849,
+   "wait_per_move_minutes": 137.1591496375676,
+   "breaches": 611.0,
+   "mean_wip": 2324.3152411816327
+  }
+ },
+ "candidates": [
+  {
+   "generation": 1,
+   "index": 1,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    // base terms\n    let setup_penalty = c.setup_change * 38.0;\n    let batch_bonus = c.lots * 7.5 + c.is_batch * 4.0;\n    let prio_bonus = c.priority * 75.0;\n    let proc_term = c.proc_minutes * 0.38;\n    let wait_term = c.waited_minutes * 0.22;\n    let work_term = c.work_left_minutes.ln_1p() * 3.8;\n    let steps_term = c.steps_left * 1.1;\n    let age_term = c.age_minutes * 0.006;\n    let size_term = c.size_wafers * 0.08;\n    let family_term = if c.family == 2.0 { 6.0 } else { 0.0 };\n\n    // CQT urgency: large negative key when slack small\n    let mut cqt_bonus = 0.0;\n    let slack = c.cqt_slack_minutes;\n    if slack < 1e8 {\n        let urgency = (320.0 - slack).max(0.0);\n        cqt_bonus = urgency * 1.35;\n        if slack < 60.0 {\n            cqt_bonus += (60.0 - slack).max(0.0) * 0.6;\n        }\n        if cqt_bonus > 800.0 {\n            cqt_bonus = 800.0;\n        }\n    }\n\n    let mut k = 0.0;\n    k += setup_penalty;\n    k += proc_term;\n    k += work_term;\n    k += steps_term;\n    k += family_term;\n    k += size_term;\n    k -= batch_bonus;\n    k -= prio_bonus;\n    k -= wait_term;\n    k -= age_term;\n    k -= cqt_bonus;\n\n    // bottleneck adaptation: polishing has large queue and almost no idle\n    let is_bottleneck = x.queue > 13.0 && x.idle < 0.7;\n    if is_bottleneck {\n        // at bottleneck: stronger SPT, stronger setup avoidance, extra batch bonus\n        k += c.setup_change * 14.0;\n        k += c.proc_minutes * 0.14;\n        k -= c.lots * 3.5;\n        k += c.work_left_minutes.ln_1p() * 0.7;\n    } else {\n        // upstream/downstream: a bit more FIFO to keep flow to bottleneck\n        k -= c.waited_minutes * 0.05;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.001;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    // base terms\n    let setup_penalty = c.setup_change * 38.0;\n    let batch_bonus = c.lots * 7.5 + c.is_batch * 4.0;\n    let prio_bonus = c.priority * 75.0;\n    let proc_term = c.proc_minutes * 0.38;\n    let wait_term = c.waited_minutes * 0.22;\n    let work_term = c.work_left_minutes.ln_1p() * 3.8;\n    let steps_term = c.steps_left * 1.1;\n    let age_term = c.age_minutes * 0.006;\n    let size_term = c.size_wafers * 0.08;\n    let family_term = if c.family == 2.0 { 6.0 } else { 0.0 };\n\n    // CQT urgency: large negative key when slack small\n    let mut cqt_bonus = 0.0;\n    let slack = c.cqt_slack_minutes;\n    if slack < 1e8 {\n        let urgency = (320.0 - slack).max(0.0);\n        cqt_bonus = urgency * 1.35;\n        if slack < 60.0 {\n            cqt_bonus += (60.0 - slack).max(0.0) * 0.6;\n        }\n        if cqt_bonus > 800.0 {\n            cqt_bonus = 800.0;\n        }\n    }\n\n    let mut k = 0.0;\n    k += setup_penalty;\n    k += proc_term;\n    k += work_term;\n    k += steps_term;\n    k += family_term;\n    k += size_term;\n    k -= batch_bonus;\n    k -= prio_bonus;\n    k -= wait_term;\n    k -= age_term;\n    k -= cqt_bonus;\n\n    // bottleneck adaptation: polishing has large queue and almost no idle\n    let is_bottleneck = x.queue > 13.0 && x.idle < 0.7;\n    if is_bottleneck {\n        // at bottleneck: stronger SPT, stronger setup avoidance, extra batch bonus\n        k += c.setup_change * 14.0;\n        k += c.proc_minutes * 0.14;\n        k -= c.lots * 3.5;\n        k += c.work_left_minutes.ln_1p() * 0.7;\n    } else {\n        // upstream/downstream: a bit more FIFO to keep flow to bottleneck\n        k -= c.waited_minutes * 0.05;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.001;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "d00435ef182ea6c86ba7f1e86c6375924a72a3e7a1226f79f1db75a033e6840e",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 329537,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -650.5514217391661,
+       -682.1078114925514,
+       -645.1964295489595,
+       -627.6618782865067
+      ],
+      "moves": [
+       60313.0,
+       62074.0,
+       61268.0,
+       63341.0
+      ],
+      "lots_finished": [
+       186.0,
+       151.0,
+       180.0,
+       176.0
+      ],
+      "wait_lot_hours": [
+       83655.14217391661,
+       83310.78114925514,
+       82519.64295489594,
+       80366.18782865067
+      ],
+      "wait_per_move_minutes": [
+       83.22100592633424,
+       80.52722345837724,
+       80.81181982917276,
+       76.12717307461266
+      ],
+      "breaches": [
+       384.0,
+       442.0,
+       549.0,
+       1031.0
+      ],
+      "mean_wip": [
+       2238.294468660121,
+       2257.448744793543,
+       2233.8286547319367,
+       2243.7553732331567
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -58.73938951770586,
+       "lo": -78.8323054968752,
+       "hi": -38.646473538536526,
+       "n": 4,
+       "sd": 12.627340135046259,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -6513.25,
+       "lo": -7173.484740429418,
+       "hi": -5853.015259570582,
+       "n": 4,
+       "sd": 414.9227839811483,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 6.25,
+       "lo": -10.407251485907171,
+       "hi": 22.90725148590717,
+       "n": 4,
+       "sd": 10.468205831628136,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 6498.938951770586,
+       "lo": 5736.287708737279,
+       "hi": 7261.590194803893,
+       "n": 4,
+       "sd": 479.2861653421158,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 13.372851783690018,
+       "lo": 12.106486615311388,
+       "hi": 14.639216952068649,
+       "n": 4,
+       "sd": 0.7958438552607324,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -474.25,
+       "lo": -874.7651663913765,
+       "hi": -73.73483360862349,
+       "n": 4,
+       "sd": 251.70270161442448,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -21.75935194440717,
+       "lo": -34.48490699378833,
+       "hi": -9.033796895026017,
+       "n": 4,
+       "sd": 7.9973415597010025,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 169.42290529119916,
+       "lo": 165.3379822299702,
+       "hi": 173.5078283524281,
+       "n": 4,
+       "sd": 2.567159140719448,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 234.17078704634108,
+       "lo": 195.21541750094113,
+       "hi": 273.12615659174105,
+       "n": 4,
+       "sd": 24.4813994069428,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 330.20200797588905,
+       "lo": 256.0246395107642,
+       "hi": 404.3793764410139,
+       "n": 4,
+       "sd": 46.61657187552272,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -651.3793852667959
+  },
+  {
+   "generation": 1,
+   "index": 2,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    // throughput vs flow balance, tuned for polishing bottleneck\n    let mut k = 0.0;\n\n    // base costs\n    k += c.setup_change * 24.0;\n    k += c.proc_minutes * 0.28;\n    k += c.steps_left * 1.35;\n    k += c.work_left_minutes.ln_1p() * 2.2;\n    k += c.size_wafers * 0.06;\n    if c.family == 2.0 {\n        k += 8.0;\n    }\n\n    // base benefits (negative key = earlier)\n    k -= c.lots * 9.0;\n    k -= c.is_batch * 5.0;\n    k -= c.priority * 55.0;\n    k -= c.waited_minutes * 0.32;\n    k -= c.age_minutes * 0.008;\n\n    // CQT urgency - much lighter than 1.1 to avoid setup thrash\n    let slack = c.cqt_slack_minutes;\n    if slack < 1e8 {\n        // only urgent when slack < 200\n        let u = (180.0 - slack).max(0.0);\n        let mut bonus = u * 0.45;\n        if slack < 40.0 {\n            bonus += (40.0 - slack) * 0.35;\n        }\n        if bonus > 140.0 { bonus = 140.0; }\n        k -= bonus;\n    }\n\n    // bottleneck adaptation: polishing has deep queue and no idle\n    let is_bneck = x.queue > 11.0 && x.idle < 1.0;\n    if is_bneck {\n        // at bottleneck maximize throughput: avoid setup, prefer full batches, SPT\n        k += c.setup_change * 11.0;\n        k -= c.lots * 4.5;\n        k += c.proc_minutes * 0.12;\n        // slight push for lots close to completion to free WIP\n        k += c.work_left_minutes.ln_1p() * 0.6;\n    } else {\n        // upstream/downstream: keep FIFO and flow to bottleneck\n        k -= c.waited_minutes * 0.10;\n        // prefer lots with more remaining work to keep bottleneck fed? actually\n        // penalize very long remaining to avoid clogging\n        k += c.work_left_minutes.ln_1p() * 0.25;\n    }\n\n    // mild anti-starvation: if waited very long, extra pull\n    if c.waited_minutes > 300.0 {\n        k -= (c.waited_minutes - 300.0) * 0.04;\n    }\n\n    if c.is_default == 1.0 { k -= 0.0007; }\n    if !k.is_finite() { return 0.0; }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    // throughput vs flow balance, tuned for polishing bottleneck\n    let mut k = 0.0;\n\n    // base costs\n    k += c.setup_change * 24.0;\n    k += c.proc_minutes * 0.28;\n    k += c.steps_left * 1.35;\n    k += c.work_left_minutes.ln_1p() * 2.2;\n    k += c.size_wafers * 0.06;\n    if c.family == 2.0 {\n        k += 8.0;\n    }\n\n    // base benefits (negative key = earlier)\n    k -= c.lots * 9.0;\n    k -= c.is_batch * 5.0;\n    k -= c.priority * 55.0;\n    k -= c.waited_minutes * 0.32;\n    k -= c.age_minutes * 0.008;\n\n    // CQT urgency - much lighter than 1.1 to avoid setup thrash\n    let slack = c.cqt_slack_minutes;\n    if slack < 1e8 {\n        // only urgent when slack < 200\n        let u = (180.0 - slack).max(0.0);\n        let mut bonus = u * 0.45;\n        if slack < 40.0 {\n            bonus += (40.0 - slack) * 0.35;\n        }\n        if bonus > 140.0 { bonus = 140.0; }\n        k -= bonus;\n    }\n\n    // bottleneck adaptation: polishing has deep queue and no idle\n    let is_bneck = x.queue > 11.0 && x.idle < 1.0;\n    if is_bneck {\n        // at bottleneck maximize throughput: avoid setup, prefer full batches, SPT\n        k += c.setup_change * 11.0;\n        k -= c.lots * 4.5;\n        k += c.proc_minutes * 0.12;\n        // slight push for lots close to completion to free WIP\n        k += c.work_left_minutes.ln_1p() * 0.6;\n    } else {\n        // upstream/downstream: keep FIFO and flow to bottleneck\n        k -= c.waited_minutes * 0.10;\n        // prefer lots with more remaining work to keep bottleneck fed? actually\n        // penalize very long remaining to avoid clogging\n        k += c.work_left_minutes.ln_1p() * 0.25;\n    }\n\n    // mild anti-starvation: if waited very long, extra pull\n    if c.waited_minutes > 300.0 {\n        k -= (c.waited_minutes - 300.0) * 0.04;\n    }\n\n    if c.is_default == 1.0 { k -= 0.0007; }\n    if !k.is_finite() { return 0.0; }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "5113d3a02ccb0217d7a2cb5ce8abf5aec8005cb8c1d60a3138726704d7fd0304",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 317186,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -676.944829550185,
+       -710.6768169043223,
+       -703.0528631286022,
+       -653.3641105191507
+      ],
+      "moves": [
+       57561.0,
+       59217.0,
+       56899.0,
+       60901.0
+      ],
+      "lots_finished": [
+       193.0,
+       154.0,
+       177.0,
+       181.0
+      ],
+      "wait_lot_hours": [
+       86994.4829550185,
+       86467.68169043223,
+       88005.28631286022,
+       83436.41105191507
+      ],
+      "wait_per_move_minutes": [
+       90.68065143588731,
+       87.61100530972413,
+       92.8015813770297,
+       82.20201085556731
+      ],
+      "breaches": [
+       446.0,
+       611.0,
+       717.0,
+       1119.0
+      ],
+      "mean_wip": [
+       2232.9502574182443,
+       2253.6034233516957,
+       2233.8121968116275,
+       2239.70436434402
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -93.36965927647498,
+       "lo": -121.84500500765215,
+       "hi": -64.8943135452978,
+       "n": 4,
+       "sd": 17.895256038664662,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -9617.75,
+       "lo": -11569.490713213074,
+       "hi": -7666.009286786926,
+       "n": 4,
+       "sd": 1226.566311565203,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 9.25,
+       "lo": -6.033199303768052,
+       "hi": 24.53319930376805,
+       "n": 4,
+       "sd": 9.604686356149273,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 10261.9659276475,
+       "lo": 7925.3532000970445,
+       "hi": 12598.578655197955,
+       "n": 4,
+       "sd": 1468.4381154654861,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 21.52485845611791,
+       "lo": 16.17819026162327,
+       "hi": 26.87152665061255,
+       "n": 4,
+       "sd": 3.3600995470797077,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -352.5,
+       "lo": -729.6198871761195,
+       "hi": 24.619887176119505,
+       "n": 4,
+       "sd": 237.0,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -25.07360181769957,
+       "lo": -37.06649176076286,
+       "hi": -13.080711874636282,
+       "n": 4,
+       "sd": 7.5369001030131395,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 134.79263553243004,
+       "lo": 110.99176002517909,
+       "hi": 158.593511039681,
+       "n": 4,
+       "sd": 14.957597536043362,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 199.54051728757196,
+       "lo": 154.50442235828507,
+       "hi": 244.57661221685885,
+       "n": 4,
+       "sd": 28.302815261652626,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 295.5717382171199,
+       "lo": 222.8544864076217,
+       "hi": 368.2889900266181,
+       "n": 4,
+       "sd": 45.69896540832013,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -686.009655025565
+  },
+  {
+   "generation": 2,
+   "index": 1,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 16.0;\n    k += c.proc_minutes * 0.15;\n    k += c.work_left_minutes.ln_1p() * 0.85;\n    k += c.steps_left * 0.35;\n    // benefits\n    k -= c.lots * 9.0;\n    k -= c.is_batch * 4.0;\n    k -= c.priority * 55.0;\n    k -= c.waited_minutes * 0.35;\n    k -= c.age_minutes * 0.010;\n    // light CQT - only when breach near\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 {\n        if s < 80.0 {\n            let mut b = (80.0 - s) * 0.55;\n            if s < 30.0 {\n                b += (30.0 - s) * 0.40;\n            }\n            if b > 110.0 { b = 110.0; }\n            k -= b;\n        }\n    }\n    // bottleneck aware: polishing queue deep and no idle\n    let bneck = x.queue > 12.0 && x.idle < 1.0;\n    if bneck {\n        k += c.setup_change * 9.0;\n        k -= c.lots * 3.0;\n        k += c.proc_minutes * 0.07;\n    } else {\n        // upstream keep flow\n        k -= c.waited_minutes * 0.06;\n    }\n    if c.is_default == 1.0 {\n        k -= 0.0006;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 16.0;\n    k += c.proc_minutes * 0.15;\n    k += c.work_left_minutes.ln_1p() * 0.85;\n    k += c.steps_left * 0.35;\n    // benefits\n    k -= c.lots * 9.0;\n    k -= c.is_batch * 4.0;\n    k -= c.priority * 55.0;\n    k -= c.waited_minutes * 0.35;\n    k -= c.age_minutes * 0.010;\n    // light CQT - only when breach near\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 {\n        if s < 80.0 {\n            let mut b = (80.0 - s) * 0.55;\n            if s < 30.0 {\n                b += (30.0 - s) * 0.40;\n            }\n            if b > 110.0 { b = 110.0; }\n            k -= b;\n        }\n    }\n    // bottleneck aware: polishing queue deep and no idle\n    let bneck = x.queue > 12.0 && x.idle < 1.0;\n    if bneck {\n        k += c.setup_change * 9.0;\n        k -= c.lots * 3.0;\n        k += c.proc_minutes * 0.07;\n    } else {\n        // upstream keep flow\n        k -= c.waited_minutes * 0.06;\n    }\n    if c.is_default == 1.0 {\n        k -= 0.0006;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "077ef090088cb76434a2a34e798617f68eee8764cdbf53592fb05156ef4c9874",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 317119,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -700.1246244933401,
+       -742.0079454581983,
+       -710.8379692100086,
+       -668.3018947838588
+      ],
+      "moves": [
+       56753.0,
+       57843.0,
+       57376.0,
+       60530.0
+      ],
+      "lots_finished": [
+       196.0,
+       154.0,
+       175.0,
+       178.0
+      ],
+      "wait_lot_hours": [
+       89612.46244933401,
+       89600.79454581982,
+       88583.79692100086,
+       84630.18947838587
+      ],
+      "wait_per_move_minutes": [
+       94.73944543830353,
+       92.94206166258994,
+       92.63503582090162,
+       83.88916849005703
+      ],
+      "breaches": [
+       329.0,
+       568.0,
+       812.0,
+       1607.0
+      ],
+      "mean_wip": [
+       2243.481716732235,
+       2265.066291543969,
+       2243.8337594601044,
+       2248.182848822936
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -112.67811273726136,
+       "lo": -130.6850986441502,
+       "hi": -94.6711268303725,
+       "n": 4,
+       "sd": 11.316442874145249,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -10136.75,
+       "lo": -11719.252358783413,
+       "hi": -8554.247641216587,
+       "n": 4,
+       "sd": 994.5194400647313,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 8.75,
+       "lo": -10.272716186572115,
+       "hi": 27.772716186572115,
+       "n": 4,
+       "sd": 11.954775893619532,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 12142.811273726136,
+       "lo": 10674.137707493075,
+       "hi": 13611.484839959197,
+       "n": 4,
+       "sd": 922.9840351396792,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 24.252474064528826,
+       "lo": 19.810091306745733,
+       "hi": 28.69485682231192,
+       "n": 4,
+       "sd": 2.7918037456956015,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -246.75,
+       "lo": -389.64960600248503,
+       "hi": -103.85039399751494,
+       "n": 4,
+       "sd": 89.80488108486458,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -14.950008159285403,
+       "lo": -25.63452002100533,
+       "hi": -4.265496297565477,
+       "n": 4,
+       "sd": 6.714653343235227,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 115.48418207164366,
+       "lo": 98.15594008574742,
+       "hi": 132.81242405753989,
+       "n": 4,
+       "sd": 10.889888044380665,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 180.23206382678558,
+       "lo": 138.42662156302637,
+       "hi": 222.03750609054478,
+       "n": 4,
+       "sd": 26.272520101502433,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 276.2632847563335,
+       "lo": 192.82760960730394,
+       "hi": 359.6989599053631,
+       "n": 4,
+       "sd": 52.43493033048453,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -705.3181084863514
+  },
+  {
+   "generation": 2,
+   "index": 2,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 55.0;\n    k += c.proc_minutes * 0.32;\n    k += c.work_left_minutes.ln_1p() * 4.2;\n    k += c.steps_left * 1.25;\n    k += c.size_wafers * 0.04;\n    if c.family == 2.0 {\n        k += 9.0;\n    }\n    // throughput benefits\n    k -= c.lots * 11.0;\n    k -= c.is_batch * 6.0;\n    k -= c.priority * 70.0;\n    k -= c.waited_minutes * 0.18;\n    k -= c.age_minutes * 0.004;\n\n    // CQT: only when slack < 90, capped\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 {\n        if s < 90.0 {\n            let mut b = (90.0 - s) * 1.1;\n            if s < 25.0 {\n                b += (25.0 - s) * 0.8;\n            }\n            if b > 220.0 {\n                b = 220.0;\n            }\n            k -= b;\n        }\n    }\n\n    // polishing bottleneck adaptation\n    let bneck = x.queue > 10.0 && x.idle < 0.9;\n    if bneck {\n        k += c.setup_change * 18.0;\n        k -= c.lots * 5.0;\n        k += c.proc_minutes * 0.10;\n        k += c.work_left_minutes.ln_1p() * 0.9;\n    } else {\n        k -= c.waited_minutes * 0.04;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.001;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 55.0;\n    k += c.proc_minutes * 0.32;\n    k += c.work_left_minutes.ln_1p() * 4.2;\n    k += c.steps_left * 1.25;\n    k += c.size_wafers * 0.04;\n    if c.family == 2.0 {\n        k += 9.0;\n    }\n    // throughput benefits\n    k -= c.lots * 11.0;\n    k -= c.is_batch * 6.0;\n    k -= c.priority * 70.0;\n    k -= c.waited_minutes * 0.18;\n    k -= c.age_minutes * 0.004;\n\n    // CQT: only when slack < 90, capped\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 {\n        if s < 90.0 {\n            let mut b = (90.0 - s) * 1.1;\n            if s < 25.0 {\n                b += (25.0 - s) * 0.8;\n            }\n            if b > 220.0 {\n                b = 220.0;\n            }\n            k -= b;\n        }\n    }\n\n    // polishing bottleneck adaptation\n    let bneck = x.queue > 10.0 && x.idle < 0.9;\n    if bneck {\n        k += c.setup_change * 18.0;\n        k -= c.lots * 5.0;\n        k += c.proc_minutes * 0.10;\n        k += c.work_left_minutes.ln_1p() * 0.9;\n    } else {\n        k -= c.waited_minutes * 0.04;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.001;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "27e18ffea7e72857138aeaba39a7cc2810b2a34b05e4836b00d33a519b033d2b",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 329363,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -645.6511068978297,
+       -669.4147305378992,
+       -652.0289172895256,
+       -631.1483932768882
+      ],
+      "moves": [
+       60270.0,
+       62608.0,
+       60985.0,
+       62965.0
+      ],
+      "lots_finished": [
+       191.0,
+       155.0,
+       176.0,
+       179.0
+      ],
+      "wait_lot_hours": [
+       83665.11068978296,
+       82441.47305378992,
+       82802.89172895256,
+       81014.83932768882
+      ],
+      "wait_per_move_minutes": [
+       83.29030432034142,
+       79.00728953532128,
+       81.46549977432407,
+       77.19987865737043
+      ],
+      "breaches": [
+       473.0,
+       617.0,
+       662.0,
+       1164.0
+      ],
+      "mean_wip": [
+       2235.106383436554,
+       2254.0304861519994,
+       2233.0577850136488,
+       2243.212853478222
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -56.92079125144559,
+       "lo": -85.35895564289126,
+       "hi": -28.482626859999932,
+       "n": 4,
+       "sd": 17.871889523622585,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -6555.25,
+       "lo": -7292.752177465606,
+       "hi": -5817.747822534394,
+       "n": 4,
+       "sd": 463.4813013128649,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 8.25,
+       "lo": -7.575805564606165,
+       "hi": 24.075805564606164,
+       "n": 4,
+       "sd": 9.945685831890462,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 6517.079125144559,
+       "lo": 5054.683681562319,
+       "hi": 7979.474568726799,
+       "n": 4,
+       "sd": 919.0385654923846,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 13.441789283405095,
+       "lo": 11.48619665893655,
+       "hi": 15.39738190787364,
+       "n": 4,
+       "sd": 1.2289870350502003,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -346.75,
+       "lo": -721.6384263190218,
+       "hi": 28.138426319021903,
+       "n": 4,
+       "sd": 235.5976443006169,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -23.73928527899045,
+       "lo": -37.58437415673805,
+       "hi": -9.894196401242851,
+       "n": 4,
+       "sd": 8.70090964599218,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 171.24150355745942,
+       "lo": 157.55492815522948,
+       "hi": 184.92807895968937,
+       "n": 4,
+       "sd": 8.60129226972759,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 235.98938531260134,
+       "lo": 194.47171326983366,
+       "hi": 277.507057355369,
+       "n": 4,
+       "sd": 26.0916716639255,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 332.02060624214926,
+       "lo": 269.6784888737672,
+       "hi": 394.3627236105313,
+       "n": 4,
+       "sd": 39.178739490358424,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -649.5607870005357
+  },
+  {
+   "generation": 3,
+   "index": 1,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let lots = c.lots.max(1.0);\n    let per_lot_proc = c.proc_minutes / lots;\n    let mut k = 0.0;\n    k += c.setup_change * 62.0;\n    k += per_lot_proc * 0.55;\n    k += c.work_left_minutes.ln_1p() * 1.15;\n    k += c.steps_left * 0.42;\n    k += c.size_wafers * 0.025;\n    if c.family == 2.0 {\n        k += 10.0;\n    }\n    k -= c.lots * 24.0;\n    k -= c.is_batch * 14.0;\n    k -= c.priority * 68.0;\n    k -= c.waited_minutes * 0.16;\n    k -= c.age_minutes * 0.006;\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 && s < 45.0 {\n        let mut b = (45.0 - s) * 0.75;\n        if b > 70.0 {\n            b = 70.0;\n        }\n        k -= b;\n    }\n    let bneck = x.queue > 11.0 && x.idle < 1.0;\n    if bneck {\n        k += c.setup_change * 14.0;\n        k -= c.lots * 6.0;\n        k += per_lot_proc * 0.12;\n    } else {\n        k -= c.waited_minutes * 0.05;\n    }\n    if c.waited_minutes > 380.0 {\n        k -= (c.waited_minutes - 380.0) * 0.03;\n    }\n    if c.is_default == 1.0 {\n        k -= 0.0008;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let lots = c.lots.max(1.0);\n    let per_lot_proc = c.proc_minutes / lots;\n    let mut k = 0.0;\n    k += c.setup_change * 62.0;\n    k += per_lot_proc * 0.55;\n    k += c.work_left_minutes.ln_1p() * 1.15;\n    k += c.steps_left * 0.42;\n    k += c.size_wafers * 0.025;\n    if c.family == 2.0 {\n        k += 10.0;\n    }\n    k -= c.lots * 24.0;\n    k -= c.is_batch * 14.0;\n    k -= c.priority * 68.0;\n    k -= c.waited_minutes * 0.16;\n    k -= c.age_minutes * 0.006;\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 && s < 45.0 {\n        let mut b = (45.0 - s) * 0.75;\n        if b > 70.0 {\n            b = 70.0;\n        }\n        k -= b;\n    }\n    let bneck = x.queue > 11.0 && x.idle < 1.0;\n    if bneck {\n        k += c.setup_change * 14.0;\n        k -= c.lots * 6.0;\n        k += per_lot_proc * 0.12;\n    } else {\n        k -= c.waited_minutes * 0.05;\n    }\n    if c.waited_minutes > 380.0 {\n        k -= (c.waited_minutes - 380.0) * 0.03;\n    }\n    if c.is_default == 1.0 {\n        k -= 0.0008;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "004e0a461fc963bb7a17ef8fa23081247877705a9ab1721b19794f8c170520f4",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 349390,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -588.2462460318293,
+       -626.8599103829029,
+       -603.1320271360487,
+       -578.0781267752163
+      ],
+      "moves": [
+       65362.0,
+       66601.0,
+       65475.0,
+       66763.0
+      ],
+      "lots_finished": [
+       186.0,
+       147.0,
+       169.0,
+       181.0
+      ],
+      "wait_lot_hours": [
+       77424.62460318292,
+       77385.99103829029,
+       77213.20271360487,
+       75907.81267752164
+      ],
+      "wait_per_move_minutes": [
+       71.07306196553004,
+       69.7160622557832,
+       70.75665769860699,
+       68.2184557412234
+      ],
+      "breaches": [
+       524.0,
+       663.0,
+       896.0,
+       1614.0
+      ],
+      "mean_wip": [
+       2236.8781920592,
+       2253.693485801679,
+       2237.857497636557,
+       2245.7367910648054
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -6.439081832409215,
+       "lo": -35.28660379435522,
+       "hi": 22.408440129536793,
+       "n": 4,
+       "sd": 18.129149210813978,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -2212.0,
+       "lo": -3186.7935720031383,
+       "hi": -1237.206427996862,
+       "n": 4,
+       "sd": 612.6064533341668,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 3.75,
+       "lo": -6.674232296170517,
+       "hi": 14.174232296170517,
+       "n": 4,
+       "sd": 6.551081335677848,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 1018.9081832409247,
+       "lo": -858.6233770972601,
+       "hi": 2896.4397435791097,
+       "n": 4,
+       "sd": 1179.9297648610643,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 3.1421056268517003,
+       "lo": 0.6257033668146517,
+       "hi": 5.658507886888749,
+       "n": 4,
+       "sd": 1.5814263737044991,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -151.5,
+       "lo": -333.45922593213027,
+       "hi": 30.459225932130295,
+       "n": 4,
+       "sd": 114.3517963712566,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -21.549670658536115,
+       "lo": -35.56716469085149,
+       "hi": -7.532176626220741,
+       "n": 4,
+       "sd": 8.809257211373904,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 221.7232129764958,
+       "lo": 206.52284556575518,
+       "hi": 236.92358038723643,
+       "n": 4,
+       "sd": 9.552630871103121,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 286.4710947316377,
+       "lo": 239.18918153695068,
+       "hi": 333.75300792632476,
+       "n": 4,
+       "sd": 29.714193836475086,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 382.50231566118566,
+       "lo": 311.4957414625072,
+       "hi": 453.5088898598641,
+       "n": 4,
+       "sd": 44.623894568645895,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -599.0790775814993
+  },
+  {
+   "generation": 3,
+   "index": 2,
+   "reply": "```rust\npub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let lots = c.lots.max(1.0);\n    let per_lot = c.proc_minutes / lots;\n    let q = x.queue;\n    let idle = x.idle;\n    let is_bneck = q > 11.0 && idle < 1.0;\n\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 70.0;\n    k += per_lot * 0.60;\n    k += c.work_left_minutes.ln_1p() * 0.75;\n    k += c.steps_left * 0.32;\n    k += c.size_wafers * 0.02;\n    if c.family == 2.0 {\n        k += 9.5;\n    }\n    // flow benefits\n    k -= c.lots * 28.0;\n    k -= c.is_batch * 16.0;\n    k -= c.priority * 72.0;\n    k -= c.waited_minutes * 0.14;\n    k -= c.age_minutes * 0.005;\n\n    // very light CQT, only imminent breach\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 && s < 35.0 {\n        let mut b = (35.0 - s) * 0.60;\n        if b > 50.0 { b = 50.0; }\n        k -= b;\n    }\n\n    // polishing bottleneck adaptation\n    if is_bneck {\n        // at bottleneck maximize throughput: avoid setup, prefer full batches, SPT\n        k += c.setup_change * 16.0;\n        k -= c.lots * 7.0;\n        k += per_lot * 0.15;\n        k += c.work_left_minutes.ln_1p() * 0.20;\n        // scale slightly with queue depth\n        k += c.setup_change * q * 0.35;\n        k -= c.lots * q * 0.08;\n    } else {\n        // upstream/downstream keep flow to bottleneck\n        k -= c.waited_minutes * 0.05;\n    }\n\n    // anti-starvation for very long waiters\n    if c.waited_minutes > 340.0 {\n        k -= (c.waited_minutes - 340.0) * 0.028;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.0008;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}\n```",
+   "source": "pub fn key(c: &Cand, x: &Ctx) -> f64 {\n    let lots = c.lots.max(1.0);\n    let per_lot = c.proc_minutes / lots;\n    let q = x.queue;\n    let idle = x.idle;\n    let is_bneck = q > 11.0 && idle < 1.0;\n\n    let mut k = 0.0;\n    // throughput costs\n    k += c.setup_change * 70.0;\n    k += per_lot * 0.60;\n    k += c.work_left_minutes.ln_1p() * 0.75;\n    k += c.steps_left * 0.32;\n    k += c.size_wafers * 0.02;\n    if c.family == 2.0 {\n        k += 9.5;\n    }\n    // flow benefits\n    k -= c.lots * 28.0;\n    k -= c.is_batch * 16.0;\n    k -= c.priority * 72.0;\n    k -= c.waited_minutes * 0.14;\n    k -= c.age_minutes * 0.005;\n\n    // very light CQT, only imminent breach\n    let s = c.cqt_slack_minutes;\n    if s < 1e8 && s < 35.0 {\n        let mut b = (35.0 - s) * 0.60;\n        if b > 50.0 { b = 50.0; }\n        k -= b;\n    }\n\n    // polishing bottleneck adaptation\n    if is_bneck {\n        // at bottleneck maximize throughput: avoid setup, prefer full batches, SPT\n        k += c.setup_change * 16.0;\n        k -= c.lots * 7.0;\n        k += per_lot * 0.15;\n        k += c.work_left_minutes.ln_1p() * 0.20;\n        // scale slightly with queue depth\n        k += c.setup_change * q * 0.35;\n        k -= c.lots * q * 0.08;\n    } else {\n        // upstream/downstream keep flow to bottleneck\n        k -= c.waited_minutes * 0.05;\n    }\n\n    // anti-starvation for very long waiters\n    if c.waited_minutes > 340.0 {\n        k -= (c.waited_minutes - 340.0) * 0.028;\n    }\n\n    if c.is_default == 1.0 {\n        k -= 0.0008;\n    }\n    if !k.is_finite() {\n        return 0.0;\n    }\n    k\n}",
+   "ok": true,
+   "error": null,
+   "source_sha256": "18fceac4a2c8f8e3380a14ed4e7dfdb58a822e3fb4bec3a3a3335b37b5f4605c",
+   "report": {
+    "ok": true,
+    "model": "the SMT2020 testbed",
+    "seeds": [
+     100,
+     101,
+     102,
+     103
+    ],
+    "held_out": false,
+    "decisions": 352782,
+    "faults": 0,
+    "eligible": true,
+    "arms": [
+     {
+      "name": "today",
+      "reward": [
+       -604.153561577432,
+       -625.3546324532767,
+       -589.7681095737421,
+       -551.2836793919095
+      ],
+      "moves": [
+       66723.0,
+       68786.0,
+       68214.0,
+       69326.0
+      ],
+      "lots_finished": [
+       174.0,
+       143.0,
+       166.0,
+       185.0
+      ],
+      "wait_lot_hours": [
+       77815.3561577432,
+       76835.46324532767,
+       75576.81095737421,
+       73628.36793919094
+      ],
+      "wait_per_move_minutes": [
+       69.97469192729032,
+       67.02130949204286,
+       66.47621686812755,
+       63.72359686627609
+      ],
+      "breaches": [
+       517.0,
+       922.0,
+       1098.0,
+       1766.0
+      ],
+      "mean_wip": [
+       2265.301356916,
+       2278.7795434187474,
+       2261.9118084376255,
+       2254.3719404240132
+      ]
+     },
+     {
+      "name": "fifo",
+      "reward": [
+       -822.9879024407811,
+       -849.3454736195301,
+       -815.8741394425771,
+       -795.001646729092
+      ],
+      "moves": [
+       48705.0,
+       50324.0,
+       49858.0,
+       50981.0
+      ],
+      "lots_finished": [
+       189.0,
+       153.0,
+       177.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       101198.7902440781,
+       100234.54736195301,
+       99287.4139442577,
+       97800.1646729092
+      ],
+      "wait_per_move_minutes": [
+       124.6674348556552,
+       119.50705114293739,
+       119.48423195185251,
+       115.10189836163575
+      ],
+      "breaches": [
+       344.0,
+       792.0,
+       1040.0,
+       1776.0
+      ],
+      "mean_wip": [
+       2256.710773665011,
+       2271.54394687356,
+       2250.8414418007997,
+       2253.2028615520776
+      ]
+     },
+     {
+      "name": "spt",
+      "reward": [
+       -918.3428773495739,
+       -899.8061812247722,
+       -881.9576689613618,
+       -842.0939617168401
+      ],
+      "moves": [
+       44616.0,
+       46845.0,
+       46341.0,
+       46799.0
+      ],
+      "lots_finished": [
+       150.0,
+       142.0,
+       159.0,
+       188.0
+      ],
+      "wait_lot_hours": [
+       106834.28773495738,
+       104180.61812247722,
+       104095.76689613618,
+       103009.396171684
+      ],
+      "wait_per_move_minutes": [
+       143.67171561989966,
+       133.43659061476427,
+       134.77797228735182,
+       132.06615035152547
+      ],
+      "breaches": [
+       265.0,
+       493.0,
+       720.0,
+       694.0
+      ],
+      "mean_wip": [
+       2252.1849565319562,
+       2261.746280944358,
+       2251.058187443493,
+       2246.424764312417
+      ]
+     },
+     {
+      "name": "cr",
+      "reward": [
+       -993.619259351437,
+       -943.7019211142381,
+       -996.4448136874364,
+       -992.5595788176283
+      ],
+      "moves": [
+       47725.0,
+       48352.0,
+       47410.0,
+       48107.0
+      ],
+      "lots_finished": [
+       104.0,
+       139.0,
+       109.0,
+       101.0
+      ],
+      "wait_lot_hours": [
+       109761.92593514369,
+       108270.1921114238,
+       110544.48136874364,
+       109355.95788176282
+      ],
+      "wait_per_move_minutes": [
+       137.99299227047925,
+       134.35248855653185,
+       139.90020843966713,
+       136.39090928359218
+      ],
+      "breaches": [
+       399.0,
+       544.0,
+       803.0,
+       698.0
+      ],
+      "mean_wip": [
+       2327.744548854913,
+       2315.8014924214995,
+       2327.740197274564,
+       2325.9747261755547
+      ]
+     },
+     {
+      "name": "rule",
+      "reward": [
+       -586.6733071132824,
+       -626.356679280451,
+       -596.3644919455661,
+       -564.7704258118754
+      ],
+      "moves": [
+       65837.0,
+       66751.0,
+       66469.0,
+       67876.0
+      ],
+      "lots_finished": [
+       186.0,
+       147.0,
+       165.0,
+       183.0
+      ],
+      "wait_lot_hours": [
+       77267.33071132824,
+       77335.66792804509,
+       76136.44919455661,
+       74777.04258118753
+      ],
+      "wait_per_move_minutes": [
+       70.41693641386598,
+       69.51416571561033,
+       68.7265785805924,
+       66.10027925734062
+      ],
+      "breaches": [
+       630.0,
+       700.0,
+       1056.0,
+       1645.0
+      ],
+      "mean_wip": [
+       2241.883704369723,
+       2255.848869721542,
+       2240.1312163097627,
+       2246.2534539191706
+      ]
+     }
+    ],
+    "vs_today": [
+     {
+      "key": "reward",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -0.9012302887036299,
+       "lo": -22.0255615654524,
+       "hi": 20.22310098804514,
+       "n": 4,
+       "sd": 13.275530362712955,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "moves",
+      "higher_is_better": true,
+      "interval": {
+       "mean": -1529.0,
+       "lo": -2309.8253774764944,
+       "hi": -748.1746225235058,
+       "n": 4,
+       "sd": 490.70765227373414,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "lots_finished",
+      "higher_is_better": true,
+      "interval": {
+       "mean": 3.25,
+       "lo": -6.928439798000355,
+       "hi": 13.428439798000355,
+       "n": 4,
+       "sd": 6.3966136874651625,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_lot_hours",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 415.12302887036276,
+       "lo": -707.7426508054434,
+       "hi": 1537.988708546169,
+       "n": 4,
+       "sd": 705.6619794725523,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "wait_per_move_minutes",
+      "higher_is_better": false,
+      "interval": {
+       "mean": 1.8905362034181277,
+       "lo": 0.34610655946812807,
+       "hi": 3.4349658473681273,
+       "n": 4,
+       "sd": 0.9705927426871804,
+       "alpha": 0.05
+      },
+      "verdict": "worse",
+      "said": "worse from the SMT2020 testbed"
+     },
+     {
+      "key": "breaches",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -68.0,
+       "lo": -292.96166460650716,
+       "hi": 156.96166460650716,
+       "n": 4,
+       "sd": 141.3765657148784,
+       "alpha": 0.05
+      },
+      "verdict": "no clear effect",
+      "said": "no clear effect from the SMT2020 testbed"
+     },
+     {
+      "key": "mean_wip",
+      "higher_is_better": false,
+      "interval": {
+       "mean": -19.061851219046844,
+       "lo": -30.722002391817746,
+       "hi": -7.401700046275943,
+       "n": 4,
+       "sd": 7.327791299046863,
+       "alpha": 0.05
+      },
+      "verdict": "better",
+      "said": "better from the SMT2020 testbed"
+     }
+    ],
+    "vs_baselines": [
+     {
+      "name": "fifo",
+      "key": "reward",
+      "interval": {
+       "mean": 227.2610645202014,
+       "lo": 215.31363777722248,
+       "hi": 239.2084912631803,
+       "n": 4,
+       "sd": 7.5083288746414905,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "spt",
+      "key": "reward",
+      "interval": {
+       "mean": 292.0089462753433,
+       "lo": 249.17142369858175,
+       "hi": 334.84646885210486,
+       "n": 4,
+       "sd": 26.921128256360436,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     },
+     {
+      "name": "cr",
+      "key": "reward",
+      "interval": {
+       "mean": 388.04016720489125,
+       "lo": 310.73800504676814,
+       "hi": 465.34232936301436,
+       "n": 4,
+       "sd": 48.58034024315253,
+       "alpha": 0.05
+      },
+      "verdict": "better"
+     }
+    ]
+   },
+   "eligible": true,
+   "train_reward": -593.5412260377936
+  }
+ ]
+}

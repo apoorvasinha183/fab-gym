@@ -1,0 +1,234 @@
+{
+ "about": "The demo video's script as data (5 Nov, the 3:00 cut). Browser beats play by themselves (director.js); the 3D fab and the cinema are recorded between the two chains.",
+ "beats": [
+  {
+   "screen": "Site · top",
+   "url": "http://127.0.0.1:8777/",
+   "items": [
+    [
+     "you",
+     "Hello! Thank you for this opportunity. This is my project, Fab Gym: a digital twin of a semiconductor fab, and we'll tackle one problem to get a feel for it. I'm joined by my friend, Mr. Lou Latency.",
+     10.22,
+     "c34b772d8d2bb5d6.mp3"
+    ],
+    [
+     "lou",
+     "hello"
+    ],
+    [
+     "you",
+     "Mr. Lou has the best wafer fabs in the world, in his own words, and he wants us to raise this factory's throughput.",
+     5.15,
+     "ea47db35c7260b35.mp3"
+    ],
+    [
+     "lou",
+     "problem"
+    ]
+   ],
+   "acts": {
+    "2": [
+     {
+      "scrollby": 500
+     }
+    ]
+   }
+  },
+  {
+   "screen": "Site · the cast",
+   "url": "http://127.0.0.1:8777/",
+   "items": [
+    [
+     "you",
+     "It's a queueing problem. He has an impressive cast of tools, but every lot crosses hundreds of steps, 583 for one product, on 1,043 shared machines and rails.",
+     9.29,
+     "5fc50a17acd1d83d.mp3"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "scroll": "#cast"
+     },
+     {
+      "focus": ".champ",
+      "n": 4,
+      "every": 1.4
+     }
+    ]
+   }
+  },
+  {
+   "screen": "App · the live Floor",
+   "url": "http://127.0.0.1:8766/#floor",
+   "items": [
+    [
+     "lou",
+     "q1"
+    ],
+    [
+     "lou",
+     "q2"
+    ],
+    [
+     "you",
+     "Scheduling, layout, and a thousand more: far too many answers to try them all. So Meta's models make the first guesses, and our Rust simulator predicts their impact.",
+     8.73,
+     "eed8b9f0956a114c.mp3"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "point": "#h-wip"
+     }
+    ],
+    "2": [
+     {
+      "point": "#h-toolbar"
+     }
+    ]
+   }
+  },
+  {
+   "screen": "App · the ask bar: Muse Spark Open live",
+   "url": "http://127.0.0.1:8766/#floor",
+   "items": [
+    [
+     "you",
+     "Watch. I ask a what-if in plain words. Muse Spark Open, Meta's open-weights model, turns it into an experiment: what changes, what to compare, every value marked said or assumed.",
+     11.19,
+     "a1e16d194d71def6.mp3"
+    ],
+    [
+     "you",
+     "The simulator runs today's fab against each answer on ten paired seeds and reports the difference with 95% intervals. I read the card, and I sign.",
+     7.85,
+     "ccc68b44d8cfe2bf.mp3"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "ask": "What if the polishers break down twice as often? Would capping the work in the fab protect output?"
+     }
+    ],
+    "1": [
+     {
+      "waitfor": "Done in",
+      "max": 45
+     },
+     {
+      "point": "#ask-result"
+     }
+    ]
+   }
+  },
+  {
+   "screen": "The rule Muse Spark Open wrote tonight",
+   "url": "http://127.0.0.1:8778/card.html",
+   "items": [
+    [
+     "you",
+     "Muse Spark Open also writes the dispatch rule itself, in Rust, scored on days it never saw. Tonight's rule tied the fab's own rule, with about two hundred fewer queue-time breaches.",
+     10.31,
+     "efaf13efa6591d7c.mp3"
+    ],
+    [
+     "lou",
+     "honest"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "slowscroll": 1
+     }
+    ]
+   }
+  },
+  {
+   "screen": "App · Evidence",
+   "url": "http://127.0.0.1:8766/#evidence",
+   "items": [
+    [
+     "you",
+     "And you don't have to take the model's word for it. Every scored run is checked by a referee written in Lean: 120 of 120 passed. And on a teaching fab, Muse Spark supervising added 117 wafers a day.",
+     12.26,
+     "35ad0457c142805d.mp3"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "point": "#find-list"
+     }
+    ]
+   }
+  },
+  {
+   "screen": "Build: Muse Wonder racing live",
+   "url": "http://127.0.0.1:8766/editor.html",
+   "items": [
+    [
+     "you",
+     "For layouts, design your own fab right in the browser, or race Muse Wonder, Meta's model, playing the same challenge with the same moves you have.",
+     6.59,
+     "bc87d0c613101b2e.mp3"
+    ],
+    [
+     "hold",
+     2
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "click": "#ai-go"
+     }
+    ]
+   },
+   "end": true
+  },
+  {
+   "screen": "Site · the close",
+   "url": "http://127.0.0.1:8777/#new",
+   "items": [
+    [
+     "you",
+     "Fab Gym is open: play it in your browser, run it locally with your own key, or load it as a reinforcement-learning environment.",
+     6.22,
+     "33584a9d9fa3a0d3.mp3"
+    ],
+    [
+     "lou",
+     "close"
+    ]
+   ],
+   "acts": {
+    "0": [
+     {
+      "scroll": "#new"
+     }
+    ]
+   },
+   "end": true
+  }
+ ],
+ "godot": [
+  {
+   "screen": "3D fab: Lou's brain is Muse Spark Open",
+   "say": "In the 3D fab, Lou's brain is Muse Spark Open, fed the live run. He answers only with the simulator's numbers, and walks you there.",
+   "seconds": 34,
+   "audio": "10c0f4c246208ae6.mp3",
+   "dur": 6.36
+  },
+  {
+   "screen": "The fab's cinema",
+   "say": "And yes: a cinema, for the films his studio made with Meta's models.",
+   "seconds": 9,
+   "audio": "3ab8a6465c128f06.mp3",
+   "dur": 3.44
+  }
+ ]
+}

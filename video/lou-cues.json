@@ -1,0 +1,34 @@
+{
+ "about": "Lou's lines for the demo video, in order; written by Meta's Muse Spark from our brief (4 Nov), except 'honest', the founder's own. Press ] for the next, [ for the previous.",
+ "cues": [
+  {
+   "id": "hello",
+   "text": "Friends, our hour of destiny has arrived. Welcome to my fab, where we will end the world's memory shortage."
+  },
+  {
+   "id": "problem",
+   "text": "Destiny demands more memory, but my fab is too slow. Wafers queue in lines while good machines stand idle."
+  },
+  {
+   "id": "q1",
+   "text": "With all lots bound to the same machines and rails, who goes next for the empire, and shall rush prototypes jump the line?"
+  },
+  {
+   "id": "q2",
+   "text": "Given these rails and the wafers pouring in, where shall each tool stand in my empire?"
+  },
+  {
+   "id": "honest",
+   "text": "We set the industry's best practices, dude!",
+   "by": "the founder"
+  },
+  {
+   "id": "tour",
+   "text": "I will show you my empire fab in person, then we will watch my finest films together in my cinema hall."
+  },
+  {
+   "id": "close",
+   "text": "My friends, our empire of memory awaits your dreams, so let us build onward together."
+  }
+ ]
+}
