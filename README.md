@@ -163,19 +163,63 @@ The **Evidence** page leads with four findings in plain words, each with how sur
 A discrete-event simulator in Rust that reproduces the reference engine's event log bit for bit, about 0.03 s per simulated day on one laptop core; overhead vehicles on the building's drawn rails; a WebAssembly sandbox with no imports, 64 MiB and a fuel limit per decision; and a design for running beside a real fab's MES and dispatcher (`docs/SYSTEM-DESIGN.md`).
 </details>
 
-## Try it
+## Play it, or run it yourself
+
+### In your browser: nothing to install
+
+**[apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/)**: the live Floor (all
+1,043 machines simulated in your browser, a new run each visit), Evidence, Runs and the glossary, on any computer. Build's
+challenges, the ask bar and Lou's Meta brain need the helper below.
+
+### On your computer: Mac, Linux or Windows
+
+You need Git, [Rust](https://rustup.rs) with the WebAssembly target, Python 3.12 or newer (standard library only) and
+Node.js 18 or newer. On Windows, run the commands in Git Bash or WSL (the web build is a shell script).
 
 ```sh
-# the SMT2020 files go in data/smt2020/hvlm (see data/smt2020/README.md)
-cargo build --release                      # the simulator and its tools
-web/build.sh                               # the browser simulator and the floor page's data
-python3 -m agent.helper --port 8766        # the pages on http://127.0.0.1:8766: Floor, Build, Evidence
-                                           #   (--preset open for Muse Spark Open, --spend-cap 5)
-fabsim fab-export SHOP > my.fab.txt        # a campus with drawn rails, as one fab file
-fabsim log SHOP SEED --overrides my.json   # a run with your own failures and recoveries
+git clone https://github.com/apoorvasinha183/fab-gym && cd fab-gym
+rustup target add wasm32-unknown-unknown   # once
+cargo build --release                      # the simulator and its tools (about 2 minutes)
+sh web/build.sh                            # the browser simulator and the pages' data
+python3 -m agent.helper --port 8766        # leave this running
 ```
 
-Without a model key the ask box answers the recorded example questions and scores scenarios you write. Every number it shows comes from the simulator.
+Then open **http://127.0.0.1:8766**: the Desk, the Floor, Build (all four challenges scored as you draw), Evidence and
+Runs. The SMT2020 testbed's files are in the repo (`data/smt2020/hvlm`, MIT licence), so nothing else is downloaded.
+
+### Meta's models: optional
+
+Without a key, everything still runs: the ask bar answers its recorded example questions, Race the AI replays a
+recorded game, and every number comes from the simulator. To ask the models live, put a key in `~/.config/fab-gym/`:
+
+| File | Model | How |
+| --- | --- | --- |
+| `meta.key` | Muse Spark, Muse Wonder and Muse Image (Meta Model API) | the default |
+| `baseten.key` | Muse Spark Open, the open-weights model, on Baseten; also Lou's brain in the 3D fab | `--preset open` |
+
+Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed.
+
+### The 3D fab: walk it with Lou
+
+Download the app for your computer from the
+[latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) (macOS `.zip`, Windows `.exe`). Start the
+helper first (above); the app reads its live run from it.
+
+- **macOS:** the app is not signed: right-click it, choose **Open**, then **Open** again.
+- **Windows:** SmartScreen may warn about an unknown publisher: **More info**, then **Run anyway**.
+- **Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold the
+  right mouse button to look; click a tool for its card; **Ask Lou** to ask a question and be walked there. In the
+  cinema, walk to a seat and press **E**.
+
+Building the 3D fab from source needs assets that are not in git (the generated layout, CC0 models and textures; see
+`docs/ASSETS.md` and `viz/fab3d/README.md`).
+
+### For tinkerers
+
+```sh
+fabsim fab-export SHOP > my.fab.txt        # a campus with drawn rails, as one fab file (docs/FAB-FILE.md)
+fabsim log SHOP SEED --overrides my.json   # a run with your own failures and recoveries (docs/OVERRIDES.md)
+```
 
 ## Map of the repo
 
