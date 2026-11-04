@@ -7,9 +7,11 @@ held-out seeds against today's rule with paired 95% intervals (Bonferroni over t
 From the SMT2020 testbed, a published set of a fab's tool groups, routes and times; not a real fab. Agents propose, the simulator scores, a person signs."""
 
 import argparse
+import hashlib
 import json
 import math
 import subprocess
+import shutil
 import time
 from pathlib import Path
 
@@ -146,6 +148,8 @@ class Learned:
     def __init__(self, path):
         from stable_baselines3 import PPO
         self.model = PPO.load(str(path), device="cpu")
+        self.path = str(path if Path(path).is_file() else str(path) + ".zip")
+        self.checkpoint_sha256 = _digest_path(self.path)
 
     def act(self, obs, info):
         a, _ = self.model.predict(obs, deterministic=True)
@@ -281,6 +285,40 @@ def timed_play(policy, seed, shop, fabsim, warmup_days, window_days, defects):
     return r
 
 
+def _digest_path(path):
+    """Content identity, including relative filenames when the input is a testbed directory."""
+    path = Path(path)
+    digest = hashlib.sha256()
+    files = sorted(p for p in path.rglob("*") if p.is_file()) if path.is_dir() else [path]
+    for file in files:
+        if path.is_dir():
+            digest.update(str(file.relative_to(path)).encode() + b"\0")
+        with file.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _executable_digest(path):
+    return _digest_path(shutil.which(str(path)) or path)
+
+
+def _policy_identity(policy):
+    if type(policy) is Today:
+        return {"kind": "today"}
+    if type(policy) is Fixed:
+        return {"kind": "fixed", "slot": policy.k}
+    if type(policy) is BuiltIn:
+        return {"kind": "builtin", "name": policy.name, "engine": _executable_digest(policy.fabsim)}
+    if type(policy) is Learned:
+        return {"kind": "learned", "checkpoint": policy.checkpoint_sha256}
+    if type(policy) is Written:
+        return {"kind": "written", "source": _digest_path(policy.path), "engine": _executable_digest(policy.fabrule)}
+    # Custom players still run, but cannot reuse scores unless they supply a stable identity.
+    return {"kind": type(policy).__qualname__, "resume_key": getattr(policy, "resume_key", None)}
+
+
 def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, window_days=3.0, defects=None, protocol=None, sources=None):
     """Every contestant on every held-out seed; each against today's rule. `policies` must hold "today". Writes
     runs.tsv (every measure per seed), card.json (each against today) and policies.json (the registry: each policy, its
@@ -289,13 +327,28 @@ def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, win
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     seeds = list(seeds)
+    if len(seeds) < 2 or len(set(seeds)) != len(seeds):
+        raise ValueError("a contest needs at least two distinct seeds")
+    identities = {name: _policy_identity(policy) for name, policy in policies.items()}
+    identity = {"version": 1, "shop": _digest_path(shop), "engine": _executable_digest(fabsim),
+                "scorer": _digest_path(__file__), "environment": _digest_path(Path(__file__).with_name("fabgym_env.py")),
+                "protocol": protocol, "warmup_days": warmup_days, "window_days": window_days,
+                "defects": list(defects) if defects else None, "policies": identities}
     # each run is kept as it lands; a contest started again picks up the runs already done
     done = {}
     prog = out / "progress.jsonl"
+    manifest = out / "resume.json"
+    if prog.exists() and prog.stat().st_size:
+        if not manifest.is_file() or json.loads(manifest.read_text()) != identity:
+            raise ValueError("cannot resume: inputs, protocol, engine or policies differ; use a new output directory")
+        if any("resume_key" in value and value["resume_key"] is None for value in identities.values()):
+            raise ValueError("cannot resume a custom policy without a stable resume_key; use a new output directory")
+    else:
+        manifest.write_text(json.dumps(identity, indent=1, sort_keys=True))
     if prog.exists():
         for line in prog.read_text().splitlines():
             r = json.loads(line)
-            done[(r["contestant"], r["seed"])] = {**r, "picked_other_by_group": {}}
+            done[(r["contestant"], r["seed"])] = r
     runs, failed = {}, {}
     for name, p in policies.items():
         runs[name] = []
@@ -310,7 +363,7 @@ def contest(policies, seeds, out, shop, fabsim=str(FABSIM), warmup_days=1.0, win
                 break
             runs[name].append(r)
             with open(prog, "a") as fh:
-                fh.write(json.dumps({"contestant": name, **{k: v for k, v in r.items() if k != "picked_other_by_group"}}) + "\n")
+                fh.write(json.dumps({"contestant": name, **r}) + "\n")
     if "today" in failed:
         raise RuntimeError("today's rule failed: " + failed["today"])
     for name in failed:

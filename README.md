@@ -83,7 +83,8 @@ import gymnasium as gym
 import agent.fabgym_env                   # registers FabGym-v0 and FabGymDefects-v0
 
 env = gym.make("FabGym-v0")               # seeds 100 to 199 for training; 0 to 9 are kept for scoring
-obs, info = env.reset(seed=0)
+obs, info = env.reset(seed=0)              # reproducible selection from the training seed pool
+# For an exact simulation seed when scoring: env.reset(options={"episode_seed": 0})
 obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 ```
 
@@ -101,6 +102,10 @@ Train PPO and score it against today's rule on held-out seeds, with paired 95% i
 python3 -m agent.rl train   --shop data/smt2020/hvlm --seeds 100..200 --timesteps 2000000 --workers 4 --out runs/ppo
 python3 -m agent.rl contest --shop data/smt2020/hvlm --seeds 0..10 --policy ppo=runs/ppo/policy.zip --out runs/contest
 ```
+
+Repeating a contest resumes its completed seeds only when the saved input and policy fingerprints match.
+Use a new `--out` directory after changing the shop, simulator, policy or scoring settings, and for older
+results that have no `resume.json` manifest.
 
 The bar is high: over 60 settled days, today's rule gets 1,263 wafers a day, and FIFO,
 shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" below). Beating it is open.
