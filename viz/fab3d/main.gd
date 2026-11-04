@@ -1109,7 +1109,7 @@ func _check() -> void:
 			"distance": Vector2(target.x, target.z).distance_to(Vector2(stop["at"].x, stop["at"].z))})
 	var report := {"device_shots": device_shots, "opened": true, "polish": polish, "movie": movie, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge", "cinema": cin,
 			"cells_loaded": campus.loaded.size(), "cells_full": campus.full_ids.size(), "tools_built": campus.tool_nodes.size(),
-			"farthest_loaded_m": far, "cells_total": campus.data["cells"].size(), "cinema_film": cinema.film_path(),
+			"farthest_loaded_m": far, "cells_total": campus.data["cells"].size(), "cinema_film": cinema.film_path(), "cinema_films": cinema.titles,
 			"drone": {"scene": ResourceLoader.exists("res://drone/drone.tscn"), "keys": drone.keys.size(),
 				"seconds": drone.length()},
 			"entrance": {"scene": entrance != null and ResourceLoader.exists("res://entrance/entrance.tscn"),

@@ -24,7 +24,9 @@ BIM = ROOT / "data/layout-real-dd/bim/fab-building.glb"
 PERMIT = ROOT / "data/layout-real-dd/permit-cd/us/boxes.json"
 SHOP = ROOT / "web/data/shop-real.txt"
 POLYHAVEN = Path.home() / "fab-gym-downloads/polyhaven"     # CC0 textures and sky, downloaded 2 Nov (SOURCES.md there)
-FILM = ROOT / "data/film/out/from-sand-to-chip-720p.mp4"
+# the hall's two films (cinema.gd FILMS), converted to Ogg Theora; data/film/out/ holds the cuts, never committed
+FILMS = [(ROOT / "data/film/out/sand-to-chip-v3.mp4", "sand-to-chip-v3.ogv"),
+         (ROOT / "data/film/out/crime-and-punishment.mp4", "crime-and-punishment.ogv")]
 
 
 def stages():
@@ -129,14 +131,18 @@ def main():
             mark.write_text(eq)
         if grey.exists():
             _texture_import(grey, normal=False)
-    film = DATA / "film" / "from-sand-to-chip.ogv"
-    if FILM.exists() and not film.exists():
-        film.parent.mkdir(exist_ok=True)
-        blender = Path.home() / "Applications/Blender.app/Contents/MacOS/Blender"
-        subprocess.run(["nice", "-n", "10", str(blender), "-b", "--factory-startup", "-P", str(PROJ / "film_ogv.py"), "--",
-                        str(FILM), str(film)], check=True, capture_output=True)
+    blender = Path.home() / "Applications/Blender.app/Contents/MacOS/Blender"
+    films = []
+    for src, name in FILMS:
+        film = DATA / "film" / name
+        if src.exists() and not film.exists():
+            film.parent.mkdir(exist_ok=True)
+            subprocess.run(["nice", "-n", "10", str(blender), "-b", "--factory-startup", "-P", str(PROJ / "film_ogv.py"), "--",
+                            str(src), str(film)], check=True, capture_output=True)
+        if film.exists():
+            films.append(name)
     print(f"campus: {len(campus['tools'])} tools in {len(campus['cells'])} cells; "
-          f"{len(list((DATA / 'models').glob('*.glb')))} models; film {'yes' if film.exists() else 'no'}")
+          f"{len(list((DATA / 'models').glob('*.glb')))} models; films {', '.join(films) or 'none'}")
 
 
 if __name__ == "__main__":

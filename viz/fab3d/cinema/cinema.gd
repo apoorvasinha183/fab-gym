@@ -7,14 +7,17 @@ extends Node3D
 
 signal prompt(text: String)
 
-const FILM := "res://data/film/from-sand-to-chip.ogv"
+const FILM := "res://data/film/from-sand-to-chip.ogv"   # the first film, if the new ones are not prepared
+# what the hall shows, picked at the seat with 1 and 2: [title on the screen, Theora file]
+const FILMS := [["SAND TO CHIP", "res://data/film/sand-to-chip-v3.ogv"],
+		["CRIME && PUNISHMENT", "res://data/film/crime-and-punishment.ogv"]]
 const HALL := Rect2(40.3, -121.7, 17.7, 11.4)     # plan x, y, depth, width of the hall (data/cinema/plan.json)
 const REACH := 0.6                                # metres from the spot in front of a seat at which the visitor can sit
 const EYE := 1.15                                 # seated eye height over the tier (the plan's choice)
 # who is in already (made up): plan seat id and a jumper colour
 const PEOPLE := [["R1C6", Color(0.16, 0.22, 0.4)], ["R1C7", Color(0.55, 0.42, 0.2)], ["R6N3", Color(0.42, 0.12, 0.16)],
 		["R2S2", Color(0.15, 0.4, 0.38)]]
-const POSTERS := ["NOW SHOWING\n\nFROM SAND\nTO CHIP", "THE YIELD\n\nNOT EVERY DIE\nMAKES IT",
+const POSTERS := ["NOW SHOWING\n\nSAND\nTO CHIP", "NOW SHOWING\n\nCRIME &&\nPUNISHMENT",
 		"LOU LATENCY\nIN\n\nCACHE ME\nIF YOU CAN", "WAFER THIN\n\nA LOVE STORY\nAT 2 NM"]
 const Looks := preload("res://looks.gd")
 const FONT := preload("res://ui/fonts/kenpixel.ttf")
@@ -35,6 +38,8 @@ var _seat_id := ""
 var _near := ""
 var _said := "-"
 var _hint_seconds := 0.0
+var film := 0                     # which of FILMS is on the screen
+var titles := []                  # the titles of the films this build holds
 var staff_scene: PackedScene = preload("res://staff/staff.tscn")
 @onready var vp: SubViewport = $vp
 @onready var video: VideoStreamPlayer = $vp/video
@@ -52,8 +57,13 @@ func _ready() -> void:
 	Looks.dress($model, {
 		"cinema_lobby_floor": lobby,
 		"cinema_paving": Looks.pbr("concrete_pavement", 2.5, Color.WHITE, 0.0, "diff", true)})
-	if ResourceLoader.exists(FILM):
+	for f in FILMS:
+		if ResourceLoader.exists(f[1]):
+			titles.append(f[0])
+	if titles.is_empty() and ResourceLoader.exists(FILM):
 		video.stream = load(FILM)
+	else:
+		pick(0)
 	video.finished.connect(_on_finished)
 	var screen := _find(self, "screen")
 	if screen:
@@ -220,6 +230,23 @@ func _poster(p: Dictionary, text: String) -> void:
 	add_child(l)
 
 
+func pick(i: int) -> void:
+	# a seated visitor picks a film: it starts again from the top
+	var have := FILMS.filter(func(f): return ResourceLoader.exists(f[1]))
+	if i < 0 or i >= have.size():
+		return
+	film = i
+	video.stop()
+	video.stream = load(have[i][1])
+	started = false
+	user_paused = false
+	if card:
+		card.visible = true
+		$vp/card/lines/now.text = "NOW SHOWING"
+		$vp/card/lines/title.text = have[i][0]
+		$vp/card/lines/how.text = "TAKE A SEAT, THEN PRESS ENTER"
+
+
 func film_path() -> String:
 	return video.stream.resource_path if video and video.stream else ""
 
@@ -347,7 +374,11 @@ func _input(e: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 	elif viewer.get("seated"):
-		if k in [KEY_ENTER, KEY_KP_ENTER]:
+		if k in [KEY_1, KEY_KP_1] and titles.size() > 1:
+			pick(0)
+		elif k in [KEY_2, KEY_KP_2] and titles.size() > 1:
+			pick(1)
+		elif k in [KEY_ENTER, KEY_KP_ENTER]:
 			play()
 			fullscreen(true)
 		elif k == KEY_SPACE and started:
@@ -379,6 +410,8 @@ func _process(dt: float) -> void:
 	if viewer.get("seated"):
 		if not started or user_paused:
 			text = "ENTER  PLAY THE FILM      E  STAND UP"
+			if titles.size() > 1:
+				text = "1  %s     2  %s     ENTER  PLAY     E  STAND UP" % titles
 		else:
 			text = "ENTER  FULL SCREEN      SPACE  PAUSE      E  STAND UP"
 	elif inside:

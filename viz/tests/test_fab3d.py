@@ -145,7 +145,9 @@ class Headless(unittest.TestCase):
         self.assertLess(R["cells_loaded"], R["cells_total"])
 
     def test_f6_the_cinema_holds_the_film(self):
-        self.assertTrue(R["cinema_film"].endswith("from-sand-to-chip.ogv"), R["cinema_film"])
+        # two films in the hall, picked at the seat with 1 and 2; the first is showing until a visitor picks
+        self.assertTrue(R["cinema_film"].endswith(("sand-to-chip-v3.ogv", "from-sand-to-chip.ogv")), R["cinema_film"])
+        self.assertEqual(R.get("cinema_films"), ["SAND TO CHIP", "CRIME && PUNISHMENT"], R.get("cinema_films"))
 
     def test_f11_the_cinema_floor_follows_the_built_steps(self):
         # the visitor's floor is read from the built model (data/cinema/built.json), so the camera never sinks

@@ -7,6 +7,87 @@
 
 A simulated wafer fab you can ask questions, and a fair way to check the answers. On the **SMT2020 testbed**, a published set of a fab's tool groups, routes and times: 1,043 machines, 105 groups, routes of 583 and 343 steps. No real fab's data.
 
+## Run it: three ways
+
+| Way | What you get | You need |
+| --- | --- | --- |
+| **In your browser** | The live Floor (all 1,043 machines simulated in the page), Evidence, Runs, the glossary | Nothing: [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/) |
+| **On your computer** | Everything: Build's challenges scored, the ask bar, Race the AI, Lou's Meta brain, the 3D fab | Git, Rust, Python 3.12+, Node.js 18+ |
+| **Headless** | The simulator, the scorer and the agent loop from the command line, no browser | Git, Rust, Python 3.12+ |
+
+Meta's models are **bring your own key**: with no key everything runs, with recorded answers where a model would
+speak; with your key the models answer live (see [Meta's models](#metas-models-bring-your-own-key)).
+
+### On your computer: Mac, Linux or Windows
+
+On Windows, run these in Git Bash or WSL (the web build is a shell script).
+
+```sh
+git clone https://github.com/apoorvasinha183/fab-gym && cd fab-gym
+rustup target add wasm32-unknown-unknown   # once (Rust from https://rustup.rs)
+cargo build --release                      # the simulator and its tools (about 2 minutes)
+sh web/build.sh                            # the browser simulator and the pages' data
+python3 -m agent.helper --port 8766        # leave this running; add --preset open for Muse Spark Open
+```
+
+Then open **http://127.0.0.1:8766**: the Desk, the Floor, Build (all four challenges scored as you draw), Evidence and
+Runs. The SMT2020 testbed's files are in the repo (`data/smt2020/hvlm`, MIT licence), so nothing else is downloaded.
+
+### Headless: no browser
+
+After `cargo build --release`:
+
+```sh
+# how fast: 30 simulated days, 5 seeds, on one core (about 0.03 s a simulated day)
+./target/release/fabsim bench data/smt2020/hvlm --days 30 --seeds 5
+
+# a what-if, scored: candidates against today's rule on 10 paired seeds, every measure with a 95% interval (JSON)
+./target/release/fabsim score agent/examples/group79.scenario.txt data/smt2020/hvlm
+
+# one simulated day's event log, the receipt the Lean referee checks (web/data/shop.txt comes from sh web/build.sh)
+./target/release/fabsim log web/data/shop.txt 0 1440 > day1.log
+
+# the agent loop (needs a key, spends a little): Muse Spark Open writes dispatch rules in Rust, sandboxed and scored
+python3 -m agent.fabgym_agent run --question "Polishing is the bottleneck. What rule should pick the next lot?" \
+    --smt2020 data/smt2020/hvlm --out runs/q1 \
+    --model meta-models/muse-spark-open-1026 --base-url https://inference.baseten.co/v1 --key-file ~/.config/fab-gym/baseten.key
+python3 -m agent.fabgym_agent sign runs/q1/card.json --name "Operations head"
+```
+
+### Meta's models: bring your own key
+
+Put a key in `~/.config/fab-gym/` (it never leaves your machine except to the model's own API):
+
+| File | Model | Used by |
+| --- | --- | --- |
+| `meta.key` | Muse Spark, Muse Wonder and Muse Image (Meta Model API) | the helper's default preset: the ask bar, Race the AI, the napkin sketch |
+| `baseten.key` | Muse Spark Open, the open-weights model, on Baseten | `--preset open`, Lou's brain in the 3D fab, the agent loop |
+
+Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed. In the browser version the
+model features show recorded answers; for live ones, run it on your computer.
+
+### The 3D fab: walk it with Lou
+
+Download the app from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) (macOS `.zip`,
+Windows `.exe`) and start the helper first; the app reads its live run from it.
+
+- **macOS:** the app is not signed: right-click it, choose **Open**, then **Open** again.
+- **Windows:** SmartScreen may warn about an unknown publisher: **More info**, then **Run anyway**.
+- **Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold
+  the right mouse button to look; click a tool for its card; **Ask Lou** to ask and be walked there. In the cinema, sit
+  with **E**, pick a film with **1** or **2**, and press **Enter**.
+
+Building the 3D fab from source needs assets that are not in git (the generated layout, CC0 models and textures; see
+`docs/ASSETS.md` and `viz/fab3d/README.md`).
+
+### For tinkerers
+
+```sh
+# SHOP is a fab file, such as web/data/shop.txt
+./target/release/fabsim fab-export SHOP > my.fab.txt              # a campus with drawn rails, as one fab file (docs/FAB-FILE.md)
+./target/release/fabsim log SHOP 0 1440 --overrides my.json      # a run with your own failures and recoveries (docs/OVERRIDES.md)
+```
+
 ## A puzzle to start
 
 A polishing machine just finished a job. Five lots are waiting for it.
@@ -162,64 +243,6 @@ The **Evidence** page leads with four findings in plain words, each with how sur
 
 A discrete-event simulator in Rust that reproduces the reference engine's event log bit for bit, about 0.03 s per simulated day on one laptop core; overhead vehicles on the building's drawn rails; a WebAssembly sandbox with no imports, 64 MiB and a fuel limit per decision; and a design for running beside a real fab's MES and dispatcher (`docs/SYSTEM-DESIGN.md`).
 </details>
-
-## Play it, or run it yourself
-
-### In your browser: nothing to install
-
-**[apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/)**: the live Floor (all
-1,043 machines simulated in your browser, a new run each visit), Evidence, Runs and the glossary, on any computer. Build's
-challenges, the ask bar and Lou's Meta brain need the helper below.
-
-### On your computer: Mac, Linux or Windows
-
-You need Git, [Rust](https://rustup.rs) with the WebAssembly target, Python 3.12 or newer (standard library only) and
-Node.js 18 or newer. On Windows, run the commands in Git Bash or WSL (the web build is a shell script).
-
-```sh
-git clone https://github.com/apoorvasinha183/fab-gym && cd fab-gym
-rustup target add wasm32-unknown-unknown   # once
-cargo build --release                      # the simulator and its tools (about 2 minutes)
-sh web/build.sh                            # the browser simulator and the pages' data
-python3 -m agent.helper --port 8766        # leave this running
-```
-
-Then open **http://127.0.0.1:8766**: the Desk, the Floor, Build (all four challenges scored as you draw), Evidence and
-Runs. The SMT2020 testbed's files are in the repo (`data/smt2020/hvlm`, MIT licence), so nothing else is downloaded.
-
-### Meta's models: optional
-
-Without a key, everything still runs: the ask bar answers its recorded example questions, Race the AI replays a
-recorded game, and every number comes from the simulator. To ask the models live, put a key in `~/.config/fab-gym/`:
-
-| File | Model | How |
-| --- | --- | --- |
-| `meta.key` | Muse Spark, Muse Wonder and Muse Image (Meta Model API) | the default |
-| `baseten.key` | Muse Spark Open, the open-weights model, on Baseten; also Lou's brain in the 3D fab | `--preset open` |
-
-Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed.
-
-### The 3D fab: walk it with Lou
-
-Download the app for your computer from the
-[latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) (macOS `.zip`, Windows `.exe`). Start the
-helper first (above); the app reads its live run from it.
-
-- **macOS:** the app is not signed: right-click it, choose **Open**, then **Open** again.
-- **Windows:** SmartScreen may warn about an unknown publisher: **More info**, then **Run anyway**.
-- **Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold the
-  right mouse button to look; click a tool for its card; **Ask Lou** to ask a question and be walked there. In the
-  cinema, walk to a seat and press **E**.
-
-Building the 3D fab from source needs assets that are not in git (the generated layout, CC0 models and textures; see
-`docs/ASSETS.md` and `viz/fab3d/README.md`).
-
-### For tinkerers
-
-```sh
-fabsim fab-export SHOP > my.fab.txt        # a campus with drawn rails, as one fab file (docs/FAB-FILE.md)
-fabsim log SHOP SEED --overrides my.json   # a run with your own failures and recoveries (docs/OVERRIDES.md)
-```
 
 ## Map of the repo
 
