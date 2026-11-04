@@ -36,7 +36,7 @@ Useful starts (after `--`):
 | `--perf FILE` | timed tour for the 60 fps bar (F8) |
 | `--shots DIR --shot-times 6,14` | stills at those seconds |
 | `--clearance FILE` | the camera's lowest height over the cinema floor |
-| `--film` | the recorded tour (faster, fixed shots) |
+| `--film` | the recorded tour; seats the viewer, plays the whole movie, then exits |
 | `--sweep`, `--corridor` | fixed camera moves for measuring shimmer |
 
 Recording a video: `--write-movie OUT.avi --fixed-fps 30` before the `--`, with `--always-on-top` (macOS does not draw
@@ -46,6 +46,7 @@ a hidden window).
 
 - **Space** or click the text window: next line
 - **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold the **right mouse button** to look
+- **Esc** closes a question or tool card and releases mouse look. Typing a question suspends walking and flight controls.
 - Click a tool for its card. Use **Ask Lou** to type or speak a question. **Walk alone** ends the tour.
 - Cinema: walk up to a free seat and press **E** to sit. Seated, press **Enter** to play the film full screen, **Esc**
   to return to the hall, **Space** to pause, and **E** to stand up.
@@ -96,19 +97,32 @@ python3 viz/fab3d/prep.py
 python3 -m unittest viz.tests.test_fab3d viz.tests.test_cinema agent.tests.test_fab3d
 ```
 
-The Godot tests read `data/fab3d/check.json`, or run Godot themselves when `GODOT` names it. All 41 pass as of
-3 Nov ("Nothing walks through anything"). The 60 fps bar (F8, 99th-percentile frame at most 16.7 ms on the M1 Air)
-was last met before the cinema and collision work and needs a fresh `--perf` run.
+The Godot tests read `data/fab3d/check.json`, or run Godot themselves when `GODOT` names it. There are now 45 checks, including entrance floor levels, seat approach/standing and typing focus.
+The performance check reads `data/fab3d/perf.json`; it must be refreshed separately from the headless checks.
 
 ## Known gaps
 
-- 60 fps not re-measured since the cinema and collision.
+- The fresh 1080p entrance measurement misses the 60 fps bar: median 18.06 ms, p99 26.19 ms, 99.97% drawn (3 Nov).
 - The cinema's exit stair does not meet its rear exit door (off the tour).
-- The fab's `floor_at` treats the entrance block (x -6 to 0) as clean floor; the tour uses its own heights there, but
-  a visitor walking freely in the pavilion stands at the wrong height.
 - The browser export is not built yet.
 
 ## Rules for this repo
 
 No trademarks in code, docs, tests or commit messages. Ask the founder before any
 download or anything public. One heavy job at a time, niced. Keep the helper on 8766 running.
+
+## Polish pass, 3 November
+
+The follow camera sweeps a small volume around the lens to catch wall corners, with frame-independent position easing.
+Entrance ground and upper levels are distinguished; the lift floor follows the car. Camera trails reset at tour teleports.
+Cinema posters fit their frames, lobby surfaces have restrained material detail, and grazing-angle texture filtering is increased.
+Standing returns to the approach in front of the seat; seats cannot be selected from outside the hall or another level.
+Full-screen film playback locks world controls. Cinema-only starts show the correct two-stop total.
+
+Movie mode waits until the viewer is seated, holds the hall view for two seconds, then starts the complete film in full screen.
+It exits two seconds after the film finishes, instead of cutting it off after 14 seconds. During full-screen playback the
+hidden 3D world is not drawn. Space pauses/resumes with a visible paused hint; E stands up, and Esc returns to the hall.
+The pointer hides while the movie is full screen and returns afterwards. A missing film keeps the visitor in the hall.
+
+Validation: 44 functional tests pass; F8 fails against the fresh performance report. Disabling ambient occlusion improved the
+entrance sample to median 16.67 ms / p99 23.61 ms, still short of F8, so the default retains its existing lighting.

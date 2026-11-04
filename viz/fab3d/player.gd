@@ -17,14 +17,19 @@ var lift: Array = []          # the lift's box [x0, y0, z0, x1, y1, z1] in plan 
 var cinema: Dictionary = {}
 var cin_floor: Dictionary = {}  # the cinema's floor map, cast down onto the built model (data/cinema-built.json)
 var _cm := PackedInt32Array()
+var lift_car: Node3D
+var input_locked := false
 var seated := false             # in a cinema seat: the camera stays at the seat's eye point, the mouse still looks
 var seat_eye := Vector3.ZERO
+var _dir_x := 1.0              # which way along the fab the guide is walking (+1 east, -1 west), so the camera stays behind him
 var _trail: Array = []          # where the guide has walked lately, newest last; the camera keeps to his path
+var _camera_body := SphereShape3D.new()
 var _body := CapsuleShape3D.new()
 const KNEE := 0.5               # the body clears anything lower than this over the floor (steps, tiers, seat pans)
 
 
 func _init() -> void:
+	_camera_body.radius = 0.18
 	_body.radius = 0.2
 	_body.height = 1.2
 
@@ -118,10 +123,17 @@ func stand() -> void:
 	_trail.clear()
 
 
-func floor_at(x: float, y: float) -> float:
+func floor_at(x: float, y: float, eye_y: float = NAN) -> float:
 	# plan point to the floor height: the clean floor inside a fab building, the cinema's steps, aisles and ramp, the
 	# ground outside
 	if in_fab(x, y):
+		# The entrance block has two floors at the same plan point. Keep the visitor
+		# on their current level; the car supplies its actual moving floor in the shaft.
+		if not lift.is_empty() and x >= float(lift[0]) and x <= float(lift[3]) and y >= float(lift[1]) and y <= float(lift[4]) and is_instance_valid(lift_car):
+			return lift_car.position.y + 0.1
+		if x < 0.0:
+			var level_y := global_position.y if is_nan(eye_y) else eye_y
+			return clean_z if level_y > clean_z * 0.5 else 0.1
 		return clean_z
 	if in_cinema(x, y):
 		# the top of the built floor under the point (steps, aisles, ramp, stair, projection room)
@@ -162,13 +174,27 @@ func place(plan_x: float, plan_y: float, facing: float = 0.0) -> void:
 	yaw = facing
 
 
+func controls_blocked() -> bool:
+	var focus := get_viewport().gui_get_focus_owner()
+	return input_locked or focus is LineEdit or focus is TextEdit
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
 func _unhandled_input(e: InputEvent) -> void:
+	if controls_blocked():
+		return
+	if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if e.pressed else Input.MOUSE_MODE_VISIBLE
 	elif e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		yaw -= e.relative.x * 0.0025
 		pitch = clampf(pitch - e.relative.y * 0.0025, -1.45, 1.45)
-	elif e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F and roaming:
+	elif e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F and roaming and not seated:
 		fly = not fly
 
 
@@ -190,6 +216,9 @@ func _process(dt: float) -> void:
 			_trail.append(g)
 			if _trail.size() > 80:
 				_trail.pop_front()
+		var device: Dictionary = {}
+		if follow.get("mode") == "talk" and st is Array and int(k) < st.size():
+			device = st[int(k)].get("device", {})
 		var back := follow.global_transform.basis.z.normalized()
 		var want := follow.global_position + back * -4.5 + Vector3(0, 2.6, 0)
 		var in_lift := not lift.is_empty() and g.x > float(lift[0]) and g.x < float(lift[3]) and -g.z > float(lift[1]) and -g.z < float(lift[4])
@@ -212,24 +241,36 @@ func _process(dt: float) -> void:
 			# doors he went through)
 			want = _trail_point(2.6) + Vector3(0, 1.6, 0)
 		elif in_fab(g.x, -g.z):
-			# inside a fab: stand on the spine's middle line, a few metres back along it, above the tools
-			want = Vector3(g.x - 7.0, g.y + 1.75, 0.0)
-		global_position = global_position.lerp(want, clampf(dt * 2.0, 0.0, 1.0))
-		# nothing solid between his head and the camera: if a wall is in the way, come in front of it
+			# inside a fab: stand on the spine's middle line, a few metres back along it (behind him, whichever way he
+			# walks; it flips only once he has clearly turned), above the tools
+			var dx := g.x - _trail_point(4.0).x
+			if absf(dx) > 2.5:
+				_dir_x = signf(dx)
+			want = Vector3(g.x - 7.0 * _dir_x, g.y + 1.75, 0.0)
+		if not device.is_empty():
+			# Stay in the clear spine and turn into the bay while Lou explains its device.
+			want = Vector3(g.x, g.y + 1.8, 0.0)
+		var candidate := global_position.lerp(want, 1.0 - exp(-dt * 2.0))
+		# Set height first, then sweep a small volume: a ray misses near-plane corners.
+		candidate.y = maxf(candidate.y, floor_at(candidate.x, -candidate.z, g.y + 1.65) + 1.3)
 		var head := g + Vector3(0, 1.5, 0)
-		var ray := PhysicsRayQueryParameters3D.create(head, global_position)
-		var hit := get_world_3d().direct_space_state.intersect_ray(ray)
-		if not hit.is_empty():
-			global_position = hit["position"] + (head - hit["position"]).normalized() * 0.3
-		# never below eye height over whatever floor is under the camera (steps, the ramp, the stadium)
-		global_position.y = maxf(global_position.y, floor_at(global_position.x, -global_position.z) + 1.3)
+		var probe := PhysicsShapeQueryParameters3D.new()
+		probe.shape = _camera_body
+		probe.transform = Transform3D(Basis(), head)
+		probe.motion = candidate - head
+		var fraction := get_world_3d().direct_space_state.cast_motion(probe)[0]
+		global_position = head.lerp(candidate, maxf(0.0, fraction - 0.01) if fraction < 1.0 else 1.0)
 		var look := follow.global_position + Vector3(0, 1.6, 0) - back * -6.0
+		if in_fab(g.x, -g.z):
+			look = Vector3(g.x + 6.0 * _dir_x, g.y + 1.6, g.z)     # down the spine the way he walks, not swinging at corners
+		if not device.is_empty():
+			look = device["target"]
 		var d := look - global_position
 		yaw = lerp_angle(yaw, atan2(-d.x, -d.z), clampf(dt * 3.0, 0.0, 1.0))
 		pitch = lerpf(pitch, atan2(d.y, Vector2(d.x, d.z).length()), clampf(dt * 3.0, 0.0, 1.0))
 	elif seated:
 		global_position = seat_eye
-	elif roaming:
+	elif roaming and not controls_blocked():
 		var dir := Vector3.ZERO
 		var bz := Basis(Vector3.UP, yaw)
 		if Input.is_key_pressed(KEY_W):

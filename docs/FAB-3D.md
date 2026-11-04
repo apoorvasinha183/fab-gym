@@ -254,3 +254,57 @@ After the founder's play-through, 3 Nov:
   off the hall's doorway, lit posters on plinths, stepped aisles with their half-steps, a floor map cast from the built
   model so the camera never sinks into a step; the visitor walks to a free seat, presses E to sit, Enter to play the
   film full screen (Esc back, Space pause); four people already seated (made up).
+
+
+3 Nov, demo polish:
+
+- The follow camera sweeps an 18 cm sphere instead of a single ray, sets its floor clearance before the collision check,
+  and eases position exponentially. Teleports clear its old path. Cinema route render: minimum camera clearance 1.54 m.
+- Entrance floor queries distinguish the ground and upper levels and read the moving lift car. Typing questions blocks
+  walking and flight; Esc dismisses the question/card and releases mouse look; losing application focus releases the mouse.
+- Standing leaves the chair at its approach point. Seat selection checks hall bounds and height; a stale seat clears on exit.
+  Full-screen playback locks world input. Cinema-only starts count only their two stops.
+- Poster lettering fits the actual frames. The lobby uses pale stone with subtle normal detail, the paving uses the existing
+  concrete texture, ground normal strength is reduced, and anisotropic filtering is increased. No assets downloaded.
+- Three added regression tests pass along with the existing functional checks and all 48 guide legs remain clear. A fresh
+  3,600-frame entrance run at 1920x1080 on the M1 measured median 18.06 ms, p99 26.19 ms, 99.97% drawn: F8 is not met.
+  This is an entrance sample, not evidence of performance across the whole campus. The rear exit stair and browser export remain open.
+
+- Movie follow-up (founder's request): the 164-second film no longer starts before seating or gets cut off by a 14-second
+  quit timer. The recorded sequence establishes the seated view for two seconds, starts the film full screen from its opening,
+  and exits only two seconds after natural completion. The pointer hides, world controls lock, and the hidden 3D draw stops
+  until the viewer returns. Pause/resume, Esc, standing, missing-film handling, and restoring the world have a regression test.
+- Ambient-occlusion comparison: median 16.67 ms / p99 23.61 ms without it, still failing F8. Existing lighting retained.
+  The fresh failing result replaces the old passing performance report; its previous version is kept locally as perf-before-polish.json.
+
+- Final validation: the complete 164-second cinema movie reached its natural end and recorded mode exited cleanly.
+  All 44 functional checks pass on the final code, including movie controls and world-draw restoration; F8 alone fails
+  at p99 26.19 ms. Rendered checks cover the exterior, cleanroom, cinema lobby/hall and full-screen movie transition.
+
+## F11: Lou's Meta brain (4 Nov, by quiz: Muse Spark Open on Baseten)
+
+Written before the code. Lou answers what a visitor types, from the live run, and takes them where the answer is.
+Muse Spark Open (`meta-models/muse-spark-open-1026` on Baseten) decides; the helper checks before Lou speaks; the
+simulator supplies every number. From the SMT2020 testbed; not a real fab.
+
+- **F11a Facts.** For a run at minute t the helper gives the model what the fab looks like then: the clock, the run's
+  wafers a day and cycle days, the eight longest queues (group, its area's name, lots waiting, tools working, idle
+  and down), the visitor's area with its groups, the areas Lou can walk to and the terms he can explain. Every
+  number Lou may say is in the facts or the question.
+- **F11b One reply, checked.** The model answers with JSON: `say` (what Lou says, at most 70 words), `walk_to` (an
+  area id or null), `explain` (a glossary term, or null) and `try` (null, or a change to one group: `spare_tool`
+  or `no_breakdowns`). A reply whose `say` holds a number that is not in the facts or the question, or whose
+  `walk_to`, `explain` or `try` names something that does not exist, goes back once with the reasons. A second
+  wrong reply is not used: Lou falls back to the rule-based answers of F7, and the reply says why.
+- **F11c Try a change.** A `try` runs the same seed and the same day with that one change (docs/OVERRIDES.md). Lou's
+  card quotes only the simulator's numbers, before and after: wafers a day, the worst queue, and the group's queue at
+  the visitor's minute.
+- **F11d Spend.** Lou's calls are counted under a cap of their own ($3) inside the helper's total; with no key, or
+  the cap spent, Lou uses the rule-based answers and says so once.
+- **F11e The scene.** While the model thinks, the dialogue window says "Lou is thinking (Muse Spark Open)" and so
+  does the label over his head. Lou says the `say` line. A `walk_to` sends him to that area's sign nearest the
+  visitor, along the planned path and through the bridge's doorways when the area is in the other phase, with the
+  visitor following; on arrival he gives the area's live line. Off the clean floor both are placed there, as with
+  "show me". A `try` or an `explain` shows its card; the label over his head names the model and its seconds. The
+  recorded tour (`--film`) keeps its scripted answer unless `--lou` is given; `--no-lou` turns the brain off;
+  `--lou-ask QUESTION` asks once, four seconds into the tour, takes stills and quits (the check).

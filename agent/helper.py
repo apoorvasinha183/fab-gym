@@ -21,7 +21,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from agent import ask, bar_route, fab3d, glossary_ask, spend
+from agent import ask, bar_route, fab3d, glossary_ask, lou, spend
 from agent.fabgym_agent import DEFAULT_KEY, HttpModel
 from agent import poster, race, sketch
 
@@ -121,6 +121,10 @@ class Helper:
         self.fab3d_runs = {}
         self._fab3d_cells = None
         self.voice_meter = spend.Meter({}, cap_usd=2.0, path=self.jobs_dir.parent / "spend-voice.json")
+        # Lou's Meta brain (docs/FAB-3D.md, F11): Muse Spark Open on Baseten, its own cap inside the total
+        self.lou_meter = spend.Meter(spend.price("baseten", lou.MODEL), cap_usd=3.0, path=self.jobs_dir.parent / "spend-lou.json")
+        self.lou_key_file = NO_KEY if no_model else Path(PRESETS["open"]["key_file"]).expanduser()
+        self._lou_campus = None
 
     def __repr__(self):
         return f"Helper(web={str(self.web)!r}, model={self.model_name!r}, key_file={str(self.key_file)!r})"
@@ -571,10 +575,66 @@ class Helper:
             return rr[0] if rr else e
 
         run = fab3d.Run(r[0], building, cell_map, replay, minutes=days * 1440.0)
+        run.seed, run.days, run.overrides, run.shop = seed, days, overrides, shop   # for Lou's what-ifs (F11c)
         rid = hashlib.sha256(json.dumps([seed, days, overrides], sort_keys=True).encode()).hexdigest()[:12]
         self.fab3d_runs[rid] = run
         return {"run": rid, "minutes": run.minutes, "frames": len(run.frames), "score": r[0].get("score"), "seconds": r[2],
                 "cells": len(cell_map["cells"]), "cell_size": cell_map["size"]}
+
+    def lou_ask(self, body):
+        """Lou's Meta brain (docs/FAB-3D.md, F11): the question and the visitor's place in, what Lou says and does out,
+        checked against the run before he says it; a change he tries is run by the simulator on the same seed."""
+        q = " ".join(str(body.get("question") or "").split())
+        base = {"model": lou.MODEL, "cap_usd": self.lou_meter.cap_usd}
+        if not 2 <= len(q) <= 300:
+            return {"error": "Ask Lou in a few words, at most 300 letters.", "fallback": True, **base}
+        run = self.fab3d_runs.get(str(body.get("run")))
+        stand = self.stand_in / "lou.json" if self.stand_in else None
+        if stand is None or not stand.is_file():
+            if not self.lou_key_file.is_file():
+                return {"fallback": True, "message": "Lou's Meta brain is off (no model key), so he answers from the floor's own rules.", **base}
+            if self.lou_meter.usd >= self.lou_meter.cap_usd or self.spent_total() >= self.total_cap:
+                return {"fallback": True, "message": f"Lou's ${self.lou_meter.cap_usd:g} budget is spent, so he answers from the floor's own rules.", **base}
+        if run is None:
+            return {"fallback": True, "message": "No run yet: start one with /api/fab3d/run.", **base}
+        if self._lou_campus is None:
+            self._lou_campus = lou.load_campus(ROOT / "viz" / "fab3d" / "data" / "campus.json")
+        campus = self._lou_campus
+        terms = [x["term"] for x in self._glossary_terms()]
+        t = float(body.get("t", 0))
+        f = lou.facts(run.moods, t, campus, near_area=body.get("near_area") or None, terms=terms)
+        ctx = lou.Context(areas=campus["areas"], terms=terms, groups=set(run.moods["group_names"]))
+        t0 = time.time()
+        before = self.lou_meter.usd
+        if stand is not None and stand.is_file():
+            replies = iter(json.loads(stand.read_text())["replies"])
+            complete = lambda messages: next(replies)  # noqa: E731 - a recorded stand-in
+            model = "stand-in"
+        else:
+            m = HttpModel(PRESETS["open"]["base_url"], lou.MODEL, key_file=self.lou_key_file, max_tokens=4000, temperature=0.3,
+                          meter=self.lou_meter, timeout=120)
+            complete, model = m.complete, lou.MODEL
+        try:
+            r = lou.ask(q, f, complete, ctx)
+        except Exception as e:  # noqa: BLE001 - Lou falls back and the reply says why
+            return {"fallback": True, "message": f"Muse Spark Open did not answer: {str(e)[:200]}", **base}
+        out = {**base, **r, "model": model, "seconds": round(time.time() - t0, 2)}
+        if r.get("explain"):
+            out["explain_entry"] = next((x for x in self._glossary_terms() if x["term"] == r["explain"]), None)
+        tr = r.get("try")
+        if r["ok"] and tr:
+            ov = lou.overrides_for(tr["change"], tr["group"])
+            rr, err = self._fab3d_cmd(run.shop, ov, ["moods", str(run.seed), "--until", str(run.days * 1440.0), "--every", str(fab3d.EVERY)])
+            if err:
+                out["try_result"] = {"error": err.get("error", "the simulator did not run")}
+            else:
+                out["try_result"] = {"change": tr["change"], "what": lou.CHANGES[tr["change"]], "group": tr["group"], "seed": run.seed,
+                                     "days": run.days, "before": lou.side(run.moods, t, tr["group"]), "after": lou.side(rr[0], t, tr["group"]),
+                                     "about": "Same seed and day, one change; the simulator's numbers. SMT2020 testbed, not a real fab."}
+                out["try_result"]["line"] = lou.verdict(out["try_result"]["before"], out["try_result"]["after"])
+        out["cost_usd"] = round(self.lou_meter.usd - before, 6)
+        out["spent_usd"] = round(self.lou_meter.usd, 6)
+        return out
 
     def fab3d_state(self, body):
         run = self.fab3d_runs.get(str(body.get("run")))
@@ -625,7 +685,8 @@ class Helper:
 
     # ---------------------------------------------------------------- Meta's models in the 2D gym (docs/RACE-AI.md)
     def spent_total(self):
-        return self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd + self.glossary_meter.usd + self.voice_meter.usd
+        return (self.meter.usd + self.race_meter.usd + self.poster_meter.usd + self.sketch_meter.usd + self.glossary_meter.usd
+                + self.voice_meter.usd + self.lou_meter.usd)
 
     def race_step(self, body):
         """One move of Race the AI: the page's game so far in, Muse Wonder's next message out, with its cost."""
@@ -890,6 +951,8 @@ def serve(h, port=8766):
                 r = h.fab3d_run(body)
             elif self.path == "/api/fab3d/state":
                 r = h.fab3d_state(body)
+            elif self.path == "/api/lou/ask":
+                r = h.lou_ask(body)
             elif self.path == "/api/voice":
                 r = h.voice(body)
             elif self.path == "/api/fab/replay":

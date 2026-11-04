@@ -94,6 +94,44 @@ R = report()
 
 @unittest.skipIf(R is None, "no Godot here and no check report")
 class Headless(unittest.TestCase):
+    def test_polish_entrance_keeps_ground_and_upper_levels_separate(self):
+        p = R["polish"]
+        self.assertAlmostEqual(p["ground_entry"], 0.1)
+        self.assertAlmostEqual(p["upper_entry"], 7.5)
+        self.assertAlmostEqual(p["cleanroom"], 7.5)
+
+    def test_polish_standing_returns_to_the_seat_approach(self):
+        p = R["polish"]
+        self.assertFalse(p["still_seated"])
+        self.assertLess(p["stand_error"], 0.01)
+        self.assertEqual(p["seat_outside_hall"], "")
+        self.assertEqual(p["seat_wrong_level"], "")
+
+    def test_movie_controls_pause_resume_and_return_to_the_hall(self):
+        m = R["movie"]
+        self.assertTrue(m["paused"])
+        self.assertTrue(m["resumed"])
+        self.assertTrue(m["returned_to_hall"])
+        self.assertTrue(m["world_locked_during_movie"])
+        self.assertTrue(m["world_draw_suspended"])
+        self.assertTrue(m["world_draw_restored"])
+        self.assertTrue(m["stood_from_fullscreen"])
+        self.assertFalse(m["world_locked_after_movie"])
+        self.assertTrue(m["missing_movie_stays_in_hall"])
+        self.assertFalse(m["replay_keeps_old_pause"])
+
+    def test_explanations_focus_a_device_in_the_correct_area_and_phase(self):
+        shots = R["device_shots"]
+        self.assertGreater(len(shots), 10)
+        for shot in shots:
+            self.assertEqual(shot["area"], shot["tool_area"])
+            self.assertEqual(shot["phase"], shot["tool_phase"])
+            self.assertTrue(shot["same_side"])
+            self.assertLess(shot["distance"], 45.0)
+
+    def test_polish_typing_does_not_toggle_flight(self):
+        self.assertFalse(R["polish"]["typing_toggled_flight"])
+
     def test_f6_the_scene_opens_with_everything_saved(self):
         self.assertTrue(R["opened"])
         self.assertEqual(sorted(R["kinds"]), sorted(KINDS))

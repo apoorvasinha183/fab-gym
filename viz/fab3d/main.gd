@@ -45,6 +45,11 @@ var near_vehicle := false      # shots framed on one vehicle (one lowering its p
 var _watched := -1
 var _clear_out := ""           # --clearance FILE: the camera's lowest height over the cinema's floor
 var _clear_min := 1e9
+var lou_brain := true          # Lou answers with Muse Spark Open (docs/FAB-3D.md, F11); --no-lou keeps the floor's own rules
+var _lou_waiting := false
+var _lou_q := ""
+var _lou_walk_was := -1.0      # the guide's walking speed before Lou set off briskly
+var _lou_ask := ""             # --lou-ask QUESTION: asked a few seconds into the tour, for checking
 
 
 func _ready() -> void:
@@ -68,6 +73,10 @@ func _ready() -> void:
 	if "--taa" in args:
 		get_viewport().use_taa = true
 	soft_facade = "--soft-facade" in args
+	# the film keeps its scripted answer unless --lou asks the brain
+	lou_brain = not ("--no-lou" in args) and (not film or "--lou" in args)
+	if "--lou-ask" in args:
+		_lou_ask = args[args.find("--lou-ask") + 1]
 	guide.trace = "--trace-walk" in args
 	if "--no-ui" in args:
 		ui.visible = false               # clean stills, for designing the screen over them
@@ -83,7 +92,11 @@ func _ready() -> void:
 	cinema.guide = guide
 	player.setup(campus.data)
 	cinema.setup(campus.data.get("cinema", {}))
-	cinema.autoplay = film
+	cinema.autoplay = false
+	if film:
+		cinema.video.finished.connect(func() -> void:
+			print("fab3d: recorded movie finished naturally")
+			get_tree().create_timer(2.0).timeout.connect(func() -> void: get_tree().quit()))
 	cinema.prompt.connect(func(t: String) -> void: ui.show_prompt(t))
 	guide.line_of = Callable(self, "_line_for")
 	guide.planner = Callable(self, "_plan_leg")
@@ -95,6 +108,7 @@ func _ready() -> void:
 	live.state.connect(_on_state)
 	live.answered.connect(_on_answer)
 	live.heard.connect(_on_heard)
+	live.lou_replied.connect(_on_lou)
 	live.failed.connect(func(where: String, m: String) -> void: ui.show_line("[i]%s[/i]" % m))
 	ui.asked.connect(handle_question)
 	ui.recorded.connect(func(wav: PackedByteArray) -> void: live.voice(wav))
@@ -115,6 +129,7 @@ func _ready() -> void:
 	guide.viewer = player
 	guide.shower_box = campus.data["entrance"]["permit"]["air_shower"]["box"]
 	player.lift = campus.data["entrance"]["permit"]["lift"]["box"]
+	player.lift_car = entrance.car
 	_solids()
 	# the tour starts in the parking lot, the visitor a few steps behind the CEO
 	var lot: Array = campus.data["entrance"]["route"][0]["at"]
@@ -314,9 +329,6 @@ func _start_tour() -> void:
 	touring = true
 	_stop_n = 0
 	_stop_total = 0
-	for st in _tour():
-		if not st.get("via", false) and not st.get("ride", false):
-			_stop_total += 1
 	if film:
 		guide.speed = 7.0
 		guide.talk_scale = 0.62
@@ -328,7 +340,21 @@ func _start_tour() -> void:
 		var k := tour.find(tour.filter(func(st): return st["kind"] == "cinema_door")[0])
 		tour = tour.slice(k)
 		guide.global_position = tour[0]["at"]
+	var args := OS.get_cmdline_user_args()
+	if "--device-stop" in args:
+		var area: String = args[args.find("--device-stop") + 1]
+		for index in tour.size():
+			if tour[index].get("area", "") == area:
+				tour = tour.slice(index)
+				guide.global_position = tour[0]["at"]
+				player.global_position = guide.global_position + Vector3(-7.0, 1.75, guide.global_position.z * -1.0)
+				break
+	for st in tour:
+		if not st.get("via", false) and not st.get("ride", false):
+			_stop_total += 1
 	guide.start(tour)
+	if _lou_ask != "":
+		get_tree().create_timer(4.0).timeout.connect(func() -> void: handle_question(_lou_ask))
 
 
 func _process(dt: float) -> void:
@@ -364,7 +390,7 @@ func _process(dt: float) -> void:
 		_frame_ms.append(dt * 1000.0)
 		if _frame_ms.size() >= 3600:
 			_write_perf()
-	ui.talking = intro or (touring and guide.mode == "talk")
+	ui.talking = intro or guide.mode == "talk"
 	if live.run_id != "":
 		clock += dt * speed
 		campus.clock = clock
@@ -483,6 +509,26 @@ func _at(p: Array) -> Vector3:
 	return Vector3(float(p[0]), z if z > 1.0 else 0.1, -float(p[1]))
 
 
+func _device_for(area: String, phase: int, at: Vector2) -> Dictionary:
+	# Choose a real tool at the mouth of this bay, on this side and in this phase.
+	var best := -1
+	var score := INF
+	for i in campus.data["tools"].size():
+		var t: Array = campus.data["tools"][i]
+		var centre := Vector2((float(t[4]) + float(t[5])) / 2.0, (float(t[6]) + float(t[7])) / 2.0)
+		if str(t[1]) != area or int(t[3]) != phase or signf(centre.y) != signf(at.y):
+			continue
+		var distance := centre.distance_to(Vector2(at.x, signf(at.y) * 4.0))
+		if distance < score:
+			score = distance
+			best = i
+	if best < 0:
+		return {}
+	var t: Array = campus.data["tools"][best]
+	return {"tool": best, "target": Vector3((float(t[4]) + float(t[5])) / 2.0,
+		float(campus.heights["clean_z"]) + float(t[8]) * 0.5 - 0.35, -(float(t[6]) + float(t[7])) / 2.0)}
+
+
 func _tour() -> Array:
 	var z := float(campus.heights["clean_z"])
 	var stops: Array = []
@@ -512,7 +558,8 @@ func _tour() -> Array:
 			seen[[phase, str(l[3])]] = true
 			var side := 1.0 if float(l[2]) > 0 else -1.0
 			stops.append({"kind": "area", "area": str(l[3]), "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
-					"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2]))})
+					"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2])),
+					"device": _device_for(str(l[3]), phase, Vector2(x, float(l[2])))})
 		if phase == 0:
 			# through the doorway in phase one's end wall, onto the bridge, and through phase two's
 			stops.append({"kind": "via", "via": true, "at": Vector3(255.0, z, 0.0)})
@@ -530,6 +577,19 @@ func _tour() -> Array:
 
 
 func _on_arrived(s: Dictionary) -> void:
+	if s["kind"] == "lou":
+		ui.set_stop(0, 0, str(s["label"]))
+		if _lou_walk_was >= 0.0:
+			guide.speed = _lou_walk_was
+			_lou_walk_was = -1.0
+		print("fab3d: lou arrived at ", s["area"], " ", Vector2(guide.global_position.x, -guide.global_position.z))
+		if shots_dir != "":
+			_shot_at.append(_t + 2.5)
+			_shot_at.append(_t + 7.0)
+			_shot_at.sort()
+		if _lou_ask != "":
+			get_tree().create_timer(9.0).timeout.connect(func() -> void: get_tree().quit())
+		return
 	if not s.get("via", false) and not s.get("ride", false):
 		_stop_n += 1
 		ui.set_stop(_stop_n, _stop_total, _stop_title(s))
@@ -550,9 +610,8 @@ func _on_arrived(s: Dictionary) -> void:
 		get_tree().create_timer(5.0).timeout.connect(func() -> void:
 			ui.ask_box.text = ""
 			handle_question("why is this queue long?"))
-	if film and s["kind"] == "cinema":
-		get_tree().create_timer(14.0).timeout.connect(func() -> void: get_tree().quit())
 	if s.get("teleport", false):
+		player._trail.clear()
 		player.global_position = s["at"] + Vector3(0, 2.6, -4.5)
 	if s["kind"] == "cinema":
 		# the visitor walks to a seat of their own; the recorded film sits in row 5 and the film starts by itself
@@ -560,6 +619,11 @@ func _on_arrived(s: Dictionary) -> void:
 		if film:
 			player.roaming = true
 			cinema.sit("R5C4")
+			# Establish the seated view, then start at the beginning in full screen.
+			get_tree().create_timer(2.0).timeout.connect(func() -> void:
+				cinema.play()
+				cinema.fullscreen(true)
+				print("fab3d: recorded movie started from seat"))
 		else:
 			# the camera walks on to the middle of the aisle and turns to the screen
 			player.glide(Vector3(52.4, player.floor_at(52.4, -116.0) + 1.65, 116.0), PI / 2.0, -0.05, 2.5)
@@ -573,7 +637,7 @@ func _stop_title(s: Dictionary) -> String:
 		"gowning": return "Gowning room"
 		"air_shower": return "Air shower"
 		"cleanroom": return "The cleanroom"
-		"area": return str(s.get("label", ""))
+		"area", "lou": return str(s.get("label", ""))
 		"bridge": return "The bridge"
 		"cinema_door": return "To the cinema"
 		"cinema": return "The cinema"
@@ -590,7 +654,7 @@ func _free_walk() -> void:
 
 func _line_for(s: Dictionary) -> String:
 	match s["kind"]:
-		"area":
+		"area", "lou":
 			return _area_line(str(s["area"]), s["plan"], str(s["label"]))
 		"bridge":
 			return "This bridge joins the front end to the copper back end. Copper must never reach the front-end tools, so lots bound for the back end ride copper carriers, the orange ones. Fabs do this in different ways; a separate building is the strict one."
@@ -647,8 +711,22 @@ func _area_line(area: String, at: Vector2, label: String) -> String:
 # ------------------------------------------------------------------ questions
 
 func handle_question(q: String) -> void:
-	var s := q.to_lower()
 	ui.show_line("[i]You asked:[/i] %s" % q)
+	if lou_brain and live.run_id != "" and not _lou_waiting:
+		# Lou's Meta brain: Muse Spark Open reads the live run and says what to say and where to go; the helper checks
+		# every number against the run before Lou says it
+		_lou_waiting = true
+		_lou_q = q
+		ui.show_line("[i]You asked:[/i] %s\n[i]Lou is thinking (Muse Spark Open)...[/i]" % q)
+		guide.get_node("bubble").text = "Thinking... Muse Spark Open"
+		live.lou(q, clock, _near_area())
+		return
+	_rule_answer(q)
+
+
+func _rule_answer(q: String) -> void:
+	# the floor's own rules: used when the brain is off, out of budget, or its reply fails the checks twice
+	var s := q.to_lower()
 	var area := _area_in(s)
 	if (s.begins_with("show me") or s.begins_with("take me") or s.begins_with("where is") or s.begins_with("go to")) and area != "":
 		var l := _label_of(area)
@@ -723,6 +801,124 @@ func _label_of(area: String) -> Array:
 		if str(l[3]) == area:
 			return l
 	return []
+
+
+func _on_lou(d: Dictionary) -> void:
+	_lou_waiting = false
+	guide.get_node("bubble").text = ""
+	if d.get("fallback", false) or not d.get("ok", false):
+		print("fab3d: lou fell back: ", d.get("message", d.get("error", d.get("errors", ""))))
+		_rule_answer(_lou_q)
+		return
+	var say := str(d.get("say", ""))
+	var tag := "Muse Spark Open  ·  %.1f s" % float(d.get("seconds", 0.0))
+	print("fab3d: lou said ", JSON.stringify({"say": say, "walk_to": d.get("walk_to"), "explain": d.get("explain"),
+			"try": d.get("try"), "tries": d.get("tries"), "seconds": d.get("seconds"), "cost_usd": d.get("cost_usd")}))
+	if _lou_ask != "" and shots_dir != "":
+		_shot_at.append(_t + 3.0)
+		_shot_at.sort()
+	var area = d.get("walk_to")
+	var walking: bool = area is String and area != "" and _take_to(area, say, tag)
+	if _lou_ask != "" and not walking:
+		get_tree().create_timer(12.0).timeout.connect(func() -> void: get_tree().quit())
+	if not walking:
+		if guide.mode == "walk":
+			# walking a tour leg: the answer goes on screen and the walk carries on
+			ui.show_line(say)
+			guide.get_node("bubble").text = tag
+		else:
+			guide.say(say, tag)
+	var cards := []
+	var tr = d.get("try_result")
+	if tr is Dictionary:
+		cards.append(_try_card(tr))
+	var e = d.get("explain_entry")
+	if e is Dictionary:
+		cards.append("[b]%s[/b]\n%s\n\n%s" % [e.get("term", ""), e.get("plain", e.get("meaning", "")), e.get("here", "")])
+	if not cards.is_empty():
+		ui.show_card("\n\n".join(cards) + "\n\n[i]Lou's Meta brain: Muse Spark Open. Every number checked against the run.[/i]")
+
+
+func _try_card(tr: Dictionary) -> String:
+	if tr.has("error"):
+		return "[b]What if[/b]\nThe simulator did not run: %s" % tr["error"]
+	var b: Dictionary = tr.get("before", {})
+	var a: Dictionary = tr.get("after", {})
+	return ("[b]What if: %s[/b]\nat %s, on the same seed and day\n\nWafers a day: %s to %s\nLots waiting at %s at %s: %s to %s\n" +
+			"Worst queue: %s (%s) to %s (%s)\n\n%s\n[i]%s[/i]") % [
+			tr.get("what", ""), tr.get("group", ""), _num(b.get("wafers_per_day")), _num(a.get("wafers_per_day")),
+			tr.get("group", ""), b.get("clock", ""), _num(b.get("group_waiting")), _num(a.get("group_waiting")),
+			_num(b.get("worst_queue")), b.get("worst_group", ""), _num(a.get("worst_queue")), a.get("worst_group", ""),
+			tr.get("line", ""), tr.get("about", "")]
+
+
+func _num(v) -> String:
+	if v == null:
+		return "?"
+	var f := float(v)
+	return str(int(f)) if is_equal_approx(f, roundf(f)) else "%.1f" % f
+
+
+func _near_area() -> String:
+	# the area whose sign stands nearest the visitor, within 50 m, so Lou knows where "here" is
+	var here := Vector2(player.global_position.x, -player.global_position.z)
+	var best := ""
+	var d := 50.0
+	for l in campus.data["labels"]:
+		var dd := Vector2(float(l[1]), float(l[2])).distance_to(here)
+		if dd < d:
+			d = dd
+			best = str(l[3])
+	return best
+
+
+func _take_to(area: String, say: String, tag: String) -> bool:
+	# Lou says the answer as he sets off and walks the visitor to the area's sign nearest them; off the clean floor (still
+	# outside, or the walkable map not baked yet) both are placed there, as "show me" does
+	var here := Vector2(player.global_position.x, -player.global_position.z)
+	var l := []
+	for c in campus.data["labels"]:
+		if str(c[3]) == area and (l.is_empty() or Vector2(float(c[1]), float(c[2])).distance_to(here) <
+				Vector2(float(l[1]), float(l[2])).distance_to(here)):
+			l = c
+	if l.is_empty():
+		return false
+	var z := float(campus.heights["clean_z"])
+	var x := float(l[1])
+	var side := 1.0 if float(l[2]) > 0 else -1.0
+	var stop := {"kind": "lou", "area": area, "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
+			"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2])),
+			"device": _device_for(area, 0 if x < 261.8 else 1, Vector2(x, float(l[2])))}
+	touring = false
+	if not (guide.planning and absf(guide.global_position.y - z) < 0.6):
+		guide.walk([])
+		player.follow = null
+		player.roaming = true
+		player.place(x - 8.0, side * 2.0, -PI / 2)
+		guide.global_position = Vector3(x - 3.0, z, -side * 5.0)
+		guide.rotation.y = PI if side > 0 else 0.0
+		guide.say(say + " " + _area_line(area, stop["plan"], str(l[0])), tag)
+		return true
+	var legs := []
+	var from_p1 := guide.global_position.x < 261.8
+	if from_p1 != (x < 261.8):
+		# through the doorways in the phases' end walls and over the bridge
+		var doors := [Vector3(255.0, z, 0.0), Vector3(316.0, z, 0.0)]
+		if not from_p1:
+			doors.reverse()
+		for p in doors:
+			legs.append({"kind": "via", "via": true, "at": p})
+	legs.append(stop)
+	if _lou_walk_was < 0.0:
+		_lou_walk_was = guide.speed
+	guide.speed = maxf(guide.speed, 4.0)      # a brisk walk: across a phase in under a minute
+	guide.walk(legs)
+	guide.get_node("bubble").text = tag
+	ui.show_line(say)
+	ui.set_stop(0, 0, "Lou takes you to " + str(l[0]))
+	player.roaming = false
+	player.follow = guide
+	return true
 
 
 func _on_answer(d: Dictionary) -> void:
@@ -840,8 +1036,51 @@ func _check() -> void:
 	cinema.play()
 	cinema.fullscreen(true)
 	cin["fullscreen"] = cinema.full.visible
-	cinema.fullscreen(false)
+	var movie := {"world_locked_during_movie": player.input_locked, "world_draw_suspended": get_viewport().disable_3d}
+	var movie_key := InputEventKey.new()
+	movie_key.pressed = true
+	movie_key.keycode = KEY_SPACE
+	cinema._input(movie_key)
+	movie["paused"] = cinema.video.paused and cinema.user_paused
+	cinema._input(movie_key)
+	movie["resumed"] = not cinema.video.paused and not cinema.user_paused
+	movie_key.keycode = KEY_ESCAPE
+	cinema._input(movie_key)
+	movie["returned_to_hall"] = not cinema.full.visible and player.seated
+	movie["world_locked_after_movie"] = player.input_locked
+	movie["world_draw_restored"] = not get_viewport().disable_3d
+	cinema.fullscreen(true)
+	movie_key.keycode = KEY_E
+	cinema._input(movie_key)
+	movie["stood_from_fullscreen"] = not player.seated and not cinema.full.visible and not get_viewport().disable_3d
+	cinema.sit("R5C4")
+	cinema.user_paused = true
+	cinema._on_finished()
+	movie["replay_keeps_old_pause"] = cinema.user_paused
+	var saved_stream = cinema.video.stream
+	cinema.video.stop()
+	cinema.video.stream = null
+	cinema.fullscreen(true)
+	movie["missing_movie_stays_in_hall"] = not cinema.full.visible
+	cinema.video.stream = saved_stream
 	cinema.stand()
+	var seat: Array = cinema.seats["R5C4"]
+	var polish := {"still_seated": player.seated,
+		"stand_error": Vector2(player.position.x - (seat[0] - 0.6), -player.position.z - seat[1]).length(),
+		"seat_outside_hall": cinema.nearest_free(Vector3(0, 1.75, 0)),
+		"seat_wrong_level": cinema.nearest_free(Vector3(seat[0] - 0.6, 20, -seat[1])),
+		"ground_entry": player.floor_at(-5.8, 31.3, 1.75),
+		"upper_entry": player.floor_at(-1.7, 31.3, 9.15),
+		"cleanroom": player.floor_at(10.0, 0.0, 1.75)}
+	ui.ask_panel.show()
+	ui.ask_box.grab_focus()
+	var key := InputEventKey.new()
+	key.keycode = KEY_F
+	key.pressed = true
+	player._unhandled_input(key)
+	polish["typing_toggled_flight"] = player.fly
+	ui.ask_box.release_focus()
+	ui.ask_panel.hide()
 	player.place(285.0, 0.0, -PI / 2)
 	campus.update_cells(true)
 	var v := Vector2(285.0, 0.0)
@@ -857,7 +1096,18 @@ func _check() -> void:
 	for k in campus.kinds.keys():
 		if k != "stocker":
 			kinds.append(k)
-	var report := {"opened": true, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge", "cinema": cin,
+	var device_shots := []
+	for stop in _tour():
+		if stop.get("kind") != "area":
+			continue
+		var shot: Dictionary = stop["device"]
+		var t: Array = campus.data["tools"][shot["tool"]]
+		var target: Vector3 = shot["target"]
+		device_shots.append({"area": stop["area"], "tool_area": t[1],
+			"phase": 0 if stop["at"].x < 261.8 else 1, "tool_phase": t[3],
+			"same_side": signf(-target.z) == signf(stop["plan"].y),
+			"distance": Vector2(target.x, target.z).distance_to(Vector2(stop["at"].x, stop["at"].z))})
+	var report := {"device_shots": device_shots, "opened": true, "polish": polish, "movie": movie, "kinds": kinds, "scenes": scenes, "viewer_at": "bridge", "cinema": cin,
 			"cells_loaded": campus.loaded.size(), "cells_full": campus.full_ids.size(), "tools_built": campus.tool_nodes.size(),
 			"farthest_loaded_m": far, "cells_total": campus.data["cells"].size(), "cinema_film": cinema.film_path(),
 			"drone": {"scene": ResourceLoader.exists("res://drone/drone.tscn"), "keys": drone.keys.size(),

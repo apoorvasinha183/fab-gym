@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Fab Gym explore"
-config/description="A gigafab-style layout of our own design on the SMT2020 model, to walk and fly through. Not a real fab."
+config/description="A gigafab-style layout of our own design from the SMT2020 testbed, to walk and fly through. Not a real fab."
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
@@ -29,13 +29,6 @@ window/stretch/mode="canvas_items"
 
 enabled=PackedStringArray("res://addons/godot_mcp_toolkit/plugin.cfg")
 
-[shader_globals]
-
-bim_cut_z={
-"type": "float",
-"value": 1000000.0
-}
-
 [mcp_toolkit]
 
 updates/check_for_updates=false
@@ -46,3 +39,10 @@ lights_and_shadows/directional_shadow/size=8192
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.62, 0.72, 0.84, 1)
 anti_aliasing/quality/screen_space_aa=1
+
+[shader_globals]
+
+bim_cut_z={
+"type": "float",
+"value": 1000000.0
+}

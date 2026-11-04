@@ -16,6 +16,7 @@ const PEOPLE := [["R1C6", Color(0.16, 0.22, 0.4)], ["R1C7", Color(0.55, 0.42, 0.
 		["R2S2", Color(0.15, 0.4, 0.38)]]
 const POSTERS := ["NOW SHOWING\n\nFROM SAND\nTO CHIP", "THE YIELD\n\nNOT EVERY DIE\nMAKES IT",
 		"LOU LATENCY\nIN\n\nCACHE ME\nIF YOU CAN", "WAFER THIN\n\nA LOVE STORY\nAT 2 NM"]
+const Looks := preload("res://looks.gd")
 const FONT := preload("res://ui/fonts/kenpixel.ttf")
 
 var viewer: Node3D
@@ -30,8 +31,10 @@ var people := []
 var posters := 0
 var started := false
 var user_paused := false
+var _seat_id := ""
 var _near := ""
 var _said := "-"
+var _hint_seconds := 0.0
 var staff_scene: PackedScene = preload("res://staff/staff.tscn")
 @onready var vp: SubViewport = $vp
 @onready var video: VideoStreamPlayer = $vp/video
@@ -42,6 +45,13 @@ var staff_scene: PackedScene = preload("res://staff/staff.tscn")
 
 
 func _ready() -> void:
+	var lobby: StandardMaterial3D = Looks.pbr("brushed_concrete", 2.5, Color(0.72, 0.69, 0.63), 0.0, "diff", true).duplicate()
+	lobby.albedo_texture = null
+	lobby.normal_scale = 0.12
+	lobby.roughness = 0.7
+	Looks.dress($model, {
+		"cinema_lobby_floor": lobby,
+		"cinema_paving": Looks.pbr("concrete_pavement", 2.5, Color.WHITE, 0.0, "diff", true)})
 	if ResourceLoader.exists(FILM):
 		video.stream = load(FILM)
 	video.finished.connect(_on_finished)
@@ -196,7 +206,12 @@ func _poster(p: Dictionary, text: String) -> void:
 	l.text = text
 	l.font = FONT
 	l.font_size = 64
-	l.pixel_size = 0.0035
+	var widest := 1.0
+	for line in text.split("\n"):
+		widest = maxf(widest, FONT.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x)
+	var width := float(p["x1"]) - float(p["x0"])
+	var height := float(p["z1"]) - float(p["z0"])
+	l.pixel_size = minf(0.0035, minf((width - 0.12) / widest, (height - 0.16) / (text.split("\n").size() * FONT.get_height(64))))
 	l.outline_size = 0
 	l.modulate = Color(1, 0.97, 0.9)
 	l.shaded = false
@@ -243,11 +258,15 @@ func seat_label(id: String) -> String:
 
 func nearest_free(p: Vector3) -> String:
 	var best := ""
+	if not in_hall(p):
+		return best
 	var bd := REACH
 	for id in seats:
 		if taken.has(id):
 			continue
 		var s: Array = seats[id]
+		if absf(p.y - (0.04 + s[2] + 1.65)) > 0.65:
+			continue
 		# measured from where you stand to sit in it: just in front of its seat pan
 		var d := Vector2(p.x - (s[0] - 0.6), -p.z - s[1]).length()
 		if d < bd:
@@ -257,6 +276,9 @@ func nearest_free(p: Vector3) -> String:
 
 
 func sit(id: String) -> void:
+	if not seats.has(id) or taken.has(id):
+		return
+	_seat_id = id
 	var s: Array = seats[id]
 	viewer.sit(w(s[0] - 0.12, s[1], 0.04 + s[2] + EYE), PI / 2.0)
 	_near = id
@@ -264,11 +286,18 @@ func sit(id: String) -> void:
 
 func stand() -> void:
 	viewer.stand()
-	full.visible = false
+	if seats.has(_seat_id):
+		var s: Array = seats[_seat_id]
+		viewer.place(s[0] - 0.6, s[1], PI / 2.0)
+	_seat_id = ""
+	fullscreen(false)
 
 
 func play() -> void:
 	if not video.stream:
+		card.visible = true
+		$vp/card/lines/now.text = "FILM UNAVAILABLE"
+		$vp/card/lines/how.text = "RETURN TO THE HALL WITH ESC"
 		return
 	if not started:
 		video.play()
@@ -279,17 +308,21 @@ func play() -> void:
 
 
 func fullscreen(on: bool) -> void:
+	if on and not video.stream:
+		return
 	full.visible = on
-	if on:
-		full_hint.modulate.a = 1.0
-		var t := create_tween()
-		t.tween_interval(3.0)
-		t.tween_property(full_hint, "modulate:a", 0.0, 1.0)
+	# The opaque movie covers the world; skip its 3D draw until returning to the hall.
+	get_viewport().disable_3d = on
+	viewer.input_locked = on
+	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if on else Input.MOUSE_MODE_VISIBLE
+	_hint_seconds = 4.0
+	full_hint.modulate.a = 1.0
 
 
 func _on_finished() -> void:
 	started = false
-	full.visible = false
+	user_paused = false
+	fullscreen(false)
 	card.visible = true
 	$vp/card/lines/now.text = "THE END"
 	$vp/card/lines/how.text = "PRESS ENTER TO WATCH AGAIN"
@@ -304,7 +337,10 @@ func _input(e: InputEvent) -> void:
 	if full.visible:
 		if k in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER]:
 			fullscreen(false)
+		elif k == KEY_E:
+			stand()
 		elif k == KEY_SPACE:
+			_hint_seconds = 4.0
 			user_paused = not user_paused
 			video.paused = user_paused
 		else:
@@ -333,7 +369,9 @@ func _process(dt: float) -> void:
 		return
 	var p := viewer.global_position
 	var inside := in_hall(p)
-	if autoplay and inside and not started:
+	if not inside:
+		_near = ""
+	if autoplay and inside and viewer.get("seated") and not started:
 		play()
 	if started:
 		video.paused = user_paused or not inside
@@ -347,6 +385,9 @@ func _process(dt: float) -> void:
 		_near = nearest_free(p)
 		text = ("E  SIT DOWN  (%s)" % seat_label(_near)) if _near != "" else "WALK UP TO A FREE SEAT TO SIT DOWN"
 	if full.visible:
+		full_hint.text = "PAUSED — SPACE  RESUME     ESC  BACK TO THE HALL" if user_paused else "ESC  BACK TO THE HALL     SPACE  PAUSE"
+		_hint_seconds = 4.0 if user_paused else maxf(0.0, _hint_seconds - dt)
+		full_hint.modulate.a = clampf(_hint_seconds, 0.0, 1.0)
 		text = ""
 	if text != _said:
 		_said = text

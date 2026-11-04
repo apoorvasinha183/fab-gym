@@ -77,6 +77,15 @@ func go_to(stop: Dictionary) -> void:
 	mode = "walk"
 
 
+func walk(list: Array) -> void:
+	# a walk of its own (Lou taking the visitor somewhere): every leg new, so each is planned round what stands in the way
+	stops = list
+	i = 0
+	_seg = -1
+	hold = 0.0
+	mode = "walk" if not list.is_empty() else "idle"
+
+
 func say(text: String, title := "") -> void:
 	$bubble.text = title
 	said.emit(text)

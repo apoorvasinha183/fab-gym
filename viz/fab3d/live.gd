@@ -9,6 +9,7 @@ signal state(d: Dictionary)
 signal answered(d: Dictionary)
 signal heard(d: Dictionary)
 signal failed(where: String, message: String)
+signal lou_replied(d: Dictionary)      # Lou's Meta brain answered (docs/FAB-3D.md, F11)
 
 var base := "http://127.0.0.1:8766"
 var run_id := ""
@@ -17,6 +18,7 @@ var _run: HTTPRequest
 var _state: HTTPRequest
 var _ask: HTTPRequest
 var _voice: HTTPRequest
+var _lou: HTTPRequest
 
 
 func _ready() -> void:
@@ -26,6 +28,8 @@ func _ready() -> void:
 	_state = _make("_on_state")
 	_ask = _make("_on_ask")
 	_voice = _make("_on_voice")
+	_lou = _make("_on_lou")
+	_lou.timeout = 180.0    # Muse Spark Open takes 5 to 8 s; a what-if reruns the day on the simulator
 
 
 func _make(handler: String) -> HTTPRequest:
@@ -56,6 +60,11 @@ func ask_state(t: float, cells: Array, span := 2.0) -> void:
 
 func ask(question: String) -> void:
 	_post(_ask, "/api/glossary/ask", {"question": question})
+
+
+func lou(question: String, t: float, near_area: String) -> void:
+	# Lou's Meta brain: the question, the scene's minute and the area the visitor stands in
+	_post(_lou, "/api/lou/ask", {"question": question, "run": run_id, "t": t, "near_area": near_area})
 
 
 func voice(wav: PackedByteArray) -> void:
@@ -101,3 +110,8 @@ func _on_voice(result: int, code: int, _h: PackedStringArray, body: PackedByteAr
 	var d = _read(result, code, body, "voice")
 	if d != null:
 		heard.emit(d)
+
+
+func _on_lou(result: int, code: int, _h: PackedStringArray, body: PackedByteArray) -> void:
+	var d = _read(result, code, body, "lou")
+	lou_replied.emit(d if d != null else {"fallback": true, "message": "The helper did not answer."})

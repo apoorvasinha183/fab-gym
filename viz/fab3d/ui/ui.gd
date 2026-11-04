@@ -65,6 +65,17 @@ func _ready() -> void:
 	next_mark.visible = false
 
 
+func _input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+		if ask_panel.visible:
+			ask_box.release_focus()
+			ask_panel.hide()
+			get_viewport().set_input_as_handled()
+		elif card.visible:
+			card.hide()
+			get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_SPACE:
 		_next()

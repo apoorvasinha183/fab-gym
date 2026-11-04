@@ -21,6 +21,7 @@ static func pbr(asset: String, metres: float, tint := Color(1, 1, 1), metallic :
 	m.albedo_color = tint
 	if ResourceLoader.exists(base + "nor_gl_1k.jpg"):
 		m.normal_enabled = true
+		m.normal_scale = 0.65 if lite else 1.0
 		m.normal_texture = load(base + "nor_gl_1k.jpg")
 	if lite and ResourceLoader.exists(base + "arm_1k.jpg"):
 		m.roughness_texture = load(base + "arm_1k.jpg")
