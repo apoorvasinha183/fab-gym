@@ -253,10 +253,27 @@ pub fn compile(src: &str, cache: &Path) -> Result<Vec<u8>, String> {
         return Ok(b);
     }
     std::fs::create_dir_all(&dir).map_err(|e| format!("cache {}: {e}", dir.display()))?;
-    std::fs::write(dir.join("lib.rs"), harness(src)).map_err(|e| format!("write the rule: {e}"))?;
+    // Each compiler owns its source and output. The cache is shared by threads and processes.
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+    struct WorkDir(std::path::PathBuf);
+    impl Drop for WorkDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    let work = loop {
+        let path = dir.join(format!("compile-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        match std::fs::create_dir(&path) {
+            Ok(()) => break WorkDir(path),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(format!("create compile directory: {e}")),
+        }
+    };
+    std::fs::write(work.0.join("lib.rs"), harness(src)).map_err(|e| format!("write the rule: {e}"))?;
+    let errors = std::fs::File::create(work.0.join("stderr.txt")).map_err(|e| e.to_string())?;
     let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());
     let mut cmd = Command::new(rustc);
-    cmd.current_dir(&dir)
+    cmd.current_dir(&work.0)
         .env_clear()
         .args([
             "--edition",
@@ -281,7 +298,7 @@ pub fn compile(src: &str, cache: &Path) -> Result<Vec<u8>, String> {
         .args(["-o", "rule.wasm.part", "lib.rs"])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::from(errors));
     for k in [
         "PATH",
         "HOME",
@@ -304,19 +321,21 @@ pub fn compile(src: &str, cache: &Path) -> Result<Vec<u8>, String> {
         }
         if t0.elapsed() > Duration::from_secs(COMPILE_SECONDS) {
             let _ = child.kill();
+            let _ = child.wait();
             return Err(format!("rustc took more than {COMPILE_SECONDS} s"));
         }
         std::thread::sleep(Duration::from_millis(20));
     };
-    let mut err = String::new();
-    if let Some(mut e) = child.stderr.take() {
-        use std::io::Read;
-        let _ = e.read_to_string(&mut err);
-    }
+    let err = std::fs::read_to_string(work.0.join("stderr.txt")).unwrap_or_default();
     if !status.success() {
         return Err(rule_lines(&err));
     }
-    std::fs::rename(dir.join("rule.wasm.part"), &wasm).map_err(|e| e.to_string())?;
+    // Publish a complete module atomically. Another compiler may have published it first.
+    if let Err(e) = std::fs::rename(work.0.join("rule.wasm.part"), &wasm) {
+        if !wasm.is_file() {
+            return Err(e.to_string());
+        }
+    }
     std::fs::read(&wasm).map_err(|e| e.to_string())
 }
 
