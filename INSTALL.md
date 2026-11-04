@@ -3,7 +3,9 @@
 Step by step, for macOS, Windows and Linux. About 15 minutes the first time, most of it waiting for Rust.
 
 **Just want to look?** You need none of this: the browser version runs at
-[apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/).
+[apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/). To ask Meta's model
+there, open the ask bar and paste your own Meta Model API or Baseten key under **Use your own key**; it stays in your
+browser.
 
 ---
 

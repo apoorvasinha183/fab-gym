@@ -737,3 +737,11 @@ body.health-folded .maptools { right: 18px; }
 @media (min-width: 901px) and (max-width: 1499px) {
   .pill .scrub-l { display: none; }
 }
+
+/* bring your own key (web/byok.js): the key box in the ask panel on a copy with no helper */
+.byok { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 4px; }
+.byok select, .byok input[type=password] { background: rgba(255,255,255,0.06); color: inherit; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 5px 8px; font: inherit; }
+.byok input[type=password] { flex: 1 1 180px; min-width: 0; }
+.byok button, #byok-forget { background: var(--good, #4fe3a3); color: #0b1a14; border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; cursor: pointer; }
+#byok-forget { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,0.25); font-weight: 500; margin-left: 4px; }
+#ask-model small { display: block; opacity: 0.7; margin-top: 4px; }

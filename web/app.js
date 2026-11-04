@@ -1466,9 +1466,9 @@ function strip(d, st) {
   return `<svg viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true"><line x1="150" x2="150" y1="1" y2="21" stroke="#8a8170" stroke-dasharray="2 2"/>${bar}${dots}</svg>`;
 }
 
-function renderCompare(o, base, chg, done, total) {
+function renderCompare(o, base, chg, done, total, what) {
   showTab("change");
-  $("cmp-what").textContent = `${describe(o)}, over ${o.days} day${o.days > 1 ? "s" : ""}. Each dot is one seed: the change minus today on the same draws.`;
+  $("cmp-what").textContent = what || `${describe(o)}, over ${o.days} day${o.days > 1 ? "s" : ""}. Each dot is one seed: the change minus today on the same draws.`;
   const seeds = COMPARE_SEEDS.filter(s => base.has(s) && chg.has(s));
   $("cmp-rows").innerHTML = METRICS.map(m => {
     const d = seeds.map(s => chg.get(s)[m.key] - base.get(s)[m.key]);
@@ -1486,20 +1486,21 @@ function renderCompare(o, base, chg, done, total) {
 }
 
 let compareToken = 0;
-async function compare(o) {
+// `base0` and `what`: a question read with the visitor's own key compares "shock and change" with "shock alone"
+async function compare(o, base0, what) {
   const token = ++compareToken;
-  if (isToday(o)) {
+  if (!base0 && isToday(o)) {
     $("cmp-what").textContent = "This is today's fab. Change something above, then run it to compare.";
     $("cmp-rows").innerHTML = "";
     $("cmp-note").textContent = "";
     showTab("change");
     return;
   }
-  const today = { ...o, rule: 0, downGroup: -1, downAt: 0, downHours: 0, dials: { ...DEFAULT_DIALS } };
+  const today = base0 || { ...o, rule: 0, downGroup: -1, downAt: 0, downHours: 0, dials: { ...DEFAULT_DIALS } };
   const base = new Map(), chg = new Map();
   const total = COMPARE_SEEDS.length * 2;
   let done = 0;
-  renderCompare(o, base, chg, 0, total);
+  renderCompare(o, base, chg, 0, total, what);
   const jobs = [];
   for (const seed of COMPARE_SEEDS) {
     for (const [cfg, into] of [[today, base], [o, chg]]) {
@@ -1508,7 +1509,7 @@ async function compare(o) {
         if (r.error) throw new Error(r.error);
         into.set(seed, r.q);
         done++;
-        renderCompare(o, base, chg, done, total);
+        renderCompare(o, base, chg, done, total, what);
         if (done === 2) { const first = $("cmp-what"); if (first) first.scrollIntoView({ block: "start" }); } // the answer in view (docs/SIM-SETTINGS.md)
       }));
     }
@@ -2003,8 +2004,8 @@ async function askSetup() {
   let st;
   try { st = await api("/api/status"); } catch { st = null; }
   if (!st || st.error) {
-    $("ask-model").innerHTML = "The ask box needs the helper running on this Mac. In the fab-gym folder, run <code>python3 -m agent.helper</code>, then open <b>http://127.0.0.1:8766</b>.";
     $("ask-run").disabled = true;
+    byokPanel();
     return;
   }
   ASK.helper = true;
@@ -2343,7 +2344,60 @@ function askSimulator(q) {
   openDock("ask");
   if (location.hash !== "#ask") { history.replaceState(null, "", "#ask"); markPage("ask"); }
   if (ASK.helper) ask(q);
-  else stage("To ask a question, start the helper on this Mac. In the fab-gym folder, run python3 -m agent.helper.");
+  else if (window.FabBYOK && FabBYOK.ready()) byokAsk(q);
+  else { byokPanel(); stage("Add your own key above to ask Meta's model here, or run the helper on your computer (README)."); }
+}
+
+// ------------------------------------------------------------------ bring your own key (web/byok.js)
+
+function byokPanel() {
+  const P0 = window.FabBYOK ? FabBYOK.PROVIDERS : null;
+  if (!P0) { $("ask-model").innerHTML = "The ask box needs the helper: in the fab-gym folder run <code>python3 -m agent.helper</code>."; return; }
+  const cur = FabBYOK.load();
+  if (cur) {
+    $("ask-model").innerHTML = `Asking with your own ${esc(P0[cur.provider].label)} key (${esc(P0[cur.provider].name)}). It stays in this browser and goes only to ${esc(P0[cur.provider].label)}. ` +
+      `<button type="button" id="byok-forget">Forget the key</button>`;
+    $("byok-forget").onclick = () => { FabBYOK.forget(); byokPanel(); };
+    return;
+  }
+  $("ask-model").innerHTML = `<b>Use your own key</b> to have Meta's model read your what-if; the simulator in this page runs it.
+    <span class="byok"><select id="byok-p" aria-label="Provider">${Object.entries(P0).map(([k, p]) => `<option value="${k}">${esc(p.label)}: ${esc(p.name)}</option>`).join("")}</select>
+    <input id="byok-k" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key" aria-label="API key">
+    <label><input id="byok-r" type="checkbox"> remember on this device</label>
+    <button type="button" id="byok-go">Use it</button></span>
+    <small>The key stays in this browser (this tab only, unless you tick remember) and is sent only to the provider you pick. Or run the helper on your computer for the full experiment (README).</small>`;
+  $("byok-go").onclick = () => {
+    const key = $("byok-k").value.trim();
+    if (!key) { $("byok-k").focus(); return; }
+    FabBYOK.save({ provider: $("byok-p").value, key }, $("byok-r").checked);
+    byokPanel();
+  };
+}
+
+async function byokAsk(q) {
+  if (!P) { stage("The fab is still loading; ask again in a moment."); return; }
+  const groups = P.j.groups.map(g => g[0]);
+  $("ask-result").innerHTML = "";
+  $("ask-scenario").hidden = true;
+  const cfg = FabBYOK.load();
+  stage(`Asking ${FabBYOK.PROVIDERS[cfg.provider].name} with your key…`);
+  let r;
+  try { r = await FabBYOK.read(q, groups, FabAsk.RANGE); }
+  catch (e) { stage("Could not ask the model: " + e.message); return; }
+  const a = r.answer, now = readOpts();
+  const plain = { ...now, rule: 0, downGroup: -1, downAt: 0, downHours: 0, dials: { ...DEFAULT_DIALS } };
+  const base = FabBYOK.apply(plain, a.shock, groups), chg = FabBYOK.apply(base, a.try, groups);
+  const said = new Set(a.said || []), why = a.assumed || {};
+  const line = part => Object.keys(part || {}).map(k => `<li>${esc(FabBYOK.words({ [k]: part[k] }))} <span class="tag ${said.has(k) ? "said" : "assumed"}">${said.has(k) ? "said" : "assumed"}</span>${!said.has(k) && why[k] ? ` <small>${esc(why[k])}</small>` : ""}</li>`).join("");
+  $("ask-result").innerHTML = `<p>${esc(r.model)} (${esc(r.provider)}, your key${r.tries > 1 ? ", second try after the check refused the first" : ""}) read your question as:</p>
+    ${Object.keys(a.shock || {}).length ? `<p><b>What happens</b>, on both sides:</p><ul>${line(a.shock)}</ul>` : ""}
+    <p><b>The change to try</b>:</p><ul>${line(a.try)}</ul>
+    <p class="note">This page's simulator runs both on the same ${COMPARE_SEEDS.length} random days of ${now.days} day${now.days > 1 ? "s" : ""}; the results are under Simulation settings. The helper on your computer runs the full experiment (several answers, the whole fab, more seeds).</p>`;
+  stage("Running it in this page…");
+  const shockWords = FabBYOK.words(a.shock);
+  const what = `${FabBYOK.words(a.try)}${shockWords ? `, with ${shockWords} on both sides` : ""}, over ${now.days} day${now.days > 1 ? "s" : ""}. Each dot is one seed: the change minus ${shockWords ? "the shock alone" : "today"} on the same draws. Read by ${r.model} with your key.`;
+  await compare(chg, base, what);
+  stage("");
 }
 
 // `by`: who read the question, when the model did ({model, cost_usd})

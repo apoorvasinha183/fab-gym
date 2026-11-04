@@ -71,8 +71,14 @@ Put a key in `~/.config/fab-gym/` (it never leaves your machine except to the mo
 | `meta.key` | Muse Spark, Muse Wonder and Muse Image (Meta Model API) | the helper's default preset: the ask bar, Race the AI, the napkin sketch |
 | `baseten.key` | Muse Spark Open, the open-weights model, on Baseten | `--preset open`, Lou's brain in the 3D fab, the agent loop |
 
-Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed. In the browser version the
-model features show recorded answers; for live ones, run it on your computer.
+Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed.
+
+**In the browser, with no install:** on the [public site](https://apoorvasinha183.github.io/fab-gym-site/play/), open
+the ask bar and choose **Use your own key**: a Meta Model API key (Muse Spark) or a Baseten key (Muse Spark Open). Ask a
+what-if; the model reads it into what happens and one change to try, every value marked said or assumed, and the
+simulator in the page compares the two on the same 10 random days, with 95% intervals. The key stays in your browser
+(that tab only, unless you tick remember) and is sent only to the provider you pick. Race the AI, the napkin sketch and
+Lou in 3D still need the helper on your computer; the full experiment there tries several answers on more seeds.
 
 ### As a reinforcement-learning environment
 
