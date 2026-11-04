@@ -44,7 +44,7 @@ test("the demo path, clicked end to end", { skip: !ready && "needs Google Chrome
 
     // 1. Home: the hook and two doors
     await go("index.html#home");
-    assert.ok(await until(`/Play a challenge/.test(document.body.innerText) && /Watch the whole fab at work/.test(document.body.innerText)`), "home: two doors");
+    assert.ok(await until(`/My in-tray/.test(document.body.innerText) && /Walk the floor with me/.test(document.body.innerText)`), "home: two doors");
 
     // 2. The floor: the full fab draws, plays at 12×, and follows one lot
     await go("index.html#floor");

@@ -82,8 +82,8 @@ test("HO3 Start is the play door's one solid button, and says what is inside", {
   const p = await open();
   try {
     const solid = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll(".door-play .btn-solid")].map(b => ({ t: b.textContent.trim(), href: b.getAttribute("href") })))`));
-    assert.equal(solid.length, 1); assert.match(solid[0].t, /Start challenge 1/); assert.equal(solid[0].href, "editor.html?ch=1");
-    assert.match(await p.ev(`document.querySelector(".door-play").textContent`), /4 challenges · a free build · up to 3 stars each/);
+    assert.equal(solid.length, 1); assert.match(solid[0].t, /Take problem 1/); assert.equal(solid[0].href, "editor.html?ch=1");
+    assert.match(await p.ev(`document.querySelector(".door-play").textContent`), /4 problems · a free build · up to 3 stars each/);
   } finally { p.close(); }
 });
 
@@ -91,7 +91,7 @@ test("HO4 two doors, Play and Watch, side by side and in view; Watch it live ope
   const p = await open();
   try {
     const doors = JSON.parse(await p.ev(`JSON.stringify([...document.querySelectorAll("#open-doors > .door")].map(d => d.querySelector(".door-k").textContent.trim()))`));
-    assert.deepEqual(doors, ["Play a challenge", "Watch the whole fab at work"]);
+    assert.deepEqual(doors, ["My in-tray", "Walk the floor with me"]);
     const d = JSON.parse(await p.ev(`JSON.stringify((() => { const e = document.querySelector(".door-floor"); const b = e.querySelector(".btn-solid"); return { img: !!e.querySelector("img[src*='ceo']"), href: b && b.getAttribute("href") }; })())`));
     assert.ok(d.img, "the CEO's picture"); assert.equal(d.href, "#floor");
     const r = JSON.parse(await p.ev(`JSON.stringify((() => { const o = document.getElementById("opening"); const box = s => { const r = document.querySelector(s).getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; }; return { scroll: o.scrollHeight - o.clientHeight, play: box(".door-play"), floor: box(".door-floor"), H: innerHeight }; })())`));

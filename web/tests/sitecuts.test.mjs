@@ -35,8 +35,8 @@ function navOf(html) {
 // ---------------------------------------------------------------- in Node, on the pages' files
 
 test("K1 the nav on both pages: Home, Floor, Build, Evidence, Runs", () => {
-  assert.deepEqual(navOf(index), [["Home", "#home"], ["Floor", "#floor"], ["Build", "editor.html"], ["Evidence", "#evidence"], ["Runs", "runs.html"]]);
-  assert.deepEqual(navOf(editor), [["Home", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"], ["Runs", "runs.html"]]);
+  assert.deepEqual(navOf(index), [["Desk", "#home"], ["Floor", "#floor"], ["Build", "editor.html"], ["Evidence", "#evidence"], ["Runs", "runs.html"]]);
+  assert.deepEqual(navOf(editor), [["Desk", "index.html"], ["Floor", "index.html#floor"], ["Build", "editor.html"], ["Evidence", "index.html#evidence"], ["Runs", "runs.html"]]);
 });
 
 test("K2 both pages declare a tab icon", () => {
@@ -45,8 +45,8 @@ test("K2 both pages declare a tab icon", () => {
 
 test("K3 Home keeps its two doors and drops 'or explore the floor'", () => {
   const doors = between(index, 'id="open-doors"', "</section>");
-  assert.match(doors, /Play a challenge/);
-  assert.match(doors, /Watch the whole fab at work/, "the door to the Floor (docs/HOME-REVIEW.md)");
+  assert.match(doors, /My in-tray/);
+  assert.match(doors, /Walk the floor with me/, "the door to the Floor (docs/HOME-REVIEW.md)");
   assert.ok(!/Ask the fab/.test(doors), "asking moved to the Floor (docs/HOME-GATE.md)");
   assert.ok(!/id="open-explore"/.test(index), "no 'or explore the floor'");
 });
