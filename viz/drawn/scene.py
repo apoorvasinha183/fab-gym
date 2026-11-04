@@ -15,7 +15,9 @@ The comic look keeps the first cut's folders (data/drawn/scenes, sheets, shots);
 data/drawn/<look>/. The look is --look, else looks.json's 'chosen'.
 """
 
+import io
 import json
+import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -27,10 +29,14 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from . import compose, lipsync, pilot, poses, produce, sheet as sh
 
 ROOT = Path(__file__).resolve().parents[2]
-SCENES = ROOT / "film/drawn/scenes"
-LOOKS = ROOT / "film/drawn/looks.json"
-ART = ROOT / "data/drawn/scenes"
-SHEETS = ROOT / "data/drawn/sheets"
+# one film's folders: its direction (FILM: scenes, looks, voice) and its pictures and renders (DATA). Sand to Chip by
+# default; another film sets DRAWN_FILM and DRAWN_DATA (docs/FILM-PLAYBOOK.md).
+FILM = Path(os.environ.get("DRAWN_FILM", ROOT / "film/drawn"))
+DATA = Path(os.environ.get("DRAWN_DATA", ROOT / "data/drawn"))
+SCENES = FILM / "scenes"
+LOOKS = FILM / "looks.json"
+ART = DATA / "scenes"
+SHEETS = DATA / "sheets"
 SHOTS_OUT = produce.SHOTS_OUT
 W, H, FPS = 1920, 1080, 24
 PW, PH = W + 240, H + 135
@@ -46,7 +52,7 @@ def use(name=None):
     data = json.loads(LOOKS.read_text())
     name = name or data["chosen"]
     LOOK = dict(data["looks"][name], name=name)
-    base = ROOT / "data/drawn" if name == "comic" else ROOT / "data/drawn" / name
+    base = DATA if name == "comic" else DATA / name
     ART, SHEETS = base / "scenes", base / "sheets"
     SHOTS_OUT = base / "shots"
     return LOOK
@@ -116,7 +122,7 @@ def needed(sc, only):
             dd = sc.get("drawings", {}).get(k, {})
             pp = sc.get("plates", {}).get(k, {})
             for src in ([dd["after"]] if dd.get("kind") == "next" else []) + list(dd.get("between", [])) + \
-                    ([pp["from"]] if "from" in pp else []):
+                    ([pp["from"]] if "from" in pp else []) + ([pp["room"]] if "room" in pp else []):
                 if src not in names:
                     names.add(src)
                     grow = True
@@ -164,20 +170,64 @@ def draw(n, only=None):
                 f.write_bytes(img)
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        futs = [pool.submit(plate, k, v) for k, v in sc.get("plates", {}).items() if "from" not in v]
-        futs += [pool.submit(key, k, v) for k, v in sc.get("drawings", {}).items() if v.get("kind", "key") == "key"]
+        # pictures made in code (a typeset card, a cursor) are never sent to the image model
+        futs = [pool.submit(plate, k, v) for k, v in sc.get("plates", {}).items() if "from" not in v and "code" not in v and "room" not in v]
+        futs += [pool.submit(key, k, v) for k, v in sc.get("drawings", {}).items()
+                 if v.get("kind", "key") == "key" and "code" not in v]
         for f in futs:
             f.result()
-    # plates made from other plates, in the order written, so a series keeps its framing and colours
+    # plates made from other plates, in the order written, so a series keeps its framing and colours. A plate with a
+    # "room" is a key frame of cel animation: the cast painted into that room as one picture (standing on its floor,
+    # in its light and perspective, with their shadows), never cut out and pasted on; its next drawings are plates
+    # "from" it with the same cast, changed only where the pose moves
     for name, p in sc.get("plates", {}).items():
         f = out / f"{name}.png"
-        src = out / f"{p.get('from', '')}.png"
-        if "from" in p and not f.exists() and src.exists():
-            img = produce._try(c, ["The same picture as the attached one: exactly the same framing, shapes, colours and "
-                                   "style, changed only like this: " + p["prompt"] + ". No characters, no text."],
-                               [src.read_bytes()])
+        if f.exists() or not ("from" in p or "room" in p):
+            continue
+        sheets = [(SHEETS / f"{w}.png").read_bytes() for w in p.get("cast", [])]
+        who = ", ".join(f"{w} (attached picture {k + 2})" for k, w in enumerate(p.get("cast", [])))
+        if "room" in p:
+            src = out / f"{p['room']}.png"
+            if not src.exists():
+                continue
+            text = ("The same room as the first attached picture: exactly the same place, framing, light and painted style. "
+                    "Paint these characters into it as part of the same painting: " + p["prompt"] + ". The characters are "
+                    f"the ones in the other attached pictures, {who}: the same faces, bodies, clothes and colours. They stand "
+                    "on the room's floor or sit on its furniture, at the true size for the room and in its perspective, lit "
+                    "from the same side as the room, with their shadows on the floor and furniture, painted with the same "
+                    "brushwork and line weight as the room, never outlined or cut out like stickers. No text, no captions.")
+        else:
+            src = out / f"{p['from']}.png"
+            if not src.exists():
+                continue
+            keep = (" Every character stays exactly where and how big they are, with the same face and clothes; only the "
+                    "change named moves.") if sheets else " No characters."
+            text = ("The same picture as the first attached one: exactly the same framing, room, light and style, changed "
+                    "only like this: " + p["prompt"] + "." + keep + " No text, no captions.")
+        if "box" in p and "from" in p:
+            # cel animation over a held picture: only the box around the moving part is redrawn and laid back with a soft
+            # edge, so the room and everyone else stay exactly still from drawing to drawing
+            base = Image.open(src).convert("RGB")
+            W, H = base.size
+            x0, y0, x1, y1 = (int(round(v * (W if k % 2 == 0 else H))) for k, v in enumerate(p["box"]))
+            crop = base.crop((x0, y0, x1, y1))
+            buf = io.BytesIO()
+            crop.save(buf, "PNG")
+            text = ("The same picture as the first attached one, a detail of a larger painting: exactly the same framing, "
+                    "sizes, light and style, changed only like this: " + p["prompt"] + ". Nothing else moves. No text.")
+            img = produce._try(c, [text], [buf.getvalue()] + sheets)
             if img:
-                f.write_bytes(img)
+                new = Image.open(io.BytesIO(img)).convert("RGB").resize(crop.size, Image.LANCZOS)
+                m = Image.new("L", crop.size, 0)
+                e = max(8, min(crop.size) // 12)
+                ImageDraw.Draw(m).rectangle([e, e, crop.size[0] - e, crop.size[1] - e], fill=255)
+                m = m.filter(ImageFilter.GaussianBlur(e / 2))
+                base.paste(new, (x0, y0), m)
+                base.save(f)
+            continue
+        img = produce._try(c, [text], [src.read_bytes()] + sheets)
+        if img:
+            f.write_bytes(img)
     # machines (no model sheet): the first in the house style, each next one edited from the one before
     prev = None
     for name, what in sc.get("machines", {}).items():
@@ -376,7 +426,7 @@ def inset(fr, d, ins, f):
 def render(n, only=None):
     sc = load(n)
     out = ART / str(n)
-    captions = json.loads((ROOT / "film/drawn/voice.json").read_text())["lines"]
+    captions = json.loads((FILM / "voice.json").read_text())["lines"]
     font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 40)
     title_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf", 120) \
         if Path("/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf").exists() else font
@@ -487,7 +537,7 @@ def sheets():
     SHEETS.mkdir(parents=True, exist_ok=True)
     c = pilot.client()
     example = (ROOT / LOOK["cel_ref"]).read_bytes()
-    first = ROOT / "data/drawn/sheets"
+    first = DATA / "sheets"
     todo = [f for f in sorted(first.glob("*.png")) if "-v1" not in f.stem and not (SHEETS / f.name).exists()]
 
     def one(f):
@@ -559,7 +609,7 @@ def cut(out=None):
     out = Path(out or SHOTS_OUT.parent / "sand-to-chip.mp4")
     seconds = sum(n for _, n in rows) / FPS
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-i",
-                    str(ROOT / "data/drawn/score.mp3"), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+                    str(DATA / "score.mp3"), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
                     "-b:a", "192k", "-t", str(seconds), str(out)], check=True)
     print(out, f"{len(rows)} shots, {seconds:.1f} s")
     return out
