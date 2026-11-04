@@ -682,10 +682,15 @@ class Helper:
         if self.voice_meter.usd >= self.voice_meter.cap_usd or self.spent_total() >= self.total_cap:
             return {"error": "The speech budget is used; type the question instead."}
         try:
-            text = fab3d.transcribe(self.meta_base_url, self.meta_key_file, audio, body.get("mime") or "audio/webm")
+            before = self.voice_meter.usd
+            text = fab3d.transcribe(self.meta_base_url, self.meta_key_file, audio, body.get("mime") or "audio/webm",
+                                   meter=self.voice_meter, remaining=lambda: self.total_cap - self.spent_total())
+        except (ValueError, spend.CapReached) as e:
+            return {"error": str(e)}
         except Exception as e:  # the model's own message, never the key
             return {"error": f"The speech model did not answer ({type(e).__name__}); type the question instead."}
-        return {"text": text, "model": fab3d.VOICE_MODEL}
+        return {"text": text, "model": fab3d.VOICE_MODEL, "cost_usd": self.voice_meter.usd - before,
+                "spent_usd": self.voice_meter.usd}
 
     def arm_shop(self, jid, k):
         j = self.jobs.get(jid) or self._load(jid)

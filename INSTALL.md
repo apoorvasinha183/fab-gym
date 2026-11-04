@@ -134,6 +134,10 @@ by the helper on your computer and sent only to the model's own service.
 
 ## 5. The 3D fab (optional)
 
+For spoken questions, install FFmpeg as well (`brew install ffmpeg` on macOS, `sudo apt install ffmpeg`
+on Ubuntu, or an FFmpeg build on your Windows PATH). The helper converts microphone recordings locally to
+the WAV format Meta accepts. Typed questions work without FFmpeg.
+
 Start the helper first (step 3); the 3D fab reads its live run from it. Add `--preset open` if you want Lou to answer
 with Muse Spark Open. Then pick one:
 

@@ -143,24 +143,78 @@ class Run:
 VOICE_MODEL = "muse-voice-transcribe-1.0"
 
 
-def transcribe(base_url, key_file, audio, mime, timeout=60):
-    """Spoken words to text with Meta's speech model, as an OpenAI-style transcription (multipart form). The key is
-    read here and sent only in the request header."""
+def prepare_audio(audio):
+    """Meta accepts mono 16-bit PCM WAV at 16 or 24 kHz; convert other recordings locally."""
+    import io
+    import subprocess
+    import tempfile
+    import wave
+    from pathlib import Path
+
+    def duration(data):
+        try:
+            with wave.open(io.BytesIO(data), "rb") as wav:
+                if wav.getnchannels() == 1 and wav.getsampwidth() == 2 and wav.getframerate() in (16000, 24000):
+                    return wav.getnframes() / wav.getframerate()
+        except (wave.Error, EOFError):
+            pass
+        return None
+
+    seconds = duration(audio)
+    if seconds is None:
+        with tempfile.TemporaryDirectory(prefix="fabgym-voice-") as tmp:
+            source, dest = Path(tmp) / "input.audio", Path(tmp) / "output.wav"
+            source.write_bytes(audio)
+            try:
+                p = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-protocol_whitelist", "file,pipe",
+                                    "-i", str(source), "-t", "601", "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le",
+                                    "-map_metadata", "-1", str(dest)], capture_output=True, timeout=60)
+            except FileNotFoundError:
+                raise ValueError("Install FFmpeg to convert microphone recordings, or send mono 16-bit PCM WAV at 16 or 24 kHz.") from None
+            if p.returncode:
+                raise ValueError("The recording could not be decoded; try recording it again.")
+            audio = dest.read_bytes()
+            seconds = duration(audio)
+    if seconds is None or not 0 < seconds <= 600:
+        raise ValueError("The recording must contain between 0 and 600 seconds of audio.")
+    return audio, seconds
+
+
+def transcribe(base_url, key_file, audio, mime, timeout=60, meter=None, remaining=None):
+    """Meta's file transcription contract; https://dev.meta.ai/docs/speech-to-text (checked 5 Nov 2026)."""
     import json
+    import math
     import urllib.request
     import uuid
+    from contextlib import nullcontext
     from pathlib import Path
-    key = Path(key_file).read_text().strip()
-    ext = {"audio/webm": "webm", "audio/ogg": "ogg", "audio/wav": "wav", "audio/mpeg": "mp3", "audio/mp4": "m4a"}.get(mime.split(";")[0], "webm")
+    from agent import spend
+
+    audio, seconds = prepare_audio(audio)
+    prices = json.loads(spend.PRICES.read_text())
+    per_hour = prices["meta"]["audio"][VOICE_MODEL]["usd_per_hour"]
+    estimated = math.floor(seconds) * per_hour / 3600
     b = uuid.uuid4().hex
-    parts = [f'--{b}\r\nContent-Disposition: form-data; name="model"\r\n\r\n{VOICE_MODEL}\r\n'.encode(),
-             f'--{b}\r\nContent-Disposition: form-data; name="file"; filename="question.{ext}"\r\nContent-Type: {mime}\r\n\r\n'.encode(),
+    settings = json.dumps({"model": VOICE_MODEL, "mode": "PUSH_TO_TALK", "audioEncoding": "WAV"})
+    parts = [f'--{b}\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n{settings}\r\n'.encode(),
+             f'--{b}\r\nContent-Disposition: form-data; name="audio"; filename="question.wav"\r\nContent-Type: audio/wav\r\n\r\n'.encode(),
              audio, f"\r\n--{b}--\r\n".encode()]
-    req = urllib.request.Request(base_url.rstrip("/") + "/audio/transcriptions", data=b"".join(parts), method="POST",
-                                 headers={"Authorization": f"Bearer {key}", "Content-Type": f"multipart/form-data; boundary={b}"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        out = json.loads(r.read())
-    return (out.get("text") or "").strip()
+    with meter.request() if meter is not None else nullcontext():
+        if (meter is not None and estimated > meter.cap_usd - meter.usd) or (remaining and estimated > remaining()):
+            raise spend.CapReached("The recording would exceed the speech or total budget; type the question instead.")
+        key = Path(key_file).read_text().strip()
+        req = urllib.request.Request(base_url.rstrip("/") + "/asr/transcribe", data=b"".join(parts), method="POST",
+                                     headers={"Authorization": f"Bearer {key}", "Content-Type": f"multipart/form-data; boundary={b}"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            out = json.loads(r.read())
+        if meter is not None:
+            # Billed audio is rounded down to whole seconds. Fall back to the uploaded
+            # duration if a provider omits its timing, so the call is still counted.
+            processed = float(out.get("audioDurationMs", seconds * 1000)) / 1000
+            if not math.isfinite(processed) or processed < 0:
+                processed = seconds
+            meter.add_usd(math.floor(processed) * per_hour / 3600)
+        return (out.get("transcript") or "").strip()
 
 
 # ------------------------------------------------------------------ from the parking lot to the cleanroom (F9)
