@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import re
 import json
+import math
 import os
 import mimetypes
 import subprocess
@@ -125,6 +126,16 @@ class Helper:
         self.lou_meter = spend.Meter(spend.price("baseten", lou.MODEL), cap_usd=3.0, path=self.jobs_dir.parent / "spend-lou.json")
         self.lou_key_file = NO_KEY if no_model else Path(PRESETS["open"]["key_file"]).expanduser()
         self._lou_campus = None
+        # Every HTTP request, including retries, checks the total across features.
+        self.model_lock = threading.RLock()
+        for meter in (self.meter, self.race_meter, self.poster_meter, self.sketch_meter,
+                      self.glossary_meter, self.voice_meter, self.lou_meter):
+            meter.before_request = self._check_total_spend
+            meter.request_lock = self.model_lock
+
+    def _check_total_spend(self):
+        if self.spent_total() >= self.total_cap:
+            raise spend.CapReached(f"All ${self.total_cap:g} of the model budget is used. Raise the total cap to keep going.")
 
     def __repr__(self):
         return f"Helper(web={str(self.web)!r}, model={self.model_name!r}, key_file={str(self.key_file)!r})"
@@ -268,9 +279,9 @@ class Helper:
             cmd += QUICK
         out = d / "report.part"
         other = []
-        with open(out, "w") as rep, open(d / "log.jsonl", "a") as log:
-            # the report goes to a file, so a large one never blocks the pipe the events come through
-            p = subprocess.Popen(cmd, cwd=ROOT, stdout=rep, stderr=subprocess.PIPE, text=True)
+        # The report goes to a file, so a large one never blocks the events pipe.
+        with (open(out, "w") as rep, open(d / "log.jsonl", "a") as log,
+              subprocess.Popen(cmd, cwd=ROOT, stdout=rep, stderr=subprocess.PIPE, text=True) as p):
             for line in p.stderr:
                 if not line.startswith("event "):
                     other.append(line.rstrip())
@@ -719,6 +730,10 @@ class Helper:
 
 
     def poster_make(self, body):
+        with self.model_lock:
+            return self._poster_make(body)
+
+    def _poster_make(self, body):
         """The three-star poster (docs/POSTER.md): the map's picture in, Muse Image's poster out, saved on this Mac."""
         import base64
         import time
@@ -889,6 +904,8 @@ def serve(h, port=8766):
             self.wfile.write(data)
 
         def do_GET(self):
+            if not self._trusted():
+                return
             path = self.path.split("?")[0]
             if path == "/api/status":
                 return self._send(200, h.status())
@@ -916,12 +933,56 @@ def serve(h, port=8766):
                 return self._send(404, {"error": "not found"})
             return self._send(200, f.read_bytes(), mimetypes.guess_type(str(f))[0] or "application/octet-stream")
 
+        def _trusted(self):
+            # Loopback binding alone does not stop browser requests or DNS rebinding.
+            host = self.headers.get("Host", "").lower()
+            allowed = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+            origin = self.headers.get("Origin")
+            if (host not in allowed or (origin is not None and origin != "http://" + host)
+                    or self.headers.get("Sec-Fetch-Site") == "cross-site"):
+                self.close_connection = True
+                self._send(403, {"error": "Use the helper's own local page or a native client."})
+                return False
+            return True
+
         def do_POST(self):
-            n = int(self.headers.get("Content-Length") or 0)
+            if not self._trusted():
+                return
             try:
-                body = json.loads(self.rfile.read(n) or b"{}")
-            except json.JSONDecodeError:
-                return self._send(400, {"error": "not JSON"})
+                n = int(self.headers.get("Content-Length") or 0)
+                if n < 0 or self.headers.get("Transfer-Encoding"):
+                    raise ValueError("invalid request length")
+            except ValueError:
+                self.close_connection = True
+                return self._send(400, {"error": "invalid request length"})
+            if n > 28 * 1024 * 1024:  # room for a 20 MB voice recording encoded as base64
+                self.close_connection = True
+                return self._send(413, {"error": "request body exceeds 28 MB"})
+            if self.headers.get_content_type() != "application/json":
+                self.close_connection = True
+                return self._send(415, {"error": "Content-Type must be application/json"})
+            try:
+                def invalid_constant(value):
+                    raise ValueError(f"non-finite JSON number: {value}")
+                def finite_float(value):
+                    number = float(value)
+                    if not math.isfinite(number):
+                        return invalid_constant(value)
+                    return number
+                body = json.loads(self.rfile.read(n) or b"{}", parse_constant=invalid_constant, parse_float=finite_float)
+                if not isinstance(body, dict):
+                    raise ValueError("the request must be a JSON object")
+                return self._post(body)
+            except (ValueError, TypeError, OverflowError) as e:
+                return self._send(400, {"error": f"invalid request: {e}"})
+
+        def _post(self, body):
+            def number(key, default, positive=False):
+                value = float(body.get(key, default))
+                if not math.isfinite(value) or value < 0 or (positive and value == 0):
+                    raise ValueError(f"{key} must be finite and {'positive' if positive else 'nonnegative'}")
+                return value
+
             if self.path == "/api/ask":
                 r = h.ask(body.get("question"))
             elif self.path == "/api/run":
@@ -931,8 +992,8 @@ def serve(h, port=8766):
             elif self.path == "/api/fab/check":
                 r = h.fab_check(body.get("fab") or "")
             elif self.path == "/api/fab/run":
-                r = h.fab_run(body.get("fab") or "", seed=int(body.get("seed", 1)), days=float(body.get("days", 2)),
-                              every=float(body.get("every", 60)), overrides=body.get("overrides"), record=body.get("record"))
+                r = h.fab_run(body.get("fab") or "", seed=int(number("seed", 1)), days=number("days", 2, True),
+                              every=number("every", 60, True), overrides=body.get("overrides"), record=body.get("record"))
             elif self.path == "/api/glossary/ask":
                 r = h.glossary_ask(body)
             elif self.path == "/api/bar/route":
@@ -956,8 +1017,8 @@ def serve(h, port=8766):
             elif self.path == "/api/voice":
                 r = h.voice(body)
             elif self.path == "/api/fab/replay":
-                r = h.fab_replay(body.get("fab") or "", seed=int(body.get("seed", 1)), start=float(body.get("start", 0)),
-                                 minutes=float(body.get("minutes", 30)), overrides=body.get("overrides"))
+                r = h.fab_replay(body.get("fab") or "", seed=int(number("seed", 1)), start=number("start", 0),
+                                 minutes=number("minutes", 30, True), overrides=body.get("overrides"))
             else:
                 return self._send(404, {"error": "not found"})
             return self._send(409 if r.get("busy") else 200, r)
