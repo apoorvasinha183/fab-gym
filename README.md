@@ -123,9 +123,9 @@ shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" be
 
 ### The 3D fab: walk it with Lou
 
-Two ways, both from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest). First run
-`sh web/build-3d.sh` once to generate the live building inputs, then start the helper (above).
-The 3D fab reads its live run from it.
+The game opens with a choice: a guided tour, walking, or flying. **Esc** opens the pause menu, comfort controls,
+and travel to the parking lot, either fab phase, the bridge or the cinema. Exported builds include a labelled,
+looping simulator recording, so touring and exploration work without installing the helper or entering model keys.
 
 - **Any computer (macOS, Windows, Linux): the Godot project.** Install [Godot 4.7.2](https://godotengine.org/download)
   (free, open source), unzip `Fab-Gym-3D-Godot-project.zip`, open its `fab3d/project.godot` in Godot, wait about a
@@ -134,9 +134,25 @@ The 3D fab reads its live run from it.
 - **macOS, no Godot: the app.** Unzip `Fab-Gym-3D-macOS.zip`, then right-click **Fab Gym 3D** and choose **Open** (it is
   not signed by Apple).
 
-**Controls:** **Walk alone** ends the tour; **W A S D** walk, **Shift** hurry, **F** fly (**E** up, **Q** down), hold
-the right mouse button to look; click a tool for its card; **Ask Lou** to ask and be walked there. In the cinema, sit
-with **E**, pick a film with **1** or **2**, and press **Enter**.
+**Controls:** **WASD / arrows** walk, **Shift** runs, **right mouse / IJKL** look, **M** toggles mouse look,
+and **F** flies or lands (**E / Q** rise or descend). Click a tool for its card. The menu has look sensitivity and
+inverted-look options. In the cinema, **E** sits or stands, **1 / 2** choose a film, **Enter** plays and **Space** pauses.
+A controller uses the left stick to move, right stick to look, X to fly and Start for the menu.
+
+The prepared Godot project runs on [Godot 4.7.2](https://godotengine.org/download). Its export presets cover macOS,
+Windows, Linux and a browser build. Prepare a release from the game asset bundle with:
+
+```sh
+python3 viz/fab3d/record_demo.py
+python3 viz/fab3d/export_game.py --godot /path/to/Godot --out /path/to/downloads
+```
+
+Desktop downloads run without a Godot installation. Serve the exported `web/` directory on an HTTPS static host;
+it includes everything the browser needs and uses WebGL 2 without isolation headers. The cinema films are bundled,
+so the first download is substantial. See [playing and hosting instructions](viz/fab3d/PLAYING.txt).
+
+For live data, run `sh web/build-3d.sh` and start the helper above. Reconnect from the pause menu. Spoken questions
+and open-ended model answers require that connection; the tour, tool cards, local explanations and cinema work offline.
 
 ### For tinkerers
 

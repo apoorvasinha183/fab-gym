@@ -9,6 +9,7 @@ signal asked(text: String)
 signal recorded(wav: PackedByteArray)
 signal speed_changed(minutes_a_second: float)
 signal free_walk
+signal menu_requested
 signal advance                      # the visitor wants the next line
 
 const MAX_SECONDS := 30.0
@@ -53,14 +54,22 @@ func _ready() -> void:
 		ask_panel.visible = not ask_panel.visible
 		if ask_panel.visible:
 			ask_box.grab_focus())
-	$root/menu/list/free.pressed.connect(func() -> void: free_walk.emit())
+	$root/menu/list/free.pressed.connect(func() -> void:
+		$root/menu/list/free.release_focus()
+		free_walk.emit())
 	speed_button.pressed.connect(func() -> void:
+		speed_button.release_focus()
 		_speed_i = (_speed_i + 1) % SPEEDS.size()
 		speed_button.text = "SPEED  " + str(SPEEDS[_speed_i][1])
 		speed_changed.emit(float(SPEEDS[_speed_i][0])))
 	$root/talk.gui_input.connect(func(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			_next())
+	var menu_button := Button.new()
+	menu_button.text = "PAUSE / PLACES"
+	menu_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	$root/menu/list.add_child(menu_button)
+	menu_button.pressed.connect(func() -> void: menu_requested.emit())
 	card.visible = false
 	next_mark.visible = false
 
@@ -77,8 +86,9 @@ func _input(e: InputEvent) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_SPACE:
+	if e.is_action_pressed("next_line") and not e.is_echo():
 		_next()
+		get_viewport().set_input_as_handled()
 
 
 func _next() -> void:
@@ -92,6 +102,12 @@ func _next() -> void:
 
 func show_line(text: String) -> void:
 	line_label.text = text
+	if text.is_empty():
+		line_label.visible_characters = -1
+		_done_for = 100.0
+		$root/talk.hide()
+		$root/face.hide()
+		return
 	line_label.visible_characters = 0
 	_typed = 0.0
 	_done_for = 0.0

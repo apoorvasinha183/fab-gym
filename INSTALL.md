@@ -136,7 +136,10 @@ by the helper on your computer and sent only to the model's own service.
 
 ## 5. The 3D fab (optional)
 
-Build its live simulation inputs once from the repository root:
+Prepared desktop downloads and the browser build open with a welcome menu. Touring, walking, flying, tool cards
+and the cinema work offline with a labelled simulator recording. The local helper is optional.
+
+To add live simulation data, build its inputs once from the repository root:
 
 ```sh
 sh web/build-3d.sh
@@ -149,8 +152,8 @@ For spoken questions, install FFmpeg as well (`brew install ffmpeg` on macOS, `s
 on Ubuntu, or an FFmpeg build on your Windows PATH). The helper converts microphone recordings locally to
 the WAV format Meta accepts. Typed questions work without FFmpeg.
 
-Start the helper first (step 3); the 3D fab reads its live run from it. Add `--preset open` if you want Lou to answer
-with Muse Spark Open. Then pick one:
+For live data, start the helper (step 3), then choose **Reconnect live data** in the game’s pause menu. Add
+`--preset open` for model-assisted answers. To open the game, pick one:
 
 **On any computer, with Godot (recommended):**
 
@@ -165,9 +168,14 @@ with Muse Spark Open. Then pick one:
 **On macOS, without Godot:** download `Fab-Gym-3D-macOS.zip`, unzip it, then **right-click** Fab Gym 3D and choose
 **Open** (it is not signed by Apple). The first start takes about 20 seconds.
 
-**Walk alone** ends the tour. **W A S D** walk, **Shift** hurries, **F** flies (**E** up, **Q** down), the right mouse
-button looks around, and **Ask Lou** asks a question. In the cinema: **E** to sit, **1** or **2** to pick a film,
-**Enter** to play.
+**Esc** opens the pause menu, camera choices, safe travel and look settings. **WASD / arrows** walk, **Shift** runs,
+**F** flies (**E / Q** up / down), and **right mouse / IJKL** look. **M** toggles mouse look for trackpads.
+In the cinema: **E** sits or stands, **1 / 2** choose a film, **Enter** plays, and **Space** pauses. The controller
+uses left/right sticks for movement/look, X for flight, A to interact, Y for next/play and Start for the menu.
+
+For maintainers, `python3 viz/fab3d/export_game.py --godot /path/to/Godot --out /path/to/downloads` exports all four
+platforms from the prepared assets and installed 4.7.2 templates. The web directory must be served over HTTP locally
+or HTTPS publicly; opening its HTML file directly will not work. See `viz/fab3d/PLAYING.txt`.
 
 ---
 

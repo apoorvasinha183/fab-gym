@@ -18,7 +18,7 @@ const ACCEL := 1.6            # metres a second, each second, speeding up or slo
 const TURN := 3.2             # radians a second it can turn while walking: corners become arcs
 const CLIP_SPEED := 0.94      # metres a second the walk clip covers at its own rate: its planted foot's speed, measured in
                               # Blender (0.92 to 0.97 m/s), so the clip runs at speed / 0.94 and the feet do not slide
-const VIA_RADIUS := 0.7       # how close to a corner or door it gets before heading for the next point
+const VIA_RADIUS := 0.12      # reach a navigation corner before turning; larger shortcuts cut through walls
 var line_of: Callable         # stop -> its line, built from the live run when the guide arrives
 var planning := false         # set once the walkable map is baked (main.gd)
 var planner: Callable         # (from, to) -> corners of a path around anything solid in the way (main.gd)
@@ -33,10 +33,14 @@ var _bonk_t := 0.0
 var _seg := -1
 var _seg_from := Vector3.ZERO
 var _seg_len := 1.0
+var _body := CapsuleShape3D.new()
+var _blocked_for := 0.0
 const BONK_LINE := "Ow! Somebody log that defect: one cracked CEO. There goes the yield."
 
 
 func _ready() -> void:
+	_body.radius = 0.25
+	_body.height = 1.2
 	anim = _find_anim(self)
 	_play("Idle_Loop")
 
@@ -137,6 +141,7 @@ var _tr_at := Vector3.ZERO
 
 
 func _process(dt: float) -> void:
+	dt = minf(dt, 0.1)
 	if trace:
 		_tr += dt
 		if _tr >= 0.5:
@@ -184,7 +189,7 @@ func _process(dt: float) -> void:
 				and str(s.get("kind", "")) != "air_shower":
 			# a new leg: if something solid stands on the straight line, walk round it by the walkable map's corners
 			s["planned"] = true
-			if s.get("via", false) and snapper.is_valid():
+			if snapper.is_valid():
 				s["at"] = snapper.call(global_position, to)
 				to = s["at"]
 			var corners: Array = planner.call(global_position, to)
@@ -217,10 +222,25 @@ func _process(dt: float) -> void:
 		if not via:
 			target_v = minf(target_v, sqrt(2.0 * ACCEL * maxf(dist - 0.05, 0.0)))
 		_v = move_toward(_v, target_v, ACCEL * dt)
-		var step := Vector3(sin(rotation.y), 0.0, cos(rotation.y)) * minf(_v * dt, dist)
-		if off > 1.2:
-			step = Vector3.ZERO      # turn on the spot first
-		global_position += step
+		# Follow the planned segment exactly. Steering the position by the model's
+		# turning animation made it arc across the inside of walls at corners.
+		var step := d.normalized() * minf(_v * dt, dist)
+		if off > 0.55:
+			step = Vector3.ZERO
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = _body
+		query.transform.origin = global_position + Vector3(0, 1.1, 0)
+		query.motion = step
+		var fraction := get_world_3d().direct_space_state.cast_motion(query)[0]
+		global_position += step * maxf(0.0, fraction - 0.01) if fraction < 1.0 else step
+		if step.length() > 0.001 and fraction < 0.1:
+			_blocked_for += dt
+			if _blocked_for > 0.75:
+				s.erase("planned")
+				_seg = -1
+				_blocked_for = 0.0
+		else:
+			_blocked_for = 0.0
 		var u := clampf(1.0 - Vector2(to.x - global_position.x, to.z - global_position.z).length() / _seg_len, 0.0, 1.0)
 		global_position.y = lerpf(_seg_from.y, to.y, u)
 		if _v > 0.12:
@@ -241,11 +261,11 @@ func _process(dt: float) -> void:
 			_step_on()
 			mode = "walk" if i < stops.size() else mode
 	elif mode == "talk":
-		if i < stops.size() and stops[i].has("face"):
-			rotation.y = lerp_angle(rotation.y, float(stops[i]["face"]), clampf(dt * 3.0, 0.0, 1.0))
 		if viewer and i < stops.size() and stops[i].get("face_viewer", false):
 			var to_v := viewer.global_position - global_position
 			rotation.y = lerp_angle(rotation.y, atan2(to_v.x, to_v.z), clampf(dt * 4.0, 0.0, 1.0))
+		elif i < stops.size() and stops[i].has("face"):
+			rotation.y = lerp_angle(rotation.y, float(stops[i]["face"]), clampf(dt * 3.0, 0.0, 1.0))
 		talk_left -= dt
 		if talk_left <= 0.0:
 			i += 1

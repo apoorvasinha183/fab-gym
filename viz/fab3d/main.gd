@@ -17,6 +17,10 @@ const Solid := preload("res://solid.gd")
 @onready var exterior: Node3D = $exterior
 @onready var drone: Node3D = $drone
 
+var play_menu: CanvasLayer
+var automated := false
+var visit_started := false
+
 var clock := 360.0            # simulated minutes since the run began: 06:00 on day 1
 var speed := 1.0 / 60.0       # simulated minutes a real second: real time, so vehicles move at their own speed
 var _ask_every := 0.0
@@ -57,6 +61,7 @@ var _lou_ask := ""             # --lou-ask QUESTION: asked a few seconds into th
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
+	automated = ["--check", "--perf", "--film", "--shots", "--playtest", "--explore", "--sweep", "--corridor", "--aisle", "--seat"].any(func(flag): return flag in args)
 	if "--check" in args:
 		check_out = args[args.find("--check") + 1]
 	if "--perf" in args:
@@ -117,13 +122,13 @@ func _ready() -> void:
 	guide.snapper = Callable(self, "reach")
 	guide.said.connect(func(t: String) -> void: ui.show_line(t))
 	guide.arrived.connect(_on_arrived)
-	guide.tour_done.connect(_free_walk)
+	guide.tour_done.connect(_tour_finished)
 	live.run_ready.connect(_on_run)
 	live.state.connect(_on_state)
 	live.answered.connect(_on_answer)
 	live.heard.connect(_on_heard)
 	live.lou_replied.connect(_on_lou)
-	live.failed.connect(func(where: String, m: String) -> void: ui.show_line("[i]%s[/i]" % m))
+	live.failed.connect(_live_failed)
 	ui.asked.connect(handle_question)
 	ui.recorded.connect(func(wav: PackedByteArray) -> void: live.voice(wav))
 	ui.speed_changed.connect(func(s: float) -> void: speed = s)
@@ -154,7 +159,17 @@ func _ready() -> void:
 	if check_out != "":
 		_check.call_deferred()
 		return
-	live.start(1, 1.0)
+	play_menu = preload("res://ui/play_menu.gd").new()
+	play_menu.world = self
+	add_child(play_menu)
+	play_menu.apply_settings()
+	ui.menu_requested.connect(func() -> void: play_menu.open())
+	if automated:
+		choose_view("tour")
+	else:
+		play_menu.open.call_deferred(true)
+	if not "--playability-check" in args:
+		live.start(1, 1.0)
 
 
 # ------------------------------------------------------------------ the guide's paths around what is solid
@@ -197,7 +212,7 @@ func _bake_nav() -> void:
 		guide.planning = true
 		print("fab3d: walkable map baked, %d polygons, %.1f s after start" % [nm.get_polygon_count(), Time.get_ticks_msec() / 1000.0])
 		nav_baked.emit())
-	_nav.bake_navigation_mesh(true)
+	_nav.bake_navigation_mesh(not OS.has_feature("web"))
 
 
 func leg_hit(a: Vector3, b: Vector3) -> String:
@@ -234,7 +249,7 @@ func reach(a: Vector3, b: Vector3) -> Vector3:
 		return b
 	var e: Vector3 = p[-1]
 	var d := Vector2(e.x - b.x, e.z - b.z).length()
-	return Vector3(e.x, b.y, e.z) if d > 0.3 and d < 4.0 else b
+	return Vector3(e.x, b.y, e.z) if d > 0.05 and d < 4.0 else b
 
 
 func _plan_leg(a: Vector3, b: Vector3) -> Array:
@@ -319,17 +334,96 @@ func _dress_building() -> void:
 
 # ------------------------------------------------------------------ the run and the clock
 
-func _on_run(info: Dictionary) -> void:
-	if not no_intro and check_out == "":
-		# the opening flight over the campus first; the tour starts when it lands (or the visitor skips it)
-		intro = true
-		campus.paused = true
-		player.follow = null
-		player.roaming = false
-		ui.set_stop(0, 0, "Fab Gym from the air")
-		drone.start()
-		return
-	_start_tour()
+func _on_run(_info: Dictionary) -> void:
+	# Connecting or retrying updates the data; it must never seize the visitor's camera.
+	if play_menu:
+		play_menu.status.text = "Recorded simulation demo" if live.offline else "Live simulation connected"
+	ui.set_clock(clock, speed)
+
+
+func _live_failed(where: String, message: String) -> void:
+	if where == "run":
+		ui.clock_label.text = "EXPLORING · LIVE DATA OFFLINE"
+		if play_menu:
+			play_menu.status.text = "Tour and explore are available. Reconnect live data when ready."
+	else:
+		ui.show_line(message)
+
+
+func choose_view(mode: String) -> void:
+	if play_menu and play_menu.is_open():
+		play_menu.close()
+	visit_started = true
+	if mode == "tour":
+		_reset_view()
+		guide.visible = true
+		guide.set_process(true)
+		var lot: Array = campus.data["entrance"]["route"][0]["at"]
+		guide.global_position = _at(lot)
+		guide.rotation.y = PI / 2
+		player.place(float(lot[0]) - 5.0, float(lot[1]), -PI / 2)
+		player.fly = false
+		player.pitch = -0.06
+		if not no_intro and not player.reduced_motion:
+			intro = true
+			campus.paused = true
+			player.roaming = false
+			ui.set_stop(0, 0, "Fab Gym from the air · Space to skip")
+			drone.start()
+		else:
+			_start_tour()
+	elif mode == "fly":
+		travel_to("Phase one")
+		player.global_position = Vector3(120, 36, 85)
+		player.yaw = -0.2
+		player.pitch = -0.35
+		player.fly = true
+		ui.set_stop(0, 0, "Flying · F to land")
+	else:
+		travel_to("Phase one")
+
+
+func _reset_view() -> void:
+	drone.stop()
+	intro = false
+	touring = false
+	campus.paused = false
+	guide.mode = "idle"
+	guide._play("Idle_Loop")
+	_lou_waiting = false
+	live.cancel_question()
+	guide.stops.clear()
+	guide.i = 0
+	guide._v = 0.0
+	guide._seg = -1
+	if cinema.full.visible:
+		cinema.fullscreen(false)
+	if player.seated:
+		cinema.stand()
+	player.input_locked = false
+	player.take_control()
+	ui.ask_box.release_focus()
+	ui.ask_panel.hide()
+	ui.card.hide()
+	ui.talking = false
+	ui.show_line("")
+
+
+func travel_to(place: String) -> void:
+	_reset_view()
+	player.fly = false
+	var spots := {"Phase one": Vector3(24, -2.5, -PI / 2), "Bridge": Vector3(285, 0, -PI / 2),
+		"Phase two": Vector3(330, -2.5, -PI / 2), "Cinema": Vector3(58, -104, PI)}
+	if place == "Parking lot":
+		var lot: Array = campus.data["entrance"]["route"][0]["at"]
+		player.global_position.y = 1.75
+		player.place(float(lot[0]) - 5.0, float(lot[1]), -PI / 2)
+	else:
+		var spot: Vector3 = spots.get(place, spots["Phase one"])
+		player.place(spot.x, spot.y, spot.z)
+	player.pitch = -0.06
+	campus.update_cells()
+	ui.set_stop(0, 0, place + " · exploring")
 
 
 func _start_explore() -> void:
@@ -422,7 +516,6 @@ func _start_tour() -> void:
 		player.place(31.0, 0.0, PI / 2)
 		player.roaming = false
 		player.follow = guide
-		player._dir_x = -1.0       # he walks west, down the aisle, so the camera keeps behind him from the first step
 		ui.line_label.text = ""
 		ui.set_stop(0, 0, "Phase one · the main aisle")
 		var ua := OS.get_cmdline_user_args()
@@ -443,7 +536,7 @@ func _start_tour() -> void:
 	if explore:
 		_start_explore()
 		return
-	ui.show_line("The run is ready: %d tools, the simulator's day from 06:00. Follow me." % campus.data["tools"].size())
+	ui.show_line("Welcome to the fab: %d tools to discover. Follow me, or choose a place in the menu." % campus.data["tools"].size())
 	touring = true
 	_stop_n = 0
 	_stop_total = 0
@@ -516,8 +609,12 @@ func _process(dt: float) -> void:
 	ui.talking = (intro or guide.mode == "talk") and not explore
 	if live.run_id != "":
 		clock += dt * speed
+		if live.offline:
+			clock = float(live.demo["start"]) + fmod(clock - float(live.demo["start"]), float(live.demo["end"]) - float(live.demo["start"]))
 		campus.clock = clock
 		ui.set_clock(clock, speed)
+		if live.offline:
+			ui.clock_label.text = "DEMO · " + ui.clock_label.text
 		_ask_every -= dt
 		if _ask_every <= 0.0:
 			_ask_every = 1.0
@@ -680,16 +777,16 @@ func _tour() -> Array:
 				continue
 			seen[[phase, str(l[3])]] = true
 			var side := 1.0 if float(l[2]) > 0 else -1.0
-			stops.append({"kind": "area", "area": str(l[3]), "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
+			stops.append({"kind": "area", "area": str(l[3]), "label": str(l[0]), "at": Vector3(x, z, -side * 5.0), "face_viewer": true,
 					"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2])),
 					"device": _device_for(str(l[3]), phase, Vector2(x, float(l[2])))})
 		if phase == 0:
 			# through the doorway in phase one's end wall, onto the bridge, and through phase two's
 			stops.append({"kind": "via", "via": true, "at": Vector3(255.0, z, 0.0)})
-			stops.append({"kind": "bridge", "at": Vector3(285.8, z, 0.0), "face": -PI / 2})
+			stops.append({"kind": "bridge", "at": Vector3(285.8, z, 0.0), "face_viewer": true})
 			stops.append({"kind": "via", "via": true, "at": Vector3(316.0, z, 0.0)})
 	# the cinema (data/cinema/plan.json): in by the main entrance, across the lobby, up the ramp, onto the mid cross aisle
-	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 92.0), "face": PI, "teleport": true})
+	stops.append({"kind": "cinema_door", "at": Vector3(58.0, 0.1, 92.0), "face_viewer": true, "teleport": true})
 	# through the sliding doors, down the lobby clear of the benches and posters, up the ramp, through the ramp door,
 	# and out along the mid cross aisle; he stops beside it, turned to the visitor
 	for p in [[58.0, -99.5, 0.1], [58.0, -105.4, 0.1], [69.2, -105.4, 0.1], [69.2, -109.1, 0.1], [61.2, -109.1, 0.7],
@@ -748,8 +845,8 @@ func _on_arrived(s: Dictionary) -> void:
 				cinema.fullscreen(true)
 				print("fab3d: recorded movie started from seat"))
 		else:
-			# the camera walks on to the middle of the aisle and turns to the screen
-			player.glide(Vector3(52.4, player.floor_at(52.4, -116.0) + 1.65, 116.0), PI / 2.0, -0.05, 2.5)
+			# Hand control back where the visitor has arrived, without an extra camera move.
+			player.take_control()
 
 
 func _stop_title(s: Dictionary) -> String:
@@ -767,12 +864,24 @@ func _stop_title(s: Dictionary) -> String:
 	return ""
 
 
-func _free_walk() -> void:
-	ui.set_stop(0, 0, "Walking alone")
+func _tour_finished() -> void:
+	# Finishing Lou's last line must not stand up a visitor who has already started a film.
 	touring = false
-	player.follow = null
-	player.roaming = true
-	guide.mode = "idle"
+	if player.follow == guide:
+		player.take_control()
+	if not player.seated:
+		ui.set_stop(0, 0, "Explore freely · Esc for places and controls")
+
+
+func _free_walk() -> void:
+	var from_intro := intro
+	var from_flight: bool = player.fly
+	_reset_view()
+	if from_intro:
+		travel_to("Parking lot")
+	elif from_flight:
+		player.toggle_flight()
+	ui.set_stop(0, 0, "Walking alone · Esc for places and controls")
 
 
 func _line_for(s: Dictionary) -> String:
@@ -835,7 +944,7 @@ func _area_line(area: String, at: Vector2, label: String) -> String:
 
 func handle_question(q: String) -> void:
 	ui.show_line("[i]You asked:[/i] %s" % q)
-	if lou_brain and live.run_id != "" and not _lou_waiting:
+	if lou_brain and live.run_id != "" and not live.offline and not _lou_waiting:
 		# Lou's Meta brain: Muse Spark Open reads the live run and says what to say and where to go; the helper checks
 		# every number against the run before Lou says it
 		_lou_waiting = true
@@ -852,15 +961,7 @@ func _rule_answer(q: String) -> void:
 	var s := q.to_lower()
 	var area := _area_in(s)
 	if (s.begins_with("show me") or s.begins_with("take me") or s.begins_with("where is") or s.begins_with("go to")) and area != "":
-		var l := _label_of(area)
-		if not l.is_empty():
-			var side := 1.0 if float(l[2]) > 0 else -1.0
-			player.follow = null
-			player.roaming = true
-			player.place(float(l[1]) - 8.0, side * 2.0, -PI / 2)
-			guide.global_position = Vector3(float(l[1]) - 3.0, float(campus.heights["clean_z"]), -side * 5.0)
-			guide.rotation.y = PI if side > 0 else 0.0
-			guide.say(_area_line(area, Vector2(float(l[1]), float(l[2])), str(l[0])))
+		if _take_to(area, "Let's look at that area.", ""):
 			return
 	if s.contains("why") and (s.contains("queue") or s.contains("wait") or s.contains("long") or s.contains("slow") or s.contains("stuck")):
 		guide.say(_why_line(area))
@@ -927,6 +1028,8 @@ func _label_of(area: String) -> Array:
 
 
 func _on_lou(d: Dictionary) -> void:
+	if not _lou_waiting:
+		return
 	_lou_waiting = false
 	guide.get_node("bubble").text = ""
 	if d.get("fallback", false) or not d.get("ok", false):
@@ -1006,10 +1109,14 @@ func _take_to(area: String, say: String, tag: String) -> bool:
 			l = c
 	if l.is_empty():
 		return false
+	_reset_view()
+	guide.visible = true
+	guide.set_process(true)
+	player.fly = false
 	var z := float(campus.heights["clean_z"])
 	var x := float(l[1])
 	var side := 1.0 if float(l[2]) > 0 else -1.0
-	var stop := {"kind": "lou", "area": area, "label": str(l[0]), "at": Vector3(x, z, -side * 5.0),
+	var stop := {"kind": "lou", "area": area, "label": str(l[0]), "at": Vector3(x, z, -side * 5.0), "face_viewer": true,
 			"face": PI if side > 0 else 0.0, "plan": Vector2(x, float(l[2])),
 			"device": _device_for(area, 0 if x < 261.8 else 1, Vector2(x, float(l[2])))}
 	touring = false
@@ -1057,6 +1164,8 @@ func _on_heard(d: Dictionary) -> void:
 
 
 func _unhandled_input(e: InputEvent) -> void:
+	if cinema.full.visible or (play_menu and play_menu.is_open()):
+		return
 	if not cues.is_empty() and e is InputEventKey and e.pressed and not e.echo \
 			and (e.keycode == KEY_BRACKETRIGHT or e.keycode == KEY_BRACKETLEFT):
 		# Lou's next (or last) line for the video, typed out in his own window
@@ -1231,6 +1340,8 @@ func _check() -> void:
 		if stop.get("kind") != "area":
 			continue
 		var shot: Dictionary = stop["device"]
+		if shot.is_empty():
+			continue
 		var t: Array = campus.data["tools"][shot["tool"]]
 		var target: Vector3 = shot["target"]
 		device_shots.append({"area": stop["area"], "tool_area": t[1],

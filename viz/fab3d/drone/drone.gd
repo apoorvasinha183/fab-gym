@@ -54,6 +54,13 @@ func start() -> void:
 	playing = true
 
 
+func stop() -> void:
+	# Cancel without landing or starting the tour: another camera now owns the visitor.
+	playing = false
+	for label in labels.values():
+		label.visible = false
+
+
 func finish() -> void:
 	if not playing:
 		return

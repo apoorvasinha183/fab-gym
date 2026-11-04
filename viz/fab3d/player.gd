@@ -3,6 +3,11 @@ extends Node3D
 ## F to fly (E up, Q down), the right mouse button held to look. While the guide leads, the camera follows it instead.
 ## From the SMT2020 testbed; not a real fab.
 
+const Controls := preload("res://controls.gd")
+var look_sensitivity := 1.0
+var invert_look := false
+var reduced_motion := false
+var _glide: Tween
 var yaw := 0.0
 var pitch := -0.15
 var fly := false
@@ -21,7 +26,6 @@ var lift_car: Node3D
 var input_locked := false
 var seated := false             # in a cinema seat: the camera stays at the seat's eye point, the mouse still looks
 var seat_eye := Vector3.ZERO
-var _dir_x := 1.0              # which way along the fab the guide is walking (+1 east, -1 west), so the camera stays behind him
 var _trail: Array = []          # where the guide has walked lately, newest last; the camera keeps to his path
 var _camera_body := SphereShape3D.new()
 var _body := CapsuleShape3D.new()
@@ -35,6 +39,40 @@ var autopilot_speed := 3.2
 var _ap_hold := 0.0
 var _ap_clock := 0.0
 var _ap_from := Vector3.ZERO
+
+
+func _ready() -> void:
+	Controls.setup()
+
+
+func take_control() -> void:
+	if _glide and _glide.is_valid():
+		_glide.kill()
+	_glide = null
+	autopilot.clear()
+	_ap_hold = 0.0
+	_ap_clock = 0.0
+	_trail.clear()
+	follow = null
+	roaming = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func toggle_flight() -> void:
+	if not roaming or seated or controls_blocked():
+		return
+	take_control()
+	fly = not fly
+	if not fly:
+		# Land on the nearest walkable floor, never inside a tool underneath the flight.
+		var at := Vector3(global_position.x, floor_at(global_position.x, -global_position.z), global_position.z)
+		var map := get_world_3d().navigation_map
+		if NavigationServer3D.map_get_iteration_id(map) > 0:
+			var safe := NavigationServer3D.map_get_closest_point(map, at)
+			if safe.distance_to(at) < 25.0:
+				at = safe
+		global_position = at + Vector3(0, 1.65, 0)
+		pitch = clampf(pitch, -0.6, 0.4)
 
 
 func _init() -> void:
@@ -78,6 +116,102 @@ func _trail_point(back_m: float) -> Vector3:
 	return _trail[0] if not _trail.is_empty() else global_position
 
 
+func _look_at_subject(target: Vector3, dt: float) -> void:
+	var d := target - global_position
+	var to_yaw := atan2(-d.x, -d.z)
+	var to_pitch := atan2(d.y, Vector2(d.x, d.z).length())
+	# Rate-limit turns as well as easing them; a new stop must not snap the view.
+	var turn := wrapf(to_yaw - yaw, -PI, PI) * (1.0 - exp(-dt * 6.0))
+	yaw += clampf(turn, -dt * 1.8, dt * 1.8)
+	pitch = move_toward(pitch, lerpf(pitch, to_pitch, 1.0 - exp(-dt * 4.0)), dt)
+
+
+func _conversation_view(guide_at: Vector3, dt: float) -> void:
+	var head := guide_at + Vector3(0, 1.6, 0)
+	var space := get_world_3d().direct_space_state
+	if Vector2(global_position.x - head.x, global_position.z - head.z).length() >= 1.4 and _guide_visible(global_position, head):
+		return
+	# In a small booth the wall sweep can push the camera inside Lou's head.
+	# Find a clear view through its doorway before he turns to address the visitor.
+	var best := INF
+	var view := global_position
+	for offset in [Vector3(-2, 0, 0), Vector3(2, 0, 0), Vector3(0, 0, -2), Vector3(0, 0, 2)]:
+		var at: Vector3 = head + offset
+		var q := PhysicsShapeQueryParameters3D.new()
+		q.shape = _camera_body
+		q.transform.origin = at
+		if not space.intersect_shape(q, 1).is_empty():
+			continue
+		if not _guide_visible(at, head):
+			continue
+		var distance := at.distance_to(global_position)
+		if distance < best:
+			best = distance
+			view = at
+	_camera_follow(view, guide_at, dt)
+
+
+func _guide_visible(at: Vector3, head: Vector3) -> bool:
+	# A ray to the centre alone can leave half his face hidden by a doorway.
+	var side := (head - at).cross(Vector3.UP).normalized() * 0.35
+	var space := get_world_3d().direct_space_state
+	for target in [head, head + side, head - side]:
+		if not space.intersect_ray(PhysicsRayQueryParameters3D.create(at, target)).is_empty():
+			return false
+	return true
+
+
+func _camera_follow(want: Vector3, guide_at: Vector3, dt: float) -> void:
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = _camera_body
+	q.transform.origin = global_position
+	q.motion = want - global_position
+	var space := get_world_3d().direct_space_state
+	if space.cast_motion(q)[0] < 1.0:
+		# Use the same walkable route around a wall, instead of cutting its corner.
+		var map := get_world_3d().navigation_map
+		if NavigationServer3D.map_get_iteration_id(map) > 0:
+			var start := Vector3(global_position.x, floor_at(global_position.x, -global_position.z), global_position.z)
+			var end := Vector3(want.x, floor_at(want.x, -want.z, guide_at.y + 1.65), want.z)
+			var path := NavigationServer3D.map_get_path(map, start, end, true)
+			for corner in path:
+				if Vector2(corner.x - global_position.x, corner.z - global_position.z).length() > 0.3:
+					want = corner + Vector3(0, 1.65, 0)
+					break
+	var candidate := global_position.move_toward(want, minf(global_position.distance_to(want) * (1.0 - exp(-dt * 2.0)), dt * 3.0))
+	if Vector2(candidate.x - guide_at.x, candidate.z - guide_at.z).length() < 1.8:
+		var away := Vector3(global_position.x - guide_at.x, 0, global_position.z - guide_at.z)
+		var clearance := minf(1.8, away.length() + dt * 2.0)
+		if away.length() < 0.01:
+			away = Vector3(sin(yaw), 0, cos(yaw))
+		away = away.normalized() * clearance
+		candidate.x = guide_at.x + away.x
+		candidate.z = guide_at.z + away.z
+		candidate = global_position.move_toward(candidate, dt * 3.0)
+	candidate.y = maxf(candidate.y, floor_at(candidate.x, -candidate.z, guide_at.y + 1.65) + 1.3)
+	_camera_move(candidate)
+
+
+func _camera_move(to: Vector3) -> void:
+	# Sweep from the camera's own position. Pulling it toward Lou from the far
+	# side of a wall made the view jump into his model at a tight corner.
+	var motion := to - global_position
+	var space := get_world_3d().direct_space_state
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = _camera_body
+	q.transform.origin = global_position
+	for step in [motion, Vector3(motion.x, motion.y, 0), Vector3(0, motion.y, motion.z)]:
+		if step.length() < 0.0001:
+			continue
+		q.motion = step
+		var fraction := space.cast_motion(q)[0]
+		if fraction >= 1.0:
+			global_position += step
+			return
+	q.motion = motion
+	global_position += motion * maxf(0.0, space.cast_motion(q)[0] - 0.01)
+
+
 func setup(campus_data: Dictionary) -> void:
 	fabs = campus_data["fabs"]
 	clean_z = float(campus_data["heights"]["clean_z"])
@@ -107,8 +241,10 @@ func in_cinema(x: float, y: float) -> bool:
 
 
 func sit(eye: Vector3, facing: float) -> void:
+	take_control()
 	seated = true
 	seat_eye = eye
+	global_position = eye
 	follow = null
 	roaming = true
 	fly = false
@@ -118,10 +254,11 @@ func sit(eye: Vector3, facing: float) -> void:
 
 func glide(to: Vector3, to_yaw: float, to_pitch: float, secs: float) -> void:
 	# an eased move to a spot and a view, then the visitor walks on their own from there
-	follow = null
+	take_control()
 	roaming = false
 	var t := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_parallel()
-	t.tween_property(self, "global_position", to, secs)
+	_glide = t
+	t.tween_property(self, "global_position", to, 0.01 if reduced_motion else secs)
 	t.tween_property(self, "yaw", yaw + wrapf(to_yaw - yaw, -PI, PI), secs)
 	t.tween_property(self, "pitch", to_pitch, secs)
 	t.chain().tween_callback(func() -> void: roaming = true)
@@ -179,6 +316,7 @@ func floor_at(x: float, y: float, eye_y: float = NAN) -> float:
 
 
 func place(plan_x: float, plan_y: float, facing: float = 0.0) -> void:
+	take_control()
 	global_position = Vector3(plan_x, floor_at(plan_x, plan_y) + 1.65, -plan_y)
 	yaw = facing
 
@@ -193,90 +331,79 @@ func _notification(what: int) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
-func _unhandled_input(e: InputEvent) -> void:
-	if controls_blocked():
-		return
-	if e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE:
+func _input(e: InputEvent) -> void:
+	# Release must work even if a menu or text field consumed the matching press.
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT and not e.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT:
+
+
+func _unhandled_input(e: InputEvent) -> void:
+	if controls_blocked() or not roaming:
+		return
+	if e.is_action_pressed("visit_menu"):
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if e.is_action_pressed("toggle_look"):
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		get_viewport().set_input_as_handled()
+	elif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if e.pressed else Input.MOUSE_MODE_VISIBLE
 	elif e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		yaw -= e.relative.x * 0.0025
-		pitch = clampf(pitch - e.relative.y * 0.0025, -1.45, 1.45)
-	elif e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F and roaming and not seated:
-		fly = not fly
+		yaw -= e.relative.x * 0.0025 * look_sensitivity
+		pitch = clampf(pitch - e.relative.y * 0.0025 * look_sensitivity * (-1.0 if invert_look else 1.0), -1.45, 1.45)
+	elif e.is_action_pressed("toggle_flight") and not e.is_echo():
+		toggle_flight()
+		get_viewport().set_input_as_handled()
 
 
 func _process(dt: float) -> void:
+	dt = minf(dt, 0.1)
+	if controls_blocked():
+		return
+	if roaming:
+		var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+		yaw -= look.x * dt * 1.8 * look_sensitivity
+		pitch = clampf(pitch - look.y * dt * 1.4 * look_sensitivity * (-1.0 if invert_look else 1.0), -1.45, 1.45)
 	if follow and not roaming:
 		# behind and above the guide, looking past it
 		var g := follow.global_position
-		var st = follow.get("stops")
-		var k = follow.get("i")
-		if follow.get("mode") == "talk" and st is Array and int(k) < st.size() and st[int(k)].get("face_viewer", false):
+		if follow.get("mode") == "talk":
 			# the guide has turned to talk to the visitor: hold still and look at its face
-			var dl := g + Vector3(0, 1.55, 0) - global_position
-			yaw = lerp_angle(yaw, atan2(-dl.x, -dl.z), clampf(dt * 3.0, 0.0, 1.0))
-			pitch = lerpf(pitch, atan2(dl.y, Vector2(dl.x, dl.z).length()), clampf(dt * 3.0, 0.0, 1.0))
+			_conversation_view(g, dt)
+			_look_at_subject(g + Vector3(0, 1.6, 0), dt)
 			rotation = Vector3(0, yaw, 0)
 			camera.rotation = Vector3(pitch, 0, 0)
 			return
-		if _trail.is_empty() or (_trail[-1] as Vector3).distance_to(g) > 0.25:
+		if _trail.is_empty():
+			_trail.append(global_position - Vector3(0, 1.65, 0))
+		if (_trail[-1] as Vector3).distance_to(g) > 0.25:
 			_trail.append(g)
 			if _trail.size() > 80:
 				_trail.pop_front()
-		var device: Dictionary = {}
-		if follow.get("mode") == "talk" and st is Array and int(k) < st.size():
-			device = st[int(k)].get("device", {})
-		var back := follow.global_transform.basis.z.normalized()
-		var want := follow.global_position + back * -4.5 + Vector3(0, 2.6, 0)
+		var want := _trail_point(3.2) + Vector3(0, 1.75, 0)
 		var in_lift := not lift.is_empty() and g.x > float(lift[0]) and g.x < float(lift[3]) and -g.z > float(lift[1]) and -g.z < float(lift[4])
 		var riding: bool = in_lift      # in the car with him from the moment he steps in, riding or not
 		if riding:
 			# in the car with him: at the door side, eye height, fixed to the car (no lag, so it cannot drift into the
 			# shaft), looking at his face across the car
 			global_position = Vector3(float(lift[0]) + 0.3, g.y + 1.45, -(float(lift[1]) + float(lift[4])) / 2.0)
-			var dl := g + Vector3(0, 1.7, 0) - global_position
-			yaw = lerp_angle(yaw, atan2(-dl.x, -dl.z), clampf(dt * 5.0, 0.0, 1.0))
-			pitch = lerpf(pitch, atan2(dl.y, Vector2(dl.x, dl.z).length()), clampf(dt * 5.0, 0.0, 1.0))
+			_look_at_subject(g + Vector3(0, 1.7, 0), dt)
 			rotation = Vector3(0, yaw, 0)
 			camera.rotation = Vector3(pitch, 0, 0)
 			return
 		if (g.y > 1.0 and g.x < 1.7) or (g.y < 1.0 and g.x > -20.0 and g.x < 0.0):
 			# the lift lobby, the gowning room, the air shower, the strip behind the first bay: close behind, eye height
-			want = follow.global_position + back * -2.2 + Vector3(0, 1.55, 0)
+			want = _trail_point(2.2) + Vector3(0, 1.55, 0)
 		elif in_cinema(g.x, -g.z):
 			# the cinema's lobby, ramp and hall: on his own path, a few steps behind, at eye height (so through the
 			# doors he went through)
 			want = _trail_point(2.6) + Vector3(0, 1.6, 0)
 		elif in_fab(g.x, -g.z):
-			# inside a fab: stand on the spine's middle line, a few metres back along it (behind him, whichever way he
-			# walks; it flips only once he has clearly turned), above the tools
-			var dx := g.x - _trail_point(4.0).x
-			if absf(dx) > 2.5:
-				_dir_x = signf(dx)
-			want = Vector3(g.x - 7.0 * _dir_x, g.y + 1.75, 0.0)
-		if not device.is_empty():
-			# Stay in the clear spine and turn into the bay while Lou explains its device.
-			want = Vector3(g.x, g.y + 1.8, 0.0)
-		var candidate := global_position.lerp(want, 1.0 - exp(-dt * 2.0))
-		# Set height first, then sweep a small volume: a ray misses near-plane corners.
-		candidate.y = maxf(candidate.y, floor_at(candidate.x, -candidate.z, g.y + 1.65) + 1.3)
-		var head := g + Vector3(0, 1.5, 0)
-		var probe := PhysicsShapeQueryParameters3D.new()
-		probe.shape = _camera_body
-		probe.transform = Transform3D(Basis(), head)
-		probe.motion = candidate - head
-		var fraction := get_world_3d().direct_space_state.cast_motion(probe)[0]
-		global_position = head.lerp(candidate, maxf(0.0, fraction - 0.01) if fraction < 1.0 else 1.0)
-		var look := follow.global_position + Vector3(0, 1.6, 0) - back * -6.0
-		if in_fab(g.x, -g.z):
-			look = Vector3(g.x + 6.0 * _dir_x, g.y + 1.6, g.z)     # down the spine the way he walks, not swinging at corners
-		if not device.is_empty():
-			look = device["target"]
-		var d := look - global_position
-		yaw = lerp_angle(yaw, atan2(-d.x, -d.z), clampf(dt * 3.0, 0.0, 1.0))
-		pitch = lerpf(pitch, atan2(d.y, Vector2(d.x, d.z).length()), clampf(dt * 3.0, 0.0, 1.0))
+			# Follow the actual route into a bay and around tools, including north/south
+			# detours. A fixed east/west view can leave Lou behind the camera.
+			want = _trail_point(3.2) + Vector3(0, 1.75, 0)
+		_camera_follow(want, g, dt)
+		var look := g + Vector3(0, 1.6, 0)
+		_look_at_subject(look, dt)
 	elif seated:
 		global_position = seat_eye
 	elif roaming and not autopilot.is_empty() and not _keys_down():
@@ -289,24 +416,16 @@ func _process(dt: float) -> void:
 			autopilot_done.emit()
 		var dir := Vector3.ZERO
 		var bz := Basis(Vector3.UP, yaw)
-		if Input.is_key_pressed(KEY_W):
-			dir -= bz.z
-		if Input.is_key_pressed(KEY_S):
-			dir += bz.z
-		if Input.is_key_pressed(KEY_A):
-			dir -= bz.x
-		if Input.is_key_pressed(KEY_D):
-			dir += bz.x
-		var speed := 10.0 if Input.is_key_pressed(KEY_SHIFT) else 4.0
+		var motion := Input.get_vector("walk_left", "walk_right", "walk_forward", "walk_back")
+		dir = bz.x * motion.x + bz.z * motion.y
+		var speed := 10.0 if Input.is_action_pressed("hurry") else 4.0
 		if fly:
 			speed *= 3.0
-			if Input.is_key_pressed(KEY_E):
-				dir.y += 1.0
-			if Input.is_key_pressed(KEY_Q):
-				dir.y -= 1.0
+			dir.y = Input.get_axis("fly_down", "fly_up")
 		if dir.length() > 0:
 			if fly:
 				global_position += dir.normalized() * speed * dt
+				global_position.y = clampf(global_position.y, floor_at(global_position.x, -global_position.z) + 0.4, 160.0)
 			else:
 				move(dir.normalized() * speed * dt)
 		if not fly:
@@ -318,8 +437,7 @@ func _process(dt: float) -> void:
 
 
 func _keys_down() -> bool:
-	return not controls_blocked() and (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_A)
-			or Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_D))
+	return not controls_blocked() and Input.get_vector("walk_left", "walk_right", "walk_forward", "walk_back").length() > 0.1
 
 
 func _look_toward(target: Vector3, dt: float, rate: float) -> void:

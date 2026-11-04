@@ -29,6 +29,16 @@ FILMS = [(ROOT / "data/film/out/sand-to-chip-v10.mp4", "sand-to-chip-v10.ogv"),
          (ROOT / "data/film/out/crime-and-punishment-acted.mp4", "crime-and-punishment-acted.ogv")]
 
 
+def tool_phase(tool, fabs):
+    """The building's column 6 is wall orientation; phase comes from the containing fab."""
+    x, y = (tool[1] + tool[2]) / 2, (tool[3] + tool[4]) / 2
+    halls = sorted((f for f in fabs if f[5] == "fab"), key=lambda f: f[0])
+    for phase, f in enumerate(halls):
+        if f[0] <= x <= f[1] and f[2] <= y <= f[3]:
+            return phase
+    raise ValueError(f"Tool {tool[0]} lies outside both fab buildings")
+
+
 def stages():
     """The ten stages of 'How a chip is made' (web/stages.js), read through Node so the words are the page's own."""
     js = "const s=require(process.argv[1]);console.log(JSON.stringify(s.STAGES.map(x=>({key:x.key,name:x.name,areas:x.areas,color:x.color,what:x.what,why:x.why,note:x.note}))))"
@@ -65,11 +75,12 @@ def main():
     area_of = {g["name"]: g["area"] for g in s["groups"]}
     cells = fab3d.cells(b)
     campus = {
+        "schema_version": 2,
         "about": "Today's US building on the SMT2020 testbed: a gigafab-style layout of our own design, not a real fab.",
         "heights": {k: s[k] for k in ("clean_z", "port_z", "rail_z", "ride_z")},
         "kinds": s["kinds"],
         "areas": s["areas"],
-        "tools": [[t[0], area_of.get(t[0], ""), t[5], t[6], t[1], t[2], t[3], t[4], t[7]] for t in b["tools"]],
+        "tools": [[t[0], area_of.get(t[0], ""), t[5], tool_phase(t, b["fabs"]), t[1], t[2], t[3], t[4], t[7]] for t in b["tools"]],
         "tool_fields": ["group", "area", "kind", "phase", "x0", "x1", "y0", "y1", "h"],
         "stockers": b["stockers"],
         "fabs": b["fabs"],
