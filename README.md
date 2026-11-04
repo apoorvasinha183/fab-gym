@@ -281,6 +281,51 @@ The **Evidence** page leads with four findings in plain words, each with how sur
 
 **Every scored run is checked.** The simulator writes a receipt for each run: every job, every machine state, every breach. A referee written in Lean 4 reads it and checks five rules: no machine does two jobs at once, every lot follows its route, no batch is overfilled, nothing runs on a broken machine, and the breaches counted match. Its proofs say that whenever it answers yes, the five rules hold. All 120 scored runs of the long study passed, about 423 million jobs, and tampered copies are rejected (`docs/LEAN-CHECK.md`). A yes shows a run follows the fab's rules; it does not show the simulator matches a real fab.
 
+## How accurate is it?
+
+Faithful to a published research fab, checked against its own rules, and honest about what it cannot claim. It is not
+a model of any real fab. The full comparison, with sources and pages, is `docs/DOUBLE-CHECK.md`.
+
+**Exact or checked**
+
+- **The data.** The fab is the SMT2020 high-volume testbed (Kopp, Hassoun, Kalir and Mönch): its machines, product
+  routes, processing times, setups, batching, breakdowns, maintenance, sampling, rework and queue-time limits. Our files
+  are byte-identical to the ones the published reinforcement-learning study ran (Tassel et al. 2023).
+- **Processing time per product.** Within 0.6% of the published theoretical figures on every product of both testbeds:
+  24.68 and 14.49 days for the two main products, against the published 24.75 and 14.54.
+- **The engine.** The Rust simulator reproduces a separate reference engine's event log bit for bit (`golden/`).
+- **The rules.** Every scored run is checked by the Lean referee: no machine does two jobs at once, every lot follows
+  its route, no batch is overfilled, nothing runs on a broken machine. 120 of 120 runs passed.
+- **The laws.** Little's law and the capacity ceiling hold on the runs: cycle time equals work inside divided by output,
+  and no schedule beats the busiest machine group.
+- **Fair comparisons.** Two rules are compared on the same random draws, and every result is a paired difference with a
+  95% interval.
+
+**Where it differs from the published testbed**
+
+- **Cycle times.** From the files' own starting work, the main product takes about 60 days against the published 94.
+  The published study started with a much fuller fab (3,635 lots inside against the files' 2,255); filled to the same
+  level, ours take 84 to 99 days, around theirs. A cycle time from Fab Gym is quoted as the gym's, with its start and
+  horizon, never as the published testbed's.
+- **What binds.** In our engine the polishers (CMP) limit output, not lithography as the testbed was designed. At the
+  testbed's own release rate the fab cannot keep up, so the work inside keeps growing over a 180-day run.
+- **Hot lots** take 31 days in ours; the two published sources put them near 29 and 34. Not settled.
+
+**Ours, or not modelled**
+
+- **Transport.** The overhead track and its vehicles run on a layout of our own design; SMT2020 defines no building, so
+  transport delays are ours.
+- **Operators** are not modelled.
+- **The 3D campus,** the building, its bays and the cinema are our own design; prices in the money views are assumed.
+- **Defect holds** in `FabGymDefects-v0` have assumed lengths.
+
+**What the AI results mean.** The +117 wafers a day is on a small teaching fab of our own, not the full testbed. On the
+full fab, no rule written by the model, evolved or learned with reinforcement learning beat the fab's own rule, and the
+entry says so.
+
+**What it cannot claim:** that any of this predicts a real fab. A Lean yes proves a run obeyed the testbed's rules; it
+does not show the testbed behaves like a real plant.
+
 ## The machine that answers questions
 
 1. You ask in plain words.
