@@ -1,0 +1,41 @@
+FAB GYM 3D
+
+Start with Take the guided tour, Walk and explore, or Fly over the fab.
+Press Esc at any time for the pause menu, controls, comfort settings and places.
+Go to place also gets you unstuck. Tour and exploration work without a helper.
+DEMO means a recorded simulation from 06:00 to 06:30, repeated. A live connection
+replaces it when the optional local helper is running. Model keys are optional.
+
+Move: W A S D or arrow keys. Look: hold right mouse, or use I J K L.
+M toggles mouse look, useful on a trackpad. Shift moves faster.
+F toggles flying; E / Q move up / down while flying.
+Click a tool to inspect it. Ask Lou opens a text box; Esc closes it.
+Space finishes a line, then advances the tour.
+
+Controller: left stick moves, right stick looks, X toggles flight.
+Bumpers rise / descend, A interacts, Y advances a line, Start opens the menu.
+Menus support Tab, arrow keys and Enter as well as mouse clicks.
+
+Cinema: walk up to an empty seat and press E (controller A).
+Enter (controller Y) plays the film. Space (Y) pauses / resumes it.
+Esc (B / Start) returns to the hall. E (A) stands up.
+1 / 2 (left / right bumper) choose a film while seated.
+
+Desktop: unzip the download, then open the game. The macOS build is unsigned;
+use the system's Open confirmation for this app. Linux: mark Fab-Gym-3D.x86_64
+executable if your archive tool does not preserve permissions. Windows: run the exe.
+No separate Godot installation is needed for the exported game.
+
+Browser: publish all files in the web folder together on an HTTPS static host.
+For local testing: python3 -m http.server 8000 --directory web
+Then open http://localhost:8000. Opening index.html as a local file will not work.
+A current browser with WebGL 2 and a keyboard/mouse or controller is required.
+The single-threaded web build needs no cross-origin isolation headers.
+The cinema films make the initial download substantial; allow it to finish.
+
+For live simulation, run the repository's helper on port 8766. A hosted browser
+build uses its own origin for live data; it remains in demo mode on a static host.
+Speech and open-ended model answers need that live connection. The tour, tool
+cards, local explanations and cinema are available offline.
+
+This is the SMT2020 testbed in a layout of our own design, not a real fab.

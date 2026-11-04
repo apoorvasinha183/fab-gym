@@ -93,6 +93,15 @@ static func panel_mat(base: Color, line: Color, cell: Vector3, frac := 0.03, dot
 func _ready() -> void:
 	var f := FileAccess.open("res://data/campus.json", FileAccess.READ)
 	data = JSON.parse_string(f.get_as_text())
+	# Upgrade older prepared bundles whose phase column accidentally held wall orientation.
+	if int(data.get("schema_version", 1)) < 2:
+		var halls: Array = data["fabs"].filter(func(h): return h[5] == "fab")
+		halls.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+		for tool in data["tools"]:
+			var x := (float(tool[4]) + float(tool[5])) / 2.0
+			for phase in halls.size():
+				if x >= float(halls[phase][0]) and x <= float(halls[phase][1]):
+					tool[3] = phase
 	size = float(data["cell_size"])
 	heights = data["heights"]
 	bays = data["bays"]

@@ -13,7 +13,7 @@ config_version=5
 config/name="Fab Gym 3D"
 config/description="A walkable 3D fab on the SMT2020 testbed: a gigafab-style layout of our own design, not a real fab. A robot CEO guides the tour; the simulator runs live."
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [audio]
 
@@ -23,14 +23,26 @@ driver/enable_input=true
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/size/min_width=800
+window/size/min_height=450
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method.web="gl_compatibility"
 
 textures/default_filters/anisotropic_filtering_level=3
 
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/screen_space_roughness_limiter/amount=0.5
 anti_aliasing/screen_space_roughness_limiter/limit=0.25
-anti_aliasing/quality/use_taa=true
+anti_aliasing/quality/use_taa=false
+
+[threading]
+
+worker_pool/max_threads=4

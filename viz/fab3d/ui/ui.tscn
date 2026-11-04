@@ -22,7 +22,7 @@ layout_mode = 0
 offset_left = 28.0
 offset_top = 28.0
 offset_right = 330.0
-offset_bottom = 230.0
+offset_bottom = 280.0
 
 [node name="list" type="VBoxContainer" parent="root/menu"]
 layout_mode = 2
@@ -142,7 +142,7 @@ size_flags_vertical = 3
 theme_override_font_sizes/normal_font_size = 26
 bbcode_enabled = true
 text = "Lou Latency, the CEO, meets you in the parking lot."
-scroll_active = false
+scroll_active = true
 
 [node name="next" type="Polygon2D" parent="root/talk"]
 color = Color(1, 1, 1, 1)
@@ -212,9 +212,9 @@ offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.92, 0.94, 1, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
-text = "SPACE NEXT    WASD WALK    SHIFT HURRY    F FLY    RIGHT MOUSE LOOK    CLICK A TOOL FOR ITS CARD"
+text = "ESC MENU    WASD / ARROWS WALK    IJKL / RIGHT MOUSE LOOK    F FLY    CLICK TOOL TO INSPECT"
 
 [node name="prompt" type="PanelContainer" parent="root"]
 visible = false

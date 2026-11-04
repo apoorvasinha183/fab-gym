@@ -1,5 +1,16 @@
 # Playtest
 
+For a bounded camera regression check, replay the guide's real route in fixed 50 ms steps:
+
+```sh
+godot --headless --path viz/fab3d --script res://playtest/tour_camera_check.gd -- --playability-check --tour-camera-check /tmp/tour-camera.json
+```
+
+This checks all 29 stops, sight lines to the centre and both sides of Lou's face, clearance from his model, and a maximum
+25-degree camera error toward Lou at sampled walking frames. Lou's body must stay clear of solid geometry and the
+tour must finish without getting stuck. Omit `--headless` and add `--stills /tmp/tour-stills`
+to render each stop. It checks framing and direction; use the real-time playtest below for frame timing.
+
 Plays the whole Fab Gym 3D demo the way a first-time visitor would, with scripted key presses, and turns what it saw
 into a list of faults. It finds faults; it fixes nothing.
 

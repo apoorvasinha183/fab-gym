@@ -9,8 +9,8 @@ signal prompt(text: String)
 
 const FILM := "res://data/film/from-sand-to-chip.ogv"   # the first film, if the new ones are not prepared
 # what the hall shows, picked at the seat with 1 and 2: [title on the screen, Theora file]
-const FILMS := [["SAND TO CHIP", "res://data/film/sand-to-chip-v3.ogv"],
-		["CRIME && PUNISHMENT", "res://data/film/crime-and-punishment.ogv"]]
+const FILMS := [["SAND TO CHIP", "res://data/film/sand-to-chip-v10.ogv"],
+		["CRIME && PUNISHMENT", "res://data/film/crime-and-punishment-acted.ogv"]]
 const HALL := Rect2(40.3, -121.7, 17.7, 11.4)     # plan x, y, depth, width of the hall (data/cinema/plan.json)
 const REACH := 0.6                                # metres from the spot in front of a seat at which the visitor can sit
 const EYE := 1.15                                 # seated eye height over the tier (the plan's choice)
@@ -356,11 +356,19 @@ func _on_finished() -> void:
 
 
 func _input(e: InputEvent) -> void:
-	if not viewer or not (e is InputEventKey and e.pressed and not e.echo):
+	if not viewer or not e.is_pressed() or e.is_echo():
 		return
-	if get_viewport().gui_get_focus_owner() is LineEdit:
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit or get_tree().paused:
 		return
-	var k: int = e.keycode
+	var k: int = e.keycode if e is InputEventKey else 0
+	if e is InputEventJoypadButton:
+		match e.button_index:
+			JOY_BUTTON_A: k = KEY_E
+			JOY_BUTTON_B, JOY_BUTTON_START: k = KEY_ESCAPE
+			JOY_BUTTON_Y: k = KEY_SPACE if full.visible else KEY_ENTER
+			JOY_BUTTON_LEFT_SHOULDER: k = KEY_1
+			JOY_BUTTON_RIGHT_SHOULDER: k = KEY_2
 	if full.visible:
 		if k in [KEY_ESCAPE, KEY_ENTER, KEY_KP_ENTER]:
 			fullscreen(false)
@@ -374,7 +382,9 @@ func _input(e: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 	elif viewer.get("seated"):
-		if k in [KEY_1, KEY_KP_1] and titles.size() > 1:
+		if k == KEY_ESCAPE:
+			stand()
+		elif k in [KEY_1, KEY_KP_1] and titles.size() > 1:
 			pick(0)
 		elif k in [KEY_2, KEY_KP_2] and titles.size() > 1:
 			pick(1)
