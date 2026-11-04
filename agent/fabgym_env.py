@@ -153,3 +153,11 @@ class FabGymEnv(gym.Env):
     def action_masks(self):
         """For maskable learners: which slots hold a candidate."""
         return self._mask(self.last).astype(bool)
+
+
+# gym.make("FabGym-v0") after `import agent.fabgym_env`: today's SMT2020 fab, training seeds 100 to 199, defects off
+gym.register(id="FabGym-v0", entry_point="agent.fabgym_env:FabGymEnv",
+             kwargs={"shop": str(ROOT / "data" / "smt2020" / "hvlm"), "seeds": range(100, 200)})
+# the same fab with inspections that put tools and lots on hold (docs/RL-DEFECTS.md; the three numbers are assumed)
+gym.register(id="FabGymDefects-v0", entry_point="agent.fabgym_env:FabGymEnv",
+             kwargs={"shop": str(ROOT / "data" / "smt2020" / "hvlm"), "seeds": range(100, 200), "defects": (120, 240, 60)})

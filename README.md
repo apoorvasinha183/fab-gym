@@ -66,6 +66,42 @@ Put a key in `~/.config/fab-gym/` (it never leaves your machine except to the mo
 Spending stops at a cap (`--spend-cap`, $20 by default). No local model server is needed. In the browser version the
 model features show recorded answers; for live ones, run it on your computer.
 
+### As a reinforcement-learning environment
+
+Fab Gym is a [Gymnasium](https://gymnasium.farama.org) environment (the maintained successor to OpenAI Gym): one
+dispatch decision at a time on the full SMT2020 fab, driven by the Rust simulator. It passes Gymnasium's `check_env`.
+
+```sh
+pip install gymnasium numpy               # stable-baselines3 too, for the PPO commands below
+```
+
+```python
+import gymnasium as gym
+import agent.fabgym_env                   # registers FabGym-v0 and FabGymDefects-v0
+
+env = gym.make("FabGym-v0")               # seeds 100 to 199 for training; 0 to 9 are kept for scoring
+obs, info = env.reset(seed=0)
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+```
+
+| | |
+| --- | --- |
+| **Action** | `Discrete(8)`: which of up to 8 waiting lots the free machine runs next (`env.unwrapped.action_masks()` marks the real ones) |
+| **Observation** | 127 numbers: each candidate's priority, wait, setup change, steps left, queue-time slack and more, the deciding group's tools, the fab's totals |
+| **Reward** | lots finished minus 0.01 per lot-hour waiting, as it changes between decisions; an episode's rewards sum to the window's score exactly |
+| **Episode** | a day's warm-up, then a three-day window (`warmup_days`, `window_days`), about 4,000 decisions at random |
+| **Defects** | `FabGymDefects-v0`: inspections put tools and lots on hold (`docs/RL-DEFECTS.md`; the hold lengths are assumed) |
+
+Train PPO and score it against today's rule on held-out seeds, with paired 95% intervals:
+
+```sh
+python3 -m agent.rl train   --shop data/smt2020/hvlm --seeds 100..200 --timesteps 2000000 --workers 4 --out runs/ppo
+python3 -m agent.rl contest --shop data/smt2020/hvlm --seeds 0..10 --policy ppo=runs/ppo/policy.zip --out runs/contest
+```
+
+The bar is high: over 60 settled days, today's rule gets 1,263 wafers a day, and FIFO,
+shortest-job-first and our PPO policy 595 to 668 (see "Why a short test lies" below). Beating it is open.
+
 ### The 3D fab: walk it with Lou
 
 Download the app from the [latest release](https://github.com/apoorvasinha183/fab-gym/releases/latest) (macOS `.zip`,
