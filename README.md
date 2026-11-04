@@ -203,4 +203,4 @@ Built before the hackathon, and kept outside this repository:
 
 ## Credits
 
-The SMT2020 testbed: Kopp, Hassoun, Kalir and Mönch, *SMT2020: A Semiconductor Manufacturing Testbed*, IEEE Transactions on Semiconductor Manufacturing, 2020. See `NOTICE.md`. The cast was drawn with Meta's Muse Image from our prompts (`docs/CAST-PROMPT.md`). Our entry to the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon), Startups track. By Chetnova.
+The SMT2020 testbed: Kopp, Hassoun, Kalir and Mönch, *SMT2020: A Semiconductor Manufacturing Testbed*, IEEE Transactions on Semiconductor Manufacturing, 2020. See `NOTICE.md`. The cast was drawn with Meta's Muse Image from our prompts (`docs/CAST-PROMPT.md`). Our entry to the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon), Indie track. By Chetnova.

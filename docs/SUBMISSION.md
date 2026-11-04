@@ -1,7 +1,7 @@
 # The submission pack
 
 Written 31 October 2026, from what runs today. The founder, by quiz: "Submission pack" next (README, the demo path and a
-shot list for the video). Submissions close **4 November, 9:00 PM ET** (5 November, 7:30 AM IST). Startups track. On the
+shot list for the video). Submissions close **4 November, 9:00 PM ET** (5 November, 7:30 AM IST). Indie track (decided 4 Nov). On the
 SMT2020 testbed and a teaching fab of our own; not a real fab. Agents propose, the simulator scores, a person signs.
 
 ## 1. The demo path (3 minutes, live)
