@@ -15,6 +15,9 @@ A simulated wafer fab you can ask questions, and a fair way to check the answers
 | **On your computer** | Everything: Build's challenges scored, the ask bar, Race the AI, Lou's Meta brain, the 3D fab | Git, Rust, Python 3.12+, Node.js 18+ |
 | **Headless** | The simulator, the scorer and the agent loop from the command line, no browser | Git, Rust, Python 3.12+ |
 
+**New to all this? Follow [INSTALL.md](INSTALL.md)**: installing the tools on macOS, Windows or Linux, building,
+running, and adding your keys, step by step.
+
 Meta's models are **bring your own key**: with no key everything runs, with recorded answers where a model would
 speak; with your key the models answer live (see [Meta's models](#metas-models-bring-your-own-key)).
 
