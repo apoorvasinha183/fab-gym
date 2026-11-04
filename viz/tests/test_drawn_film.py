@@ -348,6 +348,7 @@ class Looks(unittest.TestCase):
         scenes = sorted(int(p.stem) for p in (self.root / "film/drawn/scenes").glob("*.json"))
         self.assertEqual(sorted(int(k) for k in chosen["colour"]), scenes)
 
+    @unittest.skipIf(np is None, "numpy and Pillow are needed")
     def test_d22_the_comic_look_keeps_the_first_cuts_prompts_and_folders(self):
         from viz.drawn import pilot, produce, scene
         scene.use("comic")

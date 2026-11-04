@@ -15,8 +15,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
-
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 SCENE = ROOT / "data/layout-real-dd/scene-optimised.json"
@@ -31,6 +29,7 @@ DEFAULT_SHA = "19d905da3e30e76bca31d1b656bfaa9e3928ef91248d6d23bc5eeebcfb159e7e"
 TOL = 1e-3
 
 try:
+    import numpy as np
     import ifcopenshell
     import ifcopenshell.util.element as uel
     import bimgeo as G

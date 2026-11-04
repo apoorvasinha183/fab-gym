@@ -9,7 +9,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the rule sandbox and browser compilation target
+        run: rustup target add wasm32-unknown-unknown
       - name: Build and test
         run: cargo test --workspace --locked
-      - name: Realistic fab checks (Python, standard library)
+      - name: Build native tools and browser fixtures
+        run: |
+          cargo build --release --locked
+          sh web/build.sh
+          sh web/build-3d.sh
+      - name: Agent and local API tests
+        env:
+          FABGYM_NO_MODEL: '1'
+        run: python3 -m unittest discover -s agent/tests -t .
+      - name: Browser logic and generated data tests
+        env:
+          FABGYM_NO_MODEL: '1'
+        run: node --test --test-concurrency=2 web/tests/*.test.mjs
+      - name: Visualization logic (render assets optional)
         run: python3 -m unittest discover -s viz/tests
