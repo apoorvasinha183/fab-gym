@@ -316,6 +316,7 @@ tr.ctlrow.moved td:first-child::before{content:"";display:inline-block;width:7px
 .banner .sc .dl{font-size:12px}
 /* Build in a laptop's browser (docs/BUILD-REVIEW.md): the advice beside the tools, the status line inside the map */
 .toolrow{display:flex;gap:10px;align-items:center;min-width:0}
+@media (max-width:600px){.toolrow{flex-wrap:wrap}.toolrow .advice{flex:1 1 100%;order:3}.toolrow .maptools{flex:1 1 100% !important;min-width:0 !important;max-width:100%;flex-wrap:wrap;gap:6px}.toolrow kbd{display:none}}  /* phones (5 Nov): the toolbar wraps */
 .toolrow .maptools{flex:0 0 auto}
 .toolrow .advice{flex:1;min-width:0}
 .mapbox .status{position:absolute;top:8px;left:10px;z-index:2;max-width:calc(100% - 20px);padding:3px 8px;border-radius:6px;background:rgba(11,20,24,.78);color:#C9D6DA;line-height:1.4;min-height:0;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

@@ -11,6 +11,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 fabsim = { path = "../fabsim" }
+# Build in the browser (fg_fab) answers in the helper's JSON shapes; already in the lock file through fabsim
+serde_json = "1"
 
 [dev-dependencies]
 # the moods tests read the export as JSON; from the local cache, no download

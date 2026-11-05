@@ -88,12 +88,39 @@
   const days = () => (ch() ? ch().days : 2);
   const fab = () => E.fabText(base, s, { vehicles: s.vehicles });
 
+  // Build in the browser (5 Nov): with no helper (the public site), the layout checks, the runs and the vehicles'
+  // replay run in this page's own simulator (fabweb.wasm, fg_fab), in the helper's own answers' shapes
+  let noHelper = false, wasmP = null;
+  const BROWSER_OPS = { "/api/fab/check": 0, "/api/fab/run": 1, "/api/fab/replay": 2 };
+  function wasm() {
+    wasmP = wasmP || fetch("fabweb.wasm").then(r => r.arrayBuffer()).then(b => WebAssembly.instantiate(b, {})).then(m => m.instance.exports);
+    return wasmP;
+  }
+  async function inBrowser(path, body) {
+    const e = await wasm(), enc = new TextEncoder();
+    const put = str => { const b = enc.encode(str); const p = e.fg_alloc(b.length); new Uint8Array(e.memory.buffer, p, b.length).set(b); return [p, b.length]; };
+    const [fp, fl] = put(body.fab || "");
+    const [vp, vl] = body.overrides ? put(JSON.stringify(body.overrides)) : [0, 0];
+    const op = BROWSER_OPS[path];
+    const a = op === 1 ? (body.days || 2) * 1440 : op === 2 ? body.start || 0 : 0;
+    const b2 = op === 1 ? body.every || 60 : op === 2 ? (body.start || 0) + (body.minutes || 30) : 0;
+    const t0 = performance.now();
+    e.fg_fab(op, fp, fl, vp, vl, body.seed || 1, a, b2);
+    const out = JSON.parse(new TextDecoder().decode(new Uint8Array(e.memory.buffer, e.fg_json_ptr(), e.fg_json_len())));
+    e.fg_free(fp, fl); if (vl) e.fg_free(vp, vl);
+    if (out.seconds !== undefined) out.seconds = Math.round((performance.now() - t0) / 100) / 10;
+    return out;
+  }
   async function post(path, body) {
+    if (noHelper && path in BROWSER_OPS) return inBrowser(path, body);
     try {
       const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (r.status === 404 || r.status === 405 || r.status === 501) throw new Error("no helper");
       return await r.json();
     } catch (e) {
-      return { error: "The helper did not answer. Start it with: python3 -m agent.helper" };
+      noHelper = true;
+      if (path in BROWSER_OPS) return inBrowser(path, body);
+      return { error: "This part needs the helper on your computer: see the README's \"What works where\"." };
     }
   }
 

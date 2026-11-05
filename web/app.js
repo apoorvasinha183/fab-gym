@@ -1345,7 +1345,12 @@ function setupInput() {
     fit();
   };
   $("health-fold").onclick = () => healthFold(!$("health").classList.contains("folded"));
-  try { if (localStorage.getItem("fabgym.healthFolded") === "1") { $("health").classList.add("folded"); document.body.classList.add("health-folded"); $("health-fold").setAttribute("aria-expanded", "false"); } } catch { /* storage blocked */ }
+  let healthPref = null;
+  try { healthPref = localStorage.getItem("fabgym.healthFolded"); } catch { /* storage blocked */ }
+  // on a phone Fab status starts folded, so the map shows first; a choice the visitor made is kept
+  if (healthPref === "1" || (healthPref === null && matchMedia("(max-width: 600px)").matches)) {
+    $("health").classList.add("folded"); document.body.classList.add("health-folded"); $("health-fold").setAttribute("aria-expanded", "false");
+  }
   addEventListener("keydown", e => {
     if (e.key === "Escape" && !$("stages").hidden) { stagesClose(); return; }
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;

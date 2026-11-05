@@ -397,3 +397,75 @@ pub extern "C" fn fg_fleet_hoists_ptr() -> *const f32 {
 pub extern "C" fn fg_fleet_hoists_len() -> usize {
     ST.with(|st| st.borrow().fleet_h.len())
 }
+
+/// Build in the browser (5 Nov 2026): the helper's three calls for the Build page (`/api/fab/check`, `/api/fab/run`,
+/// `/api/fab/replay`), on a fab file, for a copy of the page with no helper (the public site). `op` 0 checks the
+/// layout, 1 runs it and gives its moods (`a` the minutes to run, `b` minutes between frames), 2 gives the
+/// vehicles' stays between `a` and `b`. The fab text and the overrides JSON (length 0 for none) are written with
+/// `fg_alloc`; the answer is the JSON the helper would send, read through `fg_json_ptr` and `fg_json_len`. Returns 0, or
+/// 1 with `{"error": ...}`.
+///
+/// # Safety
+/// `fp`/`fl` and `vp`/`vl` must each point to that many readable bytes (or `vl` be 0).
+#[no_mangle]
+pub unsafe extern "C" fn fg_fab(op: i32, fp: *const u8, fl: usize, vp: *const u8, vl: usize, seed: f64, a: f64, b: f64) -> i32 {
+    let text = String::from_utf8_lossy(std::slice::from_raw_parts(fp, fl)).into_owned();
+    let ov_text = if vl > 0 { String::from_utf8_lossy(std::slice::from_raw_parts(vp, vl)).into_owned() } else { String::new() };
+    let (code, out) = fab_call(op, &text, &ov_text, seed, a, b);
+    ST.with(|st| st.borrow_mut().json = out);
+    code
+}
+
+fn fab_call(op: i32, text: &str, ov_text: &str, seed: f64, a: f64, b: f64) -> (i32, String) {
+    use serde_json::json;
+    let err = |m: String| (1, json!({ "error": m }).to_string());
+    let shop = match Shop::parse(text) {
+        Ok(s) => s,
+        Err(e) => return if op == 0 { (0, json!({ "ok": false, "error": e }).to_string()) } else { err(e) },
+    };
+    let issues = fabsim::checks::check(&shop);
+    let checks = json!({
+        "ok": !issues.iter().any(|i| i.severity == fabsim::checks::Severity::Error),
+        "issues": issues.iter().map(|i| json!({"severity": i.severity.name(), "code": i.code, "message": i.message, "at": i.at})).collect::<Vec<_>>(),
+    });
+    if op == 0 {
+        return (0, checks.to_string());
+    }
+    if checks["ok"] != json!(true) {
+        return (1, json!({ "error": "The layout has errors; fix them before running.", "checks": checks }).to_string());
+    }
+    let ov = if ov_text.trim().is_empty() || ov_text.trim() == "null" {
+        fabsim::overrides::Overrides::default()
+    } else {
+        match fabsim::overrides::Overrides::parse(ov_text, &shop) {
+            Ok(o) => o,
+            Err(e) => return err(e),
+        }
+    };
+    let seed = seed.max(0.0) as u64;
+    let t0 = now_ms();
+    match op {
+        1 => {
+            let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(a), record: true }, None, &ov);
+            let moods = fabsim::moods::frames_json(&shop, &r, a, b);
+            (0, json!({ "moods": moods, "checks": checks, "seconds": ((now_ms() - t0) / 100.0).round() / 10.0 }).to_string())
+        }
+        2 => {
+            let r = fabsim::engine::run_with(&shop, &RunOptions { seed, until: Some(b), record: true }, None, &ov);
+            let stays: Vec<serde_json::Value> = fabsim::moods::replay(&shop, &r, a, b)
+                .iter()
+                .map(|x| json!([x.vehicle, x.from, x.to, (x.t_in * 1000.0).round() / 1000.0,
+                    if x.t_out.is_finite() { json!((x.t_out * 1000.0).round() / 1000.0) } else { serde_json::Value::Null }, x.loaded, x.hot, x.next_group]))
+                .collect();
+            (0, json!({ "from": a, "to": b, "vehicles": shop.fleet.as_ref().map(|f| f.vehicles).unwrap_or(0),
+                "fields": ["vehicle", "from", "to", "t_in", "t_out", "loaded", "hot", "next_group"], "stays": stays,
+                "seconds": ((now_ms() - t0) / 100.0).round() / 10.0 }).to_string())
+        }
+        _ => err(format!("unknown call {op}")),
+    }
+}
+
+/// Milliseconds for the `seconds` a run took; 0 where there is no clock (the tests).
+fn now_ms() -> f64 {
+    0.0
+}

@@ -16,7 +16,7 @@ A simulated wafer fab you can ask questions, and a fair way to check the answers
 
 | Way | What you get | You need |
 | --- | --- | --- |
-| **In your browser** | The live Floor (all 1,043 machines simulated in the page), Simulation settings, Evidence, the glossary, the ask bar with your own key | Nothing: [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/) |
+| **In your browser** | The live Floor (all 1,043 machines simulated in the page), Simulation settings, Build's challenges scored in the page, Evidence, the glossary, the ask bar with your own key; works on a phone | Nothing: [apoorvasinha183.github.io/fab-gym-site/play](https://apoorvasinha183.github.io/fab-gym-site/play/) |
 | **On your computer** | Everything: Build's challenges scored, the ask bar, Race the AI, Lou's Meta brain, the 3D fab | Git, Rust, Python 3.12+, Node.js 18+ |
 | **Headless** | The simulator, the scorer and the agent loop from the command line, no browser | Git, Rust, Python 3.12+ |
 
@@ -40,7 +40,7 @@ recorded game or reading instead, when the helper is started with `--stand-in DI
 | **Ask bar, what-ifs read by a model** | 🔑 one change, run in the page | ✅ worked examples, or write the experiment yourself | 🔑 the full experiment: several answers, whole fab | 🔑 | — |
 | **Ask the glossary** (questions about words) | — | — | 🔑 | — | — |
 | **Runs**: every simulation kept with its number | — | ✅ | ✅ | ✅ (files) | — |
-| **Build**: draw a fab, scored as you draw | — (drawing only) | ✅ | ✅ | ✅ | — |
+| **Build**: draw a fab, scored as you draw (the four challenges and free build) | ✅ scored in the page | ✅ | ✅ | ✅ | — |
 | **Race the AI** (Muse Wonder) | — | ▶️ a recorded game | 🔑 | — | — |
 | **Build from a photo** (Muse Spark reads a sketch) | — | ▶️ a recorded reading | 🔑 | — | — |
 | **Agent loop**: the model writes dispatch rules in Rust, scored on held-out days | — | — | — | 🔑 | — |

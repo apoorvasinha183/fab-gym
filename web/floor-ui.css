@@ -745,3 +745,18 @@ body.health-folded .maptools { right: 18px; }
 .byok button, #byok-forget { background: var(--good, #4fe3a3); color: #0b1a14; border: 0; border-radius: 6px; padding: 5px 12px; font-weight: 700; cursor: pointer; }
 #byok-forget { background: transparent; color: inherit; border: 1px solid rgba(255,255,255,0.25); font-weight: 500; margin-left: 4px; }
 #ask-model small { display: block; opacity: 0.7; margin-top: 4px; }
+
+/* phones (5 Nov): the title card on top, then the ask bar and Simulation settings in one row, the map free in the
+   middle, and Fab status as a sheet along the bottom above the play controls (folded until tapped) */
+@media (max-width: 600px) {
+  .brand { top: 8px; left: 8px; right: 8px; width: auto; max-width: none; }
+  .topbar { top: 96px; left: 8px; right: 8px; gap: 6px; }
+  .topbar .cmd { flex: 1 1 auto; min-width: 0; position: static; width: auto; transform: none; }
+  .topbar #change-open { flex: 0 0 auto; padding-left: 12px; padding-right: 12px; font-size: 13px; }
+  #health { left: 8px; right: 8px; width: auto; top: auto; bottom: 66px; max-height: 42vh; overflow-y: auto; }
+  #health.folded { max-height: none; }
+  .lenses { top: 148px; }
+  .bar.pill { gap: 6px; }
+  .cmd kbd { display: none; }
+  .opening { padding-top: 104px; }
+}
