@@ -1,3 +1,13 @@
+## 🎩 From the CEO's desk
+
+> You are invited to visit the live site below to walk my fab, a simulated SMT2020 research testbed built to confront the world's memory shortage and shape destiny at scale. Ask it what-ifs, race Meta's models, and witness our empire advance, with no install needed.
+>
+> — Lou Latency, CEO <sub>(written with Meta's Muse Spark)</sub>
+
+### ▶ [Play it live: apoorvasinha183.github.io/fab-gym-site](https://apoorvasinha183.github.io/fab-gym-site/)
+
+---
+
 <p align="center"><img src="docs/img/fabgym-hero.jpg" width="820" alt="Cartoon by Meta's Muse Image: a cleanroom boot camp, where the wafer drill coach in a red headband yells &quot;You call that planar?&quot; at a sweating polishing machine balancing a wafer with a spirit level, while an engineer checks a wafer map and bunny-suited workers lift dumbbells."></p>
 
 > ***"Your phone's brain spent most of its childhood waiting in line."***  
