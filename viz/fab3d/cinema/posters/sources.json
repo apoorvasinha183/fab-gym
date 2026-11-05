@@ -1,0 +1,14 @@
+[
+  {
+    "file": "sand-to-chip.jpg",
+    "source": "https://apoorvasinha183.github.io/fab-gym-site/img/posters/sand-epic.jpg",
+    "sha256": "fd845e51a983b4856e60bab6b3af8434017c1a1b8168a11ea1d924b0e57d6b5c",
+    "note": "Original site poster, copied unchanged."
+  },
+  {
+    "file": "crime-and-punishment.jpg",
+    "source": "https://apoorvasinha183.github.io/fab-gym-site/img/posters/cp-noir.jpg",
+    "sha256": "fb596830d37165d3ca14d54d5ac00056fc63d7498c34f87ec9ab743002cb0544",
+    "note": "Original site poster, copied unchanged."
+  }
+]

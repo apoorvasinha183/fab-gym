@@ -18,6 +18,7 @@ const Solid := preload("res://solid.gd")
 @onready var drone: Node3D = $drone
 
 var play_menu: CanvasLayer
+var minimap: CanvasLayer
 var automated := false
 var visit_started := false
 
@@ -163,6 +164,9 @@ func _ready() -> void:
 	play_menu.world = self
 	add_child(play_menu)
 	play_menu.apply_settings()
+	minimap = preload("res://ui/minimap.gd").new()
+	minimap.world = self
+	add_child(minimap)
 	ui.menu_requested.connect(func() -> void: play_menu.open())
 	if automated:
 		choose_view("tour")

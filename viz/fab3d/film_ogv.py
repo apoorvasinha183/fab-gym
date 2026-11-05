@@ -9,19 +9,29 @@ import bpy
 
 src, out = sys.argv[sys.argv.index("--") + 1:][:2]
 sc = bpy.context.scene
+# Set the destination before importing: the sequencer defaults to ORIGINAL,
+# which crops a 1080p movie when the scene is later reduced to 720p.
+sc.render.resolution_x, sc.render.resolution_y = 1280, 720
+sc.render.resolution_percentage = 100
+sc.render.threads_mode = "FIXED"
+sc.render.threads = 4
+# The source is already graded video; another display transform washes out its colours.
+sc.view_settings.view_transform = "Standard"
+sc.view_settings.look = "None"
+sc.view_settings.exposure = 0.0
+sc.view_settings.gamma = 1.0
 se = sc.sequence_editor_create()
 strips = se.strips if hasattr(se, "strips") else se.sequences
-movie = strips.new_movie("film", src, channel=1, frame_start=1)
+movie = strips.new_movie("film", src, channel=1, frame_start=1, fit_method="FIT")
 try:
     strips.new_sound("sound", src, channel=2, frame_start=1)
 except Exception as e:  # a film with no sound track
     print("no sound:", e)
 fps = movie.fps if hasattr(movie, "fps") else 24
 sc.render.fps = int(round(fps))
+sc.render.fps_base = sc.render.fps / fps
 sc.frame_start = 1
 sc.frame_end = movie.frame_final_duration
-sc.render.resolution_x, sc.render.resolution_y = 1280, 720
-sc.render.resolution_percentage = 100
 if hasattr(sc.render.image_settings, "media_type"):  # Blender 5: video is its own media type
     sc.render.image_settings.media_type = "VIDEO"
 sc.render.image_settings.file_format = "FFMPEG"

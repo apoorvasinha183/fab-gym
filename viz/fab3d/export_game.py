@@ -39,9 +39,20 @@ def main():
     if not version.startswith("4.7.2."):
         parser.error(f"Expected Godot 4.7.2, found {version}")
     for name in ["campus.json", "cinema-built.json", "demo.json", "models/fab-building.glb",
-                 "film/sand-to-chip-v10.ogv", "film/crime-and-punishment-acted.ogv"]:
+                 "film/sand-to-chip-v10.ogv", "film/crime-and-punishment-acted.ogv",
+                 "film/sand-to-chip-v10.film.json", "film/crime-and-punishment-acted.film.json"]:
         if not (PROJECT / "data" / name).is_file():
             parser.error(f"Missing prepared game asset: data/{name}. Run prep.py and record_demo.py first.")
+    for name in ("sand-to-chip-v10", "crime-and-punishment-acted"):
+        film = PROJECT / "data/film" / (name + ".ogv")
+        metadata = json.loads(film.with_suffix(".film.json").read_text())
+        for field, script in (("converter_sha256", "film_ogv.py"), ("preparer_sha256", "prepare_film.py")):
+            with (PROJECT / script).open("rb") as source:
+                if hashlib.file_digest(source, "sha256").hexdigest() != metadata.get(field):
+                    parser.error(f"Film preparation is out of date: {name}. Re-run prepare_film.py.")
+        with film.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != metadata.get("output_sha256"):
+                parser.error(f"Prepared film differs from its manifest: {name}. Re-run prepare_film.py.")
     output = args.out.resolve()
     if output.is_relative_to(PROJECT):
         parser.error("Keep downloads outside the Godot project so exports cannot include previous builds.")

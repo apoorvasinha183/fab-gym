@@ -10,6 +10,7 @@ var welcome := true
 var reduced_motion := false
 var sensitivity := 1.0
 var inverted := false
+var reverse_trackpad := false
 var settings_path := "user://visitor.cfg"
 var _return_focus: Control
 
@@ -58,7 +59,7 @@ func _ready() -> void:
 	places.custom_minimum_size.y = 50
 	travel.add_child(places)
 	_button(travel, "Go to place", func() -> void: close(); world.travel_to(places.get_item_text(places.selected)))
-	_label(box, "Move  W A S D / arrows    Look  hold right mouse / I J K L\nM  toggle mouse look    Shift  move faster    F  fly / land\nFlying: E / Q  up / down    Esc  pause and places\nCinema: E  sit / stand    Enter  play    Space  pause film", 21)
+	_label(box, "Move  W A S D / arrows    Look  two-finger trackpad swipe\nM  one-finger look on / off    Right-drag / I J K L also look\nShift  move faster    F  fly / land    E / Q  fly up / down\nMap: blue arrow is you; Campus shows all places. Go travels there.\nEsc  pause    Cinema: E sit / stand, Enter play, Space pause", 21)
 	_label(box, "Controller: left stick move, right stick look, X fly, bumpers rise / descend.\nA interact, Y next / play, Start menu. Tab / arrows navigate buttons.", 19)
 	var row := HBoxContainer.new()
 	box.add_child(row)
@@ -69,7 +70,7 @@ func _ready() -> void:
 	slider.step = 0.1
 	slider.value = sensitivity
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slider.tooltip_text = "Mouse and controller look sensitivity"
+	slider.tooltip_text = "Trackpad, mouse and controller look sensitivity"
 	row.add_child(slider)
 	slider.value_changed.connect(func(v: float) -> void: sensitivity = v; apply_settings(); _save_settings())
 	var invert := CheckButton.new()
@@ -78,6 +79,12 @@ func _ready() -> void:
 	invert.button_pressed = inverted
 	box.add_child(invert)
 	invert.toggled.connect(func(on: bool) -> void: inverted = on; apply_settings(); _save_settings())
+	var trackpad := CheckButton.new()
+	trackpad.text = "Reverse two-finger swipe direction"
+	trackpad.add_theme_font_size_override("font_size", 22)
+	trackpad.button_pressed = reverse_trackpad
+	box.add_child(trackpad)
+	trackpad.toggled.connect(func(on: bool) -> void: reverse_trackpad = on; apply_settings(); _save_settings())
 	var motion := CheckButton.new()
 	motion.text = "Reduce camera motion (skip opening flight)"
 	motion.add_theme_font_size_override("font_size", 22)
@@ -132,7 +139,7 @@ func open(first := false) -> void:
 	heading.text = "Welcome to Fab Gym" if first else "Visit paused"
 	resume_button.visible = not first
 	_return_focus = get_viewport().gui_get_focus_owner()
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	world.player.release_look()
 	panel.show()
 	get_tree().paused = true
 	if first:
@@ -178,6 +185,7 @@ func _notification(what: int) -> void:
 func apply_settings() -> void:
 	world.player.look_sensitivity = sensitivity
 	world.player.invert_look = inverted
+	world.player.reverse_trackpad = reverse_trackpad
 	world.player.reduced_motion = reduced_motion
 
 
@@ -186,6 +194,7 @@ func _load_settings() -> void:
 	if settings_path != "" and config.load(settings_path) == OK:
 		sensitivity = clampf(float(config.get_value("view", "sensitivity", 1.0)), 0.3, 2.0)
 		inverted = bool(config.get_value("view", "inverted", false))
+		reverse_trackpad = bool(config.get_value("view", "reverse_trackpad", false))
 		reduced_motion = bool(config.get_value("view", "reduced_motion", false))
 
 
@@ -195,5 +204,6 @@ func _save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("view", "sensitivity", sensitivity)
 	config.set_value("view", "inverted", inverted)
+	config.set_value("view", "reverse_trackpad", reverse_trackpad)
 	config.set_value("view", "reduced_motion", reduced_motion)
 	config.save(settings_path)

@@ -1,0 +1,20 @@
+[
+  {
+    "file": "cache-me-if-you-can.webp",
+    "provider": "Meta",
+    "model": "muse-image-1.0",
+    "prompt": "cache-me-if-you-can",
+    "reference": "Lou reference.webp",
+    "reference_sha256": "fb95646f92cd4265815393ea6703f70a1e5c34a9e38588d226e5cd94031b359b",
+    "sha256": "c8aefc7842316cdfca26ac2bb0dc15b9a067ddc5146cb94acb413894796dcebb"
+  },
+  {
+    "file": "wafer-thin.webp",
+    "provider": "Meta",
+    "model": "muse-image-1.0",
+    "prompt": "wafer-thin",
+    "reference": "Lou reference.webp",
+    "reference_sha256": "fb95646f92cd4265815393ea6703f70a1e5c34a9e38588d226e5cd94031b359b",
+    "sha256": "b1556a14357cb6e1e1ff673bb9c595cbeb98d150bdc6a79be01088062cd157f0"
+  }
+]

@@ -6,7 +6,11 @@ extends Node3D
 const Controls := preload("res://controls.gd")
 var look_sensitivity := 1.0
 var invert_look := false
+var reverse_trackpad := false
 var reduced_motion := false
+var _look_latched := false
+var _right_look := false
+var _prime_look := false
 var _glide: Tween
 var yaw := 0.0
 var pitch := -0.15
@@ -55,7 +59,7 @@ func take_control() -> void:
 	_trail.clear()
 	follow = null
 	roaming = true
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	release_look()
 
 
 func toggle_flight() -> void:
@@ -323,33 +327,85 @@ func place(plan_x: float, plan_y: float, facing: float = 0.0) -> void:
 
 func controls_blocked() -> bool:
 	var focus := get_viewport().gui_get_focus_owner()
-	return input_locked or focus is LineEdit or focus is TextEdit
+	return input_locked or get_tree().paused or focus is LineEdit or focus is TextEdit
+
+
+func release_look() -> void:
+	_look_latched = false
+	_right_look = false
+	_prime_look = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func toggle_mouse_look() -> void:
+	if controls_blocked() or not roaming:
+		return
+	_look_latched = not _look_latched
+	_prime_look = _look_latched and OS.has_feature("web")
+	# Embedded browsers may deny pointer lock. Relative motion still provides
+	# one-finger look over the world, with a visible pointer for the map and menus.
+	if not OS.has_feature("web"):
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if _look_latched else Input.MOUSE_MODE_VISIBLE
+
+
+func mouse_look_active() -> bool:
+	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or (OS.has_feature("web") and (_look_latched or _right_look))
+
+
+func _look_by(delta: Vector2, radians_per_unit: float) -> void:
+	yaw -= delta.x * radians_per_unit * look_sensitivity
+	pitch = clampf(pitch - delta.y * radians_per_unit * look_sensitivity * (-1.0 if invert_look else 1.0), -1.45, 1.45)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		release_look()
 
 
 func _input(e: InputEvent) -> void:
 	# Release must work even if a menu or text field consumed the matching press.
 	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT and not e.pressed:
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		_right_look = false
+		if not _look_latched:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _unhandled_input(e: InputEvent) -> void:
 	if controls_blocked() or not roaming:
 		return
 	if e.is_action_pressed("visit_menu"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	if e.is_action_pressed("toggle_look"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		release_look()
+	if e.is_action_pressed("toggle_look") and not e.is_echo():
+		toggle_mouse_look()
 		get_viewport().set_input_as_handled()
 	elif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if e.pressed else Input.MOUSE_MODE_VISIBLE
-	elif e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		yaw -= e.relative.x * 0.0025 * look_sensitivity
-		pitch = clampf(pitch - e.relative.y * 0.0025 * look_sensitivity * (-1.0 if invert_look else 1.0), -1.45, 1.45)
+		_right_look = e.pressed
+		_prime_look = e.pressed and OS.has_feature("web")
+		if not OS.has_feature("web"):
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if e.pressed or _look_latched else Input.MOUSE_MODE_VISIBLE
+	elif e is InputEventMouseMotion and mouse_look_active():
+		# The first uncaptured browser motion can include a stale cursor position
+		# from a menu. Establish the new origin before turning the camera.
+		if _prime_look:
+			_prime_look = false
+			return
+		_look_by(e.relative.limit_length(120.0), 0.0025)
+	elif e is InputEventPanGesture and not e.ctrl_pressed and not e.meta_pressed:
+		# Scroll deltas describe the content travelling opposite to the fingers.
+		# Reverse that scroll vector so looking follows the two-finger swipe.
+		_look_by(e.delta.limit_length(80.0) * (1.0 if reverse_trackpad else -1.0), 0.005)
+		get_viewport().set_input_as_handled()
+	elif e is InputEventMouseButton and e.pressed and not e.ctrl_pressed and not e.meta_pressed:
+		# Web and some desktop drivers expose two-finger swipes as precise wheel events.
+		var delta := Vector2.ZERO
+		match e.button_index:
+			MOUSE_BUTTON_WHEEL_UP: delta.y = -1.0
+			MOUSE_BUTTON_WHEEL_DOWN: delta.y = 1.0
+			MOUSE_BUTTON_WHEEL_LEFT: delta.x = 1.0 if OS.has_feature("web") else -1.0
+			MOUSE_BUTTON_WHEEL_RIGHT: delta.x = -1.0 if OS.has_feature("web") else 1.0
+		if delta != Vector2.ZERO:
+			_look_by(delta * clampf(e.factor, 0.0, 4.0) * (1.0 if reverse_trackpad else -1.0), 0.08)
+			get_viewport().set_input_as_handled()
 	elif e.is_action_pressed("toggle_flight") and not e.is_echo():
 		toggle_flight()
 		get_viewport().set_input_as_handled()

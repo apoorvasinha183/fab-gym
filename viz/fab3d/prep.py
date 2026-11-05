@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from agent import fab3d  # noqa: E402
+from viz.fab3d.prepare_film import prepare as prepare_film  # noqa: E402
 
 PROJ = ROOT / "viz/fab3d"
 DATA = PROJ / "data"
@@ -146,10 +147,8 @@ def main():
     films = []
     for src, name in FILMS:
         film = DATA / "film" / name
-        if src.exists() and not film.exists():
-            film.parent.mkdir(exist_ok=True)
-            subprocess.run(["nice", "-n", "10", str(blender), "-b", "--factory-startup", "-P", str(PROJ / "film_ogv.py"), "--",
-                            str(src), str(film)], check=True, capture_output=True)
+        if src.exists():
+            prepare_film(src, film, blender)
         if film.exists():
             films.append(name)
     print(f"campus: {len(campus['tools'])} tools in {len(campus['cells'])} cells; "

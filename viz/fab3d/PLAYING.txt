@@ -6,9 +6,20 @@ Go to place also gets you unstuck. Tour and exploration work without a helper.
 DEMO means a recorded simulation from 06:00 to 06:30, repeated. A live connection
 replaces it when the optional local helper is running. Model keys are optional.
 
-Move: W A S D or arrow keys. Look: hold right mouse, or use I J K L.
-M toggles mouse look, useful on a trackpad. Shift moves faster.
+Move: W A S D or arrow keys. Look: swipe with two fingers over the game view.
+M (or the Trackpad look button) toggles one-finger trackpad / mouse look.
+Press M again to release the pointer. Right-drag and I J K L also look.
+In the browser, one-finger look keeps the cursor visible: move over the world
+to turn, and press M again before using the map or other buttons.
+Two-finger look follows your swipe. For a different system scroll preference,
+choose Reverse two-finger swipe direction in the Esc menu.
+Look sensitivity and vertical inversion are also in the Esc menu.
+Shift moves faster.
 F toggles flying; E / Q move up / down while flying.
+The small map follows you: the blue arrow points where you face, gold marks Lou.
+Campus / Nearby switches between the whole site and the local floor layout.
+Choose a place below the map and press Go to travel to a safe arrival point.
+The map stays north-up; its scale bar measures distance on the plan.
 Click a tool to inspect it. Ask Lou opens a text box; Esc closes it.
 Space finishes a line, then advances the tour.
 
@@ -20,6 +31,8 @@ Cinema: walk up to an empty seat and press E (controller A).
 Enter (controller Y) plays the film. Space (Y) pauses / resumes it.
 Esc (B / Start) returns to the hall. E (A) stands up.
 1 / 2 (left / right bumper) choose a film while seated.
+1 is Sand to Chip; 2 is Crime & Punishment. Captions appear automatically.
+The cinema keeps the complete film frame when the window changes shape.
 
 Desktop: unzip the download, then open the game. The macOS build is unsigned;
 use the system's Open confirmation for this app. Linux: mark Fab-Gym-3D.x86_64

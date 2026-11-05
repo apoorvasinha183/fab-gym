@@ -1,5 +1,43 @@
 # Playtest
 
+For trackpad and map navigation, run the real-scene regression:
+
+```sh
+godot --headless --path viz/fab3d --script res://playtest/navigation_check.gd -- --playability-check /tmp/navigation.json
+```
+
+It checks both gesture axes, sensitivity, inversion, UI input ownership, map headings,
+all travel destinations and cinema visibility. Omit `--headless` and add
+`--stills /tmp/navigation-stills` to check pointer capture and render three window shapes.
+Browser smoke check: choose Walk and explore, swipe over the world in both directions,
+swipe over the map (camera must stay still), toggle M, then try Campus and Go.
+
+For the four reception posters, run:
+
+```sh
+godot --path viz/fab3d --script res://playtest/poster_check.gd -- --playability-check --poster-check /tmp/poster-stills
+```
+
+The two film posters are unchanged copies from the public site; the other two were
+drawn by Meta Muse Image from Lou’s existing reference. Assets, source hashes and
+exact prompts live in `viz/fab3d/cinema/posters/` and ship with the game.
+The check verifies fit and orientation and renders all four lightboxes.
+
+For cinema framing, set `BLENDER=/path/to/blender` and run
+`python3 -m unittest viz.tests.test_film_framing`. Short movies with four coloured edges
+check that the real converter retains every edge at HD, portrait and widescreen sizes.
+After preparing both films, run the visible Godot check:
+
+```sh
+godot --path viz/fab3d --script res://playtest/cinema_framing_check.gd -- --playability-check --cinema-check /tmp/cinema-stills
+```
+
+It plays both movies, checks that all their caption lines fit, and renders the hall and
+full-screen views at three window shapes. Prepare a film directly with
+`python3 viz/fab3d/prepare_film.py SOURCE.mp4 viz/fab3d/data/film/NAME.ogv`.
+The adjacent `.film.json` carries source/converter hashes and the MP4's embedded captions;
+exports require matching, current films and include those captions.
+
 For a bounded camera regression check, replay the guide's real route in fixed 50 ms steps:
 
 ```sh

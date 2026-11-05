@@ -4,3 +4,4 @@ data/
 export/
 !exterior/art/*.import
 !ui/fonts/*.import
+!cinema/posters/*.import

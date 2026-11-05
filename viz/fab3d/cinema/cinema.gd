@@ -17,8 +17,12 @@ const EYE := 1.15                                 # seated eye height over the t
 # who is in already (made up): plan seat id and a jumper colour
 const PEOPLE := [["R1C6", Color(0.16, 0.22, 0.4)], ["R1C7", Color(0.55, 0.42, 0.2)], ["R6N3", Color(0.42, 0.12, 0.16)],
 		["R2S2", Color(0.15, 0.4, 0.38)]]
-const POSTERS := ["NOW SHOWING\n\nSAND\nTO CHIP", "NOW SHOWING\n\nCRIME &&\nPUNISHMENT",
-		"LOU LATENCY\nIN\n\nCACHE ME\nIF YOU CAN", "WAFER THIN\n\nA LOVE STORY\nAT 2 NM"]
+const POSTERS := [
+	["Sand to Chip", preload("res://cinema/posters/sand-to-chip.jpg")],
+	["Crime && Punishment", preload("res://cinema/posters/crime-and-punishment.jpg")],
+	["Cache Me If You Can", preload("res://cinema/posters/cache-me-if-you-can.webp")],
+	["Wafer Thin", preload("res://cinema/posters/wafer-thin.webp")],
+]
 const Looks := preload("res://looks.gd")
 const FONT := preload("res://ui/fonts/kenpixel.ttf")
 
@@ -40,10 +44,12 @@ var _said := "-"
 var _hint_seconds := 0.0
 var film := 0                     # which of FILMS is on the screen
 var titles := []                  # the titles of the films this build holds
+var captions: Array = []
 var staff_scene: PackedScene = preload("res://staff/staff.tscn")
 @onready var vp: SubViewport = $vp
 @onready var video: VideoStreamPlayer = $vp/video
 @onready var card: Control = $vp/card
+@onready var subtitle: Label = $vp/subtitle
 @onready var full: CanvasLayer = $full
 @onready var picture: TextureRect = $full/picture
 @onready var full_hint: Label = $full/hint
@@ -94,7 +100,7 @@ func setup(data: Dictionary) -> void:
 		if built is Dictionary:
 			var k := 0
 			for p in built.get("posters", []):
-				_poster(p, POSTERS[k % POSTERS.size()])
+				_poster(p, k % POSTERS.size())
 				k += 1
 			posters = k
 			for d in built.get("doors", []):
@@ -211,23 +217,38 @@ func _doors(dt: float) -> void:
 				lv[0].position = w(cx + side * (half / 2.0 + half * 0.95 * u), float(e["y"]) + 0.08, (float(e["z0"]) + float(e["z1"])) / 2.0)
 
 
-func _poster(p: Dictionary, text: String) -> void:
-	var l := Label3D.new()
-	l.text = text
-	l.font = FONT
-	l.font_size = 64
-	var widest := 1.0
-	for line in text.split("\n"):
-		widest = maxf(widest, FONT.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 64).x)
+func _poster(p: Dictionary, index: int) -> void:
+	# Keep the entire poster inside the existing lightbox, even for a future
+	# artwork with a different aspect ratio. No crop and no overlaid title.
+	var texture: Texture2D = POSTERS[index][1]
 	var width := float(p["x1"]) - float(p["x0"])
 	var height := float(p["z1"]) - float(p["z0"])
-	l.pixel_size = minf(0.0035, minf((width - 0.12) / widest, (height - 0.16) / (text.split("\n").size() * FONT.get_height(64))))
-	l.outline_size = 0
-	l.modulate = Color(1, 0.97, 0.9)
-	l.shaded = false
-	l.position = w((float(p["x0"]) + float(p["x1"])) / 2.0, float(p["y"]) + 0.01, (float(p["z0"]) + float(p["z1"])) / 2.0)
-	l.rotation.y = PI                              # its face to the lobby, north
-	add_child(l)
+	var frame := MeshInstance3D.new()
+	frame.name = "Poster%d" % index
+	frame.set_meta("title", POSTERS[index][0])
+	var backing := QuadMesh.new()
+	backing.size = Vector2(width, height)
+	frame.mesh = backing
+	var black := StandardMaterial3D.new()
+	black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	black.albedo_color = Color(0.015, 0.018, 0.025)
+	frame.material_override = black
+	frame.position = w((float(p["x0"]) + float(p["x1"])) / 2.0, float(p["y"]) + 0.015, (float(p["z0"]) + float(p["z1"])) / 2.0)
+	frame.rotation.y = PI                         # front faces north into the lobby
+	add_child(frame)
+	var art := MeshInstance3D.new()
+	art.name = "Artwork"
+	var quad := QuadMesh.new()
+	var fit := minf((width - 0.04) / texture.get_width(), (height - 0.06) / texture.get_height())
+	quad.size = texture.get_size() * fit
+	art.mesh = quad
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_texture = texture
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	art.material_override = material
+	art.position.z = 0.003
+	frame.add_child(art)
 
 
 func pick(i: int) -> void:
@@ -238,6 +259,13 @@ func pick(i: int) -> void:
 	film = i
 	video.stop()
 	video.stream = load(have[i][1])
+	captions.clear()
+	var metadata := str(have[i][1]).get_basename() + ".film.json"
+	if FileAccess.file_exists(metadata):
+		var data = JSON.parse_string(FileAccess.get_file_as_string(metadata))
+		if data is Dictionary:
+			captions = data.get("captions", [])
+	subtitle.text = ""
 	started = false
 	user_paused = false
 	if card:
@@ -337,6 +365,8 @@ func play() -> void:
 func fullscreen(on: bool) -> void:
 	if on and not video.stream:
 		return
+	if on:
+		viewer.release_look()
 	full.visible = on
 	# The opaque movie covers the world; skip its 3D draw until returning to the hall.
 	get_viewport().disable_3d = on
@@ -349,6 +379,7 @@ func fullscreen(on: bool) -> void:
 func _on_finished() -> void:
 	started = false
 	user_paused = false
+	subtitle.text = ""
 	fullscreen(false)
 	card.visible = true
 	$vp/card/lines/now.text = "THE END"
@@ -404,8 +435,21 @@ func _input(e: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func _update_subtitle() -> void:
+	var text := ""
+	if started:
+		var at := video.stream_position
+		for cue in captions:
+			if at >= float(cue.start) and at < float(cue.end):
+				text = str(cue.text)
+				break
+	if subtitle.text != text:
+		subtitle.text = text
+
+
 func _process(dt: float) -> void:
 	_doors(dt)
+	_update_subtitle()
 	if not viewer:
 		return
 	var p := viewer.global_position
