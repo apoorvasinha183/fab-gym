@@ -6,4 +6,4 @@ def credits():
             "timed with Muse Voice Transcribe; inked, painted and put together by Fab Gym's own code. "
             "Music: The Budding of Consciousness by Yoiyami and New Sunrise by nene (CC0, OpenGameArt). "
             "The fab's part runs from the SMT2020 testbed; the steps before and after it are general knowledge. "
-            "Fab Gym, by Chetnova. Not a real fab.")
+            "Fab Gym. Not a real fab.")

@@ -30,7 +30,7 @@ the same change.
   in, a stand-in answers from a fixed set and says so on screen.
 - A movie hall in the fab plays **Silicon Odyssey** (the sand-to-chip film, retitled, voiced), followed by a trailer,
   **Robot Construction Crew**: robot crews and people building the fab from the bill of materials, robots on the
-  repetitive work, people supervising and signing, ending on the Chetnova card.
+  repetitive work, people supervising and signing, ending on the end card.
 
 ### The demo video (3 minutes)
 
@@ -95,7 +95,7 @@ about 35 s a step; voiced. Opening on the spoken question, closing on the collea
   today's only where the copies are; every code check reruns.
 - The colleague: every tool call is one of the listed tools with valid arguments; "show me" ends with the walker at
   the named place; every number it states is read from the fab, never invented; the stand-in is labelled.
-- The movie hall: the screen plays the film then the trailer; the trailer ends on the Chetnova card.
+- The movie hall: the screen plays the film then the trailer; the trailer ends on the end card.
 - The critic: a rule that games the metric is flagged on a fixed test case; the critic never changes a score.
 - The Lean checker: real runs accepted, tampered copies rejected.
 

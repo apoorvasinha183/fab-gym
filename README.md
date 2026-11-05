@@ -428,9 +428,9 @@ A discrete-event simulator in Rust that reproduces the reference engine's event 
 
 Built before the hackathon, and kept outside this repository:
 
-- A Python reference engine for the SMT2020 testbed, written earlier in Chetnova's private repository. The Rust simulator here is written new and is checked against event logs recorded from that engine (the golden files in `golden/`). None of its code is copied here.
+- A Python reference engine for the SMT2020 testbed, written earlier in the author's own private repository. The Rust simulator here is written new and is checked against event logs recorded from that engine (the golden files in `golden/`). None of its code is copied here.
 - Earlier results from the SMT2020 testbed (a learned dispatch rule, a WIP-cap study). They are quoted only where labelled "pre-existing".
 
 ## Credits
 
-The SMT2020 testbed: Kopp, Hassoun, Kalir and Mönch, *SMT2020: A Semiconductor Manufacturing Testbed*, IEEE Transactions on Semiconductor Manufacturing, 2020. See `NOTICE.md`. The cast was drawn with Meta's Muse Image from our prompts (`docs/CAST-PROMPT.md`). Our entry to the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon), Indie track. By Chetnova.
+The SMT2020 testbed: Kopp, Hassoun, Kalir and Mönch, *SMT2020: A Semiconductor Manufacturing Testbed*, IEEE Transactions on Semiconductor Manufacturing, 2020. See `NOTICE.md`. The cast was drawn with Meta's Muse Image from our prompts (`docs/CAST-PROMPT.md`). Our entry to the [Meta Global AI Developer Hackathon](https://cerebralvalley.ai/e/meta-ai-developer-hackathon), Indie track.

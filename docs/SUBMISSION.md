@@ -19,7 +19,7 @@ a test failing. Start the helper (`python3 -m agent.helper --port 8766`, `--pres
 | 1:35 | Floor, ask bar | Ask a question in plain words (a worked example, or live with the model) | "Now ask the fab. Meta's open model, Muse Spark Open, turns the question into a scenario, marking what you said and what it assumed. It writes rules as small Rust functions; each runs in a sandbox and the simulator scores it on days it never saw, against today's rule." |
 | 2:10 | Floor, answer | Point at the card's numbers and **Sign** | "The card quotes only the simulator's numbers, with how sure we are. The model proposes; a person signs." |
 | 2:25 | Evidence | Scroll the four findings; stop on **120 / 120** | "What we found, in plain words. And every scored run is checked: a referee written in Lean re-read all 120 runs, 423 million machine jobs. All passed." |
-| 2:50 | Close | The closing card | "Fab Gym, by Chetnova. An operating system for your full org." |
+| 2:50 | Close | The closing card | "Fab Gym." |
 
 ## 2. Shot list for the video
 
@@ -44,7 +44,7 @@ SMT2020 testbed" when a number is from it, and "made up" or "assumed" for prices
 
 ## 3. The submission form, a draft
 
-- **Project:** Fab Gym, by Chetnova.
+- **Project:** Fab Gym.
 - **One line:** A simulated chip fab you can draw, ask questions in plain words and trust: Meta's open model writes the
   rules, the simulator scores them, a Lean referee checks every run, and a person signs.
 - **What it is:** An open simulator of a 1,043-machine wafer fab built on the published SMT2020 testbed, in Rust (about
@@ -56,8 +56,7 @@ SMT2020 testbed" when a number is from it, and "made up" or "assumed" for prices
   on held-out days against today's rule. Ideas and trials use `muse-spark-1.3-contributor`. The cast of machines was
   drawn with Muse Image.
 - **Impact:** A fab cannot test a new rule for running its floor without risking weeks of real output. Fab Gym tests it
-  first, says how sure it is, and shows it in words a newcomer follows. The same machinery is Chetnova's: an operating
-  system for an organisation, simulated before it changes.
+  first, says how sure it is, and shows it in words a newcomer follows.
 - **Technical depth:** an exact event-log match against a reference engine, paired seeds with 95% intervals, a
   pre-registered uncertainty study, a sandbox with a fuel limit, and a Lean 4 referee with soundness proofs that passed
   all 120 scored runs.

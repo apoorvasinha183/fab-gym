@@ -191,7 +191,7 @@ high-mix one; `ours.json` holds 10 runs of 180 days for each lot type.
   95% intervals (Planar_FE_77 71.8% busy against 71.7% of work). The eighth busiest, Litho_REG_BE_63, a back-end group
   lots reach late, was 2.1 points under (95% half-width 1.8), likely still warming up.
 - Part 4 built 1 November 2026 (tests "Peer review", code "Published"). DC9 passes. Reading Tassel 2023 settled a doubt
-  about figures quoted earlier in Chetnova's notes (24.75 and 14.54 days, called raw processing times): the paper's
+  about figures quoted earlier in the author's private notes (24.75 and 14.54 days, called raw processing times): the paper's
   main Table 1 (p. 7) lists 24.75 beside super-hot lots, which looked like a lot type's figure, but its appendix Table 2
   (p. 10) gives it per product as a theoretical cycle time. The values were right; the name is the paper's
   "theoretical cycle time". The fetch tool kept both PDFs in a local folder, outside

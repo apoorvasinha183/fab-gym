@@ -1,6 +1,6 @@
 """Record golden files from the pre-existing Python reference engine.
 
-The reference engine lives in Chetnova's private repository and is not part of Fab Gym. This
+The reference engine lives in the author's private repository and is not part of Fab Gym. This
 script runs it and writes plain-text files that the Rust simulator must reproduce exactly:
 
   pyrandom.txt          values from Python's random.Random seeded with strings
@@ -9,8 +9,8 @@ script runs it and writes plain-text files that the Rust simulator must reproduc
   smt2020.sha256        SHA-256 and line counts of logs on the SMT2020 model (the full logs
                         go to the --data folder, which git ignores)
 
-Run with the reference engine's Python:
-  .../Chetnova/.venv/bin/python golden/record_golden.py --data data/golden
+Run with the reference engine's Python, naming its package in REF_PKG:
+  REF_PKG=<package> .../.venv/bin/python golden/record_golden.py --data data/golden
 
 Floats in logs are written as the 16 hex digits of their IEEE-754 bits, so a match is exact.
 """
@@ -19,15 +19,18 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
+import os
 import random
 import struct
 import sys
 import time
 from pathlib import Path
 
-from chetnova.org import jobshop as J  # the private reference engine
-from chetnova.orgpacks import fab as F
+# the private reference engine, by the package name given in REF_PKG
+J = importlib.import_module(os.environ["REF_PKG"] + ".org.jobshop")
+F = importlib.import_module(os.environ["REF_PKG"] + ".orgpacks.fab")
 
 HERE = Path(__file__).resolve().parent
 STATES = ("productive", "standby", "scheduled down", "unscheduled down")
