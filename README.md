@@ -341,7 +341,9 @@ The **Evidence** page leads with four findings in plain words, each with how sur
 
 <p align="center"><img src="docs/img/evidence.jpg" width="820" alt="The Evidence page: four finding cards, on rush prototypes, a cap on work inside, the trained AI against the fab's own rule, and 120 of 120 scored runs passing the referee"></p>
 
-**Every scored run is checked.** The simulator writes a receipt for each run: every job, every machine state, every breach. A referee written in Lean 4 reads it and checks five rules: no machine does two jobs at once, every lot follows its route, no batch is overfilled, nothing runs on a broken machine, and the breaches counted match. Its proofs say that whenever it answers yes, the five rules hold. All 120 scored runs of the long study passed, about 423 million jobs, and tampered copies are rejected (`docs/LEAN-CHECK.md`). A yes shows a run follows the fab's rules; it does not show the simulator matches a real fab.
+**Every scored run is checked.** The simulator writes a receipt for each run: every job, every machine state, every breach. A referee written in Lean 4 reads it and checks five rules: no machine does two jobs at once, every lot follows its route, no batch is overfilled, nothing runs on a broken machine, and the breaches counted match. Its proofs say that whenever it answers yes, the five rules hold. It was given every final scored run of the long study on the full SMT2020 fab: 6 dispatch rules (today's, FIFO, shortest job first, critical ratio, random, PPO) × 10 seeds, with quality holds off and on, 190 simulated days each. All 120 passed, about 423 million jobs and 884 million machine-state changes, and tampered copies are rejected (`docs/LEAN-CHECK.md`).
+
+> **What Lean does not prove.** A yes shows that a run's record follows the five rules. The Rust simulator's own code is **not** proved in Lean, and nothing here shows the testbed behaves like a real fab. The simulator is checked instead by reproducing a separate reference engine's event log bit for bit (`golden/`) and by laws every run must obey, such as Little's law (`docs/DOUBLE-CHECK.md`).
 
 ## How accurate is it?
 
@@ -357,7 +359,9 @@ a model of any real fab. The full comparison, with sources and pages, is `docs/D
   24.68 and 14.49 days for the two main products, against the published 24.75 and 14.54.
 - **The engine.** The Rust simulator reproduces a separate reference engine's event log bit for bit (`golden/`).
 - **The rules.** Every scored run is checked by the Lean referee: no machine does two jobs at once, every lot follows
-  its route, no batch is overfilled, nothing runs on a broken machine. 120 of 120 runs passed.
+  its route, no batch is overfilled, nothing runs on a broken machine. 120 of 120 runs passed: every final scored run
+  of the long study (6 dispatch rules × 10 seeds, quality holds off and on, 190 days each). The simulator's own code
+  is not proved in Lean; see below.
 - **The laws.** Little's law and the capacity ceiling hold on the runs: cycle time equals work inside divided by output,
   and no schedule beats the busiest machine group.
 - **Fair comparisons.** Two rules are compared on the same random draws, and every result is a paired difference with a

@@ -62,9 +62,9 @@
     return {
       id: "checked",
       title: `Every scored run was checked by a separate program: ${lean.passed} of ${lean.runs} passed.`,
-      what: `A referee whose rules are proved correct in Lean re-read every run behind our scores, ${Math.round(lean.jobs / 1e6)} million machine jobs in all.`,
+      what: `A referee whose rules are proved correct in Lean re-read every run behind our scores: every final scored run of the long study on the full fab: six ways of picking the next lot, each on ten different random histories, with quality holds off and on, 190 simulated days each. ${Math.round(lean.jobs / 1e6)} million machine jobs in all.`,
       means: "In every run no machine did two jobs at once, every batch followed its route, no machine was overloaded, nothing ran on a broken machine, and the missed time limits were counted right. The scores rest on runs that follow the fab's rules.",
-      sure: "Exact: a check, not an estimate. It shows the runs follow the rules; it does not show the simulator matches a real fab.",
+      sure: "Exact: a check, not an estimate. It shows these runs follow the rules. It does not prove the simulator's own code correct (that rests on a bit-for-bit match with a separate reference engine and on laws the runs obey), nor that it matches a real fab.",
       runs: lean.runs, passed: lean.passed,
     };
   }
